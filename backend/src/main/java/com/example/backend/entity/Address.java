@@ -41,6 +41,9 @@ public class Address {
 
     private boolean isDefault = false;
 
+    private Double latitude;
+    private Double longitude;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;
