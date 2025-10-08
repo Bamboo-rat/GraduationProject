@@ -46,8 +46,17 @@ public enum ErrorCode {
     // Keycloak errors (3000-3999)
     KEYCLOAK_USER_CREATION_FAILED("K3000", "Failed to create user in Keycloak", "Tạo tài khoản người dùng thất bại", HttpStatus.INTERNAL_SERVER_ERROR),
     KEYCLOAK_USER_UPDATE_FAILED("K3001", "Failed to update user in Keycloak", "Cập nhật tài khoản người dùng thất bại", HttpStatus.INTERNAL_SERVER_ERROR),
-    KEYCLOAK_USER_DELETE_FAILED("K3002", "Failed to delete user in Keycloak", "Xóa tài khoản người dùng thất bại", HttpStatus.INTERNAL_SERVER_ERROR),
-    KEYCLOAK_CONNECTION_ERROR("K3003", "Cannot connect to Keycloak", "Không thể kết nối đến Keycloak", HttpStatus.SERVICE_UNAVAILABLE);
+    KEYCLOAK_USER_DELETION_FAILED("K3002", "Failed to delete user in Keycloak", "Xóa tài khoản người dùng thất bại", HttpStatus.INTERNAL_SERVER_ERROR),
+    KEYCLOAK_CONNECTION_ERROR("K3003", "Cannot connect to Keycloak", "Không thể kết nối đến Keycloak", HttpStatus.SERVICE_UNAVAILABLE),
+    KEYCLOAK_ROLE_ASSIGNMENT_FAILED("K3004", "Failed to assign role to user in Keycloak", "Gán quyền cho người dùng thất bại", HttpStatus.INTERNAL_SERVER_ERROR),
+    KEYCLOAK_AUTHENTICATION_FAILED("K3005", "Authentication failed", "Đăng nhập thất bại", HttpStatus.UNAUTHORIZED),
+    KEYCLOAK_USER_NOT_FOUND("K3006", "User not found in Keycloak", "Không tìm thấy người dùng trong Keycloak", HttpStatus.NOT_FOUND),
+    KEYCLOAK_PASSWORD_UPDATE_FAILED("K3007", "Failed to update password in Keycloak", "Cập nhật mật khẩu thất bại", HttpStatus.INTERNAL_SERVER_ERROR),
+
+    // Registration errors
+    PHONE_NUMBER_ALREADY_EXISTS("3005", "Phone number already exists", "Số điện thoại này đã được sử dụng", HttpStatus.CONFLICT),
+    BUSINESS_LICENSE_ALREADY_EXISTS("3006", "Business license already exists", "Giấy phép kinh doanh này đã được sử dụng", HttpStatus.CONFLICT),
+    TAX_CODE_ALREADY_EXISTS("3007", "Tax code already exists", "Mã số thuế này đã được sử dụng", HttpStatus.CONFLICT);
 
 
     private final String code;

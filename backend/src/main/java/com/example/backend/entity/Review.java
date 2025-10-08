@@ -22,6 +22,8 @@ public class Review {
     private String reviewId;
 
     private int rating;
+
+    @Column(nullable = true)
     private String comment;
 
     @CreationTimestamp
@@ -34,6 +36,10 @@ public class Review {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "store_id", nullable = false)
+    private Store store;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_detail_id", unique = true)

@@ -25,6 +25,6 @@ public class CartDetail {
     private Cart cart;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", nullable = false)
-    private Product product;
+    @JoinColumn(name = "store_product_id", nullable = false)
+    private StoreProduct storeProduct;
 }

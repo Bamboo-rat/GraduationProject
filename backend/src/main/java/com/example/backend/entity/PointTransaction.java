@@ -35,7 +35,7 @@ public class PointTransaction {
     @Column(nullable = false)
     private PointTransactionType transactionType;
 
-    private String reason; // "Đặt hàng thành công", "Đánh giá sản phẩm", "Đổi quà", v.v.
+    private String reason; // "Đặt hàng thành công", "Đánh giá sản phẩm", "Đổi xu", v.v.
 
     @CreationTimestamp
     private LocalDateTime createdAt;

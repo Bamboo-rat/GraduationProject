@@ -1,7 +1,9 @@
 package com.example.backend.entity;
 
 import com.example.backend.entity.enums.PaymentMethod;
+import com.example.backend.entity.enums.PaymentProvider;
 import com.example.backend.entity.enums.PaymentStatus;
+
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -41,7 +43,9 @@ public class Payment {
     @Enumerated(EnumType.STRING)
     private PaymentStatus status = PaymentStatus.PENDING;
 
-    private String provider; // Ví dụ: VNPay, Momo
+    @Enumerated(EnumType.STRING)
+    private PaymentProvider provider;
+
     private String transactionId;
 
     @CreationTimestamp

@@ -2,16 +2,16 @@ version: '3.8'
 services:
   keycloak-db:
     image: mysql:8.0
-    container_name: keycloak-db
+    container_name: keycloakdb
     environment:
       MYSQL_ROOT_PASSWORD: 123456
-      MYSQL_DATABASE: keycloak
+      MYSQL_DATABASE: keycloak-db-foodsave
     ports:
       - "3309:3306"
     volumes:
       - keycloak_data:/var/lib/mysql
     networks:
-      - capcap-net
+      - foodsave-net
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p123456"]
       interval: 30s
@@ -21,7 +21,7 @@ services:
 
   keycloak:
     image: quay.io/keycloak/keycloak:25.0
-    container_name: keycloak
+    container_name: keycloak-foodsave
     environment:
       KC_HTTP_ENABLED: "true"
       KEYCLOAK_ADMIN: admin
@@ -37,11 +37,11 @@ services:
       keycloak-db:
         condition: service_healthy
     networks:
-      - capcap-net
+      - foodsave-net
 
 volumes:
   keycloak_data:
 
 networks:
-  capcap-net:
+  foodsave-net:
     driver: bridge
