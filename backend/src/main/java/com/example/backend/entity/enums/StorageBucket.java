@@ -7,7 +7,9 @@ public enum StorageBucket {
     BUSINESS_LICENSES("business-licenses", "Business license documents for suppliers"),
     BANNER("banner", "Banner images for promotions and marketing"),
     PRODUCTS("products", "Product images"),
-    AVATAR_CUSTOMER("avatar-customer", "Customer profile avatars");
+    AVATAR_CUSTOMER("avatar-customer", "Customer profile avatars"),
+    AVATAR_ADMIN("avatar-admin", "Admin profile avatars"),
+    SUPPLIER_LOGO("supplier-logo", "Supplier business logos");
 
     private final String folderName;
     private final String description;

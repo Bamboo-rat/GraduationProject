@@ -116,6 +116,40 @@ public class FileStorageController {
         return ResponseEntity.ok(ApiResponse.success("Avatar uploaded successfully", response));
     }
 
+    @PostMapping("/upload/avatar/admin")
+    @Operation(summary = "Upload admin avatar", description = "Upload admin profile avatar")
+    public ResponseEntity<ApiResponse<Map<String, String>>> uploadAdminAvatar(
+            @RequestParam("file") MultipartFile file
+    ) {
+        log.info("POST /api/files/upload/avatar/admin - Uploading admin avatar");
+        
+        String url = fileStorageService.uploadFile(file, StorageBucket.AVATAR_ADMIN);
+        
+        Map<String, String> response = new HashMap<>();
+        response.put("url", url);
+        response.put("fileName", file.getOriginalFilename());
+        response.put("fileSize", String.valueOf(file.getSize()));
+        
+        return ResponseEntity.ok(ApiResponse.success("Admin avatar uploaded successfully", response));
+    }
+
+    @PostMapping("/upload/supplier-logo")
+    @Operation(summary = "Upload supplier logo", description = "Upload supplier business logo")
+    public ResponseEntity<ApiResponse<Map<String, String>>> uploadSupplierLogo(
+            @RequestParam("file") MultipartFile file
+    ) {
+        log.info("POST /api/files/upload/supplier-logo - Uploading supplier logo");
+        
+        String url = fileStorageService.uploadFile(file, StorageBucket.SUPPLIER_LOGO);
+        
+        Map<String, String> response = new HashMap<>();
+        response.put("url", url);
+        response.put("fileName", file.getOriginalFilename());
+        response.put("fileSize", String.valueOf(file.getSize()));
+        
+        return ResponseEntity.ok(ApiResponse.success("Supplier logo uploaded successfully", response));
+    }
+
     @DeleteMapping("/delete")
     @Operation(summary = "Delete file", description = "Delete a file from storage using its Cloudinary URL")
     public ResponseEntity<ApiResponse<Void>> deleteFile(

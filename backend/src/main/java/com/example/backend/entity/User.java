@@ -46,6 +46,10 @@ public abstract class User {
     private String phoneNumber;
 
     private String fullName;
+
+    // Ảnh đại diện (avatar) cho user hoặc admin
+    private String avatarUrl;
+    
     private boolean active = true;
 
     @CreationTimestamp
