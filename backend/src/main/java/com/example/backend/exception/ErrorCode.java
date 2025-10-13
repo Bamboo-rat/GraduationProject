@@ -10,6 +10,11 @@ public enum ErrorCode {
     VALIDATION_ERROR("1001", "Validation failed", "Lỗi xác thực dữ liệu không hợp lệ", HttpStatus.BAD_REQUEST),
     INVALID_REQUEST("1002", "Invalid request data", "Dữ liệu yêu cầu không hợp lệ", HttpStatus.BAD_REQUEST),
     RESOURCE_NOT_FOUND("1003", "Resource not found", "Không tìm thấy tài nguyên được yêu cầu", HttpStatus.NOT_FOUND),
+    INVALID_INPUT("1004", "Invalid input", "Dữ liệu đầu vào không hợp lệ", HttpStatus.BAD_REQUEST),
+    INVALID_EMAIL("1005", "Invalid email format", "Định dạng email không hợp lệ", HttpStatus.BAD_REQUEST),
+    WEAK_PASSWORD("1006", "Password is too weak", "Mật khẩu quá yếu, cần ít nhất 8 ký tự, chữ hoa, chữ thường, số và ký tự đặc biệt", HttpStatus.BAD_REQUEST),
+    INVALID_PHONE_NUMBER("1007", "Invalid phone number format", "Định dạng số điện thoại không hợp lệ", HttpStatus.BAD_REQUEST),
+    INVALID_AGE("1008", "Age requirement not met", "Bạn phải đủ 18 tuổi để đăng ký", HttpStatus.BAD_REQUEST),
 
     // ===== 2xxx: Authentication & Authorization Errors =====
     UNAUTHENTICATED("2001", "Unauthenticated", "Bạn chưa đăng nhập hoặc phiên làm việc đã hết hạn", HttpStatus.UNAUTHORIZED),
@@ -17,6 +22,13 @@ public enum ErrorCode {
     TOKEN_INVALID("2003", "Invalid token", "Token không hợp lệ hoặc đã hết hạn", HttpStatus.UNAUTHORIZED),
     ACCOUNT_LOCKED("2004", "Account is locked", "Tài khoản của bạn đã bị khóa", HttpStatus.FORBIDDEN),
     ACCOUNT_INACTIVE("2005", "Account is inactive", "Tài khoản của bạn chưa được kích hoạt", HttpStatus.FORBIDDEN),
+    VERIFICATION_TOKEN_INVALID("2006", "Invalid or expired verification token", "Token xác thực không hợp lệ hoặc đã hết hạn", HttpStatus.BAD_REQUEST),
+    VERIFICATION_TOKEN_ALREADY_USED("2007", "Verification token already used", "Token xác thực đã được sử dụng", HttpStatus.BAD_REQUEST),
+    EMAIL_ALREADY_VERIFIED("2008", "Email already verified", "Email đã được xác thực", HttpStatus.BAD_REQUEST),
+    ACCOUNT_NOT_VERIFIED("2009", "Account email not verified", "Bạn cần xác thực email trước khi đăng nhập. Vui lòng kiểm tra email của bạn", HttpStatus.FORBIDDEN),
+    ACCOUNT_PENDING_APPROVAL("2010", "Account pending approval", "Tài khoản của bạn đang chờ phê duyệt từ quản trị viên", HttpStatus.FORBIDDEN),
+    ACCOUNT_REJECTED("2011", "Account has been rejected", "Tài khoản của bạn đã bị từ chối", HttpStatus.FORBIDDEN),
+    INVALID_REFRESH_TOKEN("2012", "Invalid refresh token", "Refresh token không hợp lệ hoặc đã hết hạn", HttpStatus.UNAUTHORIZED),
 
     // ===== 3xxx: User, Customer, Supplier Errors =====
     USER_NOT_FOUND("3001", "User not found", "Không tìm thấy người dùng", HttpStatus.NOT_FOUND),

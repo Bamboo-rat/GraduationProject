@@ -22,7 +22,6 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -114,17 +113,16 @@ public class KeycloakServiceImpl implements KeycloakService {
             RealmResource realmResource = keycloak.realm(realm);
             UserResource userResource = realmResource.users().get(keycloakId);
 
-            // Get client roles
-            String clientUuid = realmResource.clients().findByClientId(clientId).get(0).getId();
-            RoleRepresentation role = realmResource.clients().get(clientUuid).roles().get(roleName).toRepresentation();
+            // Get realm role (not client role)
+            RoleRepresentation role = realmResource.roles().get(roleName).toRepresentation();
 
-            // Assign role
-            userResource.roles().clientLevel(clientUuid).add(Collections.singletonList(role));
+            // Assign realm role
+            userResource.roles().realmLevel().add(Collections.singletonList(role));
 
-            log.info("Successfully assigned role {} to user {}", roleName, keycloakId);
+            log.info("Successfully assigned realm role {} to user {}", roleName, keycloakId);
 
         } catch (Exception e) {
-            log.error("Error assigning role to user in Keycloak", e);
+            log.error("Error assigning role '{}' to user {} in Keycloak: {}", roleName, keycloakId, e.getMessage());
             throw new KeycloakException(ErrorCode.KEYCLOAK_ROLE_ASSIGNMENT_FAILED);
         }
     }
@@ -146,11 +144,14 @@ public class KeycloakServiceImpl implements KeycloakService {
             map.add("password", request.getPassword());
 
             HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(map, headers);
+            @SuppressWarnings("rawtypes")
             ResponseEntity<Map> response = restTemplate.exchange(tokenUrl, HttpMethod.POST, entity, Map.class);
 
             if (response.getStatusCode() == HttpStatus.OK) {
                 log.info("User {} authenticated successfully", request.getUsername());
-                return response.getBody();
+                @SuppressWarnings("unchecked")
+                Map<String, Object> body = response.getBody();
+                return body;
             } else {
                 throw new KeycloakException(ErrorCode.KEYCLOAK_AUTHENTICATION_FAILED);
             }
@@ -233,6 +234,71 @@ public class KeycloakServiceImpl implements KeycloakService {
         } catch (Exception e) {
             log.error("Error updating user password in Keycloak", e);
             throw new KeycloakException(ErrorCode.KEYCLOAK_PASSWORD_UPDATE_FAILED);
+        }
+    }
+
+    @Override
+    public Map<String, Object> refreshAccessToken(String refreshToken) {
+        try {
+            RestTemplate restTemplate = new RestTemplate();
+            String tokenUrl = authServerUrl + "/realms/" + realm + "/protocol/openid-connect/token";
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+            MultiValueMap<String, String> map = new LinkedMultiValueMap<>();
+            map.add("grant_type", "refresh_token");
+            map.add("client_id", clientId);
+            map.add("client_secret", clientSecret);
+            map.add("refresh_token", refreshToken);
+
+            HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(map, headers);
+            @SuppressWarnings("rawtypes")
+            ResponseEntity<Map> response = restTemplate.exchange(tokenUrl, HttpMethod.POST, entity, Map.class);
+
+            if (response.getStatusCode() == HttpStatus.OK) {
+                log.info("Token refreshed successfully");
+                @SuppressWarnings("unchecked")
+                Map<String, Object> body = response.getBody();
+                return body;
+            } else {
+                throw new KeycloakException(ErrorCode.INVALID_REFRESH_TOKEN);
+            }
+
+        } catch (KeycloakException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to refresh token", e);
+            throw new KeycloakException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+    }
+
+    @Override
+    public void revokeToken(String refreshToken) {
+        try {
+            RestTemplate restTemplate = new RestTemplate();
+            String revokeUrl = authServerUrl + "/realms/" + realm + "/protocol/openid-connect/logout";
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+            MultiValueMap<String, String> map = new LinkedMultiValueMap<>();
+            map.add("client_id", clientId);
+            map.add("client_secret", clientSecret);
+            map.add("refresh_token", refreshToken);
+
+            HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(map, headers);
+            ResponseEntity<String> response = restTemplate.exchange(revokeUrl, HttpMethod.POST, entity, String.class);
+
+            if (response.getStatusCode() == HttpStatus.NO_CONTENT || response.getStatusCode() == HttpStatus.OK) {
+                log.info("Token revoked successfully");
+            } else {
+                log.warn("Token revocation returned status: {}", response.getStatusCode());
+            }
+
+        } catch (Exception e) {
+            // Don't throw exception on logout failure, just log it
+            log.error("Failed to revoke token", e);
         }
     }
 }

@@ -23,7 +23,7 @@ public class KeycloakRoleConverter implements Converter<Jwt, Collection<GrantedA
         Collection<String> roles = (Collection<String>) realmAccess.get("roles");
 
         return roles.stream()
-                .map(roleName -> "ROLE_" + roleName.toUpperCase()) // Chuyển "user" -> "ROLE_USER"
+                .map(roleName -> "ROLE_" + roleName.toUpperCase().replace("-", "_")) // Chuyển "super-admin" -> "ROLE_SUPER_ADMIN"
                 .map(SimpleGrantedAuthority::new)
                 .collect(Collectors.toList());
     }

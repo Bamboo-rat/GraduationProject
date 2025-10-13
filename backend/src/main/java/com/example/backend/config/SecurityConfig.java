@@ -19,7 +19,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/customers/**").hasRole("CUSTOMER")
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/admin/**").hasAnyRole("ADMIN", "STAFF", "MODERATOR")
                         .anyRequest().authenticated())
 
                 .oauth2ResourceServer(

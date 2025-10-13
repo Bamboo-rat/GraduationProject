@@ -57,4 +57,17 @@ public interface KeycloakService {
      * @param newPassword New password
      */
     void updateUserPassword(String keycloakId, String newPassword);
+
+    /**
+     * Refresh access token using refresh token
+     * @param refreshToken Refresh token
+     * @return Token response with new access token
+     */
+    Map<String, Object> refreshAccessToken(String refreshToken);
+
+    /**
+     * Logout user by revoking refresh token
+     * @param refreshToken Refresh token to revoke
+     */
+    void revokeToken(String refreshToken);
 }

@@ -1,0 +1,144 @@
+package com.example.backend.controller;
+
+import com.example.backend.dto.response.ApiResponse;
+import com.example.backend.entity.enums.StorageBucket;
+import com.example.backend.service.FileStorageService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Controller for file upload operations
+ */
+@Slf4j
+@RestController
+@RequestMapping("/api/files")
+@RequiredArgsConstructor
+@Tag(name = "File Storage", description = "Endpoints for file upload and management")
+public class FileStorageController {
+
+    private final FileStorageService fileStorageService;
+
+    @PostMapping("/upload/business-license")
+    @Operation(summary = "Upload business license", description = "Upload business license document for supplier")
+    public ResponseEntity<ApiResponse<Map<String, String>>> uploadBusinessLicense(
+            @RequestParam("file") MultipartFile file
+    ) {
+        log.info("POST /api/files/upload/business-license - Uploading business license");
+        
+        String url = fileStorageService.uploadFile(file, StorageBucket.BUSINESS_LICENSES);
+        
+        Map<String, String> response = new HashMap<>();
+        response.put("url", url);
+        response.put("fileName", file.getOriginalFilename());
+        response.put("fileSize", String.valueOf(file.getSize()));
+        
+        return ResponseEntity.ok(ApiResponse.success("Business license uploaded successfully", response));
+    }
+
+    @PostMapping("/upload/banner")
+    @Operation(summary = "Upload banner image", description = "Upload banner image for promotions")
+    public ResponseEntity<ApiResponse<Map<String, String>>> uploadBanner(
+            @RequestParam("file") MultipartFile file
+    ) {
+        log.info("POST /api/files/upload/banner - Uploading banner");
+        
+        String url = fileStorageService.uploadFile(file, StorageBucket.BANNER);
+        
+        Map<String, String> response = new HashMap<>();
+        response.put("url", url);
+        response.put("fileName", file.getOriginalFilename());
+        response.put("fileSize", String.valueOf(file.getSize()));
+        
+        return ResponseEntity.ok(ApiResponse.success("Banner uploaded successfully", response));
+    }
+
+    @PostMapping("/upload/product")
+    @Operation(summary = "Upload product image", description = "Upload product image")
+    public ResponseEntity<ApiResponse<Map<String, String>>> uploadProductImage(
+            @RequestParam("file") MultipartFile file
+    ) {
+        log.info("POST /api/files/upload/product - Uploading product image");
+        
+        String url = fileStorageService.uploadFile(file, StorageBucket.PRODUCTS);
+        
+        Map<String, String> response = new HashMap<>();
+        response.put("url", url);
+        response.put("fileName", file.getOriginalFilename());
+        response.put("fileSize", String.valueOf(file.getSize()));
+        
+        return ResponseEntity.ok(ApiResponse.success("Product image uploaded successfully", response));
+    }
+
+    @PostMapping("/upload/product/multiple")
+    @Operation(summary = "Upload multiple product images", description = "Upload multiple product images at once")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> uploadMultipleProductImages(
+            @RequestParam("files") List<MultipartFile> files
+    ) {
+        log.info("POST /api/files/upload/product/multiple - Uploading {} product images", files.size());
+        
+        List<String> urls = fileStorageService.uploadFiles(files, StorageBucket.PRODUCTS);
+        
+        Map<String, Object> response = new HashMap<>();
+        response.put("urls", urls);
+        response.put("count", urls.size());
+        response.put("total", files.size());
+        
+        return ResponseEntity.ok(ApiResponse.success(
+                String.format("Uploaded %d/%d images successfully", urls.size(), files.size()), 
+                response
+        ));
+    }
+
+    @PostMapping("/upload/avatar")
+    @Operation(summary = "Upload customer avatar", description = "Upload customer profile avatar")
+    public ResponseEntity<ApiResponse<Map<String, String>>> uploadAvatar(
+            @RequestParam("file") MultipartFile file
+    ) {
+        log.info("POST /api/files/upload/avatar - Uploading customer avatar");
+        
+        String url = fileStorageService.uploadFile(file, StorageBucket.AVATAR_CUSTOMER);
+        
+        Map<String, String> response = new HashMap<>();
+        response.put("url", url);
+        response.put("fileName", file.getOriginalFilename());
+        response.put("fileSize", String.valueOf(file.getSize()));
+        
+        return ResponseEntity.ok(ApiResponse.success("Avatar uploaded successfully", response));
+    }
+
+    @DeleteMapping("/delete")
+    @Operation(summary = "Delete file", description = "Delete a file from storage using its Cloudinary URL")
+    public ResponseEntity<ApiResponse<Void>> deleteFile(
+            @RequestParam("fileUrl") String fileUrl,
+            @RequestParam("bucket") String bucketName
+    ) {
+        log.info("DELETE /api/files/delete - Deleting file: {} from bucket: {}", fileUrl, bucketName);
+        
+        StorageBucket bucket;
+        try {
+            bucket = StorageBucket.valueOf(bucketName.toUpperCase().replace("-", "_"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Invalid bucket name: " + bucketName));
+        }
+        
+        boolean deleted = fileStorageService.deleteFile(fileUrl, bucket);
+        
+        if (deleted) {
+            return ResponseEntity.ok(ApiResponse.success("File deleted successfully"));
+        } else {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to delete file"));
+        }
+    }
+}

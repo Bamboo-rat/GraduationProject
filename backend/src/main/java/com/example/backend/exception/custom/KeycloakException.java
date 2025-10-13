@@ -6,6 +6,17 @@ import com.example.backend.exception.ErrorCode;
 import java.util.Map;
 
 public class KeycloakException extends BaseException {
+    
+    /**
+     * Constructor with ErrorCode only
+     */
+    public KeycloakException(ErrorCode errorCode) {
+        super(errorCode, null, null, null);
+    }
+
+    /**
+     * Constructor with operation and userId details
+     */
     public KeycloakException(String operation, String userId, Throwable cause) {
         super(ErrorCode.KEYCLOAK_USER_CREATION_FAILED,
                 "Lỗi Keycloak trong quá trình " + operation,
@@ -13,6 +24,9 @@ public class KeycloakException extends BaseException {
                 cause);
     }
 
+    /**
+     * Constructor with ErrorCode, details and cause
+     */
     public KeycloakException(ErrorCode errorCode, Map<String, Object> details, Throwable cause) {
         super(errorCode, null, details, cause);
     }

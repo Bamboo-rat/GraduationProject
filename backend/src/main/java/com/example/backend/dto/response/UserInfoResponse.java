@@ -9,12 +9,20 @@ import lombok.Setter;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * Base response DTO for user information (used for authentication & general user info)
+ * For detailed user info, use specific responses:
+ * - CustomerResponse for customer details
+ * - SupplierResponse for supplier details  
+ * - AdminResponse for admin details
+ */
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class UserInfoResponse {
+    // Basic user info (common for all user types)
     private String userId;
     private String keycloakId;
     private String username;
@@ -22,20 +30,9 @@ public class UserInfoResponse {
     private String phoneNumber;
     private String fullName;
     private boolean active;
-    private String userType; // "customer", "supplier", "admin"
-    private String status;
-    private List<String> roles;
+    private String userType; // "CUSTOMER", "SUPPLIER", "ADMIN"
+    private String status; // Status enum as string
+    private List<String> roles; // Keycloak roles
     private LocalDateTime createdAt;
-
-    // Customer specific
-    private Integer points;
-    private String tier;
-    private String avatarUrl;
-
-    // Supplier specific
-    private String businessName;
-    private String logoUrl;
-
-    // Admin specific
-    private String adminRole;
+    private LocalDateTime updatedAt;
 }

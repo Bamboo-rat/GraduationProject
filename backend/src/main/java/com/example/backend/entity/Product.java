@@ -41,7 +41,10 @@ public class Product {
     private BigDecimal originalPrice;
     private BigDecimal discountPrice;
 
-    private LocalDate expiryDate;
+    @Column(name = "manufacturing_date")
+    private LocalDate manufacturingDate;
+
+    private LocalDate expiryDate; // ngày hết hạn
 
     @Enumerated(EnumType.STRING)
     private ProductStatus status = ProductStatus.PENDING_APPROVAL;
@@ -56,6 +59,9 @@ public class Product {
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private List<ProductImage> images = new ArrayList<>();
+
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    private List<ProductAttribute> attributes = new ArrayList<>();
 
     @OneToMany(mappedBy = "product", fetch = FetchType.LAZY)
     private List<Review> reviews = new ArrayList<>();

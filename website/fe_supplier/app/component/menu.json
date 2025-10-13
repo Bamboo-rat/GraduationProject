@@ -1,0 +1,94 @@
+{
+  "mainMenu": [
+    {
+      "id": 1,
+      "title": "Bảng điều khiển",
+      "icon": "layout-dashboard",
+      "link": "/dashboard",
+      "subMenu": [
+        { "title": "Tổng quan doanh thu", "link": "/dashboard/overview" },
+        { "title": "Đơn hàng gần đây", "link": "/dashboard/orders" },
+        { "title": "Cảnh báo tồn kho", "link": "/dashboard/inventory" }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Sản phẩm",
+      "icon": "package",
+      "link": "/products",
+      "subMenu": [
+        { "title": "Danh sách sản phẩm", "link": "/products/list" },
+        { "title": "Thêm sản phẩm mới", "link": "/products/add" },
+        { "title": "Danh mục cá nhân", "link": "/products/categories" },
+        { "title": "Trạng thái duyệt", "link": "/products/review-status" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Đơn hàng",
+      "icon": "shopping-cart",
+      "link": "/orders",
+      "subMenu": [
+        { "title": "Đơn hàng mới", "link": "/orders/new" },
+        { "title": "Đang xử lý", "link": "/orders/processing" },
+        { "title": "Đã giao / Hoàn tất", "link": "/orders/completed" },
+        { "title": "Đơn hàng bị hủy", "link": "/orders/cancelled" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Giao nhận",
+      "icon": "truck",
+      "link": "/delivery",
+      "subMenu": [
+        { "title": "Gán đơn hàng", "link": "/delivery/assign" },
+        { "title": "Theo dõi giao hàng", "link": "/delivery/tracking" }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Tài chính",
+      "icon": "credit-card",
+      "link": "/finance",
+      "subMenu": [
+        { "title": "Doanh thu & Hoa hồng", "link": "/finance/revenue" },
+        { "title": "Giao dịch thanh toán", "link": "/finance/transactions" },
+        { "title": "Rút tiền / Đối soát", "link": "/finance/withdraw" }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Báo cáo & Thống kê",
+      "icon": "bar-chart",
+      "link": "/reports",
+      "subMenu": [
+        { "title": "Doanh thu theo thời gian", "link": "/reports/revenue-over-time" },
+        { "title": "Sản phẩm bán chạy nhất", "link": "/reports/top-products" },
+        { "title": "Báo cáo giao hàng", "link": "/reports/delivery" },
+        { "title": "Phân tích đánh giá", "link": "/reports/reviews-analysis" }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Khách hàng & Phản hồi",
+      "icon": "users",
+      "link": "/feedback",
+      "subMenu": [
+        { "title": "Đánh giá & Nhận xét", "link": "/feedback/reviews" },
+        { "title": "Khiếu nại & Hỗ trợ", "link": "/feedback/support" }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Cấu hình",
+      "icon": "settings",
+      "link": "/settings",
+      "subMenu": [
+        { "title": "Thông tin cửa hàng", "link": "/settings/profile" },
+        { "title": "Cấu hình thanh toán", "link": "/settings/payment" },
+        { "title": "Cấu hình thông báo", "link": "/settings/notifications" },
+        { "title": "Tài liệu & Chính sách", "link": "/settings/policies" }
+      ]
+    }
+  ]
+}

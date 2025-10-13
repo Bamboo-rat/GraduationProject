@@ -1,0 +1,50 @@
+package com.example.backend.service;
+
+/**
+ * Email service for sending emails via SendGrid
+ */
+public interface EmailService {
+
+    /**
+     * Send verification email to customer
+     *
+     * @param toEmail Recipient email address
+     * @param fullName Recipient full name
+     * @param verificationToken Token for email verification
+     */
+    void sendVerificationEmail(String toEmail, String fullName, String verificationToken);
+
+    /**
+     * Send welcome email after successful verification
+     *
+     * @param toEmail Recipient email address
+     * @param fullName Recipient full name
+     */
+    void sendWelcomeEmail(String toEmail, String fullName);
+
+    /**
+     * Send approval notification email to supplier
+     *
+     * @param toEmail Recipient email address
+     * @param fullName Recipient full name
+     */
+    void sendSupplierApprovalEmail(String toEmail, String fullName);
+
+    /**
+     * Send rejection notification email to supplier
+     *
+     * @param toEmail Recipient email address
+     * @param fullName Recipient full name
+     * @param reason Reason for rejection
+     */
+    void sendSupplierRejectionEmail(String toEmail, String fullName, String reason);
+
+    /**
+     * Send password reset email
+     *
+     * @param toEmail Recipient email address
+     * @param fullName Recipient full name
+     * @param resetToken Token for password reset
+     */
+    void sendPasswordResetEmail(String toEmail, String fullName, String resetToken);
+}

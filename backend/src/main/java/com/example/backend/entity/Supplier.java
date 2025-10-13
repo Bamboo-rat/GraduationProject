@@ -1,9 +1,8 @@
 package com.example.backend.entity;
 
+import com.example.backend.entity.enums.BusinessType;
 import com.example.backend.entity.enums.SupplierStatus;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.DecimalMax;
-import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -11,7 +10,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,8 +25,12 @@ public class Supplier extends User {
     @Size(max = 100)
     private String businessName; // Tên doanh nghiệp/thương hiệu
     private String businessLicense; // Số giấy phép kinh doanh
+    private String businessLicenseUrl; // URL trỏ tới file ảnh/PDF của giấy phép kinh doanh
     private String taxCode; // Mã số thuế
     private String logoUrl;
+    @Enumerated(EnumType.STRING)
+    private BusinessType businessType;
+
 
     @OneToMany(mappedBy = "supplier", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private List<Store> stores = new ArrayList<>();

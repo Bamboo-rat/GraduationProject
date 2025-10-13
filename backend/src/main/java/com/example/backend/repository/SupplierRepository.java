@@ -5,6 +5,7 @@ import com.example.backend.entity.enums.SupplierStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,4 +17,10 @@ public interface SupplierRepository extends JpaRepository<Supplier, String> {
     List<Supplier> findByStatus(SupplierStatus status);
     Optional<Supplier> findByBusinessLicense(String businessLicense);
     Optional<Supplier> findByTaxCode(String taxCode);
+    
+    /**
+     * Find suppliers by status and created before a specific date
+     * Used for cleanup old pending accounts
+     */
+    List<Supplier> findByStatusAndCreatedAtBefore(SupplierStatus status, LocalDateTime createdAt);
 }
