@@ -50,11 +50,11 @@ public class SupplierRegisterStep4Request {
     @Pattern(regexp = "^(\\+84|0)[0-9]{9,10}$", message = "Invalid Vietnamese phone number")
     private String storePhoneNumber;
 
-    @NotBlank(message = "Latitude is required")
-    private String latitude;
+    @NotNull(message = "Latitude is required")
+    private Double latitude;
 
-    @NotBlank(message = "Longitude is required")
-    private String longitude;
+    @NotNull(message = "Longitude is required")
+    private Double longitude;
 
     private String storeDescription;
 }

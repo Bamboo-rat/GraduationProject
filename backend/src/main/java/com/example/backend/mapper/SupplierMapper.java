@@ -52,6 +52,7 @@ public class SupplierMapper {
                 .businessType(supplier.getBusinessType())
                 .commissionRate(supplier.getCommissionRate())
                 .status(supplier.getStatus() != null ? supplier.getStatus().name() : null)
+                .wallet(mapWallet(supplier.getWallet()))
                 .stores(mapStores(supplier.getStores()))
                 .totalProducts(supplier.getProducts() != null ? supplier.getProducts().size() : 0)
                 .totalStores(supplier.getStores() != null ? supplier.getStores().size() : 0)
@@ -115,6 +116,30 @@ public class SupplierMapper {
                         .status(store.getStatus() != null ? store.getStatus().name() : null)
                         .build())
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Map wallet to wallet info DTO
+     */
+    private SupplierResponse.WalletInfo mapWallet(com.example.backend.entity.SupplierWallet wallet) {
+        if (wallet == null) {
+            return null;
+        }
+        
+        return SupplierResponse.WalletInfo.builder()
+                .walletId(wallet.getWalletId())
+                .availableBalance(wallet.getAvailableBalance())
+                .pendingBalance(wallet.getPendingBalance())
+                .totalEarnings(wallet.getTotalEarnings())
+                .totalWithdrawn(wallet.getTotalWithdrawn())
+                .totalRefunded(wallet.getTotalRefunded())
+                .monthlyEarnings(wallet.getMonthlyEarnings())
+                .currentMonth(wallet.getCurrentMonth())
+                .status(wallet.getStatus())
+                .lastWithdrawalDate(wallet.getLastWithdrawalDate())
+                .createdAt(wallet.getCreatedAt())
+                .updatedAt(wallet.getUpdatedAt())
+                .build();
     }
 
     // ========== Update Methods ==========

@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @Data
 @Builder
@@ -25,9 +26,11 @@ public class StorePendingUpdateResponse {
     private String address;
     private String phoneNumber;
     private String description;
-    private String latitude;
-    private String longitude;
+    private Double latitude;
+    private Double longitude;
     private String imageUrl;
+    private LocalTime openTime;
+    private LocalTime closeTime;
     private String status;
     
     // Update metadata

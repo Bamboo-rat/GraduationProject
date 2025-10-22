@@ -70,10 +70,10 @@ public class StoreServiceImpl implements StoreService {
         pendingUpdate.setDescription(request.getDescription());
         
         if (request.getLatitude() != null) {
-            pendingUpdate.setLatitude(request.getLatitude().toString());
+            pendingUpdate.setLatitude(request.getLatitude());
         }
         if (request.getLongitude() != null) {
-            pendingUpdate.setLongitude(request.getLongitude().toString());
+            pendingUpdate.setLongitude(request.getLongitude());
         }
         
         if (request.getStatus() != null) {

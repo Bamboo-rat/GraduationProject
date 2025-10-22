@@ -44,10 +44,10 @@ public class Store {
     private String address;
 
     @Column(nullable = false)
-    private String latitude;
+    private Double latitude;
 
     @Column(nullable = false)
-    private String longitude;
+    private Double longitude;
 
     private String phoneNumber;
     private String description;

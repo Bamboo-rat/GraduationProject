@@ -11,6 +11,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @Getter
 @Setter
@@ -34,9 +35,11 @@ public class StorePendingUpdate {
     private String address;
     private String phoneNumber;
     private String description;
-    private String latitude;
-    private String longitude;
+    private Double latitude;
+    private Double longitude;
     private String imageUrl;
+    private LocalTime openTime;
+    private LocalTime closeTime;
 
     @Enumerated(EnumType.STRING)
     private StoreStatus status;

@@ -5,7 +5,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 /**
  * Full store information response
@@ -16,7 +18,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class StoreResponse {
 
-    private Long storeId;
+    private String storeId;
     
     private String storeName;
     
@@ -25,6 +27,16 @@ public class StoreResponse {
     private String phoneNumber;
     
     private String description;
+    
+    private String imageUrl;
+    
+    private BigDecimal rating;
+    
+    private Integer totalReviews;
+    
+    private LocalTime openTime;
+    
+    private LocalTime closeTime;
     
     private Double latitude;
     

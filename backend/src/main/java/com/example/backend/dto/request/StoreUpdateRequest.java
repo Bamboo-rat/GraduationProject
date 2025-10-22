@@ -8,6 +8,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalTime;
+
 /**
  * DTO for updating store information
  */
@@ -28,6 +30,13 @@ public class StoreUpdateRequest {
 
     @Size(max = 500, message = "Description must not exceed 500 characters")
     private String description;
+
+    @Size(max = 255, message = "Image URL must not exceed 255 characters")
+    private String imageUrl;
+
+    private LocalTime openTime;
+
+    private LocalTime closeTime;
 
     private Double latitude;
 

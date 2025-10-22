@@ -1,12 +1,14 @@
 package com.example.backend.dto.response;
 
 import com.example.backend.entity.enums.BusinessType;
+import com.example.backend.entity.enums.WalletStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -40,14 +42,13 @@ public class SupplierResponse {
     private String businessAddress;
     private BusinessType businessType;
     
-    // Financial information (sensitive - may hide for non-admin)
     private Double commissionRate;
-    private String bankAccountNumber;
-    private String bankName;
-    private String bankBranch;
     
     // Status
     private String status; // PENDING_APPROVAL, ACTIVE, SUSPENDED, BANNED
+    
+    // Wallet information
+    private WalletInfo wallet;
     
     // Statistics
     private Integer totalProducts;
@@ -57,6 +58,29 @@ public class SupplierResponse {
     // Metadata
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    /**
+     * Nested DTO for wallet information
+     */
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class WalletInfo {
+        private Long walletId;
+        private BigDecimal availableBalance;    // Số dư khả dụng (có thể rút)
+        private BigDecimal pendingBalance;      // Số dư đang giữ (đơn hàng đang xử lý)
+        private BigDecimal totalEarnings;       // Tổng thu nhập từ trước đến nay
+        private BigDecimal totalWithdrawn;      // Tổng đã rút
+        private BigDecimal totalRefunded;       // Tổng hoàn trả
+        private BigDecimal monthlyEarnings;     // Thu nhập tháng hiện tại
+        private String currentMonth;            // Tháng hiện tại (YYYY-MM)
+        private WalletStatus status;            // Trạng thái ví
+        private LocalDateTime lastWithdrawalDate; // Lần rút tiền cuối
+        private LocalDateTime createdAt;
+        private LocalDateTime updatedAt;
+    }
 
     /**
      * Nested DTO for basic store information
