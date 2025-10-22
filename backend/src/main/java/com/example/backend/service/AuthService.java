@@ -1,37 +1,20 @@
 package com.example.backend.service;
 
-import com.example.backend.dto.request.AdminRegisterRequest;
-import com.example.backend.dto.request.CustomerRegisterRequest;
 import com.example.backend.dto.request.LoginRequest;
-import com.example.backend.dto.request.SupplierRegisterRequest;
 import com.example.backend.dto.response.*;
 import org.springframework.security.oauth2.jwt.Jwt;
 
+/**
+ * Service for common authentication operations
+ * Note: Registration is now handled by specific services:
+ * - AdminService.registerAdmin()
+ * - SupplierService.registerStep1() (4-step flow)
+ * - CustomerService.registerCustomer() (to be implemented)
+ */
 public interface AuthService {
 
     /**
-     * Register a new customer
-     * @param request Customer registration request
-     * @return Registration response
-     */
-    RegisterResponse registerCustomer(CustomerRegisterRequest request);
-
-    /**
-     * Register a new supplier
-     * @param request Supplier registration request
-     * @return Registration response
-     */
-    RegisterResponse registerSupplier(SupplierRegisterRequest request);
-
-    /**
-     * Register a new admin/staff
-     * @param request Admin registration request
-     * @return Registration response
-     */
-    RegisterResponse registerAdmin(AdminRegisterRequest request);
-
-    /**
-     * Login user
+     * Login user (works for Customer, Supplier, Admin)
      * @param request Login request
      * @return Login response with tokens and user info
      */
@@ -44,34 +27,6 @@ public interface AuthService {
      * @return Basic user information
      */
     UserInfoResponse getUserInfo(String keycloakId, Jwt jwt);
-
-    /**
-     * Get detailed customer information
-     * @param keycloakId Keycloak user ID
-     * @return Detailed customer information
-     */
-    CustomerResponse getCustomerInfo(String keycloakId);
-
-    /**
-     * Get detailed supplier information
-     * @param keycloakId Keycloak user ID
-     * @return Detailed supplier information
-     */
-    SupplierResponse getSupplierInfo(String keycloakId);
-
-    /**
-     * Get detailed admin information
-     * @param keycloakId Keycloak user ID
-     * @return Detailed admin information
-     */
-    AdminResponse getAdminInfo(String keycloakId);
-
-    /**
-     * Verify customer email with token
-     * @param token Verification token
-     * @return Success message
-     */
-    String verifyEmail(String token);
 
     /**
      * Refresh access token using refresh token
@@ -87,9 +42,17 @@ public interface AuthService {
     void logout(String refreshToken);
 
     /**
-     * Resend verification email to customer
-     * @param email Customer email
-     * @return Success message
+     * Request OTP for customer login via phone number
+     * @param phoneNumber Customer phone number
+     * @return Message confirming OTP sent
      */
-    String resendVerificationEmail(String email);
+    String requestCustomerLoginOtp(String phoneNumber);
+
+    /**
+     * Verify OTP and login customer (passwordless)
+     * @param phoneNumber Customer phone number
+     * @param otp OTP code
+     * @return Login response with tokens
+     */
+    LoginResponse verifyCustomerLoginOtp(String phoneNumber, String otp);
 }

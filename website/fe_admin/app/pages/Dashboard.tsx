@@ -8,7 +8,7 @@ const Dashboard = () => {
         {/* Page Header */}
         <div>
           <h1 className="text-3xl font-bold text-gray-800">Bảng điều khiển</h1>
-          <p className="text-gray-600 mt-1">Tổng quan hệ thống FoodSave</p>
+          <p className="text-gray-600 mt-1">Tổng quan hệ thống SaveFood</p>
         </div>
 
         {/* Stats Cards */}

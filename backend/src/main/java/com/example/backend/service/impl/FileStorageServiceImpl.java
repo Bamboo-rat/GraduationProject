@@ -17,6 +17,7 @@ import java.util.UUID;
 
 /**
  * Implementation of FileStorageService for Cloudinary Storage
+ * Files are uploaded as PUBLIC (unsigned mode) for direct access without authentication
  */
 @Slf4j
 @Service
@@ -31,26 +32,22 @@ public class FileStorageServiceImpl implements FileStorageService {
         
         try {
             // Generate unique public ID
-            String originalFilename = multipartFile.getOriginalFilename();
-            String extension = "";
-            if (originalFilename != null && originalFilename.contains(".")) {
-                extension = originalFilename.substring(originalFilename.lastIndexOf("."));
-                originalFilename = originalFilename.substring(0, originalFilename.lastIndexOf("."));
-            }
             String publicId = UUID.randomUUID().toString() + "_" + System.currentTimeMillis();
 
-            // Upload to Cloudinary
+            // Upload to Cloudinary with PUBLIC access (unsigned mode)
+            @SuppressWarnings("unchecked")
             Map<String, Object> uploadParams = ObjectUtils.asMap(
                     "folder", bucket.getFolderName(),
                     "public_id", publicId,
-                    "resource_type", "auto", // auto-detect file type (image, video, raw)
+                    "resource_type", "auto", // Auto-detect file type (image, video, raw)
                     "overwrite", false,
                     "invalidate", true
             );
 
-            Map uploadResult = cloudinary.uploader().upload(multipartFile.getBytes(), uploadParams);
+            @SuppressWarnings("unchecked")
+            Map<String, Object> uploadResult = cloudinary.uploader().upload(multipartFile.getBytes(), uploadParams);
             
-            // Get secure URL
+            // Get secure URL (HTTPS) - publicly accessible
             String secureUrl = (String) uploadResult.get("secure_url");
             log.info("File uploaded successfully: {}", secureUrl);
             
@@ -87,8 +84,7 @@ public class FileStorageServiceImpl implements FileStorageService {
         
         try {
             // Extract public_id from URL
-            // Cloudinary URL format: https://res.cloudinary.com/{cloud_name}/{resource_type}/upload/v{version}/{folder}/{public_id}.{format}
-            String publicId = extractPublicIdFromUrl(fileUrl, bucket);
+            String publicId = extractPublicIdFromUrl(fileUrl);
             
             if (publicId == null) {
                 log.error("Could not extract public_id from URL: {}", fileUrl);
@@ -96,7 +92,8 @@ public class FileStorageServiceImpl implements FileStorageService {
             }
 
             // Delete from Cloudinary
-            Map result = cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
+            @SuppressWarnings("unchecked")
+            Map<String, Object> result = cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
             String resultStatus = (String) result.get("result");
             
             boolean success = "ok".equals(resultStatus);
@@ -116,18 +113,25 @@ public class FileStorageServiceImpl implements FileStorageService {
 
     @Override
     public String getFileUrl(String fileName, StorageBucket bucket) {
-        // This method is less useful with Cloudinary since upload returns the full URL
-        // But we'll keep it for compatibility
-        log.warn("getFileUrl called with fileName: {} and bucket: {}. Cloudinary returns full URL on upload.", fileName, bucket.getFolderName());
-        return fileName; // Return as-is if it's already a full URL
+        // Cloudinary returns full URL on upload, so this is just a passthrough
+        log.debug("getFileUrl called - returning fileName as-is: {}", fileName);
+        return fileName;
+    }
+
+    @Override
+    public String generateSignedUrl(String fileUrl, int expirationSeconds) {
+        // Since files are uploaded as PUBLIC (unsigned mode),
+        // they are directly accessible without signed URLs
+        log.debug("Files are public, returning original URL: {}", fileUrl);
+        return fileUrl;
     }
 
     /**
      * Extract public_id from Cloudinary URL
-     * Example URL: https://res.cloudinary.com/demo/image/upload/v1234567890/products/abc123_1234567890.jpg
-     * Returns: products/abc123_1234567890
+     * Example URL: https://res.cloudinary.com/{cloud_name}/image/upload/v1234567890/products/abc123.jpg
+     * Returns: products/abc123
      */
-    private String extractPublicIdFromUrl(String url, StorageBucket bucket) {
+    private String extractPublicIdFromUrl(String url) {
         try {
             // Split by /upload/ to get the part after it
             String[] parts = url.split("/upload/");
@@ -135,12 +139,12 @@ public class FileStorageServiceImpl implements FileStorageService {
                 return null;
             }
             
-            // Get the part after /upload/v{version}/
+            // Get the part after /upload/
             String pathAfterUpload = parts[1];
             
             // Remove version number (v1234567890/)
-            int versionEnd = pathAfterUpload.indexOf('/', 1);
-            if (versionEnd > 0) {
+            if (pathAfterUpload.startsWith("v") && pathAfterUpload.contains("/")) {
+                int versionEnd = pathAfterUpload.indexOf('/');
                 pathAfterUpload = pathAfterUpload.substring(versionEnd + 1);
             }
             
@@ -151,6 +155,7 @@ public class FileStorageServiceImpl implements FileStorageService {
             }
             
             return pathAfterUpload;
+            
         } catch (Exception e) {
             log.error("Error extracting public_id from URL: {}", url, e);
             return null;

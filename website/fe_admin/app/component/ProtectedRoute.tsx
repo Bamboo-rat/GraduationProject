@@ -28,11 +28,40 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRoles
     return <Navigate to="/auth" replace />;
   }
 
+  // Debug: Log user roles
+  console.log('ProtectedRoute - User:', user);
+  console.log('ProtectedRoute - User roles:', user?.roles);
+  console.log('ProtectedRoute - Required roles:', requiredRoles);
+
   // Check if user has required roles
   if (requiredRoles && requiredRoles.length > 0) {
-    const hasRequiredRole = requiredRoles.some(role => 
-      user?.roles?.includes(role)
+    // SUPER_ADMIN has access to everything (check multiple formats)
+    const userRoles = user?.roles || [];
+    const isSuperAdmin = userRoles.some(role =>
+      role === 'ROLE_SUPER_ADMIN' ||
+      role === 'SUPER_ADMIN' ||
+      role === 'super-admin' ||
+      role === 'super_admin'
     );
+
+    console.log('ProtectedRoute - Is Super Admin:', isSuperAdmin);
+
+    if (isSuperAdmin) {
+      // SUPER_ADMIN bypasses all role checks
+      return <>{children}</>;
+    }
+
+    // Check if user has any of the required roles (support multiple formats)
+    const hasRequiredRole = requiredRoles.some(requiredRole => {
+      return userRoles.some(userRole => {
+        // Normalize both roles for comparison (remove ROLE_ prefix and convert to uppercase)
+        const normalizedUserRole = userRole.replace(/^ROLE_/i, '').toUpperCase();
+        const normalizedRequiredRole = requiredRole.replace(/^ROLE_/i, '').toUpperCase();
+        return normalizedUserRole === normalizedRequiredRole;
+      });
+    });
+
+    console.log('ProtectedRoute - Has required role:', hasRequiredRole);
 
     if (!hasRequiredRole) {
       return (

@@ -30,7 +30,6 @@ import java.util.List;
 public class Customer extends User {
 
     private int points;
-    private String avatarUrl;
     private LocalDate dateOfBirth;
 
     @Enumerated(EnumType.STRING)
@@ -60,4 +59,7 @@ public class Customer extends User {
 
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private List<PointTransaction> pointTransactions = new ArrayList<>();
+
+    @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    private List<FavoriteStore> favoriteStores = new ArrayList<>();
 }

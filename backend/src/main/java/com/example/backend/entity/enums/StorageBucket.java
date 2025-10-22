@@ -5,8 +5,10 @@ package com.example.backend.entity.enums;
  */
 public enum StorageBucket {
     BUSINESS_LICENSES("business-licenses", "Business license documents for suppliers"),
+    FOOD_SAFETY_CERTIFICATES("food-safety-certificates", "Food safety certificates for suppliers"),
     BANNER("banner", "Banner images for promotions and marketing"),
     PRODUCTS("products", "Product images"),
+    CATEGORY_IMAGES("category-images", "Product category images"),
     AVATAR_CUSTOMER("avatar-customer", "Customer profile avatars"),
     AVATAR_ADMIN("avatar-admin", "Admin profile avatars"),
     SUPPLIER_LOGO("supplier-logo", "Supplier business logos");

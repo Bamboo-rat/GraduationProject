@@ -85,7 +85,18 @@ public class EmailServiceImpl implements EmailService {
         sendEmail(toEmail, subject, htmlContent);
     }
 
-    private void sendEmail(String toEmail, String subject, String htmlContent) {
+    @Override
+    public void sendOtpEmail(String toEmail, String otp) {
+        log.info("Sending OTP email to: {}", toEmail);
+
+        String subject = "Your Verification Code - E-Commerce Platform";
+        String htmlContent = buildOtpEmailContent(otp);
+
+        sendEmail(toEmail, subject, htmlContent);
+    }
+
+    @Override
+    public void sendEmail(String toEmail, String subject, String htmlContent) {
         Email from = new Email(fromEmail, fromName);
         Email to = new Email(toEmail);
         Content content = new Content("text/html", htmlContent);
@@ -292,5 +303,41 @@ public class EmailServiceImpl implements EmailService {
                 </body>
                 </html>
                 """.formatted(fullName, resetUrl, resetUrl);
+    }
+
+    private String buildOtpEmailContent(String otp) {
+        return """
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>
+                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                        .header { background-color: #2196F3; color: white; padding: 20px; text-align: center; }
+                        .content { padding: 20px; background-color: #f9f9f9; }
+                        .otp-code { font-size: 32px; font-weight: bold; color: #2196F3; letter-spacing: 5px; text-align: center; padding: 20px; background-color: #e3f2fd; border-radius: 5px; margin: 20px 0; }
+                        .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>Email Verification</h1>
+                        </div>
+                        <div class="content">
+                            <h2>Your Verification Code</h2>
+                            <p>Please use the following code to verify your email address:</p>
+                            <div class="otp-code">%s</div>
+                            <p><strong>This code will expire in 3 minutes.</strong></p>
+                            <p>If you didn't request this code, please ignore this email.</p>
+                            <p style="color: #f44336;"><strong>Do not share this code with anyone.</strong></p>
+                        </div>
+                        <div class="footer">
+                            <p>&copy; 2025 E-Commerce Platform. All rights reserved.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+                """.formatted(otp);
     }
 }

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../AuthContext';
 import profileService from '../../service/profileService';
 import * as Icons from 'lucide-react';
+import DashboardLayout from '~/component/DashboardLayout';
 
 interface ProfileFormData {
   username: string;
@@ -99,30 +100,32 @@ const Profile: React.FC = () => {
 
   const getStatusBadge = (status: string) => {
     const statusConfig: Record<string, { label: string; color: string }> = {
-      'ACTIVE': { label: 'Hoạt động', color: 'bg-green-100 text-green-800' },
-      'INACTIVE': { label: 'Không hoạt động', color: 'bg-gray-100 text-gray-800' },
-      'PENDING_APPROVAL': { label: 'Chờ duyệt', color: 'bg-yellow-100 text-yellow-800' },
-      'SUSPENDED': { label: 'Tạm khóa', color: 'bg-red-100 text-red-800' },
-      'BANNED': { label: 'Bị cấm', color: 'bg-red-100 text-red-800' },
+      'ACTIVE': { label: 'Hoạt động', color: 'badge-success' },
+      'INACTIVE': { label: 'Không hoạt động', color: 'badge-neutral' },
+      'PENDING_APPROVAL': { label: 'Chờ duyệt', color: 'badge-warning' },
+      'SUSPENDED': { label: 'Tạm khóa', color: 'badge-error' },
+      'BANNED': { label: 'Bị cấm', color: 'badge-error' },
     };
-    const config = statusConfig[status] || { label: status, color: 'bg-gray-100 text-gray-800' };
+    const config = statusConfig[status] || { label: status, color: 'badge-neutral' };
     return (
-      <span className={`px-3 py-1 rounded-full text-xs font-medium ${config.color}`}>
+      <span className={config.color}>
         {config.label}
       </span>
     );
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <DashboardLayout>
+      <div className="py-2">
         {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center space-x-3">
-            <Icons.User className="w-8 h-8 text-green-600" />
+        <div className="mb-8">
+          <div className="flex items-center space-x-4">
+            <div className="w-14 h-14 bg-gradient-to-br from-[#A4C3A2] to-[#2F855A] rounded-2xl flex items-center justify-center shadow-lg">
+              <Icons.User className="w-7 h-7 text-white" />
+            </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Thông tin cá nhân</h1>
-              <p className="text-sm text-gray-600 mt-1">
+              <h1 className="heading-primary">Thông tin cá nhân</h1>
+              <p className="text-sm text-muted mt-1">
                 Quản lý thông tin và cài đặt tài khoản của bạn
               </p>
             </div>
@@ -130,16 +133,18 @@ const Profile: React.FC = () => {
         </div>
 
         {/* Profile Card */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="card overflow-hidden shadow-md">
           {/* Cover & Avatar Section */}
           <div className="relative">
-            {/* Cover Photo */}
-            <div className="h-32 bg-gradient-to-r from-green-400 to-green-600"></div>
+            {/* Cover Photo - Gradient mới đẹp hơn */}
+            <div className="h-40 bg-gradient-to-r from-[#D9FFDF] via-[#A4C3A2] to-[#2F855A] relative">
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/5"></div>
+            </div>
             
             {/* Avatar */}
             <div className="absolute -bottom-12 left-8">
-              <div className="w-24 h-24 rounded-full bg-white p-1 shadow-lg">
-                <div className="w-full h-full rounded-full bg-gradient-to-br from-green-300 to-green-400 flex items-center justify-center">
+              <div className="w-24 h-24 rounded-full bg-[#FFFEFA] p-1.5 shadow-xl ring-4 ring-white">
+                <div className="w-full h-full rounded-full bg-gradient-to-br from-[#A4C3A2] to-[#2F855A] flex items-center justify-center">
                   <span className="text-3xl font-bold text-white">
                     {user?.username?.charAt(0).toUpperCase() || 'A'}
                   </span>
@@ -149,10 +154,10 @@ const Profile: React.FC = () => {
 
             {/* Edit Button */}
             {!isEditing && (
-              <div className="absolute top-4 right-4">
+              <div className="absolute top-6 right-6">
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="flex items-center space-x-2 px-4 py-2 bg-white text-gray-700 rounded-lg hover:bg-gray-50 transition-colors shadow-sm border border-gray-200"
+                  className="flex items-center space-x-2 px-5 py-2.5 bg-[#FFFEFA] text-[#2F855A] rounded-xl hover:bg-white hover:shadow-lg transition-all shadow-md border border-[#B7E4C7] font-medium"
                 >
                   <Icons.Edit2 className="w-4 h-4" />
                   <span>Chỉnh sửa</span>
@@ -166,39 +171,42 @@ const Profile: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Username */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-[#2D2D2D] mb-2">
                   Tên đăng nhập
                 </label>
                 <div className="relative">
-                  <Icons.User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Icons.User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#6B6B6B]" />
                   <input
                     type="text"
                     name="username"
                     value={formData.username}
                     disabled={true} // Username không thể thay đổi
-                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                    className="w-full pl-10 pr-4 py-3 border border-[#B7E4C7] rounded-xl bg-[#F5EDE6] text-[#6B6B6B] cursor-not-allowed font-medium"
                   />
                 </div>
-                <p className="text-xs text-gray-500 mt-1">Tên đăng nhập không thể thay đổi</p>
+                <p className="text-xs text-light mt-1.5 flex items-center">
+                  <Icons.Lock className="w-3 h-3 mr-1" />
+                  Tên đăng nhập không thể thay đổi
+                </p>
               </div>
 
               {/* Email */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-[#2D2D2D] mb-2">
                   Email
                 </label>
                 <div className="relative">
-                  <Icons.Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Icons.Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#6B6B6B]" />
                   <input
                     type="email"
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
                     disabled={!isEditing}
-                    className={`w-full pl-10 pr-4 py-2.5 border rounded-lg transition-colors ${
+                    className={`w-full pl-10 pr-4 py-3 border rounded-xl transition-all ${
                       isEditing
-                        ? 'border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200'
-                        : 'border-gray-200 bg-gray-50 cursor-not-allowed'
+                        ? 'input-field'
+                        : 'border-[#B7E4C7] bg-[#F5EDE6] cursor-not-allowed text-[#6B6B6B]'
                     }`}
                     placeholder="your.email@example.com"
                   />
@@ -207,21 +215,21 @@ const Profile: React.FC = () => {
 
               {/* Full Name */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-[#2D2D2D] mb-2">
                   Họ và tên
                 </label>
                 <div className="relative">
-                  <Icons.IdCard className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Icons.IdCard className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#6B6B6B]" />
                   <input
                     type="text"
                     name="fullName"
                     value={formData.fullName}
                     onChange={handleInputChange}
                     disabled={!isEditing}
-                    className={`w-full pl-10 pr-4 py-2.5 border rounded-lg transition-colors ${
+                    className={`w-full pl-10 pr-4 py-3 border rounded-xl transition-all ${
                       isEditing
-                        ? 'border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200'
-                        : 'border-gray-200 bg-gray-50 cursor-not-allowed'
+                        ? 'input-field'
+                        : 'border-[#B7E4C7] bg-[#F5EDE6] cursor-not-allowed text-[#6B6B6B]'
                     }`}
                     placeholder="Nhập họ và tên"
                   />
@@ -230,21 +238,21 @@ const Profile: React.FC = () => {
 
               {/* Phone Number */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-[#2D2D2D] mb-2">
                   Số điện thoại
                 </label>
                 <div className="relative">
-                  <Icons.Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Icons.Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#6B6B6B]" />
                   <input
                     type="tel"
                     name="phoneNumber"
                     value={formData.phoneNumber}
                     onChange={handleInputChange}
                     disabled={!isEditing}
-                    className={`w-full pl-10 pr-4 py-2.5 border rounded-lg transition-colors ${
+                    className={`w-full pl-10 pr-4 py-3 border rounded-xl transition-all ${
                       isEditing
-                        ? 'border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200'
-                        : 'border-gray-200 bg-gray-50 cursor-not-allowed'
+                        ? 'input-field'
+                        : 'border-[#B7E4C7] bg-[#F5EDE6] cursor-not-allowed text-[#6B6B6B]'
                     }`}
                     placeholder="0123456789"
                   />
@@ -253,81 +261,111 @@ const Profile: React.FC = () => {
 
               {/* Role */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-[#2D2D2D] mb-2">
                   Vai trò
                 </label>
                 <div className="relative">
-                  <Icons.Shield className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <Icons.Shield className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#6B6B6B]" />
                   <input
                     type="text"
                     value={getRoleDisplay(formData.role)}
                     disabled={true}
-                    className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                    className="w-full pl-10 pr-4 py-3 border border-[#B7E4C7] rounded-xl bg-[#F5EDE6] text-[#6B6B6B] cursor-not-allowed font-medium"
                   />
                 </div>
               </div>
 
               {/* Status */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-[#2D2D2D] mb-2">
                   Trạng thái tài khoản
                 </label>
-                <div className="flex items-center h-[42px]">
+                <div className="flex items-center h-[48px]">
                   {getStatusBadge(formData.status)}
                 </div>
               </div>
             </div>
 
             {/* Account Info Section */}
-            <div className="mt-8 pt-6 border-t border-gray-200">
-              <h3 className="text-sm font-semibold text-gray-900 mb-4 flex items-center">
-                <Icons.Info className="w-4 h-4 mr-2" />
+            <div className="mt-8 pt-8 border-t border-[#B7E4C7]">
+              <h3 className="text-base font-bold text-[#2D2D2D] mb-5 flex items-center">
+                <div className="w-8 h-8 bg-[#E8FFED] rounded-lg flex items-center justify-center mr-3">
+                  <Icons.Info className="w-4 h-4 text-[#2F855A]" />
+                </div>
                 Thông tin tài khoản
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div className="flex items-center space-x-2 text-gray-600">
-                  <Icons.Calendar className="w-4 h-4" />
-                  <span>Ngày tạo: {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : 'N/A'}</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="flex items-center space-x-3 p-3 bg-[#F8FFF9] rounded-xl border border-[#B7E4C7]">
+                  <div className="w-9 h-9 bg-[#E8FFED] rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Icons.Calendar className="w-4 h-4 text-[#2F855A]" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-light font-medium">Ngày tạo</p>
+                    <p className="text-sm text-[#2D2D2D] font-semibold">
+                      {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : 'N/A'}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-2 text-gray-600">
-                  <Icons.Clock className="w-4 h-4" />
-                  <span>Cập nhật: {user?.updatedAt ? new Date(user.updatedAt).toLocaleDateString('vi-VN') : 'N/A'}</span>
+                <div className="flex items-center space-x-3 p-3 bg-[#F8FFF9] rounded-xl border border-[#B7E4C7]">
+                  <div className="w-9 h-9 bg-[#E8FFED] rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Icons.Clock className="w-4 h-4 text-[#2F855A]" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-light font-medium">Cập nhật</p>
+                    <p className="text-sm text-[#2D2D2D] font-semibold">
+                      {user?.updatedAt ? new Date(user.updatedAt).toLocaleDateString('vi-VN') : 'N/A'}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-2 text-gray-600">
-                  <Icons.Key className="w-4 h-4" />
-                  <span>ID: {user?.userId || 'N/A'}</span>
+                <div className="flex items-center space-x-3 p-3 bg-[#F8FFF9] rounded-xl border border-[#B7E4C7]">
+                  <div className="w-9 h-9 bg-[#E8FFED] rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Icons.Key className="w-4 h-4 text-[#2F855A]" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-light font-medium">User ID</p>
+                    <p className="text-sm text-[#2D2D2D] font-semibold font-mono">
+                      {user?.userId || 'N/A'}
+                    </p>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-2 text-gray-600">
-                  <Icons.Database className="w-4 h-4" />
-                  <span>Keycloak ID: {user?.keycloakId?.substring(0, 8) || 'N/A'}...</span>
+                <div className="flex items-center space-x-3 p-3 bg-[#F8FFF9] rounded-xl border border-[#B7E4C7]">
+                  <div className="w-9 h-9 bg-[#E8FFED] rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Icons.Database className="w-4 h-4 text-[#2F855A]" />
+                  </div>
+                  <div className="overflow-hidden">
+                    <p className="text-xs text-light font-medium">Keycloak ID</p>
+                    <p className="text-sm text-[#2D2D2D] font-semibold font-mono truncate">
+                      {user?.keycloakId?.substring(0, 16) || 'N/A'}...
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Action Buttons */}
             {isEditing && (
-              <div className="mt-6 pt-6 border-t border-gray-200 flex justify-end space-x-3">
+              <div className="mt-8 pt-8 border-t border-[#B7E4C7] flex justify-end space-x-4">
                 <button
                   type="button"
                   onClick={handleCancel}
                   disabled={isSaving}
-                  className="px-6 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-8 py-3 border-2 border-[#B7E4C7] text-[#2F855A] rounded-xl hover:bg-[#F8FFF9] hover:border-[#A4C3A2] transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
                 >
-                  Hủy
+                  Hủy bỏ
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-6 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  className="btn-primary px-8 py-3 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
                 >
                   {isSaving ? (
                     <>
-                      <Icons.Loader2 className="w-4 h-4 animate-spin" />
+                      <Icons.Loader2 className="w-5 h-5 animate-spin" />
                       <span>Đang lưu...</span>
                     </>
                   ) : (
                     <>
-                      <Icons.Save className="w-4 h-4" />
+                      <Icons.Save className="w-5 h-5" />
                       <span>Lưu thay đổi</span>
                     </>
                   )}
@@ -338,22 +376,43 @@ const Profile: React.FC = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button className="flex items-center justify-center space-x-3 p-4 bg-white rounded-lg border border-gray-200 hover:border-green-500 hover:shadow-md transition-all">
-            <Icons.Lock className="w-5 h-5 text-gray-600" />
-            <span className="text-sm font-medium text-gray-700">Đổi mật khẩu</span>
+        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-5">
+          <button className="group flex items-center space-x-4 p-5 bg-[#FFFEFA] rounded-xl border-2 border-[#B7E4C7] hover:border-[#A4C3A2] hover:shadow-lg transition-all">
+            <div className="w-12 h-12 bg-[#E8FFED] group-hover:bg-[#A4C3A2] rounded-xl flex items-center justify-center transition-colors">
+              <Icons.Lock className="w-6 h-6 text-[#2F855A] group-hover:text-white transition-colors" />
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-bold text-[#2D2D2D] group-hover:text-[#2F855A] transition-colors">
+                Đổi mật khẩu
+              </p>
+              <p className="text-xs text-light">Cập nhật mật khẩu</p>
+            </div>
           </button>
-          <button className="flex items-center justify-center space-x-3 p-4 bg-white rounded-lg border border-gray-200 hover:border-green-500 hover:shadow-md transition-all">
-            <Icons.Bell className="w-5 h-5 text-gray-600" />
-            <span className="text-sm font-medium text-gray-700">Cài đặt thông báo</span>
+          <button className="group flex items-center space-x-4 p-5 bg-[#FFFEFA] rounded-xl border-2 border-[#B7E4C7] hover:border-[#A4C3A2] hover:shadow-lg transition-all">
+            <div className="w-12 h-12 bg-[#E8FFED] group-hover:bg-[#A4C3A2] rounded-xl flex items-center justify-center transition-colors">
+              <Icons.Bell className="w-6 h-6 text-[#2F855A] group-hover:text-white transition-colors" />
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-bold text-[#2D2D2D] group-hover:text-[#2F855A] transition-colors">
+                Thông báo
+              </p>
+              <p className="text-xs text-light">Cấu hình thông báo</p>
+            </div>
           </button>
-          <button className="flex items-center justify-center space-x-3 p-4 bg-white rounded-lg border border-gray-200 hover:border-green-500 hover:shadow-md transition-all">
-            <Icons.Shield className="w-5 h-5 text-gray-600" />
-            <span className="text-sm font-medium text-gray-700">Bảo mật tài khoản</span>
+          <button className="group flex items-center space-x-4 p-5 bg-[#FFFEFA] rounded-xl border-2 border-[#B7E4C7] hover:border-[#A4C3A2] hover:shadow-lg transition-all">
+            <div className="w-12 h-12 bg-[#E8FFED] group-hover:bg-[#A4C3A2] rounded-xl flex items-center justify-center transition-colors">
+              <Icons.Shield className="w-6 h-6 text-[#2F855A] group-hover:text-white transition-colors" />
+            </div>
+            <div className="text-left">
+              <p className="text-sm font-bold text-[#2D2D2D] group-hover:text-[#2F855A] transition-colors">
+                Bảo mật
+              </p>
+              <p className="text-xs text-light">Cài đặt bảo mật</p>
+            </div>
           </button>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 };
 

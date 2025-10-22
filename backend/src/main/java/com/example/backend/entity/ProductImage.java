@@ -19,9 +19,20 @@ public class ProductImage {
     private String imageId;
 
     private String imageUrl;
-    private boolean isDefault = false;
+    
+    // Đánh dấu ảnh chính (primary/default image)
+    @Column(name = "is_primary")
+    private boolean isPrimary = false;
 
+    // Liên kết với sản phẩm gốc (cho ảnh chung của sản phẩm)
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", nullable = false)
+    @JoinColumn(name = "product_id")
     private Product product;
+
+    // Liên kết với biến thể cụ thể (cho ảnh riêng của từng biến thể)
+    // Nếu variantId != null thì ảnh này thuộc về biến thể
+    // Nếu variantId == null thì ảnh này thuộc về sản phẩm chung
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "variant_id")
+    private ProductVariant variant;
 }

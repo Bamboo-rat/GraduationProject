@@ -1,15 +1,143 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif,
-    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  
+  /* SaveFood Color Palette - Warm & User-Friendly */
+  --color-primary: #A4C3A2;
+  --color-primary-dark: #8FB491;
+  --color-primary-light: #D9FFDF;
+  --color-primary-lighter: #E8FFED;
+  
+  --color-secondary: #2F855A;
+  --color-secondary-light: #B7E4C7;
+  
+  --color-background: #DDC6B6;
+  --color-background-light: #F5EDE6;
+  --color-surface: #FFFEFA;
+  --color-surface-light: #F8FFF9;
+  
+  --color-accent-warm: #FF6B35;
+  --color-accent-red: #E63946;
+  
+  --color-text: #2D2D2D;
+  --color-text-muted: #6B6B6B;
+  --color-text-light: #8B8B8B;
 }
 
 html,
 body {
-  @apply bg-white dark:bg-gray-950;
+  @apply bg-[#F5EDE6] text-[#2D2D2D];
+}
 
-  @media (prefers-color-scheme: dark) {
-    color-scheme: dark;
+/* Custom utility classes for consistent theming */
+@layer components {
+  .card {
+    @apply bg-[#FFFEFA] rounded-lg shadow-sm border border-[#B7E4C7];
   }
+  
+  .card-hover {
+    @apply transition-all duration-200 hover:shadow-md hover:border-[#A4C3A2];
+  }
+  
+  .btn-primary {
+    @apply bg-[#2F855A] text-[#FFFEFA] hover:bg-[#8FB491] px-4 py-2 rounded-lg transition-colors font-medium;
+  }
+  
+  .btn-secondary {
+    @apply bg-[#A4C3A2] text-[#2D2D2D] hover:bg-[#8FB491] px-4 py-2 rounded-lg transition-colors font-medium;
+  }
+  
+  .input-field {
+    @apply bg-[#F8FFF9] border border-[#B7E4C7] rounded-lg px-4 py-2 text-[#2D2D2D] 
+           focus:outline-none focus:ring-1 focus:ring-[#2F855A] focus:border-[#2F855A] transition-colors;
+  }
+  
+  .heading-primary {
+    @apply text-2xl font-bold text-[#2D2D2D];
+  }
+  
+  .heading-secondary {
+    @apply text-xl font-semibold text-[#2D2D2D];
+  }
+  
+  .text-muted {
+    @apply text-[#6B6B6B];
+  }
+  
+  .text-light {
+    @apply text-[#8B8B8B];
+  }
+  
+  .border-default {
+    @apply border-[#B7E4C7];
+  }
+  
+  .bg-surface {
+    @apply bg-[#FFFEFA];
+  }
+  
+  .bg-surface-light {
+    @apply bg-[#F8FFF9];
+  }
+  
+  .badge-success {
+    @apply bg-[#E8FFED] text-[#2F855A] px-3 py-1 rounded-full text-sm font-medium;
+  }
+  
+  .badge-warning {
+    @apply bg-orange-50 text-[#FF6B35] px-3 py-1 rounded-full text-sm font-medium;
+  }
+  
+  .badge-error {
+    @apply bg-red-50 text-[#E63946] px-3 py-1 rounded-full text-sm font-medium;
+  }
+  
+  .badge-neutral {
+    @apply bg-[#F5EDE6] text-[#6B6B6B] px-3 py-1 rounded-full text-sm font-medium;
+  }
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s ease-out;
+}
+
+.animate-slideInRight {
+  animation: slideInRight 0.3s ease-out;
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.2s ease-out;
 }

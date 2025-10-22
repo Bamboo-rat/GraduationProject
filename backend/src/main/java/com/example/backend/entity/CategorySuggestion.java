@@ -42,11 +42,11 @@ public class CategorySuggestion {
 
     // Nhà cung cấp nào đã đề xuất
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "suggester_id", nullable = false)
-    private Supplier suggester;
+    @JoinColumn(name = "supplier_id", nullable = false)
+    private Supplier supplier;
 
     // Admin nào đã xử lý
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "processor_id")
-    private Admin processor;
+    @JoinColumn(name = "admin_id")
+    private Admin admin;
 }

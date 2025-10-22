@@ -16,6 +16,7 @@ public class RegisterResponse {
     private String keycloakId;
     private String username;
     private String email;
+    private String phoneNumber;
     private String message;
-    private String status; // "PENDING_VERIFICATION", "PENDING_APPROVAL"
+    private String status; // "PENDING_VERIFICATION", "PENDING_APPROVAL", "ACTIVE"
 }

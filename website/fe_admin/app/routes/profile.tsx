@@ -5,7 +5,7 @@ import ProtectedRoute from '../component/ProtectedRoute';
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: 'Thông tin cá nhân - FoodSave Admin' },
+    { title: 'Thông tin cá nhân - SaveFood Admin' },
     { name: 'description', content: 'Quản lý thông tin và cài đặt tài khoản cá nhân' },
   ];
 }

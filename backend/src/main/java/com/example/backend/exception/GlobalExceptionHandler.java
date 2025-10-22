@@ -1,17 +1,13 @@
 package com.example.backend.exception;
 
-import com.example.backend.exception.custom.ConflictException;
-import com.example.backend.exception.custom.ForbiddenException;
-import com.example.backend.exception.custom.NotFoundException;
-import com.example.backend.exception.custom.ValidationException;
+import jakarta.persistence.OptimisticLockException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.util.HashMap;
-import java.util.Map;
 
 @RestControllerAdvice
 @Slf4j
@@ -37,6 +33,22 @@ public class GlobalExceptionHandler {
         // Lấy thông điệp lỗi validation chi tiết hơn (nếu cần)
         String details = e.getBindingResult().getFieldError() != null ? e.getBindingResult().getFieldError().getDefaultMessage() : errorCode.getVietnameseMessage();
         ErrorResponse response = new ErrorResponse(errorCode.getCode(), errorCode.getMessage(), details);
+        return ResponseEntity.status(errorCode.getHttpStatus()).body(response);
+    }
+
+    // Xử lý Optimistic Locking Exceptions (Hibernate/JPA)
+    @ExceptionHandler(value = {OptimisticLockException.class, ObjectOptimisticLockingFailureException.class})
+    public ResponseEntity<ErrorResponse> handleOptimisticLockException(Exception e) {
+        log.warn("Optimistic Lock Exception: {} - Entity: {}", e.getMessage(),
+                e instanceof ObjectOptimisticLockingFailureException ?
+                ((ObjectOptimisticLockingFailureException) e).getPersistentClassName() : "Unknown");
+
+        ErrorCode errorCode = ErrorCode.OPTIMISTIC_LOCK_ERROR;
+        ErrorResponse response = new ErrorResponse(
+            errorCode.getCode(),
+            errorCode.getMessage(),
+            errorCode.getVietnameseMessage()
+        );
         return ResponseEntity.status(errorCode.getHttpStatus()).body(response);
     }
 

@@ -36,10 +36,10 @@ public abstract class User {
     @Column(unique = true, nullable = false)
     private String username;
 
-    @Column(unique = true, nullable = false, updatable = false)
+    @Column(unique = true, updatable = false)
     private String keycloakId;
 
-    @Column(unique = true, nullable = false)
+    @Column(unique = true)
     private String email;
 
     @Column(unique = true)
@@ -49,8 +49,12 @@ public abstract class User {
 
     // Ảnh đại diện (avatar) cho user hoặc admin
     private String avatarUrl;
-    
+
     private boolean active = true;
+
+    @Version
+    @Column(nullable = false)
+    private Long version = 0L;
 
     @CreationTimestamp
     private LocalDateTime createdAt;

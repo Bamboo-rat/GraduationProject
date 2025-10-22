@@ -47,4 +47,21 @@ public interface EmailService {
      * @param resetToken Token for password reset
      */
     void sendPasswordResetEmail(String toEmail, String fullName, String resetToken);
+
+    /**
+     * Send OTP email for verification
+     *
+     * @param toEmail Recipient email address
+     * @param otp OTP code (6 digits)
+     */
+    void sendOtpEmail(String toEmail, String otp);
+
+    /**
+     * Send generic email with custom subject and message
+     *
+     * @param toEmail Recipient email address
+     * @param subject Email subject
+     * @param message Email message body (plain text or HTML)
+     */
+    void sendEmail(String toEmail, String subject, String message);
 }

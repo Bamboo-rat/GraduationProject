@@ -23,7 +23,7 @@ public class StoreProduct {
     @UuidGenerator
     private String storeProductId;
 
-    private int stockQuantity; // Số lượng tại cửa hàng này
+    private int stockQuantity; // Số lượng biến thể tại cửa hàng này
     private BigDecimal priceOverride; // Giá đặc biệt tại cửa hàng này (nếu có)
 
     @CreationTimestamp
@@ -37,6 +37,6 @@ public class StoreProduct {
     private Store store;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", nullable = false)
-    private Product product;
+    @JoinColumn(name = "variant_id", nullable = false)
+    private ProductVariant variant;
 }

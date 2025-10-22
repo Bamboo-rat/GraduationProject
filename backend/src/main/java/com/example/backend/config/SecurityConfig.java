@@ -16,10 +16,12 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
+                .cors(cors -> {})
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/sms/**", "/api/admins/**","/api/files/**").permitAll()
                         .requestMatchers("/api/customers/**").hasRole("CUSTOMER")
-                        .requestMatchers("/admin/**").hasAnyRole("ADMIN", "STAFF", "MODERATOR")
+                        .requestMatchers("/api/suppliers/**").hasAnyRole("SUPER_ADMIN", "MODERATOR", "STAFF")
                         .anyRequest().authenticated())
 
                 .oauth2ResourceServer(

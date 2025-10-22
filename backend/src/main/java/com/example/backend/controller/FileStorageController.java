@@ -45,6 +45,23 @@ public class FileStorageController {
         return ResponseEntity.ok(ApiResponse.success("Business license uploaded successfully", response));
     }
 
+    @PostMapping("/upload/food-safety-certificate")
+    @Operation(summary = "Upload food safety certificate", description = "Upload food safety certificate for supplier")
+    public ResponseEntity<ApiResponse<Map<String, String>>> uploadFoodSafetyCertificate(
+            @RequestParam("file") MultipartFile file
+    ) {
+        log.info("POST /api/files/upload/food-safety-certificate - Uploading food safety certificate");
+        
+        String url = fileStorageService.uploadFile(file, StorageBucket.FOOD_SAFETY_CERTIFICATES);
+        
+        Map<String, String> response = new HashMap<>();
+        response.put("url", url);
+        response.put("fileName", file.getOriginalFilename());
+        response.put("fileSize", String.valueOf(file.getSize()));
+        
+        return ResponseEntity.ok(ApiResponse.success("Food safety certificate uploaded successfully", response));
+    }
+
     @PostMapping("/upload/banner")
     @Operation(summary = "Upload banner image", description = "Upload banner image for promotions")
     public ResponseEntity<ApiResponse<Map<String, String>>> uploadBanner(
@@ -68,15 +85,32 @@ public class FileStorageController {
             @RequestParam("file") MultipartFile file
     ) {
         log.info("POST /api/files/upload/product - Uploading product image");
-        
+
         String url = fileStorageService.uploadFile(file, StorageBucket.PRODUCTS);
-        
+
         Map<String, String> response = new HashMap<>();
         response.put("url", url);
         response.put("fileName", file.getOriginalFilename());
         response.put("fileSize", String.valueOf(file.getSize()));
-        
+
         return ResponseEntity.ok(ApiResponse.success("Product image uploaded successfully", response));
+    }
+
+    @PostMapping("/upload/category")
+    @Operation(summary = "Upload category image", description = "Upload category image for product categories")
+    public ResponseEntity<ApiResponse<Map<String, String>>> uploadCategoryImage(
+            @RequestParam("file") MultipartFile file
+    ) {
+        log.info("POST /api/files/upload/category - Uploading category image");
+
+        String url = fileStorageService.uploadFile(file, StorageBucket.CATEGORY_IMAGES);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("url", url);
+        response.put("fileName", file.getOriginalFilename());
+        response.put("fileSize", String.valueOf(file.getSize()));
+
+        return ResponseEntity.ok(ApiResponse.success("Category image uploaded successfully", response));
     }
 
     @PostMapping("/upload/product/multiple")

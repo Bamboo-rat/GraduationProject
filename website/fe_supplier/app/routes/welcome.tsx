@@ -3,8 +3,8 @@ import Welcome from "~/pages/Welcome";
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "Welcome to the FoodSave" },
-    { name: "description", content: "Welcome to the FoodSave!" },
+    { title: "Welcome to the SaveFood" },
+    { name: "description", content: "Welcome to the SaveFood!" },
   ];
 }
 

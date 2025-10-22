@@ -41,10 +41,20 @@ public interface FileStorageService {
      * Get public URL for a file
      * Note: With Cloudinary, upload already returns the full URL,
      * so this method is mainly for backward compatibility
-     * 
+     *
      * @param fileName Name of file or URL
      * @param bucket Source storage folder
      * @return Public URL
      */
     String getFileUrl(String fileName, StorageBucket bucket);
+
+    /**
+     * Generate a signed URL for accessing private/authenticated files
+     * This creates a temporary URL that can access files even if they are private
+     *
+     * @param fileUrl The original file URL from Cloudinary
+     * @param expirationSeconds Time in seconds until the URL expires (default: 3600 = 1 hour)
+     * @return Signed URL that can access the file temporarily
+     */
+    String generateSignedUrl(String fileUrl, int expirationSeconds);
 }

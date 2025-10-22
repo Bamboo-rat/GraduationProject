@@ -26,6 +26,9 @@ public class Review {
     @Column(nullable = true)
     private String comment;
 
+    @Column(nullable = false)
+    private boolean markedAsSpam = false;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

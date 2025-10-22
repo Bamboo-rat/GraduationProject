@@ -25,6 +25,7 @@ public class AdminResponse {
     private String email;
     private String phoneNumber;
     private String fullName;
+    private String avatarUrl;
     private boolean active;
     
     // Admin specific info

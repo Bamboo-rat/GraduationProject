@@ -45,6 +45,12 @@ public interface KeycloakService {
     void deleteUser(String keycloakId);
 
     /**
+     * Delete user from Keycloak
+     * @param keycloakId Keycloak user ID
+     */
+    void deleteKeycloakUser(String keycloakId);
+
+    /**
      * Enable/Disable user in Keycloak
      * @param keycloakId Keycloak user ID
      * @param enabled true to enable, false to disable
@@ -57,6 +63,15 @@ public interface KeycloakService {
      * @param newPassword New password
      */
     void updateUserPassword(String keycloakId, String newPassword);
+
+    /**
+     * Update user information in Keycloak
+     * @param keycloakId Keycloak user ID
+     * @param email Email (can be null to keep existing)
+     * @param firstName First name (can be null to keep existing)
+     * @param lastName Last name (can be null to keep existing)
+     */
+    void updateKeycloakUser(String keycloakId, String email, String firstName, String lastName);
 
     /**
      * Refresh access token using refresh token

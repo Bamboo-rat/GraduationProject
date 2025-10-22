@@ -35,4 +35,7 @@ public class AdminRegisterRequest {
 
     @NotNull(message = "Role is required")
     private Role role;
+
+    // Avatar URL - optional during registration
+    private String avatarUrl;
 }

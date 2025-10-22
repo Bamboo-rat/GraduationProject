@@ -1,8 +1,8 @@
-# FoodSave - Food Waste Reduction Platform
+# SaveFood - Food Waste Reduction Platform
 
 ## 📋 Giới Thiệu
 
-FoodSave là nền tảng kết nối nhà cung cấp thực phẩm với khách hàng nhằm giảm thiểu lãng phí thực phẩm. Hệ thống cho phép các nhà hàng, siêu thị, cửa hàng bán lẻ đăng bán các sản phẩm thực phẩm gần hết hạn với giá ưu đãi.
+SaveFood là nền tảng kết nối nhà cung cấp thực phẩm với khách hàng nhằm giảm thiểu lãng phí thực phẩm. Hệ thống cho phép các nhà hàng, siêu thị, cửa hàng bán lẻ đăng bán các sản phẩm thực phẩm gần hết hạn với giá ưu đãi.
 
 ## 🏗️ Kiến Trúc Hệ Thống
 
@@ -35,8 +35,8 @@ FoodSave là nền tảng kết nối nhà cung cấp thực phẩm với khách
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/your-org/foodsave.git
-cd foodsave
+git clone https://github.com/your-org/SaveFood.git
+cd SaveFood
 ```
 
 ### 2. Setup Environment Variables
@@ -58,7 +58,7 @@ KEYCLOAK_CLIENT_SECRET=your_client_secret
 
 # SendGrid
 SENDGRID_API_KEY=SG.your_api_key
-SENDGRID_FROM_EMAIL=noreply@foodsave.com
+SENDGRID_FROM_EMAIL=noreply@SaveFood.com
 
 # Supabase Storage
 SUPABASE_STORAGE_URL=https://your-project.supabase.co
@@ -81,7 +81,7 @@ docker-compose up -d
 
 1. Truy cập http://localhost:8081
 2. Login với admin/admin
-3. Tạo realm: `foodsave`
+3. Tạo realm: `SaveFood`
 4. Tạo client: `backend-fs`
 5. Copy **Client Secret** và paste vào `.env`
 
@@ -242,13 +242,13 @@ Xem hướng dẫn chi tiết trong:
 
 ```bash
 # Build Docker image
-docker build -t foodsave-backend:latest ./backend
+docker build -t SaveFood-backend:latest ./backend
 
 # Run container
 docker run -d \
   -p 8080:8080 \
   --env-file ./backend/.env \
-  foodsave-backend:latest
+  SaveFood-backend:latest
 ```
 
 ### Docker Compose
@@ -405,7 +405,7 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 
 - **Project Wiki**: [Link to wiki]
 - **Issue Tracker**: [Link to issues]
-- **Slack Channel**: #foodsave-dev
+- **Slack Channel**: #SaveFood-dev
 - **Design Docs**: [Link to design docs]
 
 ## 📄 License

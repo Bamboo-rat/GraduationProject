@@ -1,9 +1,12 @@
 package com.example.backend.controller;
 
+import com.example.backend.dto.request.AdminRegisterRequest;
 import com.example.backend.dto.request.AdminUpdateRequest;
 import com.example.backend.dto.response.AdminResponse;
 import com.example.backend.dto.response.ApiResponse;
-import com.example.backend.service.AuthService;
+import com.example.backend.dto.response.RegisterResponse;
+import com.example.backend.entity.enums.AdminStatus;
+import com.example.backend.service.AdminService;
 import com.example.backend.utils.JwtUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -11,6 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -28,10 +32,26 @@ import org.springframework.web.bind.annotation.*;
 @SecurityRequirement(name = "Bearer Authentication")
 public class AdminController {
 
-    private final AuthService authService;
+    private final AdminService adminService;
+
+    // ===== REGISTRATION ENDPOINT (Super Admin only) =====
+
+    @PostMapping("/register")
+//    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @Operation(summary = "Register new admin/staff",
+               description = "Register a new admin or staff member (Super Admin only). The account will be immediately active.")
+    public ResponseEntity<ApiResponse<RegisterResponse>> registerAdmin(@Valid @RequestBody AdminRegisterRequest request) {
+        log.info("POST /api/admins/register - Registering new admin/staff: {} with role: {}",
+                request.getUsername(), request.getRole());
+        RegisterResponse response = adminService.registerAdmin(request);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Admin/Staff registered successfully and activated.", response));
+    }
+
+    // ===== PROFILE MANAGEMENT ENDPOINTS =====
 
     @GetMapping("/me")
-    @PreAuthorize("hasAnyRole('admin', 'staff')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF')")
     @Operation(summary = "Get current admin profile", 
                description = "Get detailed profile information of the authenticated admin")
     public ResponseEntity<ApiResponse<AdminResponse>> getCurrentAdmin(Authentication authentication) {
@@ -40,24 +60,24 @@ public class AdminController {
         Jwt jwt = (Jwt) authentication.getPrincipal();
         String keycloakId = JwtUtils.extractKeycloakId(jwt);
 
-        AdminResponse response = authService.getAdminInfo(keycloakId);
+        AdminResponse response = adminService.getAdminInfo(keycloakId);
 
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping("/{userId}")
-    @PreAuthorize("hasRole('admin')")
-    @Operation(summary = "Get admin by ID", 
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @Operation(summary = "Get admin by ID",
                description = "Get detailed admin information by user ID (super admin only)")
     public ResponseEntity<ApiResponse<AdminResponse>> getAdminById(@PathVariable String userId) {
         log.info("GET /api/admins/{} - Getting admin by ID", userId);
 
-        // TODO: Implement service method to get by userId
-        throw new UnsupportedOperationException("Not implemented yet");
+        AdminResponse response = adminService.getAdminById(userId);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @PutMapping("/me")
-    @PreAuthorize("hasAnyRole('admin', 'staff')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF')")
     @Operation(summary = "Update admin profile", 
                description = "Update current admin's profile information")
     public ResponseEntity<ApiResponse<AdminResponse>> updateProfile(
@@ -68,14 +88,13 @@ public class AdminController {
         Jwt jwt = (Jwt) authentication.getPrincipal();
         String keycloakId = JwtUtils.extractKeycloakId(jwt);
 
-        // TODO: Implement service method to update admin profile
-        AdminResponse response = authService.getAdminInfo(keycloakId);
+        AdminResponse response = adminService.updateProfile(keycloakId, request);
 
         return ResponseEntity.ok(ApiResponse.success("Profile updated successfully", response));
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('admin')")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     @Operation(summary = "Get all admins/staff", 
                description = "Get list of all admins and staff with pagination (super admin only)")
     public ResponseEntity<ApiResponse<Object>> getAllAdmins(
@@ -91,37 +110,38 @@ public class AdminController {
     }
 
     @PatchMapping("/{userId}/approve")
-    @PreAuthorize("hasRole('admin')")
-    @Operation(summary = "Approve admin/staff", 
-               description = "Approve pending admin/staff application (super admin only)")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @Operation(summary = "Activate admin/staff to ACTIVE status",
+               description = "Set admin/staff status to ACTIVE (super admin only). Note: New registrations are already active by default.")
     public ResponseEntity<ApiResponse<AdminResponse>> approveAdmin(@PathVariable String userId) {
-        log.info("PATCH /api/admins/{}/approve - Approving admin/staff", userId);
+        log.info("PATCH /api/admins/{}/approve - Setting admin/staff to ACTIVE status", userId);
 
-        // TODO: Implement approval logic
-        throw new UnsupportedOperationException("Not implemented yet");
+        AdminResponse response = adminService.updateStatus(userId, AdminStatus.ACTIVE);
+        return ResponseEntity.ok(ApiResponse.success("Admin/Staff set to ACTIVE successfully", response));
     }
 
     @PatchMapping("/{userId}/suspend")
-    @PreAuthorize("hasRole('admin')")
-    @Operation(summary = "Suspend admin/staff", 
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @Operation(summary = "Suspend admin/staff",
                description = "Suspend admin/staff account (super admin only)")
-    public ResponseEntity<ApiResponse<Void>> suspendAdmin(
+    public ResponseEntity<ApiResponse<AdminResponse>> suspendAdmin(
             @PathVariable String userId,
             @RequestParam(required = false) String reason) {
         log.info("PATCH /api/admins/{}/suspend - Suspending admin/staff. Reason: {}", userId, reason);
 
-        // TODO: Implement suspension logic
-        throw new UnsupportedOperationException("Not implemented yet");
+        // TODO: Store suspension reason in a separate field or audit log if needed
+        AdminResponse response = adminService.updateStatus(userId, AdminStatus.INACTIVE);
+        return ResponseEntity.ok(ApiResponse.success("Admin/Staff suspended successfully", response));
     }
 
     @PatchMapping("/{userId}/activate")
-    @PreAuthorize("hasRole('admin')")
-    @Operation(summary = "Activate admin/staff", 
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @Operation(summary = "Activate admin/staff",
                description = "Activate suspended admin/staff account (super admin only)")
     public ResponseEntity<ApiResponse<AdminResponse>> activateAdmin(@PathVariable String userId) {
         log.info("PATCH /api/admins/{}/activate - Activating admin/staff", userId);
 
-        // TODO: Implement activation logic
-        throw new UnsupportedOperationException("Not implemented yet");
+        AdminResponse response = adminService.setActive(userId, true);
+        return ResponseEntity.ok(ApiResponse.success("Admin/Staff activated successfully", response));
     }
 }

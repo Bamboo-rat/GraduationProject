@@ -27,10 +27,11 @@ export interface ProfileResponse {
 class ProfileService {
   /**
    * Get current user profile
+   * For admins, use /admins/me endpoint
    */
   async getProfile(): Promise<ProfileResponse> {
     try {
-      const response = await axiosInstance.get<ApiResponse<ProfileResponse>>('/auth/me');
+      const response = await axiosInstance.get<ApiResponse<ProfileResponse>>('/admins/me');
       return response.data.data;
     } catch (error: any) {
       throw this.handleError(error);
@@ -39,11 +40,12 @@ class ProfileService {
 
   /**
    * Update current user profile
+   * For admins, use /admins/me endpoint
    */
   async updateProfile(data: UpdateProfileRequest): Promise<ProfileResponse> {
     try {
       const response = await axiosInstance.put<ApiResponse<ProfileResponse>>(
-        '/auth/profile',
+        '/admins/me',
         data
       );
       return response.data.data;
@@ -68,14 +70,15 @@ class ProfileService {
 
   /**
    * Upload avatar
+   * Use file storage endpoint with avatar-admin bucket
    */
   async uploadAvatar(file: File): Promise<string> {
     try {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await axiosInstance.post<ApiResponse<{ url: string }>>(
-        '/auth/avatar',
+      const response = await axiosInstance.post<ApiResponse<{ secureUrl: string }>>(
+        '/storage/upload?bucket=avatar-admin',
         formData,
         {
           headers: {
@@ -84,7 +87,7 @@ class ProfileService {
         }
       );
 
-      return response.data.data.url;
+      return response.data.data.secureUrl;
     } catch (error: any) {
       throw this.handleError(error);
     }

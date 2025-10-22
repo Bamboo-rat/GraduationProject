@@ -21,16 +21,31 @@ import java.util.List;
 @Table(name = "suppliers")
 public class Supplier extends User {
 
-    @NotBlank(message = "Store name is required")
     @Size(max = 100)
     private String businessName; // Tên doanh nghiệp/thương hiệu
+    
     private String businessLicense; // Số giấy phép kinh doanh
     private String businessLicenseUrl; // URL trỏ tới file ảnh/PDF của giấy phép kinh doanh
+    
+    private String foodSafetyCertificate; // Số giấy chứng nhận an toàn vệ sinh thực phẩm
+    private String foodSafetyCertificateUrl; // URL file giấy chứng nhận ATTP
+    
     private String taxCode; // Mã số thuế
-    private String logoUrl;
+    private String businessAddress; // Địa chỉ trụ sở doanh nghiệp
+    
     @Enumerated(EnumType.STRING)
     private BusinessType businessType;
 
+    // Tỷ lệ hoa hồng (mặc định 10% = 0.10)
+    @Column(nullable = false)
+    private Double commissionRate = 0.10;
+
+    /**
+     * Ví tiền của nhà cung cấp
+     * Thay thế cho thông tin tài khoản ngân hàng cũ
+     */
+    @OneToOne(mappedBy = "supplier", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    private SupplierWallet wallet;
 
     @OneToMany(mappedBy = "supplier", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private List<Store> stores = new ArrayList<>();
@@ -42,6 +57,6 @@ public class Supplier extends User {
     @OneToMany(mappedBy = "supplier", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private List<Product> products = new ArrayList<>();
 
-    @OneToMany(mappedBy = "suggester", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    @OneToMany(mappedBy = "supplier", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private List<CategorySuggestion> categorySuggestions = new ArrayList<>();
 }

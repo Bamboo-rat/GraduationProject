@@ -29,6 +29,7 @@ public class UserInfoResponse {
     private String email;
     private String phoneNumber;
     private String fullName;
+    private String avatarUrl; // Avatar URL for all user types
     private boolean active;
     private String userType; // "CUSTOMER", "SUPPLIER", "ADMIN"
     private String status; // Status enum as string

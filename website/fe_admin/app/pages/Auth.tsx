@@ -1,23 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../AuthContext';
-import logoMini from '../assets/image/logomini-removebg.png';
+import logo from '../assets/image/logo.png';
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
-  
+  const { login, isAuthenticated, isLoading: authLoading } = useAuth();
+
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Redirect to dashboard if already authenticated
+  useEffect(() => {
+    if (!authLoading && isAuthenticated) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, authLoading, navigate]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
-    
+
     try {
       await login(username, password);
       // Redirect to dashboard on success
@@ -29,15 +36,27 @@ const Auth = () => {
     }
   };
 
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#D9FFDF] via-[#E8FFED] to-[#F0FFF4]">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+          <p className="mt-4 text-gray-600">Đang kiểm tra...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#D9FFDF] via-[#E8FFED] to-[#F0FFF4] p-4">
       <div className="w-full max-w-md">
         {/* Logo/Header Section */}
         <div className="text-center mb-8">
           <div className="inline-block p-4 bg-white rounded-full shadow-lg mb-4">
-            <img 
-              src={logoMini} 
-              alt="FoodSave Logo" 
+            <img
+              src={logo}
+              alt="SaveFood Logo"
               className="w-16 h-16 object-contain"
             />
           </div>
@@ -45,7 +64,7 @@ const Auth = () => {
             Admin Portal
           </h1>
           <p className="text-gray-600">
-            Đăng nhập để quản lý hệ thống FoodSave
+            Đăng nhập để quản lý hệ thống SaveFood
           </p>
         </div>
 
@@ -244,7 +263,7 @@ const Auth = () => {
             Chỉ dành cho quản trị viên hệ thống
           </p>
           <p className="mt-2 text-xs text-gray-500">
-            © 2025 FoodSave. All rights reserved.
+            © 2025 SaveFood. All rights reserved.
           </p>
         </div>
       </div>

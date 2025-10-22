@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import * as Icons from 'lucide-react';
 import menuData from './menu.json';
-import logoMini from '../assets/image/logomini-removebg.png';
+import logo from '../assets/image/logo.png';
 
 interface SubMenuItem {
   title: string;
@@ -52,15 +52,15 @@ const Sidebar: React.FC = () => {
       <div className="p-4 border-b border-green-200 flex items-center justify-between">
         {!isCollapsed && (
           <div className="flex items-center space-x-3">
-            <img src={logoMini} alt="FoodSave" className="w-10 h-10 object-contain" />
+            <img src={logo} alt="SaveFood" className="w-10 h-10 object-contain" />
             <div>
-              <h1 className="text-lg font-bold text-gray-800">FoodSave</h1>
+              <h1 className="text-lg font-bold text-gray-800">SaveFood</h1>
               <p className="text-xs text-gray-600">Admin Portal</p>
             </div>
           </div>
         )}
         {isCollapsed && (
-          <img src={logoMini} alt="FoodSave" className="w-10 h-10 object-contain mx-auto" />
+          <img src={logo} alt="SaveFood" className="w-10 h-10 object-contain mx-auto" />
         )}
       </div>
 

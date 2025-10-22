@@ -1,47 +1,33 @@
 version: '3.8'
 services:
-  keycloak-db:
-    image: mysql:8.0
-    container_name: keycloakdb
-    environment:
-      MYSQL_ROOT_PASSWORD: 123456
-      MYSQL_DATABASE: keycloak-db-foodsave
+
+  redis:
+    image: redis:7
+    container_name: redis
     ports:
-      - "3309:3306"
-    volumes:
-      - keycloak_data:/var/lib/mysql
-    networks:
-      - foodsave-net
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p123456"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+      - "6379:6379"
+    restart: always
 
   keycloak:
     image: quay.io/keycloak/keycloak:25.0
-    container_name: keycloak-foodsave
+    container_name: keycloak-savefood
     environment:
       KC_HTTP_ENABLED: "true"
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
       KC_DB: mysql
-      KC_DB_URL: jdbc:mysql://keycloak-db:3306/keycloak
-      KC_DB_USERNAME: root
-      KC_DB_PASSWORD: 123456
+      KC_DB_URL: jdbc:mysql://keycloak-db.cbqgwoyam2lh.ap-southeast-2.rds.amazonaws.com:3306/keycloakdb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      KC_DB_USERNAME: admin
+      KC_DB_PASSWORD: SaveFoodHVNH2025
     command: ["start-dev", "--http-port", "8081", "--hostname-strict=false"]
     ports:
       - "8081:8081"
-    depends_on:
-      keycloak-db:
-        condition: service_healthy
     networks:
-      - foodsave-net
+      - savefood-net
 
 volumes:
   keycloak_data:
 
 networks:
-  foodsave-net:
+  savefood-net:
     driver: bridge

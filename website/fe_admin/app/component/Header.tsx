@@ -153,7 +153,7 @@ const Header: React.FC = () => {
               <div className="absolute right-0 mt-2 w-56 bg-[#F8FFF9] rounded-xl shadow-lg border border-[#B7E4C7] overflow-hidden">
                 <div className="p-4 bg-[#D9FFDF] text-[#2F855A] border-b border-[#B7E4C7]">
                   <p className="font-semibold">{user?.username || 'Admin'}</p>
-                  <p className="text-sm opacity-90">{user?.email || 'admin@foodsave.com'}</p>
+                  <p className="text-sm opacity-90">{user?.email || 'admin@SaveFood.com'}</p>
                 </div>
                 <div className="py-2">
                   <button

@@ -37,7 +37,7 @@ class FileStorageServiceImplTest {
     @BeforeEach
     void setUp() {
         // Setup cloudinary.uploader() to return our mock uploader
-        when(cloudinary.uploader()).thenReturn(uploader);
+        lenient().when(cloudinary.uploader()).thenReturn(uploader);
     }
 
     @Test
@@ -191,7 +191,8 @@ class FileStorageServiceImplTest {
         // Arrange
         String fileUrl = "https://res.cloudinary.com/demo/image/upload/v123456/products/uuid_123.jpg";
         
-        when(uploader.destroy(anyString(), anyMap())).thenThrow(new Exception("Delete failed"));
+        // Use RuntimeException instead of checked Exception
+        when(uploader.destroy(anyString(), anyMap())).thenThrow(new RuntimeException("Delete failed"));
 
         // Act
         boolean result = fileStorageService.deleteFile(fileUrl, StorageBucket.PRODUCTS);

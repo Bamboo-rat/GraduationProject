@@ -1,6 +1,7 @@
 package com.example.backend.entity;
 
 import com.example.backend.entity.enums.OrderStatus;
+import com.example.backend.entity.enums.PaymentStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -37,10 +38,16 @@ public class Order {
     @UuidGenerator
     private String orderId;
 
+    @Column(unique = true, nullable = false)
+    private String orderCode;
+
     private BigDecimal totalAmount;
 
     @Enumerated(EnumType.STRING)
     private OrderStatus status = OrderStatus.PENDING;
+
+    @Enumerated(EnumType.STRING)
+    private PaymentStatus paymentStatus = PaymentStatus.PENDING;
 
     private String shippingAddress;
 
@@ -68,5 +75,5 @@ public class Order {
     private Shipment shipment;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.PERSIST, fetch = FetchType.LAZY)
-    private List<OrderPromotion> appliedPromotions = new ArrayList<>();
+    private List<PromotionUsage> promotionUsages = new ArrayList<>();
 }

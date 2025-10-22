@@ -1,6 +1,6 @@
 package com.example.backend.dto.request;
 
-import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -11,6 +11,7 @@ import java.time.LocalDate;
 
 /**
  * DTO for customer profile update
+ * Customer can update their profile after registration and verification
  */
 @Getter
 @Setter
@@ -21,11 +22,14 @@ public class CustomerUpdateRequest {
     @Size(max = 100, message = "Full name must not exceed 100 characters")
     private String fullName;
 
-    @Pattern(regexp = "^\\+?[0-9]{10,15}$", message = "Phone number must be valid")
-    private String phoneNumber;
+    @Email(message = "Invalid email format")
+    @Size(max = 100, message = "Email must not exceed 100 characters")
+    private String email;
 
     private LocalDate dateOfBirth;
 
-    // avatarUrl will be updated separately via file upload endpoints
-    // avatarUrl is managed through FileStorageController
+    private String avatarUrl;
+
+    // Phone number cannot be changed after registration
+    // avatarUrl should be uploaded via FileStorageController first
 }

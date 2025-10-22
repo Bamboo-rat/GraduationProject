@@ -18,6 +18,7 @@
       "subMenu": [
         { "title": "Danh sách Đối tác", "link": "/partners/list", "icon": "list" },
         { "title": "Yêu cầu cần duyệt", "link": "/partners/pending", "icon": "clock" },
+        { "title": "Cập nhật cửa hàng", "link": "/partners/store-pending-updates", "icon": "file-edit" },
         { "title": "Báo cáo Hiệu suất", "link": "/partners/performance", "icon": "trending-up" }
       ]
     },
@@ -29,6 +30,7 @@
       "subMenu": [
         { "title": "Tất cả Sản phẩm", "link": "/products/list", "icon": "package" },
         { "title": "Sản phẩm cần duyệt", "link": "/products/review", "icon": "file-check" },
+        { "title": "Đề xuất danh mục", "link": "/products/category-suggestions", "icon": "folder-plus" },
         { "title": "Quản lý Danh mục", "link": "/products/categories", "icon": "tags" }
       ]
     },
@@ -64,6 +66,15 @@
     },
     {
       "id": 7,
+      "title": "Quản lý Nhân sự",
+      "icon": "users",
+      "link": "/employees",
+      "subMenu": [
+        
+      ]
+    },
+    {
+      "id": 8,
       "title": "Phân tích & Báo cáo",
       "icon": "bar-chart-3",
       "link": "/reports",
@@ -74,7 +85,7 @@
       ]
     },
     {
-      "id": 8,
+      "id": 9,
       "title": "Hệ thống",
       "icon": "settings",
       "link": "/settings",

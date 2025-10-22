@@ -1,5 +1,6 @@
 package com.example.backend.dto.response;
 
+import com.example.backend.entity.enums.BusinessType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -26,29 +27,39 @@ public class SupplierResponse {
     private String email;
     private String phoneNumber;
     private String fullName;
+    private String avatarUrl;
     private boolean active;
     
-    // Supplier specific info
+    // Business information
     private String businessName;
-    private String businessLicense; // Số giấy phép kinh doanh
-    private String businessLicenseUrl; // URL trỏ tới file giấy phép
-    private String taxCode; // Mã số thuế
-    private String logoUrl;
-    private String status; // PENDING_APPROVAL, APPROVED, REJECTED, SUSPENDED
+    private String businessLicense;
+    private String businessLicenseUrl;
+    private String foodSafetyCertificate;
+    private String foodSafetyCertificateUrl;
+    private String taxCode;
+    private String businessAddress;
+    private BusinessType businessType;
     
-    // Stores info
-    private List<StoreBasicInfo> stores;
+    // Financial information (sensitive - may hide for non-admin)
+    private Double commissionRate;
+    private String bankAccountNumber;
+    private String bankName;
+    private String bankBranch;
+    
+    // Status
+    private String status; // PENDING_APPROVAL, ACTIVE, SUSPENDED, BANNED
     
     // Statistics
     private Integer totalProducts;
     private Integer totalStores;
+    private List<StoreBasicInfo> stores;
     
     // Metadata
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    
+
     /**
-     * Basic store information for supplier response
+     * Nested DTO for basic store information
      */
     @Getter
     @Setter

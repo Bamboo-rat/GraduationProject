@@ -13,6 +13,8 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('access_token');
+    console.log('Token:', token ? `${token.substring(0, 20)}...` : 'NO TOKEN');
+    console.log('Request:', config.method?.toUpperCase(), config.url);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -26,9 +28,17 @@ axiosInstance.interceptors.request.use(
 // Response interceptor - Handle errors globally
 axiosInstance.interceptors.response.use(
   (response) => {
+    console.log('Response:', response.status, response.config.url);
     return response;
   },
   (error) => {
+    console.error('Error Response:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      url: error.config?.url,
+      data: error.response?.data,
+    });
+    
     if (error.response) {
       // The request was made and the server responded with a status code
       // that falls out of the range of 2xx
@@ -37,10 +47,11 @@ axiosInstance.interceptors.response.use(
       switch (status) {
         case 401:
           // Unauthorized - Clear token and redirect to login
+          console.error('401 Unauthorized - Clearing auth and redirecting to login');
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
           localStorage.removeItem('user_info');
-          window.location.href = '/auth';
+          window.location.href = '/';
           break;
         case 403:
           // Forbidden - No permission

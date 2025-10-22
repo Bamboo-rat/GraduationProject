@@ -12,11 +12,23 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class LoginResponse {
+    // User basic info
+    private String userId;
+    private String username;
+    private String email;
+    private String phoneNumber;
+    private String fullName;
+    private String avatarUrl;
+    private String userType; // "customer", "supplier", "admin"
+    
+    // Token info
     private String accessToken;
     private String refreshToken;
     private String tokenType;
     private int expiresIn;
     private int refreshExpiresIn;
     private String scope;
+    
+    // Detailed user info (optional)
     private UserInfoResponse userInfo;
 }

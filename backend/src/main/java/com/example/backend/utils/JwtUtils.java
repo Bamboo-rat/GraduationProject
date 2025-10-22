@@ -66,8 +66,11 @@ public class JwtUtils {
                 if (clientAccess != null && clientAccess.containsKey("roles")) {
                     List<String> clientRoles = (List<String>) clientAccess.get("roles");
                     if (clientRoles != null) {
-                        roles.addAll(clientRoles);
-                        log.debug("Extracted client roles: {}", clientRoles);
+                        // Convert roles to match Spring Security format (super-admin -> SUPER_ADMIN)
+                        clientRoles.stream()
+                                .map(role -> role.toUpperCase().replace("-", "_"))
+                                .forEach(roles::add);
+                        log.debug("Extracted and converted client roles: {}", roles);
                     }
                 }
             }
@@ -77,15 +80,16 @@ public class JwtUtils {
             if (realmAccess != null && realmAccess.containsKey("roles")) {
                 List<String> realmRoles = (List<String>) realmAccess.get("roles");
                 if (realmRoles != null) {
-                    // Filter out default Keycloak roles
+                    // Filter out default Keycloak roles and convert format
                     realmRoles.stream()
                             .filter(role -> !isDefaultKeycloakRole(role))
+                            .map(role -> role.toUpperCase().replace("-", "_"))
                             .forEach(roles::add);
-                    log.debug("Extracted realm roles: {}", realmRoles);
+                    log.debug("Extracted and converted realm roles: {}", roles);
                 }
             }
 
-            log.info("Total roles extracted from JWT: {}", roles);
+            log.info("Total converted roles extracted from JWT: {}", roles);
             return roles;
 
         } catch (Exception e) {

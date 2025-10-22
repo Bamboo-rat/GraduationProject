@@ -26,7 +26,8 @@ import java.util.Map;
 
 @Slf4j
 @Service
-public class KeycloakServiceImpl implements KeycloakService {
+public class
+KeycloakServiceImpl implements KeycloakService {
 
     @Value("${keycloak.realm}")
     private String realm;
@@ -191,11 +192,27 @@ public class KeycloakServiceImpl implements KeycloakService {
     public void deleteUser(String keycloakId) {
         try (Keycloak keycloak = getKeycloakAdminClient()) {
             RealmResource realmResource = keycloak.realm(realm);
-            realmResource.users().delete(keycloakId);
+            realmResource.users().get(keycloakId).remove();
             log.info("Successfully deleted user {} from Keycloak", keycloakId);
 
         } catch (Exception e) {
             log.error("Error deleting user from Keycloak", e);
+            throw new KeycloakException(ErrorCode.KEYCLOAK_USER_DELETION_FAILED);
+        }
+    }
+
+    @Override
+    public void deleteKeycloakUser(String keycloakId) {
+        try (Keycloak keycloak = getKeycloakAdminClient()) {
+            RealmResource realmResource = keycloak.realm(realm);
+            UsersResource usersResource = realmResource.users();
+            
+            usersResource.get(keycloakId).remove();
+
+            log.info("Successfully deleted user {} from Keycloak", keycloakId);
+
+        } catch (Exception e) {
+            log.error("Error deleting user {} from Keycloak", keycloakId, e);
             throw new KeycloakException(ErrorCode.KEYCLOAK_USER_DELETION_FAILED);
         }
     }
@@ -234,6 +251,38 @@ public class KeycloakServiceImpl implements KeycloakService {
         } catch (Exception e) {
             log.error("Error updating user password in Keycloak", e);
             throw new KeycloakException(ErrorCode.KEYCLOAK_PASSWORD_UPDATE_FAILED);
+        }
+    }
+
+    @Override
+    public void updateKeycloakUser(String keycloakId, String email, String firstName, String lastName) {
+        try (Keycloak keycloak = getKeycloakAdminClient()) {
+            RealmResource realmResource = keycloak.realm(realm);
+            UserResource userResource = realmResource.users().get(keycloakId);
+
+            // Get current user representation
+            UserRepresentation user = userResource.toRepresentation();
+
+            // Update fields if provided (non-null)
+            if (email != null && !email.isBlank()) {
+                user.setEmail(email);
+            }
+            if (firstName != null) {
+                user.setFirstName(firstName);
+            }
+            if (lastName != null) {
+                user.setLastName(lastName);
+            }
+
+            // Update user in Keycloak
+            userResource.update(user);
+
+            log.info("Successfully updated user {} in Keycloak (email: {}, firstName: {}, lastName: {})",
+                    keycloakId, email, firstName, lastName);
+
+        } catch (Exception e) {
+            log.error("Error updating user info in Keycloak for user {}", keycloakId, e);
+            throw new KeycloakException(ErrorCode.KEYCLOAK_USER_UPDATE_FAILED);
         }
     }
 

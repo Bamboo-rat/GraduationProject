@@ -13,6 +13,7 @@ import java.util.Optional;
 public interface CustomerRepository extends JpaRepository<Customer, String> {
     Optional<Customer> findByUsername(String username);
     Optional<Customer> findByEmail(String email);
+    Optional<Customer> findByPhoneNumber(String phoneNumber);
     Optional<Customer> findByKeycloakId(String keycloakId);
     List<Customer> findByStatus(CustomerStatus status);
     

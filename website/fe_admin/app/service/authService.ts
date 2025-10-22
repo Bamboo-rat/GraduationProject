@@ -7,11 +7,11 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  access_token: string;
-  refresh_token: string;
-  expires_in: number;
-  refresh_expires_in: number;
-  token_type: string;
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+  refreshExpiresIn: number;
+  tokenType: string;
   userInfo: UserInfo;
 }
 
@@ -50,9 +50,14 @@ class AuthService {
       
       const loginData = response.data.data;
       
+      console.log('🔐 Login response:', loginData);
+      console.log('🔑 Access token:', loginData.accessToken ? 'EXISTS' : 'MISSING');
+      
       // Save tokens and user info to localStorage
-      this.setTokens(loginData.access_token, loginData.refresh_token);
+      this.setTokens(loginData.accessToken, loginData.refreshToken);
       this.setUserInfo(loginData.userInfo);
+      
+      console.log('💾 Token saved to localStorage:', localStorage.getItem('access_token') ? 'YES' : 'NO');
       
       return loginData;
     } catch (error: any) {

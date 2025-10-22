@@ -2,50 +2,40 @@ package com.example.backend.mapper;
 
 import com.example.backend.dto.response.AdminResponse;
 import com.example.backend.entity.Admin;
-import org.springframework.stereotype.Component;
+import com.example.backend.entity.enums.AdminStatus;
+import com.example.backend.entity.enums.Role;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.Named;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
- * Mapper for Admin entity to DTO conversion
+ * MapStruct Mapper for Admin entity to DTO conversion
  */
-@Component
-public class AdminMapper {
+@Mapper(componentModel = "spring")
+public interface AdminMapper {
 
     /**
      * Convert Admin entity to AdminResponse DTO
      */
-    public AdminResponse toResponse(Admin admin) {
-        if (admin == null) {
-            return null;
-        }
-
-        return AdminResponse.builder()
-                .userId(admin.getUserId())
-                .keycloakId(admin.getKeycloakId())
-                .username(admin.getUsername())
-                .email(admin.getEmail())
-                .phoneNumber(admin.getPhoneNumber())
-                .fullName(admin.getFullName())
-                .active(admin.isActive())
-                .role(admin.getRole() != null ? admin.getRole().name() : null)
-                .status(admin.getStatus() != null ? admin.getStatus().name() : null)
-                .lastLoginIp(admin.getLastLoginIp())
-                .createdAt(admin.getCreatedAt())
-                .updatedAt(admin.getUpdatedAt())
-                .build();
-    }
+    @Mapping(target = "role", source = "role", qualifiedByName = "roleToString")
+    @Mapping(target = "status", source = "status", qualifiedByName = "adminStatusToString")
+    AdminResponse toResponse(Admin admin);
 
     /**
      * Convert list of Admin entities to list of AdminResponse DTOs
      */
-    public List<AdminResponse> toResponseList(List<Admin> admins) {
-        if (admins == null) {
-            return List.of();
-        }
-        return admins.stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+    List<AdminResponse> toResponseList(List<Admin> admins);
+
+    // Custom enum converters
+    @Named("roleToString")
+    default String roleToString(Role role) {
+        return role != null ? role.name() : null;
+    }
+
+    @Named("adminStatusToString")
+    default String adminStatusToString(AdminStatus status) {
+        return status != null ? status.name() : null;
     }
 }

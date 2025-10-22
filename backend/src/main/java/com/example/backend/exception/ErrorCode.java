@@ -29,18 +29,28 @@ public enum ErrorCode {
     ACCOUNT_PENDING_APPROVAL("2010", "Account pending approval", "Tài khoản của bạn đang chờ phê duyệt từ quản trị viên", HttpStatus.FORBIDDEN),
     ACCOUNT_REJECTED("2011", "Account has been rejected", "Tài khoản của bạn đã bị từ chối", HttpStatus.FORBIDDEN),
     INVALID_REFRESH_TOKEN("2012", "Invalid refresh token", "Refresh token không hợp lệ hoặc đã hết hạn", HttpStatus.UNAUTHORIZED),
+    INVALID_OTP("2013", "Invalid or expired OTP", "Mã OTP không hợp lệ hoặc đã hết hạn", HttpStatus.BAD_REQUEST),
+    SMS_SEND_FAILED("2014", "Failed to send SMS", "Gửi tin nhắn SMS thất bại", HttpStatus.INTERNAL_SERVER_ERROR),
+    OTP_RATE_LIMIT_EXCEEDED("2015", "Too many OTP requests", "Bạn đã yêu cầu quá nhiều mã OTP. Vui lòng thử lại sau 1 giờ", HttpStatus.TOO_MANY_REQUESTS),
 
     // ===== 3xxx: User, Customer, Supplier Errors =====
     USER_NOT_FOUND("3001", "User not found", "Không tìm thấy người dùng", HttpStatus.NOT_FOUND),
     EMAIL_ALREADY_EXISTS("3002", "Email already exists", "Email này đã được sử dụng", HttpStatus.CONFLICT),
     USERNAME_ALREADY_EXISTS("3003", "Username already exists", "Tên đăng nhập này đã được sử dụng", HttpStatus.CONFLICT),
-    SUPPLIER_NOT_APPROVED("3004", "Supplier not yet approved", "Tài khoản nhà cung cấp của bạn chưa được duyệt", HttpStatus.FORBIDDEN),
+    PHONE_NUMBER_ALREADY_EXISTS("3004", "Phone number already exists", "Số điện thoại này đã được sử dụng", HttpStatus.CONFLICT),
+    BUSINESS_LICENSE_ALREADY_EXISTS("3005", "Business license already exists", "Số giấy phép kinh doanh này đã được đăng ký", HttpStatus.CONFLICT),
+    TAX_CODE_ALREADY_EXISTS("3006", "Tax code already exists", "Mã số thuế này đã được đăng ký", HttpStatus.CONFLICT),
+    SUPPLIER_NOT_APPROVED("3007", "Supplier not yet approved", "Tài khoản nhà cung cấp của bạn chưa được duyệt", HttpStatus.FORBIDDEN),
+    REGISTRATION_FAILED("3008", "Registration failed", "Đăng ký tài khoản thất bại", HttpStatus.BAD_REQUEST),
 
     // ===== 4xxx: Product & Category Errors =====
     PRODUCT_NOT_FOUND("4001", "Product not found", "Không tìm thấy sản phẩm", HttpStatus.NOT_FOUND),
     CATEGORY_NOT_FOUND("4002", "Category not found", "Không tìm thấy danh mục sản phẩm", HttpStatus.NOT_FOUND),
     PRODUCT_OUT_OF_STOCK("4003", "Product is out of stock", "Sản phẩm đã hết hàng", HttpStatus.BAD_REQUEST),
     INVALID_EXPIRY_DATE("4004", "Invalid expiry date", "Ngày hết hạn của sản phẩm không hợp lệ", HttpStatus.BAD_REQUEST),
+    CATEGORY_NAME_ALREADY_EXISTS("4005", "Category name already exists", "Tên danh mục này đã tồn tại", HttpStatus.CONFLICT),
+    CATEGORY_HAS_PRODUCTS("4006", "Category has products", "Không thể xóa danh mục đang chứa sản phẩm. Vui lòng xóa hoặc chuyển sản phẩm sang danh mục khác trước", HttpStatus.CONFLICT),
+    CATEGORY_ALREADY_EXISTS("4007", "Category already exists", "Danh mục này đã tồn tại", HttpStatus.CONFLICT),
 
     // ===== 5xxx: Cart, Order, Payment, Promotion Errors =====
     ORDER_NOT_FOUND("5001", "Order not found", "Không tìm thấy đơn hàng", HttpStatus.NOT_FOUND),
@@ -50,8 +60,18 @@ public enum ErrorCode {
     PROMOTION_NOT_APPLICABLE("5005", "Promotion is not applicable for this order", "Mã khuyến mãi không áp dụng cho đơn hàng này", HttpStatus.BAD_REQUEST),
     PAYMENT_FAILED("5006", "Payment processing failed", "Quá trình thanh toán thất bại", HttpStatus.BAD_REQUEST),
     CANNOT_CANCEL_ORDER("5007", "Order cannot be canceled", "Không thể hủy đơn hàng đã được vận chuyển", HttpStatus.BAD_REQUEST),
+    PROMOTION_CODE_ALREADY_EXISTS("5008", "Promotion code already exists", "Mã khuyến mãi này đã tồn tại", HttpStatus.CONFLICT),
+    INVALID_PROMOTION_DATES("5009", "Invalid promotion dates", "Ngày kết thúc phải sau ngày bắt đầu", HttpStatus.BAD_REQUEST),
+    PROMOTION_ALREADY_STARTED("5010", "Promotion already started", "Không thể cập nhật mã khuyến mãi đã bắt đầu", HttpStatus.BAD_REQUEST),
+
+    // ===== 6xxx: Wallet Errors =====
+    WALLET_NOT_FOUND("6001", "Wallet not found", "Không tìm thấy ví tiền", HttpStatus.NOT_FOUND),
+    INSUFFICIENT_BALANCE("6002", "Insufficient balance", "Số dư không đủ", HttpStatus.BAD_REQUEST),
+    WALLET_SUSPENDED("6003", "Wallet is suspended", "Ví đã bị tạm khóa", HttpStatus.FORBIDDEN),
+    WALLET_FROZEN("6004", "Wallet is frozen", "Ví đã bị đóng băng", HttpStatus.FORBIDDEN),
 
     // ===== 9xxx: Internal/Server Errors =====
+    OPTIMISTIC_LOCK_ERROR("9001", "Data has been modified by another user", "Dữ liệu đã được thay đổi bởi người dùng khác. Vui lòng thử lại", HttpStatus.CONFLICT),
     INTERNAL_SERVER_ERROR("9998", "An internal server error occurred", "Đã có lỗi xảy ra ở phía máy chủ", HttpStatus.INTERNAL_SERVER_ERROR),
     DATABASE_ERROR("9999", "Database error occurred", "Đã có lỗi xảy ra với cơ sở dữ liệu", HttpStatus.INTERNAL_SERVER_ERROR),
 
@@ -63,13 +83,7 @@ public enum ErrorCode {
     KEYCLOAK_ROLE_ASSIGNMENT_FAILED("K3004", "Failed to assign role to user in Keycloak", "Gán quyền cho người dùng thất bại", HttpStatus.INTERNAL_SERVER_ERROR),
     KEYCLOAK_AUTHENTICATION_FAILED("K3005", "Authentication failed", "Đăng nhập thất bại", HttpStatus.UNAUTHORIZED),
     KEYCLOAK_USER_NOT_FOUND("K3006", "User not found in Keycloak", "Không tìm thấy người dùng trong Keycloak", HttpStatus.NOT_FOUND),
-    KEYCLOAK_PASSWORD_UPDATE_FAILED("K3007", "Failed to update password in Keycloak", "Cập nhật mật khẩu thất bại", HttpStatus.INTERNAL_SERVER_ERROR),
-
-    // Registration errors
-    PHONE_NUMBER_ALREADY_EXISTS("3005", "Phone number already exists", "Số điện thoại này đã được sử dụng", HttpStatus.CONFLICT),
-    BUSINESS_LICENSE_ALREADY_EXISTS("3006", "Business license already exists", "Giấy phép kinh doanh này đã được sử dụng", HttpStatus.CONFLICT),
-    TAX_CODE_ALREADY_EXISTS("3007", "Tax code already exists", "Mã số thuế này đã được sử dụng", HttpStatus.CONFLICT);
-
+    KEYCLOAK_PASSWORD_UPDATE_FAILED("K3007", "Failed to update password in Keycloak", "Cập nhật mật khẩu thất bại", HttpStatus.INTERNAL_SERVER_ERROR);
 
     private final String code;
     private final String message;

@@ -68,6 +68,10 @@ public class Promotion {
 
     private boolean isHighlighted = false;  // Đánh dấu khuyến mãi nổi bật
 
+    @Version
+    @Column(nullable = false)
+    private Long version = 0L;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

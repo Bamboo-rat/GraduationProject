@@ -18,7 +18,6 @@
       "link": "/products",
       "subMenu": [
         { "title": "Danh sách sản phẩm", "link": "/products/list" },
-        { "title": "Thêm sản phẩm mới", "link": "/products/add" },
         { "title": "Danh mục cá nhân", "link": "/products/categories" },
         { "title": "Trạng thái duyệt", "link": "/products/review-status" }
       ]
@@ -29,10 +28,8 @@
       "icon": "shopping-cart",
       "link": "/orders",
       "subMenu": [
-        { "title": "Đơn hàng mới", "link": "/orders/new" },
-        { "title": "Đang xử lý", "link": "/orders/processing" },
-        { "title": "Đã giao / Hoàn tất", "link": "/orders/completed" },
-        { "title": "Đơn hàng bị hủy", "link": "/orders/cancelled" }
+        { "title": "Tất cả đơn hàng", "link": "/orders/list" },
+        { "title": "Đơn hàng trả lại", "link": "/orders/returns" }
       ]
     },
     {
@@ -70,6 +67,17 @@
     },
     {
       "id": 7,
+      "title": "Quản lý Cửa hàng",
+      "icon": "store",
+      "link": "/store",
+      "subMenu": [
+        { "title": "Thông tin cửa hàng", "link": "/store/profile" },
+        { "title": "Cập nhật hồ sơ", "link": "/store/update-request" },
+        { "title": "Lịch sử thay đổi", "link": "/store/update-history" }
+      ]
+    },
+    {
+      "id": 8,
       "title": "Khách hàng & Phản hồi",
       "icon": "users",
       "link": "/feedback",
@@ -79,12 +87,11 @@
       ]
     },
     {
-      "id": 8,
+      "id": 9,
       "title": "Cấu hình",
       "icon": "settings",
       "link": "/settings",
       "subMenu": [
-        { "title": "Thông tin cửa hàng", "link": "/settings/profile" },
         { "title": "Cấu hình thanh toán", "link": "/settings/payment" },
         { "title": "Cấu hình thông báo", "link": "/settings/notifications" },
         { "title": "Tài liệu & Chính sách", "link": "/settings/policies" }
