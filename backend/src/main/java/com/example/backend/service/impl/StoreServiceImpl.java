@@ -12,10 +12,9 @@ import com.example.backend.exception.custom.BadRequestException;
 import com.example.backend.exception.custom.ConflictException;
 import com.example.backend.exception.custom.NotFoundException;
 import com.example.backend.mapper.StorePendingUpdateMapper;
-import com.example.backend.repository.AdminRepository;
 import com.example.backend.repository.StorePendingUpdateRepository;
 import com.example.backend.repository.StoreRepository;
-import com.example.backend.repository.SupplierRepository;
+import com.example.backend.repository.UserRepository;
 import com.example.backend.service.StoreService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,8 +32,7 @@ public class StoreServiceImpl implements StoreService {
 
     private final StoreRepository storeRepository;
     private final StorePendingUpdateRepository pendingUpdateRepository;
-    private final SupplierRepository supplierRepository;
-    private final AdminRepository adminRepository;
+    private final UserRepository userRepository;
     private final StorePendingUpdateMapper updateMapper;
 
     @Override
@@ -43,7 +41,7 @@ public class StoreServiceImpl implements StoreService {
         log.info("Submitting store update for store: {} by supplier: {}", storeId, keycloakId);
 
         // Find supplier
-        Supplier supplier = supplierRepository.findByKeycloakId(keycloakId)
+        Supplier supplier = (Supplier) userRepository.findByKeycloakId(keycloakId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
 
         // Find store and validate ownership
@@ -124,7 +122,7 @@ public class StoreServiceImpl implements StoreService {
         log.info("Approving store update: {} by admin: {}", updateId, keycloakId);
 
         // Find admin
-        Admin admin = adminRepository.findByKeycloakId(keycloakId)
+        Admin admin = (Admin) userRepository.findByKeycloakId(keycloakId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
 
         // Find pending update
@@ -185,7 +183,7 @@ public class StoreServiceImpl implements StoreService {
         log.info("Rejecting store update: {} by admin: {}", updateId, keycloakId);
 
         // Find admin
-        Admin admin = adminRepository.findByKeycloakId(keycloakId)
+        Admin admin = (Admin) userRepository.findByKeycloakId(keycloakId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
 
         // Find pending update

@@ -25,8 +25,9 @@ import java.util.*;
 public class ProductServiceImpl implements ProductService {
 
     private final ProductRepository productRepository;
+    private final ProductVariantRepository productVariantRepository;
     private final CategoryRepository categoryRepository;
-    private final SupplierRepository supplierRepository;
+    private final UserRepository userRepository;
     private final StoreRepository storeRepository;
     private final ProductMapper productMapper;
 
@@ -36,7 +37,7 @@ public class ProductServiceImpl implements ProductService {
         log.info("Creating product: {} for keycloakId: {}", request.getProduct().getName(), keycloakId);
 
         // 1. Find supplier by keycloakId
-        Supplier supplier = supplierRepository.findByKeycloakId(keycloakId)
+        Supplier supplier = (Supplier) userRepository.findByKeycloakId(keycloakId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
 
         if (!supplier.getStatus().equals(com.example.backend.entity.enums.SupplierStatus.ACTIVE)) {
@@ -193,7 +194,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional(readOnly = true)
     public Page<ProductResponse> getMyProducts(String keycloakId, ProductStatus status, String search, Pageable pageable) {
-        Supplier supplier = supplierRepository.findByKeycloakId(keycloakId)
+        Supplier supplier = (Supplier) userRepository.findByKeycloakId(keycloakId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
         
         Page<Product> products;
@@ -209,7 +210,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public ProductResponse updateProduct(String productId, ProductUpdateRequest request, String keycloakId) {
-        Supplier supplier = supplierRepository.findByKeycloakId(keycloakId)
+        Supplier supplier = (Supplier) userRepository.findByKeycloakId(keycloakId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
         
         Product product = productRepository.findById(productId)
@@ -239,7 +240,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public ProductResponse updateProductStatus(String productId, ProductStatusUpdateRequest request, String keycloakId) {
-        Supplier supplier = supplierRepository.findByKeycloakId(keycloakId)
+        Supplier supplier = (Supplier) userRepository.findByKeycloakId(keycloakId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
         
         Product product = productRepository.findById(productId)
@@ -260,7 +261,7 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public void deleteProduct(String productId, String keycloakId) {
-        Supplier supplier = supplierRepository.findByKeycloakId(keycloakId)
+        Supplier supplier = (Supplier) userRepository.findByKeycloakId(keycloakId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
         
         Product product = productRepository.findById(productId)
@@ -293,11 +294,21 @@ public class ProductServiceImpl implements ProductService {
 
         if (!duplicates.isEmpty()) {
             throw new BadRequestException(ErrorCode.INVALID_REQUEST,
-                    "Duplicate SKUs found: " + String.join(", ", duplicates));
+                    "Duplicate SKUs found in request: " + String.join(", ", duplicates));
         }
 
-        // Check against database
-        // TODO: Implement SKU repository check
+        // Check against database for existing SKUs
+        List<String> existingSkus = new ArrayList<>();
+        for (ProductVariantRequest variant : variants) {
+            if (productVariantRepository.existsBySku(variant.getSku())) {
+                existingSkus.add(variant.getSku());
+            }
+        }
+
+        if (!existingSkus.isEmpty()) {
+            throw new BadRequestException(ErrorCode.INVALID_REQUEST,
+                    "SKU(s) already exist in database: " + String.join(", ", existingSkus));
+        }
     }
 
     /**
