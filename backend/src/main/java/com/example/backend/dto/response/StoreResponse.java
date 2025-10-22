@@ -44,7 +44,7 @@ public class StoreResponse {
     
     private String status;
     
-    private Long supplierId;
+    private String supplierId;
     
     private String supplierName;
     
