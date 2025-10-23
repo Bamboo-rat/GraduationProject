@@ -75,14 +75,7 @@ export default function StoreProfile() {
             </div>
           )}
 
-          {(store.latitude && store.longitude) && (
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-600 mb-2">Tọa độ</label>
-              <div className="text-gray-700">
-                Latitude: {store.latitude}, Longitude: {store.longitude}
-              </div>
-            </div>
-          )}
+          {/* Hidden: Latitude & Longitude - Data still stored in DB */}
 
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-2">Ngày tạo</label>

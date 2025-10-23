@@ -1,6 +1,6 @@
 import type { Route } from './+types/deliveryManagement';
 import DeliveryManagement from '~/pages/orders/DeliveryManagement';
-import ProtectedRoute from '~/component/ProtectedRoute';
+import ProtectedRoute from '~/component/common/ProtectedRoute';
 
 export function meta({}: Route.MetaArgs) {
   return [

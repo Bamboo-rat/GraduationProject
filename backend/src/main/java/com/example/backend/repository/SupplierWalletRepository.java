@@ -13,7 +13,7 @@ import java.util.Optional;
  * Repository for SupplierWallet entity
  */
 @Repository
-public interface SupplierWalletRepository extends JpaRepository<SupplierWallet, Long> {
+public interface SupplierWalletRepository extends JpaRepository<SupplierWallet, String> {
 
     /**
      * Find wallet by supplier ID

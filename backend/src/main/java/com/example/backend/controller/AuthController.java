@@ -152,4 +152,40 @@ public class AuthController {
         String message = supplierService.submitStoreInfoStep4(request.getSupplierId(), request);
         return ResponseEntity.ok(ApiResponse.success(message));
     }
+
+    // ===== PASSWORD RESET (Forgot Password) - No authentication required =====
+
+    @PostMapping("/forgot-password")
+    @Operation(summary = "Request password reset", 
+               description = "Request password reset link via email. Works for both Admin and Supplier accounts. A reset token will be sent to the registered email address.")
+    public ResponseEntity<ApiResponse<com.example.backend.dto.response.ResetPasswordResponse>> forgotPassword(
+            @Valid @RequestBody com.example.backend.dto.request.ForgotPasswordRequest request) {
+        log.info("POST /api/auth/forgot-password - Password reset requested for email: {}, userType: {}", 
+                request.getEmail(), request.getUserType());
+        com.example.backend.dto.response.ResetPasswordResponse response = 
+                authService.requestPasswordReset(request.getEmail(), request.getUserType());
+        return ResponseEntity.ok(ApiResponse.success("Password reset email sent successfully", response));
+    }
+
+    @PostMapping("/validate-reset-token")
+    @Operation(summary = "Validate password reset token", 
+               description = "Validate if a password reset token is still valid (not used and not expired)")
+    public ResponseEntity<ApiResponse<com.example.backend.dto.response.ResetPasswordResponse>> validateResetToken(
+            @Valid @RequestBody com.example.backend.dto.request.ValidateResetTokenRequest request) {
+        log.info("POST /api/auth/validate-reset-token - Validating token");
+        com.example.backend.dto.response.ResetPasswordResponse response = 
+                authService.validateResetToken(request.getToken());
+        return ResponseEntity.ok(ApiResponse.success("Token is valid", response));
+    }
+
+    @PostMapping("/reset-password")
+    @Operation(summary = "Reset password", 
+               description = "Reset password using the reset token received via email. The new password must match the confirmation password and meet security requirements (min 8 characters, at least one uppercase, one lowercase, one number, and one special character).")
+    public ResponseEntity<ApiResponse<com.example.backend.dto.response.ResetPasswordResponse>> resetPassword(
+            @Valid @RequestBody com.example.backend.dto.request.ResetPasswordRequest request) {
+        log.info("POST /api/auth/reset-password - Resetting password with token");
+        com.example.backend.dto.response.ResetPasswordResponse response = 
+                authService.resetPassword(request.getToken(), request.getNewPassword(), request.getConfirmPassword());
+        return ResponseEntity.ok(ApiResponse.success("Password reset successfully", response));
+    }
 }

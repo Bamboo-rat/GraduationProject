@@ -7,16 +7,15 @@ export type StorageBucket =
   | 'food-safety-certificates'
   | 'banner'
   | 'products'
+  | 'category-images'
   | 'avatar-customer'
   | 'avatar-admin'
   | 'supplier-logo';
 
 export interface UploadResponse {
-  publicId: string;
-  secureUrl: string;
-  format: string;
-  resourceType: string;
-  uploadedAt: string;
+  url: string;
+  fileName: string;
+  fileSize: string;
 }
 
 // File Storage Service
@@ -24,13 +23,13 @@ class FileStorageService {
   /**
    * Upload file to Cloudinary storage
    */
-  async uploadFile(file: File, bucket: StorageBucket): Promise<UploadResponse> {
+  async uploadFile(file: File, endpoint: string): Promise<string> {
     try {
       const formData = new FormData();
       formData.append('file', file);
 
       const response = await axiosInstance.post<ApiResponse<UploadResponse>>(
-        `/storage/upload?bucket=${bucket}`,
+        endpoint,
         formData,
         {
           headers: {
@@ -39,7 +38,33 @@ class FileStorageService {
         }
       );
 
-      return response.data.data;
+      return response.data.data.url;
+    } catch (error: any) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Upload multiple files
+   */
+  async uploadMultipleFiles(files: File[], endpoint: string): Promise<string[]> {
+    try {
+      const formData = new FormData();
+      files.forEach(file => {
+        formData.append('files', file);
+      });
+
+      const response = await axiosInstance.post<ApiResponse<{ urls: string[]; count: number; total: number }>>(
+        endpoint,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+
+      return response.data.data.urls;
     } catch (error: any) {
       throw this.handleError(error);
     }
@@ -49,56 +74,84 @@ class FileStorageService {
    * Upload avatar for admin
    */
   async uploadAdminAvatar(file: File): Promise<string> {
-    const result = await this.uploadFile(file, 'avatar-admin');
-    return result.secureUrl;
+    return await this.uploadFile(file, '/files/upload/avatar/admin');
   }
 
   /**
    * Upload avatar for customer
    */
   async uploadCustomerAvatar(file: File): Promise<string> {
-    const result = await this.uploadFile(file, 'avatar-customer');
-    return result.secureUrl;
+    return await this.uploadFile(file, '/files/upload/avatar');
   }
 
   /**
    * Upload supplier logo
    */
   async uploadSupplierLogo(file: File): Promise<string> {
-    const result = await this.uploadFile(file, 'supplier-logo');
-    return result.secureUrl;
+    return await this.uploadFile(file, '/files/upload/supplier-logo');
   }
 
   /**
    * Upload business license
    */
   async uploadBusinessLicense(file: File): Promise<string> {
-    const result = await this.uploadFile(file, 'business-licenses');
-    return result.secureUrl;
+    return await this.uploadFile(file, '/files/upload/business-license');
   }
 
   /**
    * Upload food safety certificate
    */
   async uploadFoodSafetyCertificate(file: File): Promise<string> {
-    const result = await this.uploadFile(file, 'food-safety-certificates');
-    return result.secureUrl;
+    return await this.uploadFile(file, '/files/upload/food-safety-certificate');
   }
 
   /**
    * Upload product image
    */
   async uploadProductImage(file: File): Promise<string> {
-    const result = await this.uploadFile(file, 'products');
-    return result.secureUrl;
+    return await this.uploadFile(file, '/files/upload/product');
+  }
+
+  /**
+   * Upload multiple product images
+   */
+  async uploadMultipleProductImages(files: File[]): Promise<string[]> {
+    return await this.uploadMultipleFiles(files, '/files/upload/product/multiple');
   }
 
   /**
    * Upload banner image
    */
   async uploadBanner(file: File): Promise<string> {
-    const result = await this.uploadFile(file, 'banner');
-    return result.secureUrl;
+    return await this.uploadFile(file, '/files/upload/banner');
+  }
+
+  /**
+   * Upload category image
+   */
+  async uploadCategoryImage(file: File): Promise<string> {
+    return await this.uploadFile(file, '/files/upload/category');
+  }
+
+  /**
+   * Delete file from storage
+   */
+  async deleteFile(fileUrl: string, bucket: StorageBucket): Promise<boolean> {
+    try {
+      await axiosInstance.delete<ApiResponse<void>>(
+        '/files/delete',
+        {
+          params: {
+            fileUrl,
+            bucket,
+          },
+        }
+      );
+      return true;
+    } catch (error: any) {
+      console.error('Error deleting file:', error);
+      return false;
+    }
   }
 
   /**

@@ -5,6 +5,8 @@ import com.example.backend.dto.request.AdminUpdateRequest;
 import com.example.backend.dto.response.AdminResponse;
 import com.example.backend.dto.response.RegisterResponse;
 import com.example.backend.entity.enums.AdminStatus;
+import com.example.backend.entity.enums.Role;
+import org.springframework.data.domain.Page;
 
 /**
  * Service for Admin management
@@ -55,4 +57,22 @@ public interface AdminService {
      * @return Updated admin response
      */
     AdminResponse setActive(String userId, boolean active);
+
+    /**
+     * Update admin role (by super admin)
+     * @param userId User ID (String UUID)
+     * @param role New role
+     * @return Updated admin response
+     */
+    AdminResponse updateRole(String userId, Role role);
+
+    /**
+     * Get all admins with pagination and filtering
+     * @param page Page number (0-based)
+     * @param size Page size
+     * @param role Filter by role (optional)
+     * @param status Filter by status (optional)
+     * @return Page of admin responses
+     */
+    Page<AdminResponse> getAllAdmins(int page, int size, Role role, AdminStatus status);
 }

@@ -155,7 +155,7 @@ export default function StoreUpdateHistory() {
                 if (update.newAddress) changes.push('Địa chỉ');
                 if (update.newPhoneNumber) changes.push('Số điện thoại');
                 if (update.newDescription) changes.push('Mô tả');
-                if (update.newLatitude !== undefined || update.newLongitude !== undefined) changes.push('Tọa độ');
+                // Hidden: if (update.newLatitude !== undefined || update.newLongitude !== undefined) changes.push('Tọa độ');
 
                 return (
                   <tr key={update.id} className="hover:bg-gray-50">
@@ -282,8 +282,7 @@ export default function StoreUpdateHistory() {
               {renderChangeField('Địa chỉ', selectedUpdate.currentAddress, selectedUpdate.newAddress)}
               {renderChangeField('Số điện thoại', selectedUpdate.currentPhoneNumber, selectedUpdate.newPhoneNumber)}
               {renderChangeField('Mô tả', selectedUpdate.currentDescription, selectedUpdate.newDescription)}
-              {renderChangeField('Latitude', selectedUpdate.currentLatitude, selectedUpdate.newLatitude)}
-              {renderChangeField('Longitude', selectedUpdate.currentLongitude, selectedUpdate.newLongitude)}
+              {/* Hidden: Latitude & Longitude - Data still saved in DB */}
             </div>
 
             {selectedUpdate.adminNotes && (

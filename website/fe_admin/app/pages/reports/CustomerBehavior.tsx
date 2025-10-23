@@ -1,4 +1,4 @@
-import DashboardLayout from '~/component/DashboardLayout';
+import DashboardLayout from '~/component/layout/DashboardLayout';
 
 export default function CustomerBehavior() {
   return (

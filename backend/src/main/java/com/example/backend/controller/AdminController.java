@@ -6,6 +6,7 @@ import com.example.backend.dto.response.AdminResponse;
 import com.example.backend.dto.response.ApiResponse;
 import com.example.backend.dto.response.RegisterResponse;
 import com.example.backend.entity.enums.AdminStatus;
+import com.example.backend.entity.enums.Role;
 import com.example.backend.service.AdminService;
 import com.example.backend.utils.JwtUtils;
 import io.swagger.v3.oas.annotations.Operation;
@@ -14,6 +15,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -97,7 +99,7 @@ public class AdminController {
     @PreAuthorize("hasRole('SUPER_ADMIN')")
     @Operation(summary = "Get all admins/staff", 
                description = "Get list of all admins and staff with pagination (super admin only)")
-    public ResponseEntity<ApiResponse<Object>> getAllAdmins(
+    public ResponseEntity<ApiResponse<Page<AdminResponse>>> getAllAdmins(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String role,
@@ -105,8 +107,27 @@ public class AdminController {
         log.info("GET /api/admins - Getting all admins (page: {}, size: {}, role: {}, status: {})", 
                 page, size, role, status);
 
-        // TODO: Implement pagination and filtering
-        throw new UnsupportedOperationException("Not implemented yet");
+        // Parse role and status if provided
+        Role roleEnum = null;
+        if (role != null && !role.isBlank()) {
+            try {
+                roleEnum = Role.valueOf(role);
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid role filter: {}", role);
+            }
+        }
+
+        AdminStatus statusEnum = null;
+        if (status != null && !status.isBlank()) {
+            try {
+                statusEnum = AdminStatus.valueOf(status);
+            } catch (IllegalArgumentException e) {
+                log.warn("Invalid status filter: {}", status);
+            }
+        }
+
+        Page<AdminResponse> admins = adminService.getAllAdmins(page, size, roleEnum, statusEnum);
+        return ResponseEntity.ok(ApiResponse.success("Admins retrieved successfully", admins));
     }
 
     @PatchMapping("/{userId}/approve")
@@ -143,5 +164,25 @@ public class AdminController {
 
         AdminResponse response = adminService.setActive(userId, true);
         return ResponseEntity.ok(ApiResponse.success("Admin/Staff activated successfully", response));
+    }
+
+    @PatchMapping("/{userId}/role")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @Operation(summary = "Update admin/staff role",
+               description = "Update admin/staff role (super admin only)")
+    public ResponseEntity<ApiResponse<AdminResponse>> updateAdminRole(
+            @PathVariable String userId,
+            @RequestParam String role) {
+        log.info("PATCH /api/admins/{}/role - Updating admin/staff role to: {}", userId, role);
+
+        try {
+            Role roleEnum = Role.valueOf(role);
+            AdminResponse response = adminService.updateRole(userId, roleEnum);
+            return ResponseEntity.ok(ApiResponse.success("Admin/Staff role updated successfully", response));
+        } catch (IllegalArgumentException e) {
+            log.warn("Invalid role: {}", role);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Invalid role. Valid values: ROLE_SUPER_ADMIN, ROLE_MODERATOR, ROLE_STAFF"));
+        }
     }
 }

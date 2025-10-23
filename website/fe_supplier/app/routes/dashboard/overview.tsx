@@ -1,7 +1,7 @@
 import type { Route } from './+types/overview';
 import DashboardOverview from '~/pages/dashboard/DashboardOverview';
-import DashboardLayout from '~/component/DashboardLayout';
-import ProtectedRoute from '~/component/ProtectedRoute';
+import DashboardLayout from '~/component/layout/DashboardLayout';
+import ProtectedRoute from '~/component/common/ProtectedRoute';
 
 export function meta({}: Route.MetaArgs) {
   return [

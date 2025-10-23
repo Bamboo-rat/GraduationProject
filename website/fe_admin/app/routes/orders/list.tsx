@@ -1,6 +1,6 @@
 import type { Route } from './+types/list';
 import OrdersList from '~/pages/orders/OrdersList';
-import ProtectedRoute from '~/component/ProtectedRoute';
+import ProtectedRoute from '~/component/common/ProtectedRoute';
 
 export function meta({}: Route.MetaArgs) {
   return [

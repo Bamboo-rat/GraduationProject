@@ -1,0 +1,100 @@
+{
+  "mainMenu": [
+    {
+      "id": 1,
+      "title": "Bảng điều khiển",
+      "icon": "layout-dashboard",
+      "link": "/dashboard",
+      "subMenu": [
+        { "title": "Tổng quan", "link": "/dashboard/overview", "icon": "home" },
+        { "title": "Giám sát hệ thống", "link": "/dashboard/monitor", "icon": "activity" }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Quản lý Đối tác",
+      "icon": "store",
+      "link": "/partners",
+      "subMenu": [
+        { "title": "Danh sách Đối tác", "link": "/partners/list", "icon": "list" },
+        { "title": "Yêu cầu cần duyệt", "link": "/partners/pending", "icon": "clock" },
+        { "title": "Cập nhật cửa hàng", "link": "/partners/store-pending-updates", "icon": "file-edit" },
+        { "title": "Báo cáo Hiệu suất", "link": "/partners/performance", "icon": "trending-up" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Quản lý Sản phẩm",
+      "icon": "shopping-bag",
+      "link": "/products",
+      "subMenu": [
+        { "title": "Tất cả Sản phẩm", "link": "/products/list", "icon": "package" },
+        { "title": "Sản phẩm cần duyệt", "link": "/products/review", "icon": "file-check" },
+        { "title": "Đề xuất danh mục", "link": "/products/category-suggestions", "icon": "folder-plus" },
+        { "title": "Quản lý Danh mục", "link": "/products/categories", "icon": "tags" }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Quản lý Khách hàng",
+      "icon": "users",
+      "link": "/customers",
+      "subMenu": [
+        { "title": "Danh sách Khách hàng", "link": "/customers/list", "icon": "user-check" },
+        { "title": "Hỗ trợ & Khiếu nại", "link": "/support/tickets", "icon": "message-circle" }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Quản lý Vận hành",
+      "icon": "truck",
+      "link": "/operations",
+      "subMenu": [
+        { "title": "Quản lý Đơn hàng", "link": "/orders/list", "icon": "shopping-cart" },
+        { "title": "Quản lý Giao nhận", "link": "/delivery/management", "icon": "package-check" }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Tài chính",
+      "icon": "wallet",
+      "link": "/finance",
+      "subMenu": [
+        { "title": "Đối soát & Hoa hồng", "link": "/finance/reconciliation", "icon": "receipt" },
+        { "title": "Lịch sử Giao dịch", "link": "/finance/transactions", "icon": "credit-card" }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Quản lý Nhân sự",
+      "icon": "users",
+      "link": "/employees",
+      "subMenu": [
+        { "title": "Quản lý Admin & Staff", "link": "/employees/admins", "icon": "shield-check" }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Phân tích & Báo cáo",
+      "icon": "bar-chart-3",
+      "link": "/reports",
+      "subMenu": [
+        { "title": "Báo cáo Doanh thu", "link": "/reports/revenue", "icon": "dollar-sign" },
+        { "title": "Phân tích Khách hàng", "link": "/reports/behavior", "icon": "pie-chart" },
+        { "title": "Báo cáo Lãng phí", "link": "/reports/waste", "icon": "trash-2" }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Hệ thống",
+      "icon": "settings",
+      "link": "/settings",
+      "subMenu": [
+        { "title": "Phân quyền & Vai trò", "link": "/settings/roles", "icon": "shield" },
+        { "title": "Banner & Quảng cáo", "link": "/settings/marketing", "icon": "megaphone" },
+        { "title": "Cấu hình Thông báo", "link": "/settings/notifications", "icon": "bell" },
+        { "title": "Nhật ký Hoạt động", "link": "/settings/audit", "icon": "file-text" }
+      ]
+    }
+  ]
+}

@@ -3,7 +3,6 @@ package com.example.backend.service.impl;
 import com.example.backend.exception.ErrorCode;
 import com.example.backend.exception.custom.BadRequestException;
 import com.example.backend.service.EmailService;
-import com.example.backend.service.SmsService;
 import com.example.backend.service.OtpService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,12 +14,12 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Service for OTP (One-Time Password) management
- * Supports both SMS and Email OTP with rate limiting
+ * Supports both Phone and Email OTP with rate limiting
  * Rate Limit: Maximum 3 OTP requests per hour per phone/email
  *
- * Note: For SMS OTP, this service generates OTP, stores in Redis, and sends via SmsService
+ * Note: For Phone OTP, this service generates OTP, stores in Redis, and displays on console (for demo)
  *       For Email OTP, this service generates OTP, stores in Redis, and sends via EmailService
- *       Both SMS and Email OTP verification is done by checking Redis
+ *       Both Phone and Email OTP verification is done by checking Redis
  */
 @Slf4j
 @Service
@@ -28,7 +27,6 @@ import java.util.concurrent.TimeUnit;
 public class OtpServiceImpl implements OtpService {
 
     private final RedisTemplate<String, String> redisTemplate;
-    private final SmsService smsService;
     private final EmailService emailService;
 
     private static final int OTP_LENGTH = 6;
@@ -60,21 +58,11 @@ public class OtpServiceImpl implements OtpService {
         // Increment rate limit counter
         incrementRateLimitCounter("phone", normalizedPhone);
 
-        // Send OTP via SMS
-        try {
-            String message = "Ma xac thuc SaveFood cua ban la: " + otp + ". Ma co hieu luc trong 3 phut.";
-            String result = smsService.sendSms(normalizedPhone, message);
-
-            if ("success".equals(result)) {
-                log.info("OTP sent successfully to phone: {}", normalizedPhone);
-            } else {
-                log.error("Failed to send OTP SMS to: {}", normalizedPhone);
-                throw new RuntimeException("Failed to send OTP SMS. Please try again.");
-            }
-        } catch (Exception e) {
-            log.error("Failed to send OTP SMS to: {}", normalizedPhone, e);
-            throw new RuntimeException("Failed to send OTP SMS. Please try again.");
-        }
+        // Display OTP on console for demo purposes (instead of sending SMS)
+        System.out.println("=".repeat(60));
+        System.out.println("OTP for phone " + normalizedPhone + " is " + otp);
+        System.out.println("=".repeat(60));
+        log.info("OTP displayed on console for phone: {}", normalizedPhone);
     }
 
     @Override
@@ -201,8 +189,7 @@ public class OtpServiceImpl implements OtpService {
 
     /**
      * Normalize a phone number for consistent Redis keying (E.164-like formatting).
-     * This mirrors the logic used in SmsServiceImpl for delivery, ensuring that the
-     * same human-entered number maps to the same key.
+     * This ensures that the same human-entered number maps to the same key.
      */
     private String normalizePhone(String raw) {
         if (raw == null || raw.isBlank()) return raw;

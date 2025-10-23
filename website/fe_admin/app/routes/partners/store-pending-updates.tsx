@@ -1,6 +1,6 @@
 import type { Route } from './+types/store-pending-updates';
 import StorePendingUpdatesPage from "~/pages/partners/StorePendingUpdates";
-import ProtectedRoute from "~/component/ProtectedRoute";
+import ProtectedRoute from "~/component/common/ProtectedRoute";
 
 export function meta({}: Route.MetaArgs) {
   return [

@@ -1,6 +1,6 @@
 import type { Route } from './+types/roles';
 import RolesManagement from '~/pages/settings/RolesManagement';
-import ProtectedRoute from '~/component/ProtectedRoute';
+import ProtectedRoute from '~/component/common/ProtectedRoute';
 import WasteReport from '~/pages/reports/WasteReport';
 
 export function meta({}: Route.MetaArgs) {

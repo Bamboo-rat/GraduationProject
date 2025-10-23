@@ -32,6 +32,10 @@ public enum ErrorCode {
     INVALID_OTP("2013", "Invalid or expired OTP", "Mã OTP không hợp lệ hoặc đã hết hạn", HttpStatus.BAD_REQUEST),
     SMS_SEND_FAILED("2014", "Failed to send SMS", "Gửi tin nhắn SMS thất bại", HttpStatus.INTERNAL_SERVER_ERROR),
     OTP_RATE_LIMIT_EXCEEDED("2015", "Too many OTP requests", "Bạn đã yêu cầu quá nhiều mã OTP. Vui lòng thử lại sau 1 giờ", HttpStatus.TOO_MANY_REQUESTS),
+    INVALID_TOKEN("2016", "Invalid token", "Token không hợp lệ", HttpStatus.BAD_REQUEST),
+    TOKEN_EXPIRED("2017", "Token has expired", "Token đã hết hạn. Vui lòng yêu cầu token mới", HttpStatus.BAD_REQUEST),
+    TOKEN_ALREADY_USED("2018", "Token has already been used", "Token này đã được sử dụng", HttpStatus.BAD_REQUEST),
+    PASSWORD_MISMATCH("2019", "Passwords do not match", "Mật khẩu không khớp nhau", HttpStatus.BAD_REQUEST),
 
     // ===== 3xxx: User, Customer, Supplier Errors =====
     USER_NOT_FOUND("3001", "User not found", "Không tìm thấy người dùng", HttpStatus.NOT_FOUND),

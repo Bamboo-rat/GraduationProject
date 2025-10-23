@@ -1,6 +1,6 @@
 import type { Route } from './+types/marketing';
 import MarketingSettings from '~/pages/settings/MarketingSettings';
-import ProtectedRoute from '~/component/ProtectedRoute';
+import ProtectedRoute from '~/component/common/ProtectedRoute';
 
 export function meta({}: Route.MetaArgs) {
   return [

@@ -1,6 +1,6 @@
 import type { Route } from './+types/reconciliation';
 import FinanceReconciliation from '~/pages/finance/FinanceReconciliation';
-import ProtectedRoute from '~/component/ProtectedRoute';
+import ProtectedRoute from '~/component/common/ProtectedRoute';
 
 export function meta({}: Route.MetaArgs) {
   return [

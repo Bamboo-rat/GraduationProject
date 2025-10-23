@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { productService, type Product, type ProductListParams } from '~/service/productService';
 import type { PaginatedResponse } from '~/service/types';
-import DashboardLayout from '~/component/DashboardLayout';
+import DashboardLayout from '~/component/layout/DashboardLayout';
 
 export default function ProductReviewPage() {
   const [products, setProducts] = useState<Product[]>([]);

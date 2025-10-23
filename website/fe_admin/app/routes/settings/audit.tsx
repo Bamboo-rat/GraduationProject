@@ -1,6 +1,6 @@
 import type { Route } from './+types/audit';
 import AuditLog from '~/pages/settings/AuditLog';
-import ProtectedRoute from '~/component/ProtectedRoute';
+import ProtectedRoute from '~/component/common/ProtectedRoute';
 
 export function meta({}: Route.MetaArgs) {
   return [

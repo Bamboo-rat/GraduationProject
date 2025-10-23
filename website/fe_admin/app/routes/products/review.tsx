@@ -1,6 +1,6 @@
 import type { Route } from './+types/review';
 import ProductReview from "~/pages/products/ProductReview";
-import ProtectedRoute from "~/component/ProtectedRoute";
+import ProtectedRoute from "~/component/common/ProtectedRoute";
 
 export function meta({}: Route.MetaArgs) {
   return [

@@ -7,6 +7,7 @@ import com.example.backend.dto.response.RegisterResponse;
 import com.example.backend.entity.Admin;
 import com.example.backend.entity.User;
 import com.example.backend.entity.enums.AdminStatus;
+import com.example.backend.entity.enums.Role;
 import com.example.backend.exception.ErrorCode;
 import com.example.backend.exception.custom.BadRequestException;
 import com.example.backend.exception.custom.ConflictException;
@@ -20,6 +21,10 @@ import com.example.backend.utils.ValidationUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -234,6 +239,56 @@ public class AdminServiceImpl implements AdminService {
         admin = adminRepository.save(admin);
 
         return adminMapper.toResponse(admin);
+    }
+
+    @Override
+    @Transactional
+    public AdminResponse updateRole(String userId, Role role) {
+        Admin admin = adminRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+
+        log.info("Updating admin role from {} to {}", admin.getRole(), role);
+
+        // Update role in database
+        admin.setRole(role);
+        admin = adminRepository.save(admin);
+
+        // Update role in Keycloak
+        try {
+            String keycloakRoleName = toKeycloakRoleName(role.name());
+            keycloakService.assignRoleToUser(admin.getKeycloakId(), keycloakRoleName);
+            log.info("Keycloak role updated successfully for keycloakId: {}", admin.getKeycloakId());
+        } catch (Exception e) {
+            log.error("Failed to update Keycloak role: {}", admin.getKeycloakId(), e);
+            // Don't fail the operation, log the error
+        }
+
+        return adminMapper.toResponse(admin);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<AdminResponse> getAllAdmins(int page, int size, Role role, AdminStatus status) {
+        log.info("Getting all admins - page: {}, size: {}, role: {}, status: {}", page, size, role, status);
+
+        // Create pageable with sorting by createdAt descending
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        Page<Admin> adminPage;
+
+        // Apply filters
+        if (role != null && status != null) {
+            adminPage = adminRepository.findByRoleAndStatus(role, status, pageable);
+        } else if (role != null) {
+            adminPage = adminRepository.findByRole(role, pageable);
+        } else if (status != null) {
+            adminPage = adminRepository.findByStatus(status, pageable);
+        } else {
+            adminPage = adminRepository.findAll(pageable);
+        }
+
+        // Map to AdminResponse
+        return adminPage.map(adminMapper::toResponse);
     }
 
     // Helper methods

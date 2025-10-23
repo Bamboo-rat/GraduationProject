@@ -47,4 +47,10 @@ export default [
   route("settings/payment", "routes/settings/payment.tsx"),
   route("settings/notifications", "routes/settings/notifications.tsx"),
   route("settings/policies", "routes/settings/policies.tsx"),
+
+  // Profile routes
+  route("profile/login", "routes/profile/login.tsx"),
+  route("profile/registration", "routes/profile/registration.tsx"),
+  route("profile/forgot-password", "routes/profile/forgot-password.tsx"),
+  route("profile/reset-password", "routes/profile/reset-password.tsx"),
 ] satisfies RouteConfig;

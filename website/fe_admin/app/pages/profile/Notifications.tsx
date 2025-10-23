@@ -1,5 +1,5 @@
 import React from 'react'
-import DashboardLayout from '~/component/DashboardLayout';
+import DashboardLayout from '~/component/layout/DashboardLayout';
 
 const Notifications = () => {
     return (

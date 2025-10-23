@@ -1,6 +1,6 @@
 import type { Route } from './+types/waste';
 import WasteReport from '~/pages/reports/WasteReport';
-import ProtectedRoute from '~/component/ProtectedRoute';
+import ProtectedRoute from '~/component/common/ProtectedRoute';
 
 export function meta({}: Route.MetaArgs) {
   return [

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../AuthContext';
 import profileService from '../../service/profileService';
 import * as Icons from 'lucide-react';
-import DashboardLayout from '~/component/DashboardLayout';
+import DashboardLayout from '~/component/layout/DashboardLayout';
 
 interface ProfileFormData {
   username: string;

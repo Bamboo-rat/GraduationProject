@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { categorySuggestionService, type CategorySuggestion, type CategorySuggestionParams } from '~/service/categorySuggestionService';
 import type { PaginatedResponse } from '~/service/types';
-import DashboardLayout from '~/component/DashboardLayout';
+import DashboardLayout from '~/component/layout/DashboardLayout';
 
 export default function CategorySuggestionsPage() {
   const [suggestions, setSuggestions] = useState<CategorySuggestion[]>([]);

@@ -55,4 +55,28 @@ public interface AuthService {
      * @return Login response with tokens
      */
     LoginResponse verifyCustomerLoginOtp(String phoneNumber, String otp);
+
+    /**
+     * Request password reset - Send reset token to email
+     * @param email User email (Admin or Supplier)
+     * @param userType "ADMIN" or "SUPPLIER"
+     * @return Response with success message and expiry time
+     */
+    com.example.backend.dto.response.ResetPasswordResponse requestPasswordReset(String email, String userType);
+
+    /**
+     * Validate reset token
+     * @param token Reset token
+     * @return Response indicating if token is valid
+     */
+    com.example.backend.dto.response.ResetPasswordResponse validateResetToken(String token);
+
+    /**
+     * Reset password using token
+     * @param token Reset token
+     * @param newPassword New password
+     * @param confirmPassword Confirm password
+     * @return Response with success message
+     */
+    com.example.backend.dto.response.ResetPasswordResponse resetPassword(String token, String newPassword, String confirmPassword);
 }

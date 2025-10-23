@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { storeUpdateService, type StorePendingUpdate, type StorePendingUpdateParams } from '~/service/storeUpdateService';
 import type { PaginatedResponse } from '~/service/types';
-import DashboardLayout from '~/component/DashboardLayout';
+import DashboardLayout from '~/component/layout/DashboardLayout';
 
 export default function StorePendingUpdatesPage() {
   const [updates, setUpdates] = useState<StorePendingUpdate[]>([]);

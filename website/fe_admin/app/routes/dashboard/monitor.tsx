@@ -1,6 +1,6 @@
 import type { Route } from './+types/monitor';
 import SystemMonitor from '~/pages/dashboard/SystemMonitor';
-import ProtectedRoute from '~/component/ProtectedRoute';
+import ProtectedRoute from '~/component/common/ProtectedRoute';
 
 export function meta({}: Route.MetaArgs) {
   return [

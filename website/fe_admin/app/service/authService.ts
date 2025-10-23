@@ -70,15 +70,23 @@ class AuthService {
    */
   async logout(): Promise<void> {
     try {
-      // Optional: Call logout endpoint if exists
-      // await axiosInstance.post('/auth/logout');
-      
+      const refreshToken = this.getRefreshToken();
+
+      // Call logout endpoint to revoke refresh token in Keycloak
+      if (refreshToken) {
+        await axiosInstance.post('/auth/logout', null, {
+          params: {
+            refreshToken: refreshToken
+          }
+        });
+      }
+
       // Clear all stored data
       this.clearAuth();
     } catch (error: any) {
       // Clear auth data even if API call fails
       this.clearAuth();
-      throw this.handleError(error);
+      console.error('Logout error:', error);
     }
   }
 
@@ -104,15 +112,20 @@ class AuthService {
         throw new Error('No refresh token available');
       }
 
-      const response = await axiosInstance.post<ApiResponse<{ access_token: string }>>(
+      const response = await axiosInstance.post<ApiResponse<LoginResponse>>(
         '/auth/refresh',
-        { refresh_token: refreshToken }
+        null,
+        {
+          params: {
+            refreshToken: refreshToken
+          }
+        }
       );
 
-      const newAccessToken = response.data.data.access_token;
-      localStorage.setItem('access_token', newAccessToken);
-      
-      return newAccessToken;
+      const loginData = response.data.data;
+      this.setTokens(loginData.accessToken, loginData.refreshToken);
+
+      return loginData.accessToken;
     } catch (error: any) {
       this.clearAuth();
       throw this.handleError(error);

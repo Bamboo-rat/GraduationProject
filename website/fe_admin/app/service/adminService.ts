@@ -1,5 +1,5 @@
 import axiosInstance from '../config/axios';
-import type { ApiResponse } from './authService';
+import type { ApiResponse, PageResponse } from './types';
 
 // Types
 export interface AdminRegisterRequest {
@@ -49,17 +49,18 @@ export interface RegisterResponse {
 
 // Admin Service
 class AdminService {
+  private handleError(error: any): Error {
+    return new Error(error.response?.data?.message || error.message || 'An unexpected error occurred');
+  }
+
   /**
    * Register new admin/staff (SUPER_ADMIN only)
    */
   async registerAdmin(request: AdminRegisterRequest): Promise<RegisterResponse> {
     try {
-      const response = await axiosInstance.post<ApiResponse<RegisterResponse>>(
-        '/admins/register',
-        request
-      );
-      return response.data.data;
-    } catch (error: any) {
+      const { data } = await axiosInstance.post<ApiResponse<RegisterResponse>>('/admins/register', request);
+      return data.data;
+    } catch (error) {
       throw this.handleError(error);
     }
   }
@@ -69,9 +70,9 @@ class AdminService {
    */
   async getCurrentAdmin(): Promise<AdminResponse> {
     try {
-      const response = await axiosInstance.get<ApiResponse<AdminResponse>>('/admins/me');
-      return response.data.data;
-    } catch (error: any) {
+      const { data } = await axiosInstance.get<ApiResponse<AdminResponse>>('/admins/me');
+      return data.data;
+    } catch (error) {
       throw this.handleError(error);
     }
   }
@@ -81,9 +82,9 @@ class AdminService {
    */
   async getAdminById(userId: string): Promise<AdminResponse> {
     try {
-      const response = await axiosInstance.get<ApiResponse<AdminResponse>>(`/admins/${userId}`);
-      return response.data.data;
-    } catch (error: any) {
+      const { data } = await axiosInstance.get<ApiResponse<AdminResponse>>(`/admins/${userId}`);
+      return data.data;
+    } catch (error) {
       throw this.handleError(error);
     }
   }
@@ -93,33 +94,36 @@ class AdminService {
    */
   async updateProfile(request: AdminUpdateRequest): Promise<AdminResponse> {
     try {
-      const response = await axiosInstance.put<ApiResponse<AdminResponse>>(
-        '/admins/me',
-        request
-      );
-      return response.data.data;
-    } catch (error: any) {
+      const { data } = await axiosInstance.put<ApiResponse<AdminResponse>>('/admins/me', request);
+      return data.data;
+    } catch (error) {
       throw this.handleError(error);
     }
   }
 
   /**
    * Get all admins with pagination (super admin only)
-   * TODO: Implement when backend is ready
    */
-  async getAllAdmins(page: number = 0, size: number = 20, role?: string, status?: string): Promise<any> {
+  async getAllAdmins(
+    page: number = 0,
+    size: number = 20,
+    role?: string,
+    status?: string
+  ): Promise<PageResponse<AdminResponse>> {
     try {
-      const params = new URLSearchParams();
-      params.append('page', page.toString());
-      params.append('size', size.toString());
-      if (role) params.append('role', role);
-      if (status) params.append('status', status);
+      const params = new URLSearchParams({
+        page: page.toString(),
+        size: size.toString(),
+      });
+      
+      if (role && role !== 'ALL') params.append('role', role);
+      if (status && status !== 'ALL') params.append('status', status);
 
-      const response = await axiosInstance.get<ApiResponse<any>>(
+      const { data } = await axiosInstance.get<ApiResponse<PageResponse<AdminResponse>>>(
         `/admins?${params.toString()}`
       );
-      return response.data.data;
-    } catch (error: any) {
+      return data.data;
+    } catch (error) {
       throw this.handleError(error);
     }
   }
@@ -129,11 +133,9 @@ class AdminService {
    */
   async approveAdmin(userId: string): Promise<AdminResponse> {
     try {
-      const response = await axiosInstance.patch<ApiResponse<AdminResponse>>(
-        `/admins/${userId}/approve`
-      );
-      return response.data.data;
-    } catch (error: any) {
+      const { data } = await axiosInstance.patch<ApiResponse<AdminResponse>>(`/admins/${userId}/approve`);
+      return data.data;
+    } catch (error) {
       throw this.handleError(error);
     }
   }
@@ -144,11 +146,9 @@ class AdminService {
   async suspendAdmin(userId: string, reason?: string): Promise<AdminResponse> {
     try {
       const params = reason ? `?reason=${encodeURIComponent(reason)}` : '';
-      const response = await axiosInstance.patch<ApiResponse<AdminResponse>>(
-        `/admins/${userId}/suspend${params}`
-      );
-      return response.data.data;
-    } catch (error: any) {
+      const { data } = await axiosInstance.patch<ApiResponse<AdminResponse>>(`/admins/${userId}/suspend${params}`);
+      return data.data;
+    } catch (error) {
       throw this.handleError(error);
     }
   }
@@ -158,23 +158,42 @@ class AdminService {
    */
   async activateAdmin(userId: string): Promise<AdminResponse> {
     try {
-      const response = await axiosInstance.patch<ApiResponse<AdminResponse>>(
-        `/admins/${userId}/activate`
-      );
-      return response.data.data;
-    } catch (error: any) {
+      const { data } = await axiosInstance.patch<ApiResponse<AdminResponse>>(`/admins/${userId}/activate`);
+      return data.data;
+    } catch (error) {
       throw this.handleError(error);
     }
   }
 
   /**
-   * Handle API errors
+   * Update admin role (super admin only)
    */
-  private handleError(error: any): Error {
-    if (error.response?.data?.message) {
-      return new Error(error.response.data.message);
+  async updateAdminRole(userId: string, role: string): Promise<AdminResponse> {
+    try {
+      const { data } = await axiosInstance.patch<ApiResponse<AdminResponse>>(
+        `/admins/${userId}/role?role=${role}`
+      );
+      return data.data;
+    } catch (error) {
+      throw this.handleError(error);
     }
-    return new Error(error.message || 'An unexpected error occurred');
+  }
+
+  /**
+   * Update admin status (super admin only)
+   */
+  async updateAdminStatus(userId: string, status: string): Promise<AdminResponse> {
+    try {
+      // Use existing endpoints based on status
+      if (status === 'ACTIVE') {
+        return await this.approveAdmin(userId);
+      } else if (status === 'INACTIVE') {
+        return await this.suspendAdmin(userId);
+      }
+      throw new Error('Invalid status');
+    } catch (error) {
+      throw this.handleError(error);
+    }
   }
 }
 

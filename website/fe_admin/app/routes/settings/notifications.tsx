@@ -1,6 +1,6 @@
 import type { Route } from './+types/notifications';
 import NotificationsSettings from '~/pages/settings/NotificationsSettings';
-import ProtectedRoute from '~/component/ProtectedRoute';
+import ProtectedRoute from '~/component/common/ProtectedRoute';
 
 export function meta({}: Route.MetaArgs) {
   return [

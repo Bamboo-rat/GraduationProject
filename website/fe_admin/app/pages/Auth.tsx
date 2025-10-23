@@ -213,12 +213,13 @@ const Auth = () => {
                   Ghi nhớ đăng nhập
                 </span>
               </label>
-              <a
-                href="#"
-                className="text-sm text-green-600 hover:text-green-700 font-medium"
+              <button
+                type="button"
+                onClick={() => navigate('/forgot-password')}
+                className="text-sm text-green-600 hover:text-green-700 font-medium transition-colors"
               >
                 Quên mật khẩu?
-              </a>
+              </button>
             </div>
 
             {/* Submit Button */}

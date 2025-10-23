@@ -1,6 +1,6 @@
 import type { Route } from './+types/categories';
 import CategoriesManagement from '~/pages/products/CategoriesManagement';
-import ProtectedRoute from '~/component/ProtectedRoute';
+import ProtectedRoute from '~/component/common/ProtectedRoute';
 
 export function meta({}: Route.MetaArgs) {
   return [

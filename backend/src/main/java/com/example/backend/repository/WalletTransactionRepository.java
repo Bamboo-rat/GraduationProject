@@ -16,37 +16,37 @@ import java.util.List;
  * Repository for WalletTransaction entity
  */
 @Repository
-public interface WalletTransactionRepository extends JpaRepository<WalletTransaction, Long> {
+public interface WalletTransactionRepository extends JpaRepository<WalletTransaction, String> {
 
     /**
      * Find all transactions for a wallet
      */
     @Query("SELECT t FROM WalletTransaction t WHERE t.wallet.walletId = :walletId ORDER BY t.createdAt DESC")
-    Page<WalletTransaction> findByWalletId(Long walletId, Pageable pageable);
+    Page<WalletTransaction> findByWalletId(String walletId, Pageable pageable);
 
     /**
      * Find transactions by wallet and type
      */
     @Query("SELECT t FROM WalletTransaction t WHERE t.wallet.walletId = :walletId AND t.transactionType = :type ORDER BY t.createdAt DESC")
-    Page<WalletTransaction> findByWalletIdAndType(Long walletId, TransactionType type, Pageable pageable);
+    Page<WalletTransaction> findByWalletIdAndType(String walletId, TransactionType type, Pageable pageable);
 
     /**
      * Find transactions by wallet and date range
      */
     @Query("SELECT t FROM WalletTransaction t WHERE t.wallet.walletId = :walletId AND t.createdAt BETWEEN :startDate AND :endDate ORDER BY t.createdAt DESC")
-    List<WalletTransaction> findByWalletIdAndDateRange(Long walletId, LocalDateTime startDate, LocalDateTime endDate);
+    List<WalletTransaction> findByWalletIdAndDateRange(String walletId, LocalDateTime startDate, LocalDateTime endDate);
 
     /**
      * Find transactions by order ID
      */
     @Query("SELECT t FROM WalletTransaction t WHERE t.order.orderId = :orderId ORDER BY t.createdAt DESC")
-    List<WalletTransaction> findByOrderId(Long orderId);
+    List<WalletTransaction> findByOrderId(String orderId);
 
     /**
      * Get total amount by transaction type for a wallet
      */
     @Query("SELECT COALESCE(SUM(t.amount), 0) FROM WalletTransaction t WHERE t.wallet.walletId = :walletId AND t.transactionType = :type")
-    BigDecimal getTotalAmountByType(Long walletId, TransactionType type);
+    BigDecimal getTotalAmountByType(String walletId, TransactionType type);
 
     /**
      * Count transactions by type in date range

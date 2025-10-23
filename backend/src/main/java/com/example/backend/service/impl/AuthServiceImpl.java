@@ -40,6 +40,10 @@ public class AuthServiceImpl implements AuthService {
     private final KeycloakService keycloakService;
     private final UserRepository userRepository;
     private final OtpService otpService;
+    private final com.example.backend.repository.AdminRepository adminRepository;
+    private final com.example.backend.repository.SupplierRepository supplierRepository;
+    private final com.example.backend.repository.PasswordResetTokenRepository passwordResetTokenRepository;
+    private final com.example.backend.service.EmailService emailService;
 
     @Override
     @Transactional(readOnly = true)
@@ -313,5 +317,151 @@ public class AuthServiceImpl implements AuthService {
             log.error("Failed to authenticate customer after OTP verification", e);
             throw new UnauthorizedException(ErrorCode.KEYCLOAK_AUTHENTICATION_FAILED);
         }
+    }
+
+    @Override
+    @Transactional
+    public com.example.backend.dto.response.ResetPasswordResponse requestPasswordReset(String email, String userType) {
+        log.info("Password reset requested for email: {}, userType: {}", email, userType);
+
+        // Validate userType
+        if (!userType.equalsIgnoreCase("ADMIN") && !userType.equalsIgnoreCase("SUPPLIER")) {
+            throw new BadRequestException(ErrorCode.INVALID_REQUEST, "User type must be either ADMIN or SUPPLIER");
+        }
+
+        // Find user by email based on userType
+        String keycloakId;
+        String fullName;
+
+        if (userType.equalsIgnoreCase("ADMIN")) {
+            Admin admin = adminRepository.findByEmail(email)
+                    .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND, "Admin not found with email: " + email));
+
+            // Check if admin is active
+            if (admin.getStatus() != AdminStatus.ACTIVE) {
+                throw new BadRequestException(ErrorCode.ACCOUNT_INACTIVE, "Cannot reset password for inactive account");
+            }
+
+            keycloakId = admin.getKeycloakId();
+            fullName = admin.getFullName();
+
+        } else { // SUPPLIER
+            Supplier supplier = supplierRepository.findByEmail(email)
+                    .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND, "Supplier not found with email: " + email));
+
+            // Check if supplier is active
+            if (supplier.getStatus() != SupplierStatus.ACTIVE && supplier.getStatus() != SupplierStatus.PAUSE) {
+                throw new BadRequestException(ErrorCode.ACCOUNT_INACTIVE, "Cannot reset password for inactive account");
+            }
+
+            keycloakId = supplier.getKeycloakId();
+            fullName = supplier.getFullName();
+        }
+
+        // Invalidate any existing valid tokens for this user
+        passwordResetTokenRepository.invalidateAllTokensForUser(keycloakId, java.time.LocalDateTime.now());
+
+        // Generate unique token (UUID)
+        String resetToken = UUID.randomUUID().toString();
+
+        // Create token entity with 1 hour expiry
+        com.example.backend.entity.PasswordResetToken tokenEntity = new com.example.backend.entity.PasswordResetToken();
+        tokenEntity.setToken(resetToken);
+        tokenEntity.setKeycloakId(keycloakId);
+        tokenEntity.setUserType(userType.toUpperCase());
+        tokenEntity.setEmail(email);
+        tokenEntity.setExpiryDate(java.time.LocalDateTime.now().plusHours(1));
+
+        passwordResetTokenRepository.save(tokenEntity);
+
+        // Send email with reset link
+        try {
+            emailService.sendPasswordResetEmail(email, fullName, resetToken);
+            log.info("Password reset email sent successfully to: {}", email);
+        } catch (Exception e) {
+            log.error("Failed to send password reset email to: {}", email, e);
+            // Don't throw exception, token is already created
+        }
+
+        return com.example.backend.dto.response.ResetPasswordResponse.builder()
+                .success(true)
+                .message("Password reset email has been sent. Please check your inbox.")
+                .email(email)
+                .expiryDate(tokenEntity.getExpiryDate())
+                .userType(userType.toUpperCase())
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public com.example.backend.dto.response.ResetPasswordResponse validateResetToken(String token) {
+        log.info("Validating reset token: {}", token);
+
+        // Find token
+        com.example.backend.entity.PasswordResetToken tokenEntity = passwordResetTokenRepository.findByToken(token)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.INVALID_TOKEN, "Invalid or expired reset token"));
+
+        // Check if token is valid (not used and not expired)
+        if (!tokenEntity.isValid()) {
+            if (tokenEntity.isUsed()) {
+                throw new BadRequestException(ErrorCode.TOKEN_ALREADY_USED, "This reset token has already been used");
+            } else {
+                throw new BadRequestException(ErrorCode.TOKEN_EXPIRED, "This reset token has expired. Please request a new one.");
+            }
+        }
+
+        return com.example.backend.dto.response.ResetPasswordResponse.builder()
+                .success(true)
+                .message("Token is valid")
+                .email(tokenEntity.getEmail())
+                .expiryDate(tokenEntity.getExpiryDate())
+                .userType(tokenEntity.getUserType())
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public com.example.backend.dto.response.ResetPasswordResponse resetPassword(String token, String newPassword, String confirmPassword) {
+        log.info("Resetting password with token: {}", token);
+
+        // Check if passwords match
+        if (!newPassword.equals(confirmPassword)) {
+            throw new BadRequestException(ErrorCode.PASSWORD_MISMATCH, "Passwords do not match");
+        }
+
+        // Find and validate token
+        com.example.backend.entity.PasswordResetToken tokenEntity = passwordResetTokenRepository.findByToken(token)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.INVALID_TOKEN, "Invalid or expired reset token"));
+
+        // Check if token is valid
+        if (!tokenEntity.isValid()) {
+            if (tokenEntity.isUsed()) {
+                throw new BadRequestException(ErrorCode.TOKEN_ALREADY_USED, "This reset token has already been used");
+            } else {
+                throw new BadRequestException(ErrorCode.TOKEN_EXPIRED, "This reset token has expired. Please request a new one.");
+            }
+        }
+
+        // Update password in Keycloak
+        try {
+            keycloakService.updateUserPassword(tokenEntity.getKeycloakId(), newPassword);
+            log.info("Password updated successfully in Keycloak for user: {}", tokenEntity.getEmail());
+        } catch (Exception e) {
+            log.error("Failed to update password in Keycloak for user: {}", tokenEntity.getEmail(), e);
+            throw new BadRequestException(ErrorCode.KEYCLOAK_PASSWORD_UPDATE_FAILED, "Failed to update password. Please try again.");
+        }
+
+        // Mark token as used
+        tokenEntity.markAsUsed();
+        passwordResetTokenRepository.save(tokenEntity);
+
+        log.info("Password reset successful for user: {}", tokenEntity.getEmail());
+
+        return com.example.backend.dto.response.ResetPasswordResponse.builder()
+                .success(true)
+                .message("Password has been reset successfully. You can now login with your new password.")
+                .email(tokenEntity.getEmail())
+                .userType(tokenEntity.getUserType())
+                .build();
     }
 }

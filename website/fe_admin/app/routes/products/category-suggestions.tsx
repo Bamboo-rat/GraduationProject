@@ -1,6 +1,6 @@
 import type { Route } from './+types/category-suggestions';
 import CategorySuggestions from "~/pages/products/CategorySuggestions";
-import ProtectedRoute from "~/component/ProtectedRoute";
+import ProtectedRoute from "~/component/common/ProtectedRoute";
 
 export function meta({}: Route.MetaArgs) {
   return [

@@ -10,8 +10,9 @@ export default [
 
     // Profile
     route("profile", "routes/profile.tsx"),
+    route("reset-password", "routes/resetPassword.tsx"),
+    route("forgot-password", "routes/forgotPassword.tsx"),
     
-
     // Partners Management
     route("partners/list", "routes/partners/list.tsx"),
     route("partners/pending", "routes/partners/pending.tsx"),
@@ -46,4 +47,7 @@ export default [
     route("settings/marketing", "routes/settings/marketing.tsx"),
     route("settings/notifications", "routes/settings/notifications.tsx"),
     route("settings/audit", "routes/settings/audit.tsx")
+
+    // Employees - Admins
+    ,route("employees/admins", "routes/employees/admins.tsx")
 ] satisfies RouteConfig;
