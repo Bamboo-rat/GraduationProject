@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.annotations.UuidGenerator;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -31,8 +32,8 @@ import java.util.List;
 public class SupplierWallet {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long walletId;
+    @UuidGenerator
+    private String walletId;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "supplier_id", nullable = false, unique = true)

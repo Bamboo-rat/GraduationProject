@@ -1,5 +1,6 @@
 package com.example.backend.entity;
 
+import com.example.backend.entity.enums.BannerStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -9,7 +10,6 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.annotations.UuidGenerator;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter
@@ -17,22 +17,30 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "banners")
+@Table(name = "banners", indexes = {
+    @Index(name = "idx_banner_status", columnList = "status"),
+    @Index(name = "idx_banner_created", columnList = "createdAt")
+})
 public class Banner {
     @Id
     @UuidGenerator
     private String bannerId;
 
-    private String title;
-    private String imageUrl;
-    private String linkUrl;
-    private String status; // "ACTIVE" or "INACTIVE"
-    private LocalDate startDate;
-    private LocalDate endDate;
+    @Column(nullable = false, length = 255)
+    private String imageUrl; // URL ảnh banner
+
+    @Column(length = 500)
+    private String linkUrl; // URL khi click vào banner (optional)
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private BannerStatus status = BannerStatus.ACTIVE; // ACTIVE or INACTIVE
 
     @CreationTimestamp
+    @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
 }

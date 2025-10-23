@@ -68,7 +68,7 @@ public class SupplierResponse {
     @AllArgsConstructor
     @Builder
     public static class WalletInfo {
-        private Long walletId;
+        private String walletId;
         private BigDecimal availableBalance;    // Số dư khả dụng (có thể rút)
         private BigDecimal pendingBalance;      // Số dư đang giữ (đơn hàng đang xử lý)
         private BigDecimal totalEarnings;       // Tổng thu nhập từ trước đến nay
