@@ -1,8 +1,11 @@
 // Common API response types
 export interface ApiResponse<T> {
-  code: string;
-  message: string;
+  success: boolean;
   data: T;
+  timestamp?: string;
+  // Legacy fields for backward compatibility
+  code?: string;
+  message?: string;
 }
 
 export interface PaginatedResponse<T> {

@@ -21,6 +21,23 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @Tag(name = "Authentication", description = "Common authentication endpoints (login, logout, registration)")
 public class AuthController {
+    // ===== CUSTOMER LOGIN (Phone + OTP) - No authentication required =====
+
+    @PostMapping("/login/customer/step1")
+    @Operation(summary = "Customer login - Step 1", description = "Send OTP to customer's phone for login (console log in dev mode)")
+    public ResponseEntity<ApiResponse<String>> loginCustomerStep1(@RequestParam String phoneNumber) {
+        log.info("POST /api/auth/login/customer/step1 - Sending OTP to phone: {}", phoneNumber);
+        customerService.sendLoginOtp(phoneNumber);
+        return ResponseEntity.ok(ApiResponse.success("OTP sent to phone (check console log in dev mode)"));
+    }
+
+    @PostMapping("/login/customer/step2")
+    @Operation(summary = "Customer login - Step 2", description = "Verify OTP and login, return JWT token")
+    public ResponseEntity<ApiResponse<LoginResponse>> loginCustomerStep2(@RequestParam String phoneNumber, @RequestParam String otp) {
+        log.info("POST /api/auth/login/customer/step2 - Verifying OTP for phone: {}", phoneNumber);
+        LoginResponse response = customerService.verifyLoginOtpAndLogin(phoneNumber, otp);
+        return ResponseEntity.ok(ApiResponse.success("Login successful", response));
+    }
 
     private final AuthService authService;
     private final com.example.backend.service.CustomerService customerService;
@@ -28,10 +45,9 @@ public class AuthController {
 
     // ===== CUSTOMER REGISTRATION (Phone + OTP) - No authentication required =====
     
-    /*
     @PostMapping("/register/customer/step1")
     @Operation(summary = "Customer registration - Step 1", 
-               description = "Register with phone number only. OTP will be sent via SMS.")
+               description = "Register with phone number only. OTP will be sent via SMS (console log in dev mode).")
     public ResponseEntity<ApiResponse<com.example.backend.dto.response.RegisterResponse>> registerCustomerStep1(
             @Valid @RequestBody com.example.backend.dto.request.CustomerRequest request) {
         log.info("POST /api/auth/register/customer/step1 - Registering customer with phone: {}", request.getPhoneNumber());
@@ -52,13 +68,12 @@ public class AuthController {
 
     @PostMapping("/register/customer/resend-otp")
     @Operation(summary = "Resend OTP for customer registration", 
-               description = "Resend OTP to phone number for pending verification account")
+               description = "Resend OTP to phone number for pending verification account (console log in dev mode)")
     public ResponseEntity<ApiResponse<String>> resendCustomerOtp(@RequestParam String phoneNumber) {
         log.info("POST /api/auth/register/customer/resend-otp - Resending OTP to phone: {}", phoneNumber);
         String message = customerService.resendOtp(phoneNumber);
         return ResponseEntity.ok(ApiResponse.success(message));
     }
-    */
 
     // ===== COMMON LOGIN =====
 
@@ -153,39 +168,39 @@ public class AuthController {
         return ResponseEntity.ok(ApiResponse.success(message));
     }
 
-    // ===== PASSWORD RESET (Forgot Password) - No authentication required =====
+    // ===== PASSWORD RESET (3-Step OTP-Based Flow) - No authentication required =====
 
     @PostMapping("/forgot-password")
-    @Operation(summary = "Request password reset", 
-               description = "Request password reset link via email. Works for both Admin and Supplier accounts. A reset token will be sent to the registered email address.")
+    @Operation(summary = "Password Reset - Step 1: Request OTP",
+               description = "Request password reset by sending a 6-digit OTP to email. Works for both Admin and Supplier accounts. OTP is valid for 10 minutes.")
     public ResponseEntity<ApiResponse<com.example.backend.dto.response.ResetPasswordResponse>> forgotPassword(
             @Valid @RequestBody com.example.backend.dto.request.ForgotPasswordRequest request) {
-        log.info("POST /api/auth/forgot-password - Password reset requested for email: {}, userType: {}", 
+        log.info("POST /api/auth/forgot-password - Password reset OTP requested for email: {}, userType: {}",
                 request.getEmail(), request.getUserType());
-        com.example.backend.dto.response.ResetPasswordResponse response = 
+        com.example.backend.dto.response.ResetPasswordResponse response =
                 authService.requestPasswordReset(request.getEmail(), request.getUserType());
-        return ResponseEntity.ok(ApiResponse.success("Password reset email sent successfully", response));
+        return ResponseEntity.ok(ApiResponse.success("OTP sent to your email. Please check your inbox.", response));
     }
 
-    @PostMapping("/validate-reset-token")
-    @Operation(summary = "Validate password reset token", 
-               description = "Validate if a password reset token is still valid (not used and not expired)")
-    public ResponseEntity<ApiResponse<com.example.backend.dto.response.ResetPasswordResponse>> validateResetToken(
-            @Valid @RequestBody com.example.backend.dto.request.ValidateResetTokenRequest request) {
-        log.info("POST /api/auth/validate-reset-token - Validating token");
-        com.example.backend.dto.response.ResetPasswordResponse response = 
-                authService.validateResetToken(request.getToken());
-        return ResponseEntity.ok(ApiResponse.success("Token is valid", response));
+    @PostMapping("/verify-reset-otp")
+    @Operation(summary = "Password Reset - Step 2: Verify OTP and get reset token",
+               description = "Verify the OTP sent to your email. If valid, a temporary reset token will be returned (valid for 10 minutes).")
+    public ResponseEntity<ApiResponse<com.example.backend.dto.response.ResetPasswordResponse>> verifyResetOtp(
+            @Valid @RequestBody com.example.backend.dto.request.VerifyResetOtpRequest request) {
+        log.info("POST /api/auth/verify-reset-otp - Verifying OTP for email: {}", request.getEmail());
+        com.example.backend.dto.response.ResetPasswordResponse response =
+                authService.verifyResetOtp(request.getEmail(), request.getOtp());
+        return ResponseEntity.ok(ApiResponse.success("OTP verified successfully. Use the reset token to update your password.", response));
     }
 
     @PostMapping("/reset-password")
-    @Operation(summary = "Reset password", 
-               description = "Reset password using the reset token received via email. The new password must match the confirmation password and meet security requirements (min 8 characters, at least one uppercase, one lowercase, one number, and one special character).")
+    @Operation(summary = "Password Reset - Step 3: Reset password with token",
+               description = "Reset password using the temporary reset token from Step 2. The new password must match the confirmation password and meet security requirements (min 8 characters, at least one uppercase, one lowercase, one number, and one special character).")
     public ResponseEntity<ApiResponse<com.example.backend.dto.response.ResetPasswordResponse>> resetPassword(
             @Valid @RequestBody com.example.backend.dto.request.ResetPasswordRequest request) {
         log.info("POST /api/auth/reset-password - Resetting password with token");
-        com.example.backend.dto.response.ResetPasswordResponse response = 
+        com.example.backend.dto.response.ResetPasswordResponse response =
                 authService.resetPassword(request.getToken(), request.getNewPassword(), request.getConfirmPassword());
-        return ResponseEntity.ok(ApiResponse.success("Password reset successfully", response));
+        return ResponseEntity.ok(ApiResponse.success("Password reset successfully. You can now login with your new password.", response));
     }
 }

@@ -1,5 +1,5 @@
 import type { Route } from './+types/performance';
-import PartnersPending from '~/pages/partners/PartnersPending';
+import PartnersPerformance from '~/pages/partners/PartnersPerformance';
 import ProtectedRoute from '~/component/common/ProtectedRoute';
 
 export function meta({}: Route.MetaArgs) {
@@ -12,7 +12,7 @@ export function meta({}: Route.MetaArgs) {
 export default function PerformanceRoute() {
   return (
     <ProtectedRoute requiredRoles={['SUPER_ADMIN', 'MODERATOR', 'STAFF']}>
-      <PartnersPending />
+      <PartnersPerformance />
     </ProtectedRoute>
   );
 }

@@ -7,7 +7,8 @@
       "link": "/dashboard",
       "subMenu": [
         { "title": "Tổng quan", "link": "/dashboard/overview", "icon": "home" },
-        { "title": "Giám sát hệ thống", "link": "/dashboard/monitor", "icon": "activity" }
+        { "title": "Giám sát hệ thống", "link": "/dashboard/monitor", "icon": "activity" },
+        { "title": "Giám sát Email", "link": "/dashboard/notification-monitor", "icon": "mail" }
       ]
     },
     {
@@ -16,9 +17,9 @@
       "icon": "store",
       "link": "/partners",
       "subMenu": [
-        { "title": "Danh sách Đối tác", "link": "/partners/list", "icon": "list" },
-        { "title": "Yêu cầu cần duyệt", "link": "/partners/pending", "icon": "clock" },
-        { "title": "Cập nhật cửa hàng", "link": "/partners/store-pending-updates", "icon": "file-edit" },
+        { "title": "Danh sách Đối tác", "link": "/partners/list-partners", "icon": "list" },
+        { "title": "Duyệt Đối tác", "link": "/partners/pending", "icon": "clock" },
+        { "title": "Duyệt Cửa hàng mới", "link": "/partners/store-approval", "icon": "store" },
         { "title": "Báo cáo Hiệu suất", "link": "/partners/performance", "icon": "trending-up" }
       ]
     },
@@ -28,7 +29,7 @@
       "icon": "shopping-bag",
       "link": "/products",
       "subMenu": [
-        { "title": "Tất cả Sản phẩm", "link": "/products/list", "icon": "package" },
+        { "title": "Tất cả Sản phẩm", "link": "/products/list-products", "icon": "package" },
         { "title": "Sản phẩm cần duyệt", "link": "/products/review", "icon": "file-check" },
         { "title": "Đề xuất danh mục", "link": "/products/category-suggestions", "icon": "folder-plus" },
         { "title": "Quản lý Danh mục", "link": "/products/categories", "icon": "tags" }
@@ -40,7 +41,7 @@
       "icon": "users",
       "link": "/customers",
       "subMenu": [
-        { "title": "Danh sách Khách hàng", "link": "/customers/list", "icon": "user-check" },
+        { "title": "Danh sách Khách hàng", "link": "/customers/list-customers", "icon": "user-check" },
         { "title": "Hỗ trợ & Khiếu nại", "link": "/support/tickets", "icon": "message-circle" }
       ]
     },
@@ -50,7 +51,7 @@
       "icon": "truck",
       "link": "/operations",
       "subMenu": [
-        { "title": "Quản lý Đơn hàng", "link": "/orders/list", "icon": "shopping-cart" },
+        { "title": "Quản lý Đơn hàng", "link": "/orders/list-orders", "icon": "shopping-cart" },
         { "title": "Quản lý Giao nhận", "link": "/delivery/management", "icon": "package-check" }
       ]
     },

@@ -57,26 +57,27 @@ public interface AuthService {
     LoginResponse verifyCustomerLoginOtp(String phoneNumber, String otp);
 
     /**
-     * Request password reset - Send reset token to email
+     * Step 1: Request password reset - Send OTP to email
      * @param email User email (Admin or Supplier)
      * @param userType "ADMIN" or "SUPPLIER"
-     * @return Response with success message and expiry time
+     * @return Response with success message
      */
-    com.example.backend.dto.response.ResetPasswordResponse requestPasswordReset(String email, String userType);
+    ResetPasswordResponse requestPasswordReset(String email, String userType);
 
     /**
-     * Validate reset token
-     * @param token Reset token
-     * @return Response indicating if token is valid
+     * Step 2: Verify OTP and generate temporary reset token
+     * @param email User email
+     * @param otp OTP code from email
+     * @return Response with temporary reset token (valid 10 min)
      */
-    com.example.backend.dto.response.ResetPasswordResponse validateResetToken(String token);
+    ResetPasswordResponse verifyResetOtp(String email, String otp);
 
     /**
-     * Reset password using token
-     * @param token Reset token
+     * Step 3: Reset password using temporary token from Step 2
+     * @param resetToken Temporary reset token from verifyResetOtp
      * @param newPassword New password
      * @param confirmPassword Confirm password
      * @return Response with success message
      */
-    com.example.backend.dto.response.ResetPasswordResponse resetPassword(String token, String newPassword, String confirmPassword);
+    ResetPasswordResponse resetPassword(String resetToken, String newPassword, String confirmPassword);
 }

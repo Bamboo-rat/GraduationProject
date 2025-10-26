@@ -51,7 +51,7 @@ public class CustomerController {
     }
 
     @GetMapping("/{userId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF','SUPPLIER')")
     @Operation(summary = "Get customer by ID", 
                description = "Get detailed customer information by user ID (admin only)")
     public ResponseEntity<ApiResponse<CustomerResponse>> getCustomerById(@PathVariable String userId) {

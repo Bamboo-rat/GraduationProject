@@ -1,34 +1,57 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams, useNavigate } from 'react-router';
 import storeService from '~/service/storeService';
-import type { Store, SubmitStoreUpdateRequest } from '~/service/storeService';
+import type { StoreResponse, StoreUpdateRequest } from '~/service/storeService';
 
 export default function StoreUpdateRequest() {
-  const [store, setStore] = useState<Store | null>(null);
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const storeId = searchParams.get('storeId');
+
+  const [store, setStore] = useState<StoreResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  const [formData, setFormData] = useState<SubmitStoreUpdateRequest>({
-    newStoreName: '',
-    newAddress: '',
-    newPhoneNumber: '',
-    newDescription: '',
-    newLatitude: undefined,
-    newLongitude: undefined,
+  const [formData, setFormData] = useState<StoreUpdateRequest>({
+    name: '',
+    address: '',
+    ward: '',
+    district: '',
+    city: '',
+    phoneNumber: '',
+    description: '',
+    email: '',
+    latitude: undefined,
+    longitude: undefined,
+    imageUrls: [],
+    openingHours: '',
   });
 
   const fetchStoreInfo = async () => {
+    if (!storeId) {
+      alert('Không tìm thấy ID cửa hàng');
+      navigate('/store/list');
+      return;
+    }
+
     try {
       setLoading(true);
-      const data = await storeService.getMyStore();
+      const data = await storeService.getStoreById(storeId);
       setStore(data);
       // Pre-fill form with current data
       setFormData({
-        newStoreName: data.storeName,
-        newAddress: data.address,
-        newPhoneNumber: data.phoneNumber,
-        newDescription: data.description || '',
-        newLatitude: data.latitude,
-        newLongitude: data.longitude,
+        name: data.name,
+        address: data.address,
+        ward: data.ward,
+        district: data.district,
+        city: data.city,
+        phoneNumber: data.phoneNumber,
+        description: data.description,
+        email: data.email,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        imageUrls: data.imageUrls,
+        openingHours: data.openingHours,
       });
     } catch (error) {
       console.error('Error fetching store:', error);
@@ -45,7 +68,7 @@ export default function StoreUpdateRequest() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.newStoreName?.trim() || !formData.newAddress?.trim() || !formData.newPhoneNumber?.trim()) {
+    if (!formData.name?.trim() || !formData.address?.trim() || !formData.phoneNumber?.trim()) {
       alert('Vui lòng nhập đầy đủ thông tin bắt buộc');
       return;
     }
@@ -54,14 +77,22 @@ export default function StoreUpdateRequest() {
       return;
     }
 
+    if (!storeId) return;
+
     try {
       setSubmitting(true);
-      await storeService.submitStoreUpdate(formData);
-      alert('Gửi yêu cầu cập nhật thành công. Vui lòng chờ admin phê duyệt.');
-      window.location.href = '/store/update-history';
+      const result = await storeService.updateStore(storeId, formData);
+
+      if (result.updateType === 'IMMEDIATE') {
+        alert('Cập nhật thông tin cửa hàng thành công!');
+      } else {
+        alert('Gửi yêu cầu cập nhật thành công. Vui lòng chờ admin phê duyệt.');
+      }
+
+      navigate('/store/update-history');
     } catch (error: any) {
       console.error('Error submitting update:', error);
-      const errorMessage = error.response?.data?.message || 'Lỗi khi gửi yêu cầu cập nhật';
+      const errorMessage = error.message || 'Lỗi khi gửi yêu cầu cập nhật';
       alert(errorMessage);
     } finally {
       setSubmitting(false);
@@ -119,13 +150,13 @@ export default function StoreUpdateRequest() {
               </label>
               <input
                 type="text"
-                name="newStoreName"
-                value={formData.newStoreName}
+                name="name"
+                value={formData.name}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
-              <p className="text-xs text-gray-500 mt-1">Hiện tại: {store.storeName}</p>
+              <p className="text-xs text-gray-500 mt-1">Hiện tại: {store.name}</p>
             </div>
 
             {/* Phone Number */}
@@ -135,8 +166,8 @@ export default function StoreUpdateRequest() {
               </label>
               <input
                 type="tel"
-                name="newPhoneNumber"
-                value={formData.newPhoneNumber}
+                name="phoneNumber"
+                value={formData.phoneNumber}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
@@ -151,8 +182,8 @@ export default function StoreUpdateRequest() {
               </label>
               <input
                 type="text"
-                name="newAddress"
-                value={formData.newAddress}
+                name="address"
+                value={formData.address}
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
@@ -164,8 +195,8 @@ export default function StoreUpdateRequest() {
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Mô tả</label>
               <textarea
-                name="newDescription"
-                value={formData.newDescription}
+                name="description"
+                value={formData.description}
                 onChange={handleChange}
                 rows={4}
                 className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -178,15 +209,15 @@ export default function StoreUpdateRequest() {
             {/* Latitude - Hidden but keep data */}
             <input
               type="hidden"
-              name="newLatitude"
-              value={formData.newLatitude || ''}
+              name="latitude"
+              value={formData.latitude || ''}
             />
 
             {/* Longitude - Hidden but keep data */}
             <input
               type="hidden"
-              name="newLongitude"
-              value={formData.newLongitude || ''}
+              name="longitude"
+              value={formData.longitude || ''}
             />
           </div>
 

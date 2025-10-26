@@ -12,7 +12,7 @@ export function meta({}: Route.MetaArgs) {
 
 export default function InventoryAlertRoute() {
   return (
-    <ProtectedRoute requireRoles={['SUPPLIER']}>
+    <ProtectedRoute requiredRoles={['SUPPLIER']}>
       <DashboardLayout>
         <InventoryAlert />
       </DashboardLayout>

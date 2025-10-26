@@ -71,13 +71,22 @@
       "icon": "store",
       "link": "/store",
       "subMenu": [
-        { "title": "Thông tin cửa hàng", "link": "/store/profile" },
-        { "title": "Cập nhật hồ sơ", "link": "/store/update-request" },
+        { "title": "Danh sách cửa hàng", "link": "/store/list" },
+        { "title": "Cập nhật hồ sơ", "link": "/store/profile" },
         { "title": "Lịch sử thay đổi", "link": "/store/update-history" }
       ]
     },
     {
       "id": 8,
+      "title": "Khuyến mãi",
+      "icon": "gift",
+      "link": "/promotions",
+      "subMenu": [
+        { "title": "Danh sách Khuyến mãi", "link": "/promotions/list" }
+      ]
+    },
+    {
+      "id": 9,
       "title": "Khách hàng & Phản hồi",
       "icon": "users",
       "link": "/feedback",
@@ -87,7 +96,7 @@
       ]
     },
     {
-      "id": 9,
+      "id": 10,
       "title": "Cấu hình",
       "icon": "settings",
       "link": "/settings",

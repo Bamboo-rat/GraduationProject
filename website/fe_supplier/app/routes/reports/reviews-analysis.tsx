@@ -1,5 +1,7 @@
 import type { Route } from './+types/reviews-analysis';
 import ReviewsAnalysis from '~/pages/reports/ReviewsAnalysis';
+import DashboardLayout from '~/component/layout/DashboardLayout';
+import ProtectedRoute from '~/component/common/ProtectedRoute';
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -9,5 +11,11 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function ReviewsAnalysisRoute() {
-  return <ReviewsAnalysis />;
+  return (
+    <ProtectedRoute requiredRoles={['SUPPLIER']}>
+      <DashboardLayout>
+        <ReviewsAnalysis />
+      </DashboardLayout>
+    </ProtectedRoute>
+  );
 }

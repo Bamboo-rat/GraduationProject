@@ -1,5 +1,7 @@
 import type { Route } from './+types/assign';
 import DeliveryAssign from '~/pages/delivery/DeliveryAssign';
+import DashboardLayout from '~/component/layout/DashboardLayout';
+import ProtectedRoute from '~/component/common/ProtectedRoute';
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -9,5 +11,11 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function DeliveryAssignRoute() {
-  return <DeliveryAssign />;
+  return (
+    <ProtectedRoute requiredRoles={['SUPPLIER']}>
+      <DashboardLayout>
+        <DeliveryAssign />
+      </DashboardLayout>
+    </ProtectedRoute>
+  );
 }

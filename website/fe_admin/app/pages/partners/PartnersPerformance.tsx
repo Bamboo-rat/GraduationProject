@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import DashboardLayout from '~/component/layout/DashboardLayout';
-import partnerPerformanceService, {
+import partnerPerformanceService  from '~/service/partnerPerformanceService';
+import type {
   PartnerPerformanceSummary,
   PartnerPerformanceMetrics,
 } from '~/service/partnerPerformanceService';

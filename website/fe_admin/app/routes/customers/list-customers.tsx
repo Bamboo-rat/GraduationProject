@@ -1,4 +1,4 @@
-import type { Route } from './+types/list';
+import type { Route } from './+types/list-customers';
 import CustomersList from '~/pages/customers/CustomersList';
 import ProtectedRoute from '~/component/common/ProtectedRoute';
 

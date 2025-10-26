@@ -37,7 +37,14 @@ public class Product {
     private String description;
 
     @Enumerated(EnumType.STRING)
-    private ProductStatus status = ProductStatus.PENDING_APPROVAL;
+    private ProductStatus status = ProductStatus.ACTIVE;
+
+    // Timestamp when product became SOLD_OUT or EXPIRED (for auto-INACTIVE scheduler)
+    private LocalDate soldOutSince;
+    private LocalDate expiredSince;
+
+    // Suspension details (set by admin)
+    private String suspensionReason;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "supplier_id", nullable = false)
@@ -58,4 +65,45 @@ public class Product {
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private List<ProductVariant> variants = new ArrayList<>();
+
+    /**
+     * Calculate total inventory across all variants and stores
+     * @return Total stock quantity
+     */
+    public int getTotalInventory() {
+        return variants.stream()
+                .flatMap(variant -> variant.getStoreProducts().stream())
+                .mapToInt(StoreProduct::getStockQuantity)
+                .sum();
+    }
+
+    /**
+     * Check if any variant has expired
+     * @return true if any variant's expiry date has passed
+     */
+    public boolean hasExpiredVariant() {
+        LocalDate today = LocalDate.now();
+        return variants.stream()
+                .anyMatch(variant -> variant.getExpiryDate() != null
+                        && variant.getExpiryDate().isBefore(today));
+    }
+
+    /**
+     * Check if product should be auto-set to INACTIVE
+     * (SOLD_OUT or EXPIRED for more than 1 day)
+     * @return true if eligible for auto-INACTIVE
+     */
+    public boolean shouldAutoSetInactive() {
+        LocalDate oneDayAgo = LocalDate.now().minusDays(1);
+
+        if (soldOutSince != null && soldOutSince.isBefore(oneDayAgo)) {
+            return true;
+        }
+
+        if (expiredSince != null && expiredSince.isBefore(oneDayAgo)) {
+            return true;
+        }
+
+        return false;
+    }
 }

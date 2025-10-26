@@ -31,6 +31,7 @@ public class OtpServiceImpl implements OtpService {
 
     private static final int OTP_LENGTH = 6;
     private static final int OTP_EXPIRY_MINUTES = 3;
+    private static final int PASSWORD_RESET_OTP_EXPIRY_MINUTES = 10;
     private static final int MAX_OTP_REQUESTS_PER_HOUR = 3;
     private static final int RATE_LIMIT_WINDOW_HOURS = 1;
 
@@ -198,5 +199,68 @@ public class OtpServiceImpl implements OtpService {
         if (digits.startsWith("0")) return "+84" + digits.substring(1); // Vietnam local to +84
         if (digits.startsWith("84")) return "+" + digits; // missing '+'
         return "+" + digits; // fallback
+    }
+
+    @Override
+    public void sendPasswordResetOtp(String email) {
+        log.info("Sending password reset OTP to email: {}", email);
+
+        // Check rate limit
+        checkRateLimit("reset", email);
+
+        // Generate OTP
+        String otp = generateOtp();
+
+        // Store OTP in Redis with 10-minute expiry
+        redisTemplate.opsForValue().set(
+            "reset-otp:email:" + email,
+            otp,
+            PASSWORD_RESET_OTP_EXPIRY_MINUTES,
+            TimeUnit.MINUTES
+        );
+
+        // Increment rate limit counter
+        incrementRateLimitCounter("reset", email);
+
+        // Send OTP via Email
+        try {
+            emailService.sendPasswordResetOtpEmail(email, otp);
+            log.info("Password reset OTP sent successfully to email: {}", email);
+        } catch (Exception e) {
+            log.error("Failed to send password reset OTP email to: {}", email, e);
+            throw new RuntimeException("Failed to send password reset OTP email. Please try again.");
+        }
+    }
+
+    @Override
+    public boolean verifyPasswordResetOtp(String email, String otp) {
+        log.info("Verifying password reset OTP for email: {}", email);
+
+        String redisKey = "reset-otp:email:" + email;
+
+        // Get OTP from Redis
+        String cachedOtp = redisTemplate.opsForValue().get(redisKey);
+        if (cachedOtp == null) {
+            log.warn("Password reset OTP not found or expired for: {}", email);
+            return false;
+        }
+
+        // Verify OTP
+        boolean isValid = otp.equals(cachedOtp);
+        if (isValid) {
+            log.info("Password reset OTP verified successfully for: {}", email);
+        } else {
+            log.warn("Invalid password reset OTP provided for: {}", email);
+        }
+
+        return isValid;
+    }
+
+    @Override
+    public void consumePasswordResetOtp(String email) {
+        log.info("Consuming password reset OTP for email: {}", email);
+        String redisKey = "reset-otp:email:" + email;
+        redisTemplate.delete(redisKey);
+        log.info("Password reset OTP consumed (deleted) for: {}", email);
     }
 }

@@ -1,10 +1,11 @@
-import React, { useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import React from 'react';
+import type { ReactNode } from 'react';
+import { Navigate } from 'react-router';
 import { useAuth } from '../../AuthContext';
 
 interface ProtectedRouteProps {
-  children: React.ReactNode;
-  requireRoles?: string[];
+  children: ReactNode;
+  requiredRoles?: string[];
 }
 
 /**
@@ -13,7 +14,8 @@ interface ProtectedRouteProps {
  * Features:
  * - Redirects to /login if not authenticated
  * - Shows loading state while checking auth
- * - Optional role-based access control
+ * - Role-based access control with multiple format support
+ * - Shows access denied UI when unauthorized
  *
  * Usage:
  * <ProtectedRoute>
@@ -21,33 +23,12 @@ interface ProtectedRouteProps {
  * </ProtectedRoute>
  *
  * Or with role requirements:
- * <ProtectedRoute requireRoles={['SUPPLIER', 'ADMIN']}>
- *   <AdminPanel />
+ * <ProtectedRoute requiredRoles={['SUPPLIER']}>
+ *   <SupplierPanel />
  * </ProtectedRoute>
  */
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requireRoles }) => {
-  const navigate = useNavigate();
-  const { isAuthenticated, isLoading, user } = useAuth();
-
-  useEffect(() => {
-    if (!isLoading) {
-      // Not authenticated - redirect to login
-      if (!isAuthenticated) {
-        navigate('/login', { replace: true });
-        return;
-      }
-
-      // Check role requirements if specified
-      if (requireRoles && requireRoles.length > 0 && user) {
-        const hasRequiredRole = user.roles.some(role => requireRoles.includes(role));
-        if (!hasRequiredRole) {
-          // User doesn't have required role - redirect to welcome
-          console.warn('User does not have required roles:', requireRoles);
-          navigate('/', { replace: true });
-        }
-      }
-    }
-  }, [isAuthenticated, isLoading, user, requireRoles, navigate]);
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRoles }) => {
+  const { user, isAuthenticated, isLoading } = useAuth();
 
   // Show loading spinner while checking authentication
   if (isLoading) {
@@ -61,20 +42,72 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requireRoles 
     );
   }
 
-  // Not authenticated - show nothing (will redirect)
+  // Redirect to login if not authenticated
   if (!isAuthenticated) {
-    return null;
+    return <Navigate to="/login" replace />;
   }
 
-  // Check role access
-  if (requireRoles && requireRoles.length > 0 && user) {
-    const hasRequiredRole = user.roles.some(role => requireRoles.includes(role));
+  // Debug: Log user roles (only in development)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('ProtectedRoute - User:', user);
+    console.log('ProtectedRoute - User roles:', user?.roles);
+    console.log('ProtectedRoute - Required roles:', requiredRoles);
+  }
+
+  // Check if user has required roles
+  if (requiredRoles && requiredRoles.length > 0) {
+    const userRoles = user?.roles || [];
+
+    // Check if user has any of the required roles (support multiple formats)
+    const hasRequiredRole = requiredRoles.some(requiredRole => {
+      return userRoles.some(userRole => {
+        // Normalize both roles for comparison (remove ROLE_ prefix and convert to uppercase)
+        const normalizedUserRole = userRole.replace(/^ROLE_/i, '').toUpperCase();
+        const normalizedRequiredRole = requiredRole.replace(/^ROLE_/i, '').toUpperCase();
+        return normalizedUserRole === normalizedRequiredRole;
+      });
+    });
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('ProtectedRoute - Has required role:', hasRequiredRole);
+    }
+
     if (!hasRequiredRole) {
-      return null; // Will redirect
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-[#E8FFED] via-[#FFFEFA] to-[#F5EDE6] flex items-center justify-center">
+          <div className="text-center max-w-md">
+            <svg
+              className="w-24 h-24 mx-auto text-red-500 mb-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+            <h1 className="text-2xl font-bold text-gray-800 mb-2">
+              Không có quyền truy cập
+            </h1>
+            <p className="text-gray-600 mb-6">
+              Bạn không có quyền truy cập vào trang này. Vui lòng liên hệ quản trị viên nếu bạn cần quyền truy cập.
+            </p>
+            <button
+              onClick={() => window.history.back()}
+              className="bg-[#2F855A] text-white px-6 py-2 rounded-lg hover:bg-[#276749] transition-colors"
+            >
+              Quay lại
+            </button>
+          </div>
+        </div>
+      );
     }
   }
 
-  // Authenticated and authorized - render children
+  // Render children if authenticated and authorized
   return <>{children}</>;
 };
 

@@ -1,5 +1,7 @@
 import type { Route } from './+types/support';
 import CustomerSupport from '~/pages/feedback/CustomerSupport';
+import DashboardLayout from '~/component/layout/DashboardLayout';
+import ProtectedRoute from '~/component/common/ProtectedRoute';
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -9,5 +11,11 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function CustomerSupportRoute() {
-  return <CustomerSupport />;
+  return (
+    <ProtectedRoute requiredRoles={['SUPPLIER']}>
+      <DashboardLayout>
+        <CustomerSupport />
+      </DashboardLayout>
+    </ProtectedRoute>
+  );
 }

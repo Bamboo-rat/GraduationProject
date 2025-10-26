@@ -1,5 +1,7 @@
 import type { Route } from "./+types/update-request";
 import StoreUpdateRequest from "~/pages/store/StoreUpdateRequest";
+import DashboardLayout from "~/component/layout/DashboardLayout";
+import ProtectedRoute from '~/component/common/ProtectedRoute';
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -9,5 +11,11 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function StoreUpdateRequestRoute() {
-  return <StoreUpdateRequest />;
+  return (
+    <ProtectedRoute requiredRoles={['SUPPLIER']}>
+      <DashboardLayout>
+        <StoreUpdateRequest />
+      </DashboardLayout>
+    </ProtectedRoute>
+  );
 }

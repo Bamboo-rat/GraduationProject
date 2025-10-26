@@ -16,8 +16,43 @@ export interface SupplierBankUpdateRequest {
   bankBranch: string;
 }
 
+/**
+ * Wallet information nested in SupplierResponse
+ * Matches backend SupplierResponse.WalletInfo
+ */
+export interface WalletInfo {
+  walletId: string;
+  availableBalance: number;      // Số dư khả dụng (có thể rút)
+  pendingBalance: number;         // Số dư đang giữ (đơn hàng đang xử lý)
+  totalEarnings: number;          // Tổng thu nhập từ trước đến nay
+  totalWithdrawn: number;         // Tổng đã rút
+  totalRefunded: number;          // Tổng hoàn trả
+  monthlyEarnings: number;        // Thu nhập tháng hiện tại
+  currentMonth: string;           // Tháng hiện tại (YYYY-MM)
+  status: string;                 // ACTIVE, SUSPENDED, FROZEN
+  lastWithdrawalDate: string | null; // Lần rút tiền cuối
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Basic store information nested in SupplierResponse
+ * Matches backend SupplierResponse.StoreBasicInfo
+ */
+export interface StoreBasicInfo {
+  storeId: string;
+  storeName: string;
+  address: string;
+  phoneNumber: string;
+  status: string; // PENDING, ACTIVE, SUSPENDED, REJECTED
+}
+
+/**
+ * Complete supplier response from backend
+ * Matches backend SupplierResponse.java exactly
+ */
 export interface SupplierResponse {
-  // User fields
+  // User basic info
   userId: string;
   keycloakId: string;
   username: string;
@@ -35,30 +70,25 @@ export interface SupplierResponse {
   foodSafetyCertificateUrl: string;
   taxCode: string;
   businessAddress: string;
-  businessType: string;
+  businessType: string; // SUPERMARKET, CONVENIENCE_STORE, GROCERY_STORE, DISTRIBUTOR, RESTAURANT, BAKERY, COFFEE_SHOP, OTHER
 
-  // Financial info
-  commissionRate?: number;
-  bankAccountNumber?: string;
-  bankName?: string;
-  bankBranch?: string;
+  // Commission
+  commissionRate: number | null;
 
-  // Status and stats
-  status: string; // PENDING_VERIFICATION, PENDING_DOCUMENTS, PENDING_STORE_INFO, PENDING_APPROVAL, ACTIVE, SUSPENDED, PAUSE, REJECTED
-  totalProducts?: number;
-  totalStores?: number;
-  stores?: StoreBasicInfo[];
+  // Status
+  status: string; // PENDING_VERIFICATION, PENDING_DOCUMENTS, PENDING_STORE_INFO, PENDING_APPROVAL, ACTIVE, SUSPENDED, REJECTED
+
+  // Wallet information (nested object)
+  wallet: WalletInfo | null;
+
+  // Statistics
+  totalProducts: number | null;
+  totalStores: number | null;
+  stores: StoreBasicInfo[] | null;
 
   // Metadata
   createdAt: string;
   updatedAt: string;
-}
-
-export interface StoreBasicInfo {
-  storeId: string;
-  storeName: string;
-  address: string;
-  status: string;
 }
 
 // ============= SUPPLIER SERVICE =============

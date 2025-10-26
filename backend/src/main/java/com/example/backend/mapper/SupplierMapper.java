@@ -1,6 +1,5 @@
 package com.example.backend.mapper;
 
-import com.example.backend.dto.request.SupplierBankUpdateRequest;
 import com.example.backend.dto.request.SupplierCommissionUpdateRequest;
 import com.example.backend.dto.response.SupplierResponse;
 import com.example.backend.entity.Supplier;

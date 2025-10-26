@@ -13,6 +13,8 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('access_token');
+    console.log('Token:', token ? `${token.substring(0, 20)}...` : 'NO TOKEN');
+    console.log('Request:', config.method?.toUpperCase(), config.url);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -23,27 +25,119 @@ axiosInstance.interceptors.request.use(
   }
 );
 
-// Response interceptor - Handle errors globally
+// Flag to prevent multiple refresh attempts
+let isRefreshing = false;
+let failedQueue: Array<{
+  resolve: (value?: any) => void;
+  reject: (reason?: any) => void;
+}> = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
+// Response interceptor - Handle errors globally and refresh token
 axiosInstance.interceptors.response.use(
   (response) => {
+    console.log('Response:', response.status, response.config.url);
     return response;
   },
-  (error) => {
+  async (error) => {
+    console.error('Error Response:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      url: error.config?.url,
+      data: error.response?.data,
+    });
+
+    const originalRequest = error.config;
+
     if (error.response) {
-      // The request was made and the server responded with a status code
-      // that falls out of the range of 2xx
       const { status, data } = error.response;
 
-      switch (status) {
-        case 401:
-          // Unauthorized - Clear token and redirect to login
+      // Handle 401 Unauthorized with token refresh
+      if (status === 401 && !originalRequest._retry) {
+        if (isRefreshing) {
+          // If already refreshing, queue this request
+          return new Promise((resolve, reject) => {
+            failedQueue.push({ resolve, reject });
+          })
+            .then((token) => {
+              originalRequest.headers.Authorization = `Bearer ${token}`;
+              return axiosInstance(originalRequest);
+            })
+            .catch((err) => {
+              return Promise.reject(err);
+            });
+        }
+
+        originalRequest._retry = true;
+        isRefreshing = true;
+
+        const refreshToken = localStorage.getItem('refresh_token');
+
+        if (!refreshToken) {
+          // No refresh token, redirect to login
+          console.error('No refresh token available - redirecting to login');
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
           localStorage.removeItem('user_info');
           window.location.href = '/login';
-          break;
+          return Promise.reject(error);
+        }
+
+        try {
+          // Try to refresh the token
+          const response = await axios.post(
+            `${axiosInstance.defaults.baseURL}/auth/refresh`,
+            null,
+            {
+              params: { refreshToken },
+            }
+          );
+
+          const { accessToken, refreshToken: newRefreshToken } = response.data.data;
+
+          // Update tokens in localStorage
+          localStorage.setItem('access_token', accessToken);
+          localStorage.setItem('refresh_token', newRefreshToken);
+
+          // Update the authorization header
+          axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
+          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+
+          // Process queued requests
+          processQueue(null, accessToken);
+
+          isRefreshing = false;
+
+          // Retry the original request
+          return axiosInstance(originalRequest);
+        } catch (refreshError) {
+          // Refresh failed, clear auth and redirect to login
+          console.error('Token refresh failed - redirecting to login');
+          processQueue(refreshError, null);
+          isRefreshing = false;
+
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          localStorage.removeItem('user_info');
+          window.location.href = '/login';
+
+          return Promise.reject(refreshError);
+        }
+      }
+
+      // Handle other error statuses
+      switch (status) {
         case 403:
-          // Forbidden - No permission
           console.error('Access forbidden:', data.message);
           break;
         case 404:
@@ -56,12 +150,11 @@ axiosInstance.interceptors.response.use(
           console.error('Error:', data.message);
       }
     } else if (error.request) {
-      // The request was made but no response was received
       console.error('No response from server');
     } else {
-      // Something happened in setting up the request that triggered an Error
       console.error('Error:', error.message);
     }
+
     return Promise.reject(error);
   }
 );

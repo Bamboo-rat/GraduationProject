@@ -1,5 +1,7 @@
 import type { Route } from './+types/reviews';
 import CustomerReviews from '~/pages/feedback/CustomerReviews';
+import DashboardLayout from '~/component/layout/DashboardLayout';
+import ProtectedRoute from '~/component/common/ProtectedRoute';
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -9,5 +11,11 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function CustomerReviewsRoute() {
-  return <CustomerReviews />;
+  return (
+    <ProtectedRoute requiredRoles={['SUPPLIER']}>
+      <DashboardLayout>
+        <CustomerReviews />
+      </DashboardLayout>
+    </ProtectedRoute>
+  );
 }

@@ -56,33 +56,46 @@ public interface ProductService {
     ProductResponse updateProduct(String productId, ProductUpdateRequest request, String keycloakId);
 
     /**
-     * Update product status
+     * Supplier toggles product visibility (ACTIVE ↔ INACTIVE)
      * @param productId Product ID
-     * @param request Status update request
      * @param keycloakId Keycloak ID from JWT (for ownership validation)
+     * @param makeActive true to set ACTIVE, false to set INACTIVE
      * @return Updated product
      */
-    ProductResponse updateProductStatus(String productId, ProductStatusUpdateRequest request, String keycloakId);
+    ProductResponse toggleProductVisibility(String productId, String keycloakId, boolean makeActive);
 
     /**
-     * Delete product (soft delete by setting status to DELETED)
+     * Delete product (soft delete by setting status to DELETED and cleanup Cloudinary files)
      * @param productId Product ID
      * @param keycloakId Keycloak ID from JWT (for ownership validation)
      */
     void deleteProduct(String productId, String keycloakId);
 
     /**
-     * Admin approve product
+     * Admin suspends product for policy violation
      * @param productId Product ID
+     * @param reason Suspension reason
      * @return Updated product
      */
-    ProductResponse approveProduct(String productId);
+    ProductResponse suspendProduct(String productId, String reason);
 
     /**
-     * Admin reject product
+     * Admin unsuspends product (restores to ACTIVE or previous status)
      * @param productId Product ID
-     * @param reason Rejection reason
      * @return Updated product
      */
-    ProductResponse rejectProduct(String productId, String reason);
+    ProductResponse unsuspendProduct(String productId);
+
+    /**
+     * Check and update product status based on inventory and expiry
+     * Called after inventory changes or by scheduler
+     * @param productId Product ID
+     */
+    void checkAndUpdateProductStatus(String productId);
+
+    /**
+     * Auto-set INACTIVE for products that have been SOLD_OUT or EXPIRED for 1+ days
+     * Called by scheduler
+     */
+    void autoSetInactiveForOldProducts();
 }

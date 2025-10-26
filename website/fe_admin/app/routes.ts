@@ -7,30 +7,32 @@ export default [
     route("dashboard", "routes/dashboard.tsx"),
     route("dashboard/overview", "routes/dashboard/overview.tsx"),
     route("dashboard/monitor", "routes/dashboard/monitor.tsx"),
+    route("dashboard/notification-monitor", "routes/dashboard/notification-monitor.tsx"),
 
     // Profile
     route("profile", "routes/profile.tsx"),
-    route("reset-password", "routes/resetPassword.tsx"),
-    route("forgot-password", "routes/forgotPassword.tsx"),
+    route("profile/reset-password", "routes/profile/reset-password.tsx"),
+    route("profile/forgot-password", "routes/profile/forgot-password.tsx"),
     
     // Partners Management
-    route("partners/list", "routes/partners/list.tsx"),
+    route("partners/list-partners", "routes/partners/list-partners.tsx"),
     route("partners/pending", "routes/partners/pending.tsx"),
-    route("partners/store-pending-updates", "routes/partners/store-pending-updates.tsx"),
+    route("partners/store-approval", "routes/partners/store-approval.tsx"),
     route("partners/performance", "routes/partners/performance.tsx"),
 
     // Products Management
-    route("products/list", "routes/products/list.tsx"),
+    route("products/list-products", "routes/products/list-products.tsx"),
     route("products/review", "routes/products/review.tsx"),
     route("products/category-suggestions", "routes/products/category-suggestions.tsx"),
     route("products/categories", "routes/products/categories.tsx"),
 
     // Customers Management
-    route("customers/list", "routes/customers/list.tsx"),
+    route("customers/list-customers", "routes/customers/list-customers.tsx"),
+    route("customers/:userId", "routes/customers/$userId.tsx"),
     route("support/tickets", "routes/customers/supportTickets.tsx"),
 
     // Operations
-    route("orders/list", "routes/orders/list.tsx"),
+    route("orders/list-orders", "routes/orders/list-orders.tsx"),
     route("delivery/management", "routes/orders/deliveryManagement.tsx"),
 
     // Finance

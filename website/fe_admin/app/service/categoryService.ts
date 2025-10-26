@@ -76,7 +76,7 @@ class CategoryService {
       return response.data.data;
     } catch (error: any) {
       console.error('Error fetching categories:', error);
-      throw new Error(error.response?.data?.message || 'KhÙng th√ t£i danh s·ch danh mÂc');
+      throw new Error(error.response?.data?.message || 'Kh√¥ng th·ªÉ t·∫£i danh s√°ch danh m·ª•c');
     }
   }
 
@@ -91,7 +91,7 @@ class CategoryService {
       return response.data.data;
     } catch (error: any) {
       console.error('Error fetching category:', error);
-      throw new Error(error.response?.data?.message || 'KhÙng th√ t£i thÙng tin danh mÂc');
+      throw new Error(error.response?.data?.message || 'Kh√¥ng th·ªÉ t·∫£i th√¥ng tin danh m·ª•c');
     }
   }
 
@@ -107,7 +107,7 @@ class CategoryService {
       return response.data.data;
     } catch (error: any) {
       console.error('Error creating category:', error);
-      throw new Error(error.response?.data?.message || 'KhÙng th√ t°o danh mÂc');
+      throw new Error(error.response?.data?.message || 'Kh√¥ng th·ªÉ t·∫°o danh m·ª•c');
     }
   }
 
@@ -123,7 +123,7 @@ class CategoryService {
       return response.data.data;
     } catch (error: any) {
       console.error('Error updating category:', error);
-      throw new Error(error.response?.data?.message || 'KhÙng th√ c≠p nh≠t danh mÂc');
+      throw new Error(error.response?.data?.message || 'Kh√¥ng th·ªÉ c·∫≠p nh·∫≠t danh m·ª•c');
     }
   }
 
@@ -137,7 +137,7 @@ class CategoryService {
       );
     } catch (error: any) {
       console.error('Error deleting category:', error);
-      throw new Error(error.response?.data?.message || 'KhÙng th√ xÛa danh mÂc');
+      throw new Error(error.response?.data?.message || 'Kh√¥ng th·ªÉ x√≥a danh m·ª•c');
     }
   }
 
@@ -152,7 +152,7 @@ class CategoryService {
       return response.data.data;
     } catch (error: any) {
       console.error('Error toggling category status:', error);
-      throw new Error(error.response?.data?.message || 'KhÙng th√ c≠p nh≠t tr°ng th·i danh mÂc');
+      throw new Error(error.response?.data?.message || 'Kh√¥ng th·ªÉ c·∫≠p nh·∫≠t tr·∫°ng th√°i danh m·ª•c');
     }
   }
 
@@ -165,7 +165,7 @@ class CategoryService {
       return response.content;
     } catch (error: any) {
       console.error('Error fetching active categories:', error);
-      throw new Error(error.response?.data?.message || 'KhÙng th√ t£i danh s·ch danh mÂc');
+      throw new Error(error.response?.data?.message || 'Kh√¥ng th·ªÉ t·∫£i danh s√°ch danh m·ª•c');
     }
   }
 }

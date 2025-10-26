@@ -1,5 +1,7 @@
 import type { Route } from './+types/returns';
 import OrdersReturns from '~/pages/orders/OrdersReturns';
+import DashboardLayout from '~/component/layout/DashboardLayout';
+import ProtectedRoute from '~/component/common/ProtectedRoute';
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -9,5 +11,11 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function OrdersReturnsRoute() {
-  return <OrdersReturns />;
+  return (
+    <ProtectedRoute requiredRoles={['SUPPLIER']}>
+      <DashboardLayout>
+        <OrdersReturns />
+      </DashboardLayout>
+    </ProtectedRoute>
+  );
 }

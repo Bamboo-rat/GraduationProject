@@ -1,5 +1,7 @@
 import type { Route } from './+types/withdraw';
 import FinanceWithdraw from '~/pages/finance/FinanceWithdraw';
+import DashboardLayout from '~/component/layout/DashboardLayout';
+import ProtectedRoute from '~/component/common/ProtectedRoute';
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -9,5 +11,11 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function FinanceWithdrawRoute() {
-  return <FinanceWithdraw />;
+  return (
+    <ProtectedRoute requiredRoles={['SUPPLIER']}>
+      <DashboardLayout>
+        <FinanceWithdraw />
+      </DashboardLayout>
+    </ProtectedRoute>
+  );
 }

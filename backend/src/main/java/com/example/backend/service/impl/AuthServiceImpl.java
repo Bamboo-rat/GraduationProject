@@ -322,17 +322,14 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public com.example.backend.dto.response.ResetPasswordResponse requestPasswordReset(String email, String userType) {
-        log.info("Password reset requested for email: {}, userType: {}", email, userType);
+        log.info("Step 1: Password reset OTP requested for email: {}, userType: {}", email, userType);
 
         // Validate userType
         if (!userType.equalsIgnoreCase("ADMIN") && !userType.equalsIgnoreCase("SUPPLIER")) {
             throw new BadRequestException(ErrorCode.INVALID_REQUEST, "User type must be either ADMIN or SUPPLIER");
         }
 
-        // Find user by email based on userType
-        String keycloakId;
-        String fullName;
-
+        // Find user by email based on userType to validate existence
         if (userType.equalsIgnoreCase("ADMIN")) {
             Admin admin = adminRepository.findByEmail(email)
                     .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND, "Admin not found with email: " + email));
@@ -342,9 +339,6 @@ public class AuthServiceImpl implements AuthService {
                 throw new BadRequestException(ErrorCode.ACCOUNT_INACTIVE, "Cannot reset password for inactive account");
             }
 
-            keycloakId = admin.getKeycloakId();
-            fullName = admin.getFullName();
-
         } else { // SUPPLIER
             Supplier supplier = supplierRepository.findByEmail(email)
                     .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND, "Supplier not found with email: " + email));
@@ -353,69 +347,73 @@ public class AuthServiceImpl implements AuthService {
             if (supplier.getStatus() != SupplierStatus.ACTIVE && supplier.getStatus() != SupplierStatus.PAUSE) {
                 throw new BadRequestException(ErrorCode.ACCOUNT_INACTIVE, "Cannot reset password for inactive account");
             }
-
-            keycloakId = supplier.getKeycloakId();
-            fullName = supplier.getFullName();
         }
 
-        // Invalidate any existing valid tokens for this user
-        passwordResetTokenRepository.invalidateAllTokensForUser(keycloakId, java.time.LocalDateTime.now());
-
-        // Generate unique token (UUID)
-        String resetToken = UUID.randomUUID().toString();
-
-        // Create token entity with 1 hour expiry
-        com.example.backend.entity.PasswordResetToken tokenEntity = new com.example.backend.entity.PasswordResetToken();
-        tokenEntity.setToken(resetToken);
-        tokenEntity.setKeycloakId(keycloakId);
-        tokenEntity.setUserType(userType.toUpperCase());
-        tokenEntity.setEmail(email);
-        tokenEntity.setExpiryDate(java.time.LocalDateTime.now().plusHours(1));
-
-        passwordResetTokenRepository.save(tokenEntity);
-
-        // Send email with reset link
-        try {
-            emailService.sendPasswordResetEmail(email, fullName, resetToken);
-            log.info("Password reset email sent successfully to: {}", email);
-        } catch (Exception e) {
-            log.error("Failed to send password reset email to: {}", email, e);
-            // Don't throw exception, token is already created
-        }
+        // Send OTP to email (via OtpService)
+        otpService.sendPasswordResetOtp(email);
+        log.info("Password reset OTP sent successfully to: {}", email);
 
         return com.example.backend.dto.response.ResetPasswordResponse.builder()
                 .success(true)
-                .message("Password reset email has been sent. Please check your inbox.")
+                .message("A 6-digit OTP has been sent to your email. Please check your inbox.")
                 .email(email)
-                .expiryDate(tokenEntity.getExpiryDate())
                 .userType(userType.toUpperCase())
                 .build();
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public com.example.backend.dto.response.ResetPasswordResponse validateResetToken(String token) {
-        log.info("Validating reset token: {}", token);
+    @Transactional
+    public com.example.backend.dto.response.ResetPasswordResponse verifyResetOtp(String email, String otp) {
+        log.info("Step 2: Verifying reset OTP for email: {}", email);
 
-        // Find token
-        com.example.backend.entity.PasswordResetToken tokenEntity = passwordResetTokenRepository.findByToken(token)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.INVALID_TOKEN, "Invalid or expired reset token"));
-
-        // Check if token is valid (not used and not expired)
-        if (!tokenEntity.isValid()) {
-            if (tokenEntity.isUsed()) {
-                throw new BadRequestException(ErrorCode.TOKEN_ALREADY_USED, "This reset token has already been used");
-            } else {
-                throw new BadRequestException(ErrorCode.TOKEN_EXPIRED, "This reset token has expired. Please request a new one.");
-            }
+        // Verify OTP from Redis
+        boolean isValid = otpService.verifyPasswordResetOtp(email, otp);
+        if (!isValid) {
+            throw new BadRequestException(ErrorCode.INVALID_OTP, "Invalid or expired OTP");
         }
+
+        // Find user to get keycloakId and userType
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+
+        String keycloakId = user.getKeycloakId();
+        String userType;
+
+        if (user instanceof Admin) {
+            userType = "ADMIN";
+        } else if (user instanceof Supplier) {
+            userType = "SUPPLIER";
+        } else {
+            throw new BadRequestException(ErrorCode.INVALID_REQUEST, "Only ADMIN and SUPPLIER can reset password");
+        }
+
+        // Consume OTP (delete from Redis)
+        otpService.consumePasswordResetOtp(email);
+
+        // Invalidate any existing valid tokens for this user
+        passwordResetTokenRepository.invalidateAllTokensForUser(keycloakId, java.time.LocalDateTime.now());
+
+        // Generate temporary reset token (UUID) valid for 10 minutes
+        String resetToken = UUID.randomUUID().toString();
+
+        // Create token entity with 10-minute expiry
+        com.example.backend.entity.PasswordResetToken tokenEntity = new com.example.backend.entity.PasswordResetToken();
+        tokenEntity.setToken(resetToken);
+        tokenEntity.setKeycloakId(keycloakId);
+        tokenEntity.setUserType(userType);
+        tokenEntity.setEmail(email);
+        tokenEntity.setExpiryDate(java.time.LocalDateTime.now().plusMinutes(10));
+
+        passwordResetTokenRepository.save(tokenEntity);
+        log.info("Temporary reset token generated for user: {}", email);
 
         return com.example.backend.dto.response.ResetPasswordResponse.builder()
                 .success(true)
-                .message("Token is valid")
-                .email(tokenEntity.getEmail())
+                .message("OTP verified successfully. Use the reset token to update your password.")
+                .resetToken(resetToken)
+                .email(email)
                 .expiryDate(tokenEntity.getExpiryDate())
-                .userType(tokenEntity.getUserType())
+                .userType(userType)
                 .build();
     }
 

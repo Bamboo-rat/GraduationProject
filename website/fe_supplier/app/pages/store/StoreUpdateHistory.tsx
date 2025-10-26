@@ -26,8 +26,8 @@ export default function StoreUpdateHistory() {
 
       const response = await storeService.getMyPendingUpdates(params);
       setUpdates(response.content);
-      setTotalPages(response.page.totalPages);
-      setTotalElements(response.page.totalElements);
+      setTotalPages(response.totalPages);
+      setTotalElements(response.totalElements);
     } catch (error) {
       console.error('Error fetching updates:', error);
       alert('Lỗi khi tải lịch sử cập nhật');
@@ -151,14 +151,14 @@ export default function StoreUpdateHistory() {
             ) : (
               updates.map((update) => {
                 const changes = [];
-                if (update.newStoreName) changes.push('Tên cửa hàng');
-                if (update.newAddress) changes.push('Địa chỉ');
-                if (update.newPhoneNumber) changes.push('Số điện thoại');
-                if (update.newDescription) changes.push('Mô tả');
-                // Hidden: if (update.newLatitude !== undefined || update.newLongitude !== undefined) changes.push('Tọa độ');
+                if (update.requestedChanges.name) changes.push('Tên cửa hàng');
+                if (update.requestedChanges.address) changes.push('Địa chỉ');
+                if (update.requestedChanges.phoneNumber) changes.push('Số điện thoại');
+                if (update.requestedChanges.description) changes.push('Mô tả');
+                // Hidden: if (update.requestedChanges.latitude !== undefined || update.requestedChanges.longitude !== undefined) changes.push('Tọa độ');
 
                 return (
-                  <tr key={update.id} className="hover:bg-gray-50">
+                  <tr key={update.updateId} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {new Date(update.createdAt).toLocaleDateString('vi-VN')}
                     </td>
@@ -174,11 +174,11 @@ export default function StoreUpdateHistory() {
                       {update.adminNotes ? (
                         <div className="text-sm text-gray-600">
                           {update.adminNotes}
-                          {update.processorName && (
+                          {update.reviewedBy && (
                             <div className="text-xs text-gray-400 mt-1">
-                              Bởi: {update.processorName} -{' '}
-                              {update.processedAt &&
-                                new Date(update.processedAt).toLocaleString('vi-VN')}
+                              Bởi: {update.reviewedBy} -{' '}
+                              {update.reviewedAt &&
+                                new Date(update.reviewedAt).toLocaleString('vi-VN')}
                             </div>
                           )}
                         </div>
@@ -278,10 +278,10 @@ export default function StoreUpdateHistory() {
 
             <div className="border-t pt-4">
               <h3 className="font-semibold mb-3">Thông tin thay đổi:</h3>
-              {renderChangeField('Tên cửa hàng', selectedUpdate.currentStoreName, selectedUpdate.newStoreName)}
-              {renderChangeField('Địa chỉ', selectedUpdate.currentAddress, selectedUpdate.newAddress)}
-              {renderChangeField('Số điện thoại', selectedUpdate.currentPhoneNumber, selectedUpdate.newPhoneNumber)}
-              {renderChangeField('Mô tả', selectedUpdate.currentDescription, selectedUpdate.newDescription)}
+              {renderChangeField('Tên cửa hàng', selectedUpdate.currentValues?.name, selectedUpdate.requestedChanges?.name)}
+              {renderChangeField('Địa chỉ', selectedUpdate.currentValues?.address, selectedUpdate.requestedChanges?.address)}
+              {renderChangeField('Số điện thoại', selectedUpdate.currentValues?.phoneNumber, selectedUpdate.requestedChanges?.phoneNumber)}
+              {renderChangeField('Mô tả', selectedUpdate.currentValues?.description, selectedUpdate.requestedChanges?.description)}
               {/* Hidden: Latitude & Longitude - Data still saved in DB */}
             </div>
 
@@ -289,11 +289,11 @@ export default function StoreUpdateHistory() {
               <div className="mt-4 p-4 bg-gray-50 rounded">
                 <h3 className="font-semibold mb-2">Phản hồi từ Admin:</h3>
                 <p className="text-sm text-gray-700">{selectedUpdate.adminNotes}</p>
-                {selectedUpdate.processorName && (
+                {selectedUpdate.reviewedBy && (
                   <div className="text-xs text-gray-500 mt-2">
-                    Xử lý bởi: {selectedUpdate.processorName} -{' '}
-                    {selectedUpdate.processedAt &&
-                      new Date(selectedUpdate.processedAt).toLocaleString('vi-VN')}
+                    Xử lý bởi: {selectedUpdate.reviewedBy} -{' '}
+                    {selectedUpdate.reviewedAt &&
+                      new Date(selectedUpdate.reviewedAt).toLocaleString('vi-VN')}
                   </div>
                 )}
               </div>

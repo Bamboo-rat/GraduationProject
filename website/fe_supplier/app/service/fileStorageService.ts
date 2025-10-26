@@ -7,6 +7,7 @@ export type StorageBucket =
   | 'food-safety-certificates'
   | 'banner'
   | 'products'
+  | 'store'
   | 'avatar-customer'
   | 'avatar-admin'
   | 'supplier-logo';
@@ -30,6 +31,7 @@ class FileStorageService {
       'food-safety-certificates': '/files/upload/food-safety-certificate',
       'banner': '/files/upload/banner',
       'products': '/files/upload/product',
+      'store': '/files/upload/store',
       'avatar-customer': '/files/upload/avatar',
       'avatar-admin': '/files/upload/avatar/admin',
       'supplier-logo': '/files/upload/supplier-logo',
@@ -126,6 +128,14 @@ class FileStorageService {
    */
   async uploadBanner(file: File): Promise<string> {
     const result = await this.uploadFile(file, 'banner');
+    return result.secureUrl;
+  }
+
+  /**
+   * Upload store image
+   */
+  async uploadStoreImage(file: File): Promise<string> {
+    const result = await this.uploadFile(file, 'store');
     return result.secureUrl;
   }
 

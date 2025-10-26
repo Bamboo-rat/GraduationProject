@@ -141,13 +141,13 @@ const Header: React.FC = () => {
                 </div>
                 <div className="py-2">
                   <button
-                    onClick={() => navigate('/store/profile')}
+                    onClick={() => navigate('/my-profile')}
                     className="w-full flex items-center px-4 py-3 text-sm text-[#2D2D2D] hover:bg-[#F8FFF9] transition-all"
                   >
                     <svg className="w-4 h-4 mr-3 text-[#2F855A]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
-                    Thông tin cửa hàng
+                    Thông tin nhà cung cấp
                   </button>
                   <button
                     onClick={() => navigate('/settings/notifications')}

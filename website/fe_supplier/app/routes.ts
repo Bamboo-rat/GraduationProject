@@ -2,8 +2,12 @@ import { type RouteConfig, index, route } from "@react-router/dev/routes";
 
 export default [
   index("routes/welcome.tsx"),
-  route("login", "routes/login.tsx"),
-  route("registration", "routes/registration.tsx"),
+
+  route("login", "routes/profile/login.tsx"),
+  route("registration", "routes/profile/registration.tsx"),
+  route("forgot-password", "routes/profile/forgot-password.tsx"),
+  route("reset-password", "routes/profile/reset-password.tsx"),
+  route("my-profile", "routes/profile/my-profile.tsx"),
 
   // Dashboard routes
   route("dashboard/overview", "routes/dashboard/overview.tsx"),
@@ -35,9 +39,15 @@ export default [
   route("reports/reviews-analysis", "routes/reports/reviews-analysis.tsx"),
 
   // Store routes
+  route("store/list", "routes/store/listStore.tsx"),
   route("store/profile", "routes/store/profile.tsx"),
+  route("store/create", "routes/store/create.tsx"),
+  route("store/edit/:storeId", "routes/store/edit/$storeId.tsx"),
   route("store/update-request", "routes/store/update-request.tsx"),
   route("store/update-history", "routes/store/update-history.tsx"),
+
+  // Promotions routes
+  route("promotions/list", "routes/promotions/list.tsx"),
 
   // Feedback routes
   route("feedback/reviews", "routes/feedback/reviews.tsx"),
@@ -48,9 +58,4 @@ export default [
   route("settings/notifications", "routes/settings/notifications.tsx"),
   route("settings/policies", "routes/settings/policies.tsx"),
 
-  // Profile routes
-  route("profile/login", "routes/profile/login.tsx"),
-  route("profile/registration", "routes/profile/registration.tsx"),
-  route("profile/forgot-password", "routes/profile/forgot-password.tsx"),
-  route("profile/reset-password", "routes/profile/reset-password.tsx"),
 ] satisfies RouteConfig;

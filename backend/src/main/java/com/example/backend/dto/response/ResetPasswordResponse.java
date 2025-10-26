@@ -16,6 +16,7 @@ public class ResetPasswordResponse {
     private boolean success;
     private String message;
     private String email;
+    private String resetToken;  // Temporary token returned after OTP verification (Step 2)
     private LocalDateTime expiryDate;
     private String userType;
 }

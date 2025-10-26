@@ -1,5 +1,7 @@
 import type { Route } from './+types/payment';
 import PaymentSettings from '~/pages/settings/PaymentSettings';
+import DashboardLayout from '~/component/layout/DashboardLayout';
+import ProtectedRoute from '~/component/common/ProtectedRoute';
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -9,5 +11,11 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function PaymentSettingsRoute() {
-  return <PaymentSettings />;
+  return (
+    <ProtectedRoute requiredRoles={['SUPPLIER']}>
+      <DashboardLayout>
+        <PaymentSettings />
+      </DashboardLayout>
+    </ProtectedRoute>
+  );
 }

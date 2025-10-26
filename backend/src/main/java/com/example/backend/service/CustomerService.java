@@ -3,12 +3,26 @@ package com.example.backend.service;
 import com.example.backend.dto.request.CustomerUpdateRequest;
 import com.example.backend.dto.request.CustomerRequest;
 import com.example.backend.dto.response.CustomerResponse;
+import com.example.backend.dto.response.LoginResponse;
 import com.example.backend.dto.response.RegisterResponse;
 
 /**
  * Service interface for customer-related operations
  */
 public interface CustomerService {
+    /**
+     * Send OTP to customer's phone for login (console log in dev mode)
+     * @param phoneNumber Customer's phone number
+     */
+    void sendLoginOtp(String phoneNumber);
+
+    /**
+     * Verify OTP and login, return JWT token
+     * @param phoneNumber Customer's phone number
+     * @param otp OTP code
+     * @return LoginResponse with JWT token
+     */
+    LoginResponse verifyLoginOtpAndLogin(String phoneNumber, String otp);
     
     /**
      * Step 1: Register customer with phone number only

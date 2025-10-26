@@ -89,8 +89,18 @@ public class EmailServiceImpl implements EmailService {
     public void sendOtpEmail(String toEmail, String otp) {
         log.info("Sending OTP email to: {}", toEmail);
 
-        String subject = "Your Verification Code - E-Commerce Platform";
+        String subject = "Your Verification Code - SaveFood Platform";
         String htmlContent = buildOtpEmailContent(otp);
+
+        sendEmail(toEmail, subject, htmlContent);
+    }
+
+    @Override
+    public void sendPasswordResetOtpEmail(String toEmail, String otp) {
+        log.info("Sending password reset OTP email to: {}", toEmail);
+
+        String subject = "Password Reset Code - SaveFood Platform";
+        String htmlContent = buildPasswordResetOtpEmailContent(otp);
 
         sendEmail(toEmail, subject, htmlContent);
     }
@@ -333,7 +343,43 @@ public class EmailServiceImpl implements EmailService {
                             <p style="color: #f44336;"><strong>Do not share this code with anyone.</strong></p>
                         </div>
                         <div class="footer">
-                            <p>&copy; 2025 E-Commerce Platform. All rights reserved.</p>
+                            <p>&copy; 2025 SaveFood Platform. All rights reserved.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+                """.formatted(otp);
+    }
+
+    private String buildPasswordResetOtpEmailContent(String otp) {
+        return """
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>
+                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                        .header { background-color: #f44336; color: white; padding: 20px; text-align: center; }
+                        .content { padding: 20px; background-color: #f9f9f9; }
+                        .otp-code { font-size: 32px; font-weight: bold; color: #f44336; letter-spacing: 5px; text-align: center; padding: 20px; background-color: #ffebee; border-radius: 5px; margin: 20px 0; }
+                        .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>Password Reset Request</h1>
+                        </div>
+                        <div class="content">
+                            <h2>Your Password Reset Code</h2>
+                            <p>You have requested to reset your password. Please use the following code:</p>
+                            <div class="otp-code">%s</div>
+                            <p><strong>This code will expire in 10 minutes.</strong></p>
+                            <p>If you didn't request this password reset, please ignore this email and your password will remain unchanged.</p>
+                            <p style="color: #f44336;"><strong>Do not share this code with anyone.</strong></p>
+                        </div>
+                        <div class="footer">
+                            <p>&copy; 2025 SaveFood Platform. All rights reserved.</p>
                         </div>
                     </div>
                 </body>

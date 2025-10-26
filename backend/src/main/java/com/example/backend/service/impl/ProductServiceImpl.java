@@ -4,12 +4,15 @@ import com.example.backend.dto.request.*;
 import com.example.backend.dto.response.ProductResponse;
 import com.example.backend.entity.*;
 import com.example.backend.entity.enums.ProductStatus;
+import com.example.backend.entity.enums.StorageBucket;
 import com.example.backend.exception.ErrorCode;
 import com.example.backend.exception.custom.BadRequestException;
 import com.example.backend.exception.custom.NotFoundException;
 import com.example.backend.mapper.ProductMapper;
 import com.example.backend.repository.*;
+import com.example.backend.service.FileStorageService;
 import com.example.backend.service.ProductService;
+import com.example.backend.utils.SkuGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -30,6 +33,7 @@ public class ProductServiceImpl implements ProductService {
     private final UserRepository userRepository;
     private final StoreRepository storeRepository;
     private final ProductMapper productMapper;
+    private final FileStorageService fileStorageService;
 
     @Override
     @Transactional
@@ -48,10 +52,7 @@ public class ProductServiceImpl implements ProductService {
         Category category = categoryRepository.findById(request.getProduct().getCategoryId())
                 .orElseThrow(() -> new NotFoundException(ErrorCode.CATEGORY_NOT_FOUND));
 
-        // 3. Validate SKU uniqueness
-        validateSkuUniqueness(request.getVariants());
-
-        // 4. Validate store IDs
+        // 3. Validate store IDs
         validateStoreIds(request.getStoreInventory(), supplier);
 
         // 5. Create Product entity
@@ -60,7 +61,7 @@ public class ProductServiceImpl implements ProductService {
         product.setDescription(request.getProduct().getDescription());
         product.setSupplier(supplier);
         product.setCategory(category);
-        product.setStatus(ProductStatus.PENDING_APPROVAL); // Always pending approval initially
+        product.setStatus(ProductStatus.ACTIVE);
 
         // 6. Add Attributes
         if (request.getAttributes() != null && !request.getAttributes().isEmpty()) {
@@ -84,13 +85,17 @@ public class ProductServiceImpl implements ProductService {
             }
         }
 
-        // 8. Add Variants
+        // 8. Add Variants with auto-generated unique SKUs
         Map<String, ProductVariant> variantMap = new HashMap<>();
         if (request.getVariants() != null && !request.getVariants().isEmpty()) {
             for (ProductVariantRequest varReq : request.getVariants()) {
                 ProductVariant variant = new ProductVariant();
                 variant.setName(varReq.getName());
-                variant.setSku(varReq.getSku());
+
+                // Auto-generate unique SKU with database duplicate check
+                String uniqueSku = generateUniqueSku(product, varReq.getName());
+                variant.setSku(uniqueSku);
+
                 variant.setOriginalPrice(varReq.getOriginalPrice());
                 variant.setDiscountPrice(varReq.getDiscountPrice());
                 variant.setManufacturingDate(varReq.getManufacturingDate());
@@ -134,32 +139,50 @@ public class ProductServiceImpl implements ProductService {
         log.info("Product created successfully: {} with {} variants and {} attributes",
                 product.getName(), product.getVariants().size(), product.getAttributes().size());
 
+        // Check and update status based on inventory and expiry
+        checkAndUpdateProductStatus(product.getProductId());
+
+        // Reload product to get updated status
+        product = productRepository.findById(product.getProductId()).orElseThrow();
+
         return productMapper.toResponse(product);
     }
 
     @Override
     @Transactional
-    public ProductResponse approveProduct(String productId) {
+    public ProductResponse suspendProduct(String productId, String reason) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND));
 
-        product.setStatus(ProductStatus.APPROVED);
+        product.setStatus(ProductStatus.SUSPENDED);
+        product.setSuspensionReason(reason);
         product = productRepository.save(product);
 
-        log.info("Product {} approved by admin", productId);
+        log.info("Product {} suspended by admin. Reason: {}", productId, reason);
         return productMapper.toResponse(product);
     }
 
     @Override
     @Transactional
-    public ProductResponse rejectProduct(String productId, String reason) {
+    public ProductResponse unsuspendProduct(String productId) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND));
 
-        product.setStatus(ProductStatus.REJECTED);
+        if (product.getStatus() != ProductStatus.SUSPENDED) {
+            throw new BadRequestException(ErrorCode.INVALID_REQUEST, "Product is not suspended");
+        }
+
+        product.setStatus(ProductStatus.ACTIVE);
+        product.setSuspensionReason(null);
         product = productRepository.save(product);
 
-        log.info("Product {} rejected by admin. Reason: {}", productId, reason);
+        // Check if should auto-update to SOLD_OUT or EXPIRED
+        checkAndUpdateProductStatus(productId);
+
+        // Reload to get updated status
+        product = productRepository.findById(productId).orElseThrow();
+
+        log.info("Product {} unsuspended by admin", productId);
         return productMapper.toResponse(product);
     }
 
@@ -239,22 +262,37 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
-    public ProductResponse updateProductStatus(String productId, ProductStatusUpdateRequest request, String keycloakId) {
+    public ProductResponse toggleProductVisibility(String productId, String keycloakId, boolean makeActive) {
         Supplier supplier = (Supplier) userRepository.findByKeycloakId(keycloakId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
-        
+
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND));
-        
+
         // Validate ownership
         if (!product.getSupplier().getUserId().equals(supplier.getUserId())) {
             throw new BadRequestException(ErrorCode.UNAUTHORIZED, "You do not have permission to update this product");
         }
-        
-        product.setStatus(request.getStatus());
-        product = productRepository.save(product);
-        
-        log.info("Product {} status updated to {} by supplier {}", productId, request.getStatus(), keycloakId);
+
+        // Check if product is suspended
+        if (product.getStatus() == ProductStatus.SUSPENDED) {
+            throw new BadRequestException(ErrorCode.INVALID_REQUEST,
+                    "Cannot change visibility of suspended product. Contact admin.");
+        }
+
+        // Only allow toggling between ACTIVE and INACTIVE
+        if (makeActive) {
+            product.setStatus(ProductStatus.ACTIVE);
+            // Check if should auto-update to SOLD_OUT or EXPIRED
+            checkAndUpdateProductStatus(productId);
+            product = productRepository.findById(productId).orElseThrow();
+        } else {
+            product.setStatus(ProductStatus.INACTIVE);
+            product = productRepository.save(product);
+        }
+
+        log.info("Product {} visibility toggled to {} by supplier {}", productId,
+                makeActive ? "ACTIVE" : "INACTIVE", keycloakId);
         return productMapper.toResponse(product);
     }
 
@@ -263,52 +301,157 @@ public class ProductServiceImpl implements ProductService {
     public void deleteProduct(String productId, String keycloakId) {
         Supplier supplier = (Supplier) userRepository.findByKeycloakId(keycloakId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
-        
+
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND));
-        
+
         // Validate ownership
         if (!product.getSupplier().getUserId().equals(supplier.getUserId())) {
             throw new BadRequestException(ErrorCode.UNAUTHORIZED, "You do not have permission to delete this product");
         }
-        
-        // Soft delete by setting status to SOLD_OUT (or can add a DELETED status)
-        product.setStatus(ProductStatus.SOLD_OUT);
+
+        // Collect all image URLs for Cloudinary cleanup
+        List<String> imageUrls = new ArrayList<>();
+
+        // Collect product images
+        product.getImages().forEach(img -> imageUrls.add(img.getImageUrl()));
+
+        // Collect variant images
+        product.getVariants().forEach(variant ->
+                variant.getVariantImages().forEach(img -> imageUrls.add(img.getImageUrl())));
+
+        // Soft delete by setting status to DELETED
+        product.setStatus(ProductStatus.DELETED);
         productRepository.save(product);
-        
-        log.info("Product {} soft deleted by supplier {}", productId, keycloakId);
+
+        // Delete images from Cloudinary
+        for (String imageUrl : imageUrls) {
+            try {
+                fileStorageService.deleteFile(imageUrl, StorageBucket.PRODUCTS);
+                log.info("Deleted image from Cloudinary: {}", imageUrl);
+            } catch (Exception e) {
+                log.error("Failed to delete image from Cloudinary: {}", imageUrl, e);
+                // Continue deleting other images even if one fails
+            }
+        }
+
+        log.info("Product {} soft deleted by supplier {} with {} images cleaned up",
+                productId, keycloakId, imageUrls.size());
+    }
+
+    @Override
+    @Transactional
+    public void checkAndUpdateProductStatus(String productId) {
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND));
+
+        // Don't auto-update if product is SUSPENDED, INACTIVE, or DELETED
+        if (product.getStatus() == ProductStatus.SUSPENDED ||
+            product.getStatus() == ProductStatus.INACTIVE ||
+            product.getStatus() == ProductStatus.DELETED) {
+            return;
+        }
+
+        java.time.LocalDate today = java.time.LocalDate.now();
+        boolean statusChanged = false;
+
+        // Check for expired variants
+        if (product.hasExpiredVariant()) {
+            if (product.getStatus() != ProductStatus.EXPIRED) {
+                product.setStatus(ProductStatus.EXPIRED);
+                product.setExpiredSince(today);
+                statusChanged = true;
+                log.info("Product {} auto-set to EXPIRED (variants have passed expiry date)", productId);
+            }
+        }
+        // Check for zero inventory
+        else if (product.getTotalInventory() == 0) {
+            if (product.getStatus() != ProductStatus.SOLD_OUT) {
+                product.setStatus(ProductStatus.SOLD_OUT);
+                product.setSoldOutSince(today);
+                statusChanged = true;
+                log.info("Product {} auto-set to SOLD_OUT (inventory = 0)", productId);
+            }
+        }
+        // If inventory is available and not expired, ensure ACTIVE
+        else if (product.getStatus() == ProductStatus.SOLD_OUT || product.getStatus() == ProductStatus.EXPIRED) {
+            product.setStatus(ProductStatus.ACTIVE);
+            product.setSoldOutSince(null);
+            product.setExpiredSince(null);
+            statusChanged = true;
+            log.info("Product {} auto-restored to ACTIVE (inventory available and not expired)", productId);
+        }
+
+        if (statusChanged) {
+            productRepository.save(product);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void autoSetInactiveForOldProducts() {
+        log.info("Running scheduled task: Auto-set INACTIVE for old SOLD_OUT/EXPIRED products");
+
+        // Find products that are SOLD_OUT or EXPIRED
+        List<Product> soldOutProducts = productRepository.findByStatus(ProductStatus.SOLD_OUT);
+        List<Product> expiredProducts = productRepository.findByStatus(ProductStatus.EXPIRED);
+
+        List<Product> allEligibleProducts = new ArrayList<>();
+        allEligibleProducts.addAll(soldOutProducts);
+        allEligibleProducts.addAll(expiredProducts);
+
+        int updatedCount = 0;
+        for (Product product : allEligibleProducts) {
+            if (product.shouldAutoSetInactive()) {
+                product.setStatus(ProductStatus.INACTIVE);
+                productRepository.save(product);
+                updatedCount++;
+                log.info("Product {} auto-set to INACTIVE (old SOLD_OUT/EXPIRED)", product.getProductId());
+            }
+        }
+
+        log.info("Auto-INACTIVE task completed: {} products updated", updatedCount);
     }
 
     /**
-     * Validate that all SKUs are unique
+     * Generate a unique SKU for a product variant
+     * Automatically retries with different suffix if SKU already exists in database
+     *
+     * @param product The product entity
+     * @param variantName The variant name
+     * @return Unique SKU that doesn't exist in database
      */
-    private void validateSkuUniqueness(List<ProductVariantRequest> variants) {
-        Set<String> skus = new HashSet<>();
-        Set<String> duplicates = new HashSet<>();
+    private String generateUniqueSku(Product product, String variantName) {
+        String sku;
+        int attempts = 0;
+        int maxAttempts = 10;
 
-        for (ProductVariantRequest variant : variants) {
-            if (!skus.add(variant.getSku())) {
-                duplicates.add(variant.getSku());
+        do {
+            // Generate SKU using the utility
+            sku = SkuGenerator.generateSku(product, variantName);
+
+            // Check if SKU already exists in database
+            if (!productVariantRepository.existsBySku(sku)) {
+                log.info("Generated unique SKU: {} for variant: {}", sku, variantName);
+                return sku;
             }
-        }
 
-        if (!duplicates.isEmpty()) {
-            throw new BadRequestException(ErrorCode.INVALID_REQUEST,
-                    "Duplicate SKUs found in request: " + String.join(", ", duplicates));
-        }
+            // If duplicate found, log and retry
+            log.warn("SKU collision detected: {}. Retrying... (attempt {}/{})", sku, attempts + 1, maxAttempts);
+            attempts++;
 
-        // Check against database for existing SKUs
-        List<String> existingSkus = new ArrayList<>();
-        for (ProductVariantRequest variant : variants) {
-            if (productVariantRepository.existsBySku(variant.getSku())) {
-                existingSkus.add(variant.getSku());
+            // Add small delay to ensure different timestamp if using timestamp-based generation
+            try {
+                Thread.sleep(1);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
-        }
 
-        if (!existingSkus.isEmpty()) {
-            throw new BadRequestException(ErrorCode.INVALID_REQUEST,
-                    "SKU(s) already exist in database: " + String.join(", ", existingSkus));
-        }
+        } while (attempts < maxAttempts);
+
+        // If still can't generate unique SKU after max attempts, throw exception
+        throw new BadRequestException(ErrorCode.INVALID_REQUEST,
+                "Failed to generate unique SKU after " + maxAttempts + " attempts. Please try again.");
     }
 
     /**

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import DashboardLayout from '~/component/layout/DashboardLayout';
-import supplierService, { Supplier, SupplierStatus } from '~/service/supplierService';
+import supplierService  from '~/service/supplierService';
+import type { Supplier, SupplierStatus } from '~/service/supplierService';
 
 export default function PartnersList() {
   const navigate = useNavigate();

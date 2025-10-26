@@ -57,6 +57,14 @@ public interface EmailService {
     void sendOtpEmail(String toEmail, String otp);
 
     /**
+     * Send OTP email for password reset
+     *
+     * @param toEmail Recipient email address
+     * @param otp OTP code (6 digits)
+     */
+    void sendPasswordResetOtpEmail(String toEmail, String otp);
+
+    /**
      * Send generic email with custom subject and message
      *
      * @param toEmail Recipient email address

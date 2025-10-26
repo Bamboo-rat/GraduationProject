@@ -1,5 +1,7 @@
 import type { Route } from './+types/notifications';
 import NotificationSettings from '~/pages/settings/NotificationSettings';
+import DashboardLayout from '~/component/layout/DashboardLayout';
+import ProtectedRoute from '~/component/common/ProtectedRoute';
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -9,5 +11,11 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function NotificationSettingsRoute() {
-  return <NotificationSettings />;
+  return (
+    <ProtectedRoute requiredRoles={['SUPPLIER']}>
+      <DashboardLayout>
+        <NotificationSettings />
+      </DashboardLayout>
+    </ProtectedRoute>
+  );
 }

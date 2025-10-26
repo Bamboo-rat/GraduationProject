@@ -108,7 +108,7 @@ class PromotionService {
       return response.data.data;
     } catch (error: any) {
       console.error('Error fetching promotions:', error);
-      throw new Error(error.response?.data?.message || 'KhÙng th√ t£i danh s·ch khuyøn m„i');
+      throw new Error(error.response?.data?.message || 'Kh√¥ng th·ªÉ t·∫£i danh s√°ch khuy·∫øn m√£i');
     }
   }
 
@@ -123,7 +123,7 @@ class PromotionService {
       return response.data.data;
     } catch (error: any) {
       console.error('Error fetching promotion:', error);
-      throw new Error(error.response?.data?.message || 'KhÙng th√ t£i thÙng tin khuyøn m„i');
+      throw new Error(error.response?.data?.message || 'Kh√¥ng th·ªÉ t·∫£i th√¥ng tin khuy·∫øn m√£i');
     }
   }
 
@@ -138,7 +138,7 @@ class PromotionService {
       return response.data.data;
     } catch (error: any) {
       console.error('Error fetching promotion by code:', error);
-      throw new Error(error.response?.data?.message || 'KhÙng th√ t£i thÙng tin khuyøn m„i');
+      throw new Error(error.response?.data?.message || 'Kh√¥ng th·ªÉ t·∫£i th√¥ng tin khuy·∫øn m√£i');
     }
   }
 
@@ -154,7 +154,7 @@ class PromotionService {
       return response.data.data;
     } catch (error: any) {
       console.error('Error creating promotion:', error);
-      throw new Error(error.response?.data?.message || 'KhÙng th√ t°o khuyøn m„i');
+      throw new Error(error.response?.data?.message || 'Kh√¥ng th·ªÉ t·∫°o khuy·∫øn m√£i m·ªõi');
     }
   }
 
@@ -170,7 +170,7 @@ class PromotionService {
       return response.data.data;
     } catch (error: any) {
       console.error('Error updating promotion:', error);
-      throw new Error(error.response?.data?.message || 'KhÙng th√ c≠p nh≠t khuyøn m„i');
+      throw new Error(error.response?.data?.message || 'Kh√¥ng th·ªÉ c·∫≠p nh·∫≠t khuy·∫øn m√£i');
     }
   }
 
@@ -184,7 +184,7 @@ class PromotionService {
       );
     } catch (error: any) {
       console.error('Error deleting promotion:', error);
-      throw new Error(error.response?.data?.message || 'KhÙng th√ xÛa khuyøn m„i');
+      throw new Error(error.response?.data?.message || 'Kh√¥ng th·ªÉ x√≥a khuy·∫øn m√£i');
     }
   }
 
@@ -199,7 +199,7 @@ class PromotionService {
       return response.data.data;
     } catch (error: any) {
       console.error('Error toggling promotion status:', error);
-      throw new Error(error.response?.data?.message || 'KhÙng th√ c≠p nh≠t tr°ng th·i khuyøn m„i');
+      throw new Error(error.response?.data?.message || 'Kh√¥ng th·ªÉ c·∫≠p nh·∫≠t tr·∫°ng th√°i khuy·∫øn m√£i');
     }
   }
 
@@ -222,7 +222,7 @@ class PromotionService {
       return response.data.data;
     } catch (error: any) {
       console.error('Error validating promotion:', error);
-      throw new Error(error.response?.data?.message || 'M„ khuyøn m„i khÙng h„p l«');
+      throw new Error(error.response?.data?.message || 'M√£ khuy·∫øn m√£i kh√¥ng h·ª£p l·ªá');
     }
   }
 
@@ -231,9 +231,9 @@ class PromotionService {
    */
   getTypeLabel(type: PromotionType): string {
     const labels: Record<PromotionType, string> = {
-      PERCENTAGE: 'Gi£m theo phßn trm',
-      FIXED_AMOUNT: 'Gi£m theo s— ti¡n',
-      FREE_SHIPPING: 'Mi≈n phÌ v≠n chuy√n',
+      PERCENTAGE: 'Gi·∫£m theo ph·∫ßn trƒÉm',
+      FIXED_AMOUNT: 'Gi·∫£m theo s·ªë ti·ªÅn',
+      FREE_SHIPPING: 'Mi·ªÖn ph√≠ v·∫≠n chuy·ªÉn',
     };
     return labels[type] || type;
   }
@@ -243,10 +243,10 @@ class PromotionService {
    */
   getStatusLabel(status: PromotionStatus): string {
     const labels: Record<PromotionStatus, string> = {
-      ACTIVE: 'ang ho°t Ÿng',
-      INACTIVE: 'KhÙng ho°t Ÿng',
-      EXPIRED: '„ høt h°n',
-      SCHEDULED: '„ lÍn lÀch',
+      ACTIVE: 'ƒêang ho·∫°t ƒë·ªông',
+      INACTIVE: 'Kh√¥ng ho·∫°t ƒë·ªông',
+      EXPIRED: 'ƒê√£ h·∫øt h·∫°n',
+      SCHEDULED: 'ƒê√£ l√™n l·ªãch',
     };
     return labels[status] || status;
   }
@@ -269,10 +269,10 @@ class PromotionService {
    */
   getTierLabel(tier: PromotionTier): string {
     const labels: Record<PromotionTier, string> = {
-      TIER_1: 'H°ng 1',
-      TIER_2: 'H°ng 2',
-      TIER_3: 'H°ng 3',
-      TIER_4: 'H°ng 4',
+      TIER_1: 'H·∫°ng 1',
+      TIER_2: 'H·∫°ng 2',
+      TIER_3: 'H·∫°ng 3',
+      TIER_4: 'H·∫°ng 4',
     };
     return labels[tier] || tier;
   }
@@ -285,9 +285,9 @@ class PromotionService {
       case 'PERCENTAGE':
         return `${promotion.discountValue}%`;
       case 'FIXED_AMOUNT':
-        return `${promotion.discountValue.toLocaleString('vi-VN')} `;
+        return `${promotion.discountValue.toLocaleString('vi-VN')} ƒë`;
       case 'FREE_SHIPPING':
-        return 'Mi≈n phÌ v≠n chuy√n';
+        return 'Mi·ªÖn ph√≠ v·∫≠n chuy·ªÉn';
       default:
         return String(promotion.discountValue);
     }

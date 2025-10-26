@@ -10,7 +10,7 @@ import fileStorageService from '../../service/fileStorageService';
 import AddressAutocomplete from '../../component/features/AddressAutocomplete';
 import Toast from '../../component/common/Toast';
 import type { ToastType } from '../../component/common/Toast';
-import logo from '../assets/image/logo.png';
+import logo from '~/assets/image/logo.png';
 
 type RegistrationStep = 1 | 2 | 3 | 4;
 

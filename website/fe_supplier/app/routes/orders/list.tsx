@@ -13,7 +13,7 @@ export function meta({}: Route.MetaArgs) {
 
 export default function OrdersListRoute() {
   return (
-    <ProtectedRoute requireRoles={['SUPPLIER']}>
+    <ProtectedRoute requiredRoles={['SUPPLIER']}>
       <DashboardLayout>
         <OrdersList />
       </DashboardLayout>

@@ -1,13 +1,21 @@
-import type { Route } from "./+types/profile";
-import StoreProfile from "~/pages/store/StoreProfile";
+import type { Route } from './+types/profile';
+import StoreProfile from '~/pages/store/StoreProfile';
+import DashboardLayout from '~/component/layout/DashboardLayout';
+import ProtectedRoute from '~/component/common/ProtectedRoute';
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: "Thông tin cửa hàng - SaveFood" },
-    { name: "description", content: "Xem thông tin cửa hàng" },
+    { title: 'Thông tin Cửa hàng - SaveFood' },
+    { name: 'description', content: 'Xem thông tin chi tiết cửa hàng' },
   ];
 }
 
 export default function StoreProfileRoute() {
-  return <StoreProfile />;
+  return (
+    <ProtectedRoute requiredRoles={['SUPPLIER']}>
+      <DashboardLayout>
+        <StoreProfile />
+      </DashboardLayout>
+    </ProtectedRoute>
+  );
 }

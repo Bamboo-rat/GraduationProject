@@ -13,6 +13,7 @@ import com.example.backend.exception.custom.NotFoundException;
 import com.example.backend.mapper.CustomerMapper;
 import com.example.backend.repository.CustomerRepository;
 import com.example.backend.repository.UserRepository;
+import com.example.backend.service.AuthService;
 import com.example.backend.service.CustomerService;
 import com.example.backend.service.KeycloakService;
 import com.example.backend.service.OtpService;
@@ -31,7 +32,7 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class CustomerServiceImpl implements CustomerService {
-
+    private final AuthService authService;
     private final CustomerRepository customerRepository;
     private final UserRepository userRepository;
     private final KeycloakService keycloakService;
@@ -180,6 +181,17 @@ public class CustomerServiceImpl implements CustomerService {
             log.error("Failed to resend OTP to phone: {}", phoneNumber, e);
             throw new BadRequestException(ErrorCode.SMS_SEND_FAILED);
         }
+    }
+
+
+    @Override
+    public void sendLoginOtp(String phoneNumber) {
+        authService.requestCustomerLoginOtp(phoneNumber);
+    }
+
+    @Override
+    public com.example.backend.dto.response.LoginResponse verifyLoginOtpAndLogin(String phoneNumber, String otp) {
+        return authService.verifyCustomerLoginOtp(phoneNumber, otp);
     }
 
     @Override

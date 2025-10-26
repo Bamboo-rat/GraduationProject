@@ -13,7 +13,7 @@ export function meta({}: Route.MetaArgs) {
 
 export default function FinanceRevenueRoute() {
   return (
-    <ProtectedRoute requireRoles={['SUPPLIER']}>
+    <ProtectedRoute requiredRoles={['SUPPLIER']}>
       <DashboardLayout>
         <FinanceRevenue />
       </DashboardLayout>

@@ -53,7 +53,7 @@ public class ProductController {
         ProductResponse response = productService.createProduct(request, keycloakId);
 
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Product created successfully. Waiting for admin approval.", response));
+                .body(ApiResponse.success("Product created successfully and is now active.", response));
     }
 
     @GetMapping
@@ -133,33 +133,33 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.success("Product updated successfully", product));
     }
 
-    @PatchMapping("/{id}/status")
+    @PatchMapping("/{id}/visibility")
     @PreAuthorize("hasRole('SUPPLIER')")
     @Operation(
-            summary = "Update product status",
-            description = "Update product status (e.g., ACTIVE, SOLD_OUT, etc.)"
+            summary = "Toggle product visibility",
+            description = "Supplier can hide (INACTIVE) or show (ACTIVE) their product"
     )
-    public ResponseEntity<ApiResponse<ProductResponse>> updateProductStatus(
+    public ResponseEntity<ApiResponse<ProductResponse>> toggleProductVisibility(
             @PathVariable String id,
-            @Valid @RequestBody ProductStatusUpdateRequest request,
+            @RequestParam boolean makeActive,
             Authentication authentication) {
 
         Jwt jwt = (Jwt) authentication.getPrincipal();
         String keycloakId = JwtUtils.extractKeycloakId(jwt);
 
-        log.info("PATCH /api/products/{}/status - Updating status to {} by supplier {}", 
-                id, request.getStatus(), keycloakId);
+        log.info("PATCH /api/products/{}/visibility - Toggle to {} by supplier {}",
+                id, makeActive ? "ACTIVE" : "INACTIVE", keycloakId);
 
-        ProductResponse product = productService.updateProductStatus(id, request, keycloakId);
+        ProductResponse product = productService.toggleProductVisibility(id, keycloakId, makeActive);
 
-        return ResponseEntity.ok(ApiResponse.success("Product status updated successfully", product));
+        return ResponseEntity.ok(ApiResponse.success("Product visibility updated successfully", product));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('SUPPLIER')")
     @Operation(
-            summary = "Delete product (soft delete)",
-            description = "Soft delete product by setting status to SOLD_OUT"
+            summary = "Delete product (soft delete with Cloudinary cleanup)",
+            description = "Soft delete product by setting status to DELETED and removing images from Cloudinary"
     )
     public ResponseEntity<ApiResponse<Void>> deleteProduct(
             @PathVariable String id,
@@ -168,42 +168,42 @@ public class ProductController {
         Jwt jwt = (Jwt) authentication.getPrincipal();
         String keycloakId = JwtUtils.extractKeycloakId(jwt);
 
-        log.info("DELETE /api/products/{} - Soft deleting product by supplier {}", id, keycloakId);
+        log.info("DELETE /api/products/{} - Soft deleting product and cleaning up images by supplier {}", id, keycloakId);
 
         productService.deleteProduct(id, keycloakId);
 
-        return ResponseEntity.ok(ApiResponse.success("Product deleted successfully", null));
+        return ResponseEntity.ok(ApiResponse.success("Product deleted successfully and images removed from cloud storage", null));
     }
 
-    @PatchMapping("/{id}/approve")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PatchMapping("/{id}/suspend")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR')")
     @Operation(
-            summary = "Approve product (Super Admin only)",
-            description = "Super Admin approves a pending product"
+            summary = "Suspend product (Admin only)",
+            description = "Admin suspends a product for policy violation"
     )
-    public ResponseEntity<ApiResponse<ProductResponse>> approveProduct(@PathVariable String id) {
-
-        log.info("PATCH /api/products/{}/approve - Admin approving product", id);
-
-        ProductResponse product = productService.approveProduct(id);
-
-        return ResponseEntity.ok(ApiResponse.success("Product approved successfully", product));
-    }
-
-    @PatchMapping("/{id}/reject")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
-    @Operation(
-            summary = "Reject product (Super Admin only)",
-            description = "Super Admin rejects a pending product"
-    )
-    public ResponseEntity<ApiResponse<ProductResponse>> rejectProduct(
+    public ResponseEntity<ApiResponse<ProductResponse>> suspendProduct(
             @PathVariable String id,
             @RequestParam String reason) {
 
-        log.info("PATCH /api/products/{}/reject - Admin rejecting product. Reason: {}", id, reason);
+        log.info("PATCH /api/products/{}/suspend - Admin suspending product. Reason: {}", id, reason);
 
-        ProductResponse product = productService.rejectProduct(id, reason);
+        ProductResponse product = productService.suspendProduct(id, reason);
 
-        return ResponseEntity.ok(ApiResponse.success("Product rejected successfully", product));
+        return ResponseEntity.ok(ApiResponse.success("Product suspended successfully", product));
+    }
+
+    @PatchMapping("/{id}/unsuspend")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR')")
+    @Operation(
+            summary = "Unsuspend product (Admin only)",
+            description = "Admin unsuspends a previously suspended product"
+    )
+    public ResponseEntity<ApiResponse<ProductResponse>> unsuspendProduct(@PathVariable String id) {
+
+        log.info("PATCH /api/products/{}/unsuspend - Admin unsuspending product", id);
+
+        ProductResponse product = productService.unsuspendProduct(id);
+
+        return ResponseEntity.ok(ApiResponse.success("Product unsuspended successfully", product));
     }
 }

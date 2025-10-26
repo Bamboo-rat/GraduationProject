@@ -1,5 +1,7 @@
 import type { Route } from './+types/revenue-over-time';
 import RevenueOverTime from '~/pages/reports/RevenueOverTime';
+import DashboardLayout from '~/component/layout/DashboardLayout';
+import ProtectedRoute from '~/component/common/ProtectedRoute';
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -9,5 +11,11 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function RevenueOverTimeRoute() {
-  return <RevenueOverTime />;
+  return (
+    <ProtectedRoute requiredRoles={['SUPPLIER']}>
+      <DashboardLayout>
+        <RevenueOverTime />
+      </DashboardLayout>
+    </ProtectedRoute>
+  );
 }

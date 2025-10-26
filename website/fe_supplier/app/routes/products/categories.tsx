@@ -1,5 +1,7 @@
 import type { Route } from "./+types/categories";
 import CategorySuggestionList from "~/pages/products/CategorySuggestionList";
+import DashboardLayout from "~/component/layout/DashboardLayout";
+import ProtectedRoute from '~/component/common/ProtectedRoute';
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -9,5 +11,11 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function CategorySuggestionsRoute() {
-  return <CategorySuggestionList />;
+  return (
+    <ProtectedRoute requiredRoles={['SUPPLIER']}>
+      <DashboardLayout>
+        <CategorySuggestionList />
+      </DashboardLayout>
+    </ProtectedRoute>
+  );
 }

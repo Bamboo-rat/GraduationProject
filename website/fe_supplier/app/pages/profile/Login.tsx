@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../../AuthContext';
-import logo from '../assets/image/logo.png';
+import logo from '~/assets/image/logo.png';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
