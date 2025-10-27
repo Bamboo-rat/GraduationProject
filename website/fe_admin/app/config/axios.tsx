@@ -148,9 +148,15 @@ axiosInstance.interceptors.response.use(
           console.error('Error:', data.message);
       }
     } else if (error.request) {
-      console.error('No response from server');
+      // Request was made but no response received
+      if (error.code === 'ECONNABORTED') {
+        console.error('Request timeout - server took too long to respond');
+      } else {
+        console.error('No response from server - network error or server is down');
+      }
     } else {
-      console.error('Error:', error.message);
+      // Something happened in setting up the request
+      console.error('Request setup error:', error.message);
     }
 
     return Promise.reject(error);
