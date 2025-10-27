@@ -16,6 +16,8 @@ export default [
 
   // Products routes
   route("products/list", "routes/products/list.tsx"),
+  route("products/create", "routes/products/create.tsx"),
+  route("products/edit/:productId", "routes/products/edit/$productId.tsx"),
   route("products/categories", "routes/products/categories.tsx"),
   route("products/review-status", "routes/products/review-status.tsx"),
 

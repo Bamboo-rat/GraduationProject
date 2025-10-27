@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from '@remix-run/react';
-import productService, {
+import { useNavigate } from 'react-router';
+import productService  from '~/service/productService';
+import type {
   CreateProductRequest,
   ProductInfoRequest,
   ProductAttributeRequest,
@@ -8,8 +9,10 @@ import productService, {
   ProductImageRequest,
   StoreInventoryRequest,
 } from '~/service/productService';
-import categoryService, { Category } from '~/service/categoryService';
-import storeService, { StoreResponse } from '~/service/storeService';
+import categoryService  from '~/service/categoryService';
+import type { Category } from '~/service/categoryService';
+import storeService  from '~/service/storeService';
+import type { StoreResponse } from '~/service/storeService';
 import fileStorageService from '~/service/fileStorageService';
 import { PlusCircle, Trash2, Upload, Image as ImageIcon } from 'lucide-react';
 
@@ -50,9 +53,16 @@ export default function CreateProduct() {
   const loadCategories = async () => {
     try {
       const data = await categoryService.getAllCategories();
-      setCategories(data);
+      // Ensure data is an array
+      if (Array.isArray(data)) {
+        setCategories(data);
+      } else {
+        console.warn('Categories data is not an array:', data);
+        setCategories([]);
+      }
     } catch (error) {
       console.error('Error loading categories:', error);
+      setCategories([]); // Set to empty array on error
       alert('Không thể tải danh mục');
     }
   };
@@ -60,9 +70,16 @@ export default function CreateProduct() {
   const loadStores = async () => {
     try {
       const response = await storeService.getMyStores({ page: 0, size: 100, status: 'ACTIVE' });
-      setStores(response.content);
+      // Ensure content is an array
+      if (response && Array.isArray(response.content)) {
+        setStores(response.content);
+      } else {
+        console.warn('Stores content is not an array:', response);
+        setStores([]);
+      }
     } catch (error) {
       console.error('Error loading stores:', error);
+      setStores([]); // Set to empty array on error
       alert('Không thể tải danh sách cửa hàng');
     }
   };
@@ -110,7 +127,7 @@ export default function CreateProduct() {
           className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">-- Chọn danh mục --</option>
-          {categories.map((cat) => (
+          {Array.isArray(categories) && categories.map((cat) => (
             <option key={cat.id} value={cat.id.toString()}>
               {cat.categoryName}
             </option>
@@ -204,9 +221,9 @@ export default function CreateProduct() {
     setVariants(variants.filter((_, i) => i !== index));
   };
 
-  const updateVariant = (index: number, field: keyof ProductVariantRequest, value: any) => {
+  const updateVariant = <K extends keyof ProductVariantRequest>(index: number, field: K, value: ProductVariantRequest[K]) => {
     const updated = [...variants];
-    updated[index][field] = value;
+    updated[index] = { ...updated[index], [field]: value } as ProductVariantRequest;
     setVariants(updated);
   };
 

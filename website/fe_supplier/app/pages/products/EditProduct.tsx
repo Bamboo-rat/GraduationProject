@@ -50,9 +50,16 @@ export default function EditProduct() {
   const loadCategories = async () => {
     try {
       const data = await categoryService.getAllCategories();
-      setCategories(data);
+      // Ensure data is an array
+      if (Array.isArray(data)) {
+        setCategories(data);
+      } else {
+        console.warn('Categories data is not an array:', data);
+        setCategories([]);
+      }
     } catch (error) {
       console.error('Error loading categories:', error);
+      setCategories([]); // Set to empty array on error
     }
   };
 
@@ -151,7 +158,7 @@ export default function EditProduct() {
                 required
               >
                 <option value="">-- Chọn danh mục --</option>
-                {categories.map((cat) => (
+                {Array.isArray(categories) && categories.map((cat) => (
                   <option key={cat.id} value={cat.id.toString()}>
                     {cat.categoryName}
                   </option>
