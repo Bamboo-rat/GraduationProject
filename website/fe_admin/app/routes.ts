@@ -4,7 +4,6 @@ export default [
     index("routes/auth.tsx"),
 
     // Dashboard
-    route("dashboard", "routes/dashboard.tsx"),
     route("dashboard/overview", "routes/dashboard/overview.tsx"),
     route("dashboard/monitor", "routes/dashboard/monitor.tsx"),
     route("dashboard/notification-monitor", "routes/dashboard/notification-monitor.tsx"),

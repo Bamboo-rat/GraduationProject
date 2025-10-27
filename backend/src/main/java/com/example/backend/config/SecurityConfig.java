@@ -18,7 +18,17 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> {})
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers(
+                                "/api/auth/login",
+                                "/api/auth/refresh",
+                                "/api/auth/logout",
+                                "/api/auth/login/customer/**",
+                                "/api/auth/register/**",
+                                "/api/auth/forgot-password",
+                                "/api/auth/verify-reset-otp",
+                                "/api/auth/reset-password"
+                        ).permitAll()
+                        .requestMatchers("/api/auth/me").authenticated()
                         .requestMatchers("/sms/**", "/api/admins/**","/api/files/**","/api/products/**", "/api/categories/**", "/api/partners/**", "/api/promotions/**").permitAll()
                         .requestMatchers("/api/customers/**").hasAnyRole("CUSTOMER","SUPER_ADMIN", "MODERATOR", "STAFF")
                         .requestMatchers("/api/suppliers/**").hasAnyRole("SUPER_ADMIN", "MODERATOR", "STAFF","SUPPLIER")

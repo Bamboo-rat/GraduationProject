@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, Check, CheckCheck, X } from 'lucide-react';
-import inAppNotificationService, { InAppNotification } from '../../service/inAppNotificationService';
+import inAppNotificationService  from '~/service/inAppNotificationService';
+import type { InAppNotification } from '~/service/inAppNotificationService';
 import { useNavigate } from 'react-router';
 
 const NotificationDropdown: React.FC = () => {
@@ -107,10 +108,10 @@ const NotificationDropdown: React.FC = () => {
     const now = new Date();
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
-    if (diffInSeconds < 60) return 'VÎa xong';
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} ph˙t tr∞€c`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} gi› tr∞€c`;
-    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} ng‡y tr∞€c`;
+    if (diffInSeconds < 60) return 'V·ª´a xong';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} ph√∫t tr∆∞·ªõc`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} gi·ªù tr∆∞·ªõc`;
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} ng√†y tr∆∞·ªõc`;
     return date.toLocaleDateString('vi-VN');
   };
 
@@ -135,16 +136,16 @@ const NotificationDropdown: React.FC = () => {
         <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">ThÙng b·o</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Th√¥ng b√°o</h3>
             <div className="flex items-center gap-2">
               {unreadCount > 0 && (
                 <button
                   onClick={handleMarkAllAsRead}
                   className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                  title="·nh d•u t•t c£ l‡ „ Õc"
+                  title="ƒê√°nh d·∫•u t·∫•t c·∫£ l√† ƒë√£ ƒë·ªçc"
                 >
                   <CheckCheck className="w-4 h-4" />
-                  Õc t•t c£
+                  ƒê√£ ƒë·ªçc t·∫•t c·∫£
                 </button>
               )}
               <button
@@ -160,11 +161,11 @@ const NotificationDropdown: React.FC = () => {
           <div className="max-h-96 overflow-y-auto">
             {loading ? (
               <div className="px-4 py-8 text-center text-gray-500">
-                ang t£i...
+                ƒêang t·∫£i...
               </div>
             ) : notifications.length === 0 ? (
               <div className="px-4 py-8 text-center text-gray-500">
-                KhÙng cÛ thÙng b·o
+                Kh√¥ng c√≥ th√¥ng b√°o
               </div>
             ) : (
               <div className="divide-y divide-gray-100">
@@ -218,7 +219,7 @@ const NotificationDropdown: React.FC = () => {
                 }}
                 className="text-sm text-blue-600 hover:text-blue-800 font-medium"
               >
-                Xem t•t c£ thÙng b·o
+                Xem t·∫•t c·∫£ th√¥ng b√°o
               </button>
             </div>
           )}

@@ -18,7 +18,8 @@ const Login: React.FC = () => {
     setLoading(true);
 
     try {
-      await login(username, password);
+      // Pass credentials as an object, not separate parameters
+      await login({ username, password });
       // Redirect to dashboard after successful login
       navigate('/dashboard/overview');
     } catch (err: any) {
