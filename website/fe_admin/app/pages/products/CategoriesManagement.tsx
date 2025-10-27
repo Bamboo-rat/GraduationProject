@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import DashboardLayout from '~/component/layout/DashboardLayout';
-import categoryService, { Category, CategoryRequest } from '~/service/categoryService';
+import categoryService, { type Category, type CategoryRequest } from '~/service/categoryService';
 import fileStorageService from '~/service/fileStorageService';
 
 export default function CategoriesManagement() {

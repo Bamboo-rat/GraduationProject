@@ -1,5 +1,5 @@
 import axiosInstance from '../config/axios';
-import { ApiResponse, PageResponse } from './types';
+import type { ApiResponse, PageResponse } from './types';
 
 export interface StoreResponse {
   storeId: string;

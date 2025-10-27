@@ -58,10 +58,10 @@ export default function StoreManagement() {
     }
   };
 
-  const openDetailModal = (store: StoreResponse) => {
-    setSelectedStore(store);
-    setShowDetailModal(true);
-  };
+  // const openDetailModal = (store: StoreResponse) => {
+  //   setSelectedStore(store);
+  //   setShowDetailModal(true);
+  // };
 
   const closeDetailModal = () => {
     setShowDetailModal(false);
@@ -287,7 +287,7 @@ export default function StoreManagement() {
                 {/* Actions */}
                 <div className="flex space-x-2">
                   <button
-                    onClick={() => openDetailModal(store)}
+                    onClick={() => navigate(`/store/profile?storeId=${store.storeId}`)}
                     className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
                   >
                     Chi tiết

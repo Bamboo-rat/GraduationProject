@@ -391,8 +391,9 @@ All services follow the same patterns and conventions.
 
 ### Promotion Management
 - **Admin portal** has full CRUD (create, update, delete, toggle status)
-- **Supplier portal** has read-only + apply functionality
-- Suppliers can view and apply promotions but cannot create/edit them
+- **Customer portal** can view, validate, and apply promotions to orders
+- **Supplier portal** has read-only access only (cannot apply or use promotions)
+- Promotions are exclusively for customer incentives, not supplier benefits
 
 ### Store Updates
 - **Minor changes** (description, images, hours) → Applied immediately

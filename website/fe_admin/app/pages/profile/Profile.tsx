@@ -3,6 +3,7 @@ import { useAuth } from '../../AuthContext';
 import profileService from '../../service/profileService';
 import * as Icons from 'lucide-react';
 import DashboardLayout from '~/component/layout/DashboardLayout';
+import AvatarUpload from '~/component/common/AvatarUpload';
 
 interface ProfileFormData {
   username: string;
@@ -11,6 +12,7 @@ interface ProfileFormData {
   phoneNumber: string;
   role: string;
   status: string;
+  avatarUrl?: string;
 }
 
 const Profile: React.FC = () => {
@@ -36,6 +38,7 @@ const Profile: React.FC = () => {
         phoneNumber: user.phoneNumber || '',
         role: user.roles?.[0] || '',
         status: user.status || '',
+        avatarUrl: user.avatarUrl || undefined,
       });
     }
   }, [user]);
@@ -45,6 +48,13 @@ const Profile: React.FC = () => {
     setFormData(prev => ({
       ...prev,
       [name]: value,
+    }));
+  };
+
+  const handleAvatarChange = (url: string) => {
+    setFormData(prev => ({
+      ...prev,
+      avatarUrl: url,
     }));
   };
 
@@ -58,11 +68,12 @@ const Profile: React.FC = () => {
         fullName: formData.fullName || undefined,
         email: formData.email || undefined,
         phoneNumber: formData.phoneNumber || undefined,
+        avatarUrl: formData.avatarUrl || undefined,
       });
-      
+
       // Refresh user data
       await refreshUser();
-      
+
       setIsEditing(false);
       // Show success notification
       alert('Cập nhật thông tin thành công!');
@@ -84,6 +95,7 @@ const Profile: React.FC = () => {
         phoneNumber: user.phoneNumber || '',
         role: user.roles?.[0] || '',
         status: user.status || '',
+        avatarUrl: user.avatarUrl || undefined,
       });
     }
     setIsEditing(false);
@@ -118,7 +130,7 @@ const Profile: React.FC = () => {
     <DashboardLayout>
       <div className="py-2">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-6 flex justify-between items-center">
           <div className="flex items-center space-x-4">
             <div className="w-14 h-14 bg-gradient-to-br from-[#A4C3A2] to-[#2F855A] rounded-2xl flex items-center justify-center shadow-lg">
               <Icons.User className="w-7 h-7 text-white" />
@@ -143,13 +155,13 @@ const Profile: React.FC = () => {
             
             {/* Avatar */}
             <div className="absolute -bottom-12 left-8">
-              <div className="w-24 h-24 rounded-full bg-[#FFFEFA] p-1.5 shadow-xl ring-4 ring-white">
-                <div className="w-full h-full rounded-full bg-gradient-to-br from-[#A4C3A2] to-[#2F855A] flex items-center justify-center">
-                  <span className="text-3xl font-bold text-white">
-                    {user?.username?.charAt(0).toUpperCase() || 'A'}
-                  </span>
-                </div>
-              </div>
+              <AvatarUpload
+                currentAvatarUrl={formData.avatarUrl}
+                onAvatarChange={handleAvatarChange}
+                userName={user?.username}
+                size="large"
+                editable={true}
+              />
             </div>
 
             {/* Edit Button */}

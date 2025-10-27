@@ -20,15 +20,21 @@ import com.example.backend.mapper.StorePendingUpdateMapper;
 import com.example.backend.repository.StorePendingUpdateRepository;
 import com.example.backend.repository.StoreRepository;
 import com.example.backend.repository.UserRepository;
+import com.example.backend.service.InAppNotificationService;
 import com.example.backend.service.StoreService;
+import com.example.backend.entity.enums.NotificationType;
+import com.example.backend.utils.LocationUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -40,6 +46,37 @@ public class StoreServiceImpl implements StoreService {
     private final UserRepository userRepository;
     private final StorePendingUpdateMapper updateMapper;
     private final StoreMapper storeMapper;
+    private final InAppNotificationService inAppNotificationService;
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<StoreResponse> getAllStores(StoreStatus status, String supplierId, String search, Pageable pageable) {
+        log.info("Getting all stores: status: {}, supplierId: {}, search: {}", status, supplierId, search);
+
+        Page<Store> stores;
+
+        // Build query based on filters
+        if (supplierId != null && status != null && search != null && !search.isBlank()) {
+            stores = storeRepository.findBySupplierUserIdAndStatusAndSearch(supplierId, status, search, pageable);
+        } else if (supplierId != null && status != null) {
+            stores = storeRepository.findBySupplierUserIdAndStatus(supplierId, status, pageable);
+        } else if (supplierId != null && search != null && !search.isBlank()) {
+            stores = storeRepository.findBySupplierUserIdAndSearch(supplierId, search, pageable);
+        } else if (supplierId != null) {
+            stores = storeRepository.findBySupplierUserId(supplierId, pageable);
+        } else if (status != null && search != null && !search.isBlank()) {
+            stores = storeRepository.findByStatusAndSearch(status, search, pageable);
+        } else if (status != null) {
+            stores = storeRepository.findByStatus(status, pageable);
+        } else if (search != null && !search.isBlank()) {
+            stores = storeRepository.findBySearch(search, pageable);
+        } else {
+            stores = storeRepository.findAll(pageable);
+        }
+
+        log.info("Found {} stores total", stores.getTotalElements());
+        return stores.map(storeMapper::toResponse);
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -80,6 +117,40 @@ public class StoreServiceImpl implements StoreService {
                         "Store not found with ID: " + storeId));
 
         return storeMapper.toResponse(store);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<StoreResponse> getNearbyStores(double latitude, double longitude, double radiusKm, Pageable pageable) {
+        log.info("Getting nearby stores: lat={}, lon={}, radius={}km", latitude, longitude, radiusKm);
+
+        // Get all ACTIVE stores (we'll filter by distance in memory)
+        List<Store> allActiveStores = storeRepository.findByStatus(StoreStatus.ACTIVE, Pageable.unpaged()).getContent();
+
+        // Filter stores within the specified radius
+        List<StoreResponse> nearbyStores = allActiveStores.stream()
+                .filter(store -> {
+                    if (store.getLatitude() == null || store.getLongitude() == null) {
+                        return false; // Skip stores without coordinates
+                    }
+                    double distance = LocationUtils.calculateDistance(
+                            latitude, longitude,
+                            store.getLatitude(), store.getLongitude()
+                    );
+                    return distance <= radiusKm;
+                })
+                .map(storeMapper::toResponse)
+                .collect(Collectors.toList());
+
+        log.info("Found {} stores within {}km radius", nearbyStores.size(), radiusKm);
+
+        // Apply pagination manually
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), nearbyStores.size());
+
+        List<StoreResponse> pageContent = nearbyStores.subList(start, end);
+
+        return new PageImpl<>(pageContent, pageable, nearbyStores.size());
     }
 
     @Override
@@ -134,6 +205,26 @@ public class StoreServiceImpl implements StoreService {
         store.setStatus(StoreStatus.ACTIVE);
         store = storeRepository.save(store);
 
+        // Send in-app notification to supplier about store approval
+        try {
+            String notificationContent = String.format(
+                    "Chúc mừng! Cửa hàng '%s' của bạn đã được phê duyệt và hiện đang hoạt động. %s",
+                    store.getStoreName(),
+                    adminNotes != null && !adminNotes.isBlank() ? "Ghi chú: " + adminNotes : ""
+            );
+            String linkUrl = "/store/listStore"; // Link to stores list
+            inAppNotificationService.createNotificationForUser(
+                    store.getSupplier().getUserId(),
+                    NotificationType.STORE_APPROVED,
+                    notificationContent,
+                    linkUrl
+            );
+            log.info("In-app notification sent to supplier about store approval: {}", storeId);
+        } catch (Exception e) {
+            log.error("Failed to send in-app notification for store approval: {}", storeId, e);
+            // Don't fail the operation if notification fails
+        }
+
         log.info("Store approved successfully: {} by admin: {}", storeId, admin.getFullName());
         return storeMapper.toResponse(store);
     }
@@ -161,6 +252,26 @@ public class StoreServiceImpl implements StoreService {
         // Update status to PERMANENTLY_CLOSED (since it was rejected)
         store.setStatus(StoreStatus.PERMANENTLY_CLOSED);
         store = storeRepository.save(store);
+
+        // Send in-app notification to supplier about store rejection
+        try {
+            String notificationContent = String.format(
+                    "Rất tiếc, cửa hàng '%s' của bạn đã bị từ chối. %s",
+                    store.getStoreName(),
+                    adminNotes != null && !adminNotes.isBlank() ? "Lý do: " + adminNotes : ""
+            );
+            String linkUrl = "/store/listStore"; // Link to stores list
+            inAppNotificationService.createNotificationForUser(
+                    store.getSupplier().getUserId(),
+                    NotificationType.STORE_REJECTED,
+                    notificationContent,
+                    linkUrl
+            );
+            log.info("In-app notification sent to supplier about store rejection: {}", storeId);
+        } catch (Exception e) {
+            log.error("Failed to send in-app notification for store rejection: {}", storeId, e);
+            // Don't fail the operation if notification fails
+        }
 
         log.info("Store rejected: {} by admin: {}, reason: {}", storeId, admin.getFullName(), adminNotes);
         return storeMapper.toResponse(store);
@@ -308,6 +419,29 @@ public class StoreServiceImpl implements StoreService {
             updates = pendingUpdateRepository.findAll(pageable);
         }
 
+        return updates.map(updateMapper::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<StorePendingUpdateResponse> getMyPendingUpdates(String keycloakId, SuggestionStatus status, Pageable pageable) {
+        log.info("Getting pending updates for supplier: {}, status: {}", keycloakId, status);
+
+        // Find supplier
+        Supplier supplier = (Supplier) userRepository.findByKeycloakId(keycloakId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+
+        Page<StorePendingUpdate> updates;
+
+        if (status != null) {
+            updates = pendingUpdateRepository.findByStore_Supplier_UserIdAndUpdateStatus(
+                    supplier.getUserId(), status, pageable);
+        } else {
+            updates = pendingUpdateRepository.findByStore_Supplier_UserId(
+                    supplier.getUserId(), pageable);
+        }
+
+        log.info("Found {} pending updates for supplier: {}", updates.getTotalElements(), keycloakId);
         return updates.map(updateMapper::toResponse);
     }
 

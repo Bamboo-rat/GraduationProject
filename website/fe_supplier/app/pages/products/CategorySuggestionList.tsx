@@ -25,10 +25,20 @@ export default function CategorySuggestionList() {
         params.status = statusFilter;
       }
 
-      const response = await categorySuggestionService.getMySuggestions(params);
-      setSuggestions(response.content);
-      setTotalPages(response.page.totalPages);
-      setTotalElements(response.page.totalElements);
+      const response: any = await categorySuggestionService.getMySuggestions(params);
+
+      // Defensive handling for different pagination shapes
+      const content = response?.content ?? [];
+      const page = response?.page ?? {
+        totalPages: response?.totalPages ?? 0,
+        totalElements: response?.totalElements ?? 0,
+        size: response?.size ?? 10,
+        number: response?.number ?? currentPage,
+      };
+
+      setSuggestions(content);
+      setTotalPages(page.totalPages ?? 0);
+      setTotalElements(page.totalElements ?? 0);
     } catch (error) {
       console.error('Error fetching suggestions:', error);
       alert('Lỗi khi tải danh sách đề xuất');

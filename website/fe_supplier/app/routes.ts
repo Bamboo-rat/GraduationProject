@@ -46,15 +46,11 @@ export default [
   route("store/update-request", "routes/store/update-request.tsx"),
   route("store/update-history", "routes/store/update-history.tsx"),
 
-  // Promotions routes
-  route("promotions/list", "routes/promotions/list.tsx"),
-
   // Feedback routes
   route("feedback/reviews", "routes/feedback/reviews.tsx"),
   route("feedback/support", "routes/feedback/support.tsx"),
 
   // Settings routes
-  route("settings/payment", "routes/settings/payment.tsx"),
   route("settings/notifications", "routes/settings/notifications.tsx"),
   route("settings/policies", "routes/settings/policies.tsx"),
 

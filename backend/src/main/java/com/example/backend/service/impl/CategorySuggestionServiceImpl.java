@@ -17,6 +17,8 @@ import com.example.backend.repository.CategoryRepository;
 import com.example.backend.repository.CategorySuggestionRepository;
 import com.example.backend.repository.SupplierRepository;
 import com.example.backend.service.CategorySuggestionService;
+import com.example.backend.service.InAppNotificationService;
+import com.example.backend.entity.enums.NotificationType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -36,6 +38,7 @@ public class CategorySuggestionServiceImpl implements CategorySuggestionService 
     private final AdminRepository adminRepository;
     private final CategoryRepository categoryRepository;
     private final CategorySuggestionMapper suggestionMapper;
+    private final InAppNotificationService inAppNotificationService;
 
     @Override
     @Transactional
@@ -66,6 +69,25 @@ public class CategorySuggestionServiceImpl implements CategorySuggestionService 
 
         suggestion = suggestionRepository.save(suggestion);
         log.info("Category suggestion created successfully: {}", suggestion.getSuggestionId());
+
+        // Send in-app notification to all admins about new category suggestion
+        try {
+            String notificationContent = String.format(
+                    "Nhà cung cấp '%s' đã đề xuất danh mục mới: '%s'",
+                    supplier.getBusinessName() != null ? supplier.getBusinessName() : supplier.getFullName(),
+                    request.getName()
+            );
+            String linkUrl = "/products/category-suggestions"; // Link to category suggestions page
+            inAppNotificationService.createNotificationForAllAdmins(
+                    NotificationType.NEW_CATEGORY_SUGGESTION,
+                    notificationContent,
+                    linkUrl
+            );
+            log.info("In-app notification sent to admins about new category suggestion: {}", suggestion.getSuggestionId());
+        } catch (Exception e) {
+            log.error("Failed to send in-app notification for new category suggestion: {}", suggestion.getSuggestionId(), e);
+            // Don't fail the operation if notification fails
+        }
 
         return suggestionMapper.toResponse(suggestion);
     }

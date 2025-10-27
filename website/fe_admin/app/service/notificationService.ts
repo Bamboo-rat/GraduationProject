@@ -1,5 +1,5 @@
 import axiosInstance from '../config/axios';
-import { ApiResponse } from './types';
+import type { ApiResponse } from './types';
 
 export interface PendingNotification {
   id: string;

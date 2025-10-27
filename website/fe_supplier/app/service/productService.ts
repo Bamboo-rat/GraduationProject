@@ -65,6 +65,7 @@ export interface UpdateProductRequest {
   categoryId?: number;
   images?: ProductImage[];
   variants?: ProductVariant[];
+  status?: string;
 }
 
 class ProductService {
@@ -73,10 +74,30 @@ class ProductService {
   // Get all my products (supplier's own products)
   async getMyProducts(params?: ProductListParams): Promise<PaginatedResponse<Product>> {
     const response = await apiClient.get<ApiResponse<PaginatedResponse<Product>>>(
-      `${this.BASE_URL}/supplier/my-products`,
+      `${this.BASE_URL}/my-products`,
       { params }
     );
-    return response.data.data;
+    // Normalize backend Page<> JSON to our PaginatedResponse<T> shape.
+    const payload: any = response.data.data;
+    if (!payload) {
+      return { content: [], page: { size: 0, number: 0, totalElements: 0, totalPages: 0 } };
+    }
+
+    // Spring's Page serialization often exposes totalPages/totalElements at top-level
+    // while our frontend expects a nested `page` object. Normalize both shapes here.
+    if (payload.page) {
+      return payload as PaginatedResponse<Product>;
+    }
+
+    return {
+      content: payload.content || [],
+      page: {
+        size: typeof payload.size === 'number' ? payload.size : payload.page?.size ?? 10,
+        number: typeof payload.number === 'number' ? payload.number : payload.page?.number ?? 0,
+        totalElements: typeof payload.totalElements === 'number' ? payload.totalElements : 0,
+        totalPages: typeof payload.totalPages === 'number' ? payload.totalPages : 0,
+      },
+    } as PaginatedResponse<Product>;
   }
 
   // Get product by ID
@@ -97,12 +118,12 @@ class ProductService {
     return response.data.data;
   }
 
-  // Update product status (AVAILABLE/SOLD_OUT)
-  async updateProductStatus(id: number, status: 'AVAILABLE' | 'SOLD_OUT'): Promise<Product> {
+  // Toggle product visibility (ACTIVE/INACTIVE)
+  async toggleProductVisibility(id: number, makeActive: boolean): Promise<Product> {
     const response = await apiClient.patch<ApiResponse<Product>>(
-      `${this.BASE_URL}/${id}/status`,
+      `${this.BASE_URL}/${id}/visibility`,
       null,
-      { params: { status } }
+      { params: { makeActive } }
     );
     return response.data.data;
   }

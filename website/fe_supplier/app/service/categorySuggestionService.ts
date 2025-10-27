@@ -36,7 +36,25 @@ class CategorySuggestionService {
       `${this.BASE_URL}/my-suggestions`,
       { params }
     );
-    return response.data.data;
+    // Normalize backend Page<> JSON to our PaginatedResponse<T> shape.
+    const payload: any = response.data.data;
+    if (!payload) {
+      return { content: [], page: { size: 0, number: 0, totalElements: 0, totalPages: 0 } };
+    }
+
+    if (payload.page) {
+      return payload as PaginatedResponse<CategorySuggestion>;
+    }
+
+    return {
+      content: payload.content || [],
+      page: {
+        size: typeof payload.size === 'number' ? payload.size : payload.page?.size ?? 10,
+        number: typeof payload.number === 'number' ? payload.number : payload.page?.number ?? 0,
+        totalElements: typeof payload.totalElements === 'number' ? payload.totalElements : 0,
+        totalPages: typeof payload.totalPages === 'number' ? payload.totalPages : 0,
+      },
+    } as PaginatedResponse<CategorySuggestion>;
   }
 
   // Get suggestion by ID

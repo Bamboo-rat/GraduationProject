@@ -45,6 +45,11 @@ public interface StoreRepository extends JpaRepository<Store, String> {
     List<Store> findByStatus(StoreStatus status);
 
     /**
+     * Find all stores by status with pagination
+     */
+    Page<Store> findByStatus(StoreStatus status, Pageable pageable);
+
+    /**
      * Find active stores by supplier
      */
     List<Store> findBySupplierAndStatus(Supplier supplier, StoreStatus status);
@@ -75,4 +80,22 @@ public interface StoreRepository extends JpaRepository<Store, String> {
                                                          @Param("status") StoreStatus status,
                                                          @Param("search") String search,
                                                          Pageable pageable);
+
+    /**
+     * Search all stores by search term (admin)
+     */
+    @Query("SELECT s FROM Store s WHERE " +
+           "LOWER(s.storeName) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(s.address) LIKE LOWER(CONCAT('%', :search, '%'))")
+    Page<Store> findBySearch(@Param("search") String search, Pageable pageable);
+
+    /**
+     * Search all stores by status and search term (admin)
+     */
+    @Query("SELECT s FROM Store s WHERE s.status = :status " +
+           "AND (LOWER(s.storeName) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(s.address) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<Store> findByStatusAndSearch(@Param("status") StoreStatus status,
+                                        @Param("search") String search,
+                                        Pageable pageable);
 }

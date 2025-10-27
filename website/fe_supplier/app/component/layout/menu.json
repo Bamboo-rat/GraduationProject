@@ -4,7 +4,7 @@
       "id": 1,
       "title": "Bảng điều khiển",
       "icon": "layout-dashboard",
-      "link": "/dashboard",
+      "link": "/dashboard/overview",
       "subMenu": [
         { "title": "Tổng quan doanh thu", "link": "/dashboard/overview" },
         { "title": "Đơn hàng gần đây", "link": "/dashboard/orders" },
@@ -15,7 +15,7 @@
       "id": 2,
       "title": "Sản phẩm",
       "icon": "package",
-      "link": "/products",
+      "link": "/products/list",
       "subMenu": [
         { "title": "Danh sách sản phẩm", "link": "/products/list" },
         { "title": "Danh mục cá nhân", "link": "/products/categories" },
@@ -26,7 +26,7 @@
       "id": 3,
       "title": "Đơn hàng",
       "icon": "shopping-cart",
-      "link": "/orders",
+      "link": "/orders/list",
       "subMenu": [
         { "title": "Tất cả đơn hàng", "link": "/orders/list" },
         { "title": "Đơn hàng trả lại", "link": "/orders/returns" }
@@ -36,7 +36,7 @@
       "id": 4,
       "title": "Giao nhận",
       "icon": "truck",
-      "link": "/delivery",
+      "link": "/delivery/assign",
       "subMenu": [
         { "title": "Gán đơn hàng", "link": "/delivery/assign" },
         { "title": "Theo dõi giao hàng", "link": "/delivery/tracking" }
@@ -46,7 +46,7 @@
       "id": 5,
       "title": "Tài chính",
       "icon": "credit-card",
-      "link": "/finance",
+      "link": "/finance/revenue",
       "subMenu": [
         { "title": "Doanh thu & Hoa hồng", "link": "/finance/revenue" },
         { "title": "Giao dịch thanh toán", "link": "/finance/transactions" },
@@ -57,7 +57,7 @@
       "id": 6,
       "title": "Báo cáo & Thống kê",
       "icon": "bar-chart",
-      "link": "/reports",
+      "link": "/reports/revenue-over-time",
       "subMenu": [
         { "title": "Doanh thu theo thời gian", "link": "/reports/revenue-over-time" },
         { "title": "Sản phẩm bán chạy nhất", "link": "/reports/top-products" },
@@ -69,39 +69,28 @@
       "id": 7,
       "title": "Quản lý Cửa hàng",
       "icon": "store",
-      "link": "/store",
+      "link": "/store/list",
       "subMenu": [
         { "title": "Danh sách cửa hàng", "link": "/store/list" },
-        { "title": "Cập nhật hồ sơ", "link": "/store/profile" },
         { "title": "Lịch sử thay đổi", "link": "/store/update-history" }
       ]
     },
     {
       "id": 8,
-      "title": "Khuyến mãi",
-      "icon": "gift",
-      "link": "/promotions",
-      "subMenu": [
-        { "title": "Danh sách Khuyến mãi", "link": "/promotions/list" }
-      ]
-    },
-    {
-      "id": 9,
       "title": "Khách hàng & Phản hồi",
       "icon": "users",
-      "link": "/feedback",
+      "link": "/feedback/reviews",
       "subMenu": [
         { "title": "Đánh giá & Nhận xét", "link": "/feedback/reviews" },
         { "title": "Khiếu nại & Hỗ trợ", "link": "/feedback/support" }
       ]
     },
     {
-      "id": 10,
+      "id": 9,
       "title": "Cấu hình",
       "icon": "settings",
-      "link": "/settings",
+      "link": "/settings/payment",
       "subMenu": [
-        { "title": "Cấu hình thanh toán", "link": "/settings/payment" },
         { "title": "Cấu hình thông báo", "link": "/settings/notifications" },
         { "title": "Tài liệu & Chính sách", "link": "/settings/policies" }
       ]

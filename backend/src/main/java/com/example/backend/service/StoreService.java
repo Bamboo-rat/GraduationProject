@@ -13,6 +13,16 @@ import org.springframework.data.domain.Pageable;
 public interface StoreService {
 
     /**
+     * Get all stores in the system (Admin only)
+     * @param status Filter by status (optional)
+     * @param supplierId Filter by supplier ID (optional)
+     * @param search Search by store name or address (optional)
+     * @param pageable Pagination parameters
+     * @return Page of all stores
+     */
+    Page<StoreResponse> getAllStores(StoreStatus status, String supplierId, String search, Pageable pageable);
+
+    /**
      * Get all stores for current supplier (authenticated)
      * @param keycloakId Supplier's Keycloak ID
      * @param status Filter by status (optional)
@@ -28,6 +38,16 @@ public interface StoreService {
      * @return Store details
      */
     StoreResponse getStoreById(String storeId);
+
+    /**
+     * Get nearby stores within specified radius (public access for customers)
+     * @param latitude Customer's current latitude
+     * @param longitude Customer's current longitude
+     * @param radiusKm Search radius in kilometers (default: 5km)
+     * @param pageable Pagination parameters
+     * @return Page of nearby stores
+     */
+    Page<StoreResponse> getNearbyStores(double latitude, double longitude, double radiusKm, Pageable pageable);
 
     /**
      * Create new store (requires admin approval)
@@ -73,6 +93,15 @@ public interface StoreService {
      * @return Page of pending updates
      */
     Page<StorePendingUpdateResponse> getAllPendingUpdates(SuggestionStatus status, Pageable pageable);
+
+    /**
+     * Get pending updates for current supplier (Supplier only)
+     * @param keycloakId Supplier's Keycloak ID
+     * @param status Filter by status (optional)
+     * @param pageable Pagination parameters
+     * @return Page of supplier's pending updates
+     */
+    Page<StorePendingUpdateResponse> getMyPendingUpdates(String keycloakId, SuggestionStatus status, Pageable pageable);
 
     /**
      * Get pending update by ID

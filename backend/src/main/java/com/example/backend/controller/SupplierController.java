@@ -51,13 +51,14 @@ public class SupplierController {
     }
 
     @GetMapping("/{userId}")
-    @Operation(summary = "Get supplier by ID", 
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF')")
+    @Operation(summary = "Get supplier by ID",
                description = "Get detailed supplier information by user ID (admin only)")
     public ResponseEntity<ApiResponse<SupplierResponse>> getSupplierById(@PathVariable String userId) {
         log.info("GET /api/suppliers/{} - Getting supplier by ID", userId);
 
-        // TODO: Implement service method to get by userId
-        throw new UnsupportedOperationException("Not implemented yet");
+        SupplierResponse response = supplierService.getSupplierById(userId);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @PutMapping("/me")
@@ -120,5 +121,44 @@ public class SupplierController {
 
         SupplierResponse response = supplierService.rejectSupplier(userId, reason);
         return ResponseEntity.ok(ApiResponse.success("Supplier rejected and notification email sent", response));
+    }
+
+    @PatchMapping("/{userId}/status")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR')")
+    @Operation(summary = "Update supplier status",
+               description = "Update supplier status (admin/moderator only)")
+    public ResponseEntity<ApiResponse<SupplierResponse>> updateSupplierStatus(
+            @PathVariable String userId,
+            @RequestParam com.example.backend.entity.enums.SupplierStatus status) {
+        log.info("PATCH /api/suppliers/{}/status - Updating supplier status to: {}", userId, status);
+
+        SupplierResponse response = supplierService.updateStatus(userId, status);
+        return ResponseEntity.ok(ApiResponse.success("Supplier status updated successfully", response));
+    }
+
+    @PatchMapping("/{userId}/active")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR')")
+    @Operation(summary = "Toggle supplier active status",
+               description = "Activate or deactivate supplier account (admin/moderator only)")
+    public ResponseEntity<ApiResponse<SupplierResponse>> setSupplierActive(
+            @PathVariable String userId,
+            @RequestParam boolean active) {
+        log.info("PATCH /api/suppliers/{}/active - Setting active status to: {}", userId, active);
+
+        SupplierResponse response = supplierService.setActive(userId, active);
+        return ResponseEntity.ok(ApiResponse.success("Supplier active status updated successfully", response));
+    }
+
+    @PatchMapping("/{userId}/commission")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR')")
+    @Operation(summary = "Update supplier commission rate",
+               description = "Update commission rate for supplier (admin/moderator only)")
+    public ResponseEntity<ApiResponse<SupplierResponse>> updateCommissionRate(
+            @PathVariable String userId,
+            @Valid @RequestBody SupplierCommissionUpdateRequest request) {
+        log.info("PATCH /api/suppliers/{}/commission - Updating commission rate to: {}", userId, request.getCommissionRate());
+
+        SupplierResponse response = supplierService.updateCommissionRate(userId, request);
+        return ResponseEntity.ok(ApiResponse.success("Commission rate updated successfully", response));
     }
 }

@@ -51,11 +51,11 @@ All user types share common fields (userId, username, email, phoneNumber, keyclo
 ### Role-Based Access Control (RBAC)
 
 Managed via Keycloak with Spring Security OAuth2 Resource Server:
-- **SUPER_ADMIN**: Full system access, creates other admins
-- **MODERATOR**: Approve/reject suppliers, manage users
-- **STAFF**: Limited admin operations
-- **SUPPLIER**: Manage products, stores, orders
-- **CUSTOMER**: Browse products, place orders
+- **SUPER_ADMIN**: Full system access, creates other admins, manages promotions
+- **MODERATOR**: Approve/reject suppliers, manage users, manages promotions
+- **STAFF**: Limited admin operations, can create/update promotions (cannot delete)
+- **SUPPLIER**: Manage products, stores, orders (cannot use promotions)
+- **CUSTOMER**: Browse products, place orders, use promotions
 
 ### Authentication Flow
 

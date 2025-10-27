@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import DashboardLayout from '~/component/layout/DashboardLayout';
-import customerService, { CustomerResponse } from '~/service/customerService';
+import customerService, { type CustomerResponse } from '~/service/customerService';
 
 export default function CustomersList() {
   const navigate = useNavigate();

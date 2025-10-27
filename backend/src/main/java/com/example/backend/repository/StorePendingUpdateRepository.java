@@ -38,4 +38,18 @@ public interface StorePendingUpdateRepository extends JpaRepository<StorePending
      * Count pending updates
      */
     long countByUpdateStatus(SuggestionStatus status);
+
+    /**
+     * Find pending updates by supplier ID (for suppliers to view their own updates)
+     */
+    Page<StorePendingUpdate> findByStore_Supplier_UserId(String supplierId, Pageable pageable);
+
+    /**
+     * Find pending updates by supplier ID and status (for suppliers to view their own updates)
+     */
+    Page<StorePendingUpdate> findByStore_Supplier_UserIdAndUpdateStatus(
+            String supplierId,
+            SuggestionStatus status,
+            Pageable pageable
+    );
 }

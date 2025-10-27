@@ -51,25 +51,24 @@ public class CustomerController {
     }
 
     @GetMapping("/{userId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF','SUPPLIER')")
-    @Operation(summary = "Get customer by ID", 
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF', 'SUPPLIER')")
+    @Operation(summary = "Get customer by ID",
                description = "Get detailed customer information by user ID (admin only)")
     public ResponseEntity<ApiResponse<CustomerResponse>> getCustomerById(@PathVariable String userId) {
         log.info("GET /api/customers/{} - Getting customer by ID", userId);
 
-        // TODO: Implement service method to get by userId
-        // For now, this is a placeholder
-        throw new UnsupportedOperationException("Not implemented yet");
+        CustomerResponse response = customerService.getCustomerById(userId);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @PutMapping("/me")
-    @Operation(summary = "Update customer profile", 
+    @Operation(summary = "Update customer profile",
                description = "Update current customer's profile information")
     public ResponseEntity<ApiResponse<CustomerResponse>> updateProfile(
             Authentication authentication,
             @Valid @RequestBody CustomerUpdateRequest request) {
         log.info("PUT /api/customers/me - Updating customer profile");
-        
+
         Jwt jwt = (Jwt) authentication.getPrincipal();
         String keycloakId = JwtUtils.extractKeycloakId(jwt);
         CustomerResponse response = customerService.updateProfile(keycloakId, request);
@@ -81,14 +80,46 @@ public class CustomerController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF')")
-    @Operation(summary = "Get all customers", 
-               description = "Get list of all customers with pagination (admin only)")
-    public ResponseEntity<ApiResponse<Object>> getAllCustomers(
+    @Operation(summary = "Get all customers",
+               description = "Get list of all customers with pagination and filtering (admin only)")
+    public ResponseEntity<ApiResponse<org.springframework.data.domain.Page<CustomerResponse>>> getAllCustomers(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        log.info("GET /api/customers - Getting all customers (page: {}, size: {})", page, size);
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) com.example.backend.entity.enums.CustomerStatus status,
+            @RequestParam(required = false) com.example.backend.entity.enums.CustomerTier tier,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "DESC") String sortDirection) {
+        log.info("GET /api/customers - Getting all customers (page: {}, size: {}, status: {}, tier: {}, search: {})",
+                page, size, status, tier, search);
 
-        // TODO: Implement pagination
-        throw new UnsupportedOperationException("Not implemented yet");
+        org.springframework.data.domain.Page<CustomerResponse> customers =
+                customerService.getAllCustomers(page, size, status, tier, search, sortBy, sortDirection);
+
+        return ResponseEntity.ok(ApiResponse.success(customers));
+    }
+
+    @PatchMapping("/{userId}/active")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR')")
+    @Operation(summary = "Toggle customer active status",
+               description = "Activate or deactivate customer account (admin only)")
+    public ResponseEntity<ApiResponse<CustomerResponse>> setCustomerActive(
+            @PathVariable String userId,
+            @RequestParam boolean active) {
+        log.info("PATCH /api/customers/{}/active - Setting active status to: {}", userId, active);
+
+        CustomerResponse response = customerService.setActive(userId, active);
+        return ResponseEntity.ok(ApiResponse.success("Customer active status updated successfully", response));
+    }
+
+    @GetMapping("/stats")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF')")
+    @Operation(summary = "Get customer statistics",
+               description = "Get customer statistics including counts by status and tier (admin only)")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> getCustomerStats() {
+        log.info("GET /api/customers/stats - Getting customer statistics");
+
+        java.util.Map<String, Object> stats = customerService.getCustomerStats();
+        return ResponseEntity.ok(ApiResponse.success(stats));
     }
 }

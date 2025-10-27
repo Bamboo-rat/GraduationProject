@@ -16,7 +16,7 @@ const Auth = () => {
   // Redirect to dashboard if already authenticated
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      navigate('/dashboard', { replace: true });
+      navigate('/dashboard/overview', { replace: true });
     }
   }, [isAuthenticated, authLoading, navigate]);
 
@@ -28,7 +28,7 @@ const Auth = () => {
     try {
       await login(username, password);
       // Redirect to dashboard on success
-      navigate('/dashboard');
+      navigate('/dashboard/overview', { replace: true });
     } catch (err: any) {
       setError(err.message || 'Đăng nhập thất bại. Vui lòng thử lại.');
     } finally {

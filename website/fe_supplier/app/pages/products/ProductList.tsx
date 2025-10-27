@@ -19,18 +19,34 @@ export default function ProductList() {
         size: 10,
       };
       
-      if (statusFilter) {
+      // Only send status if it's one of backend-accepted enum values to avoid server errors
+      const ALLOWED_STATUSES = new Set(['ACTIVE', 'INACTIVE', 'SOLD_OUT', 'EXPIRED', 'SUSPENDED', 'DELETED']);
+      if (statusFilter && ALLOWED_STATUSES.has(statusFilter)) {
         params.status = statusFilter;
+      } else if (statusFilter) {
+        console.warn('Skipping unknown status filter to avoid server error:', statusFilter);
       }
       
       if (searchTerm) {
         params.search = searchTerm;
       }
 
-      const response = await productService.getMyProducts(params);
-      setProducts(response.content);
-      setTotalPages(response.page.totalPages);
-      setTotalElements(response.page.totalElements);
+      const response: any = await productService.getMyProducts(params);
+
+      // Defensive handling: backend may return pagination either as
+      // { content: [], page: { totalPages, totalElements } }
+      // or as Spring Page with top-level totalPages/totalElements fields.
+      const content = response?.content ?? [];
+      const page = response?.page ?? {
+        totalPages: response?.totalPages ?? 0,
+        totalElements: response?.totalElements ?? 0,
+        size: response?.size ?? 10,
+        number: response?.number ?? currentPage,
+      };
+
+      setProducts(content);
+      setTotalPages(page.totalPages ?? 0);
+      setTotalElements(page.totalElements ?? 0);
     } catch (error) {
       console.error('Error fetching products:', error);
       alert('Lỗi khi tải danh sách sản phẩm');
@@ -54,8 +70,9 @@ export default function ProductList() {
     }
 
     try {
-      const newStatus = currentStatus === 'AVAILABLE' ? 'SOLD_OUT' : 'AVAILABLE';
-      await productService.updateProductStatus(productId, newStatus);
+  const newStatus = currentStatus === 'AVAILABLE' ? 'SOLD_OUT' : 'AVAILABLE';
+  // Use updateProduct to set status (UpdateProductRequest includes optional status)
+  await productService.updateProduct(productId, { status: newStatus } as any);
       alert('Cập nhật trạng thái thành công');
       fetchProducts();
     } catch (error) {

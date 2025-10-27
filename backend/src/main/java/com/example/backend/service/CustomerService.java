@@ -5,6 +5,11 @@ import com.example.backend.dto.request.CustomerRequest;
 import com.example.backend.dto.response.CustomerResponse;
 import com.example.backend.dto.response.LoginResponse;
 import com.example.backend.dto.response.RegisterResponse;
+import com.example.backend.entity.enums.CustomerStatus;
+import com.example.backend.entity.enums.CustomerTier;
+import org.springframework.data.domain.Page;
+
+import java.util.Map;
 
 /**
  * Service interface for customer-related operations
@@ -83,10 +88,39 @@ public interface CustomerService {
     
     /**
      * Update customer active status (admin only)
-     * 
+     *
      * @param userId Customer user ID
      * @param active Active status
      * @return Updated CustomerResponse
      */
     CustomerResponse setActive(String userId, boolean active);
+
+    /**
+     * Get all customers with pagination and filtering (admin only)
+     *
+     * @param page Page number (0-indexed)
+     * @param size Page size
+     * @param status Filter by status (optional)
+     * @param tier Filter by tier (optional)
+     * @param search Search by name, email, or phone (optional)
+     * @param sortBy Sort field (default: createdAt)
+     * @param sortDirection Sort direction (ASC/DESC, default: DESC)
+     * @return Page of customers
+     */
+    Page<CustomerResponse> getAllCustomers(
+            int page,
+            int size,
+            CustomerStatus status,
+            CustomerTier tier,
+            String search,
+            String sortBy,
+            String sortDirection
+    );
+
+    /**
+     * Get customer statistics (admin only)
+     *
+     * @return Map with statistics
+     */
+    Map<String, Object> getCustomerStats();
 }

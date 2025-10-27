@@ -6,6 +6,7 @@ export interface UpdateProfileRequest {
   fullName?: string;
   email?: string;
   phoneNumber?: string;
+  avatarUrl?: string;
 }
 
 export interface ProfileResponse {
@@ -15,6 +16,7 @@ export interface ProfileResponse {
   email: string;
   phoneNumber: string | null;
   fullName: string | null;
+  avatarUrl?: string | null;
   active: boolean;
   roles: string[];
   status: string;
@@ -77,8 +79,8 @@ class ProfileService {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await axiosInstance.post<ApiResponse<{ secureUrl: string }>>(
-        '/storage/upload?bucket=avatar-admin',
+      const response = await axiosInstance.post<ApiResponse<{ url: string; fileName: string; fileSize: string }>>(
+        '/files/upload/avatar/admin',
         formData,
         {
           headers: {
@@ -87,7 +89,7 @@ class ProfileService {
         }
       );
 
-      return response.data.data.secureUrl;
+      return response.data.data.url;
     } catch (error: any) {
       throw this.handleError(error);
     }

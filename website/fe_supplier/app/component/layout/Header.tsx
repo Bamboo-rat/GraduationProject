@@ -1,18 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../AuthContext';
 import { useNavigate } from 'react-router';
+import NotificationDropdown from '../common/NotificationDropdown';
 
 const Header: React.FC = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
-
-  const notifications = [
-    { id: 1, title: 'Đơn hàng mới', message: 'Bạn có 2 đơn hàng mới cần xử lý', time: '5 phút trước', unread: true },
-    { id: 2, title: 'Sản phẩm được duyệt', message: 'Sản phẩm "Bánh mì tươi" đã được phê duyệt', time: '15 phút trước', unread: true },
-    { id: 3, title: 'Đánh giá mới', message: 'Khách hàng vừa đánh giá 5 sao', time: '1 giờ trước', unread: false },
-  ];
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -33,8 +28,6 @@ const Header: React.FC = () => {
       navigate('/', { replace: true });
     }
   };
-
-  const unreadCount = notifications.filter(n => n.unread).length;
 
   return (
     <header className="bg-white border-b border-[#B7E4C7] h-16 fixed top-0 right-0 left-64 z-10 shadow-sm">
@@ -60,56 +53,8 @@ const Header: React.FC = () => {
 
         {/* Right section */}
         <div className="flex items-center space-x-3 ml-4">
-          {/* Notifications - Hover to show */}
-          <div className="relative group">
-            <div className="p-2 rounded-xl hover:bg-[#F8FFF9] transition-colors relative cursor-pointer">
-              <svg className="w-5 h-5 text-[#2F855A]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-                />
-              </svg>
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-[#FF6B35] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-semibold shadow-sm">
-                  {unreadCount}
-                </span>
-              )}
-            </div>
-
-            {/* Dropdown hiển thị khi hover */}
-            <div className="invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200 absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-[#B7E4C7] overflow-hidden">
-              <div className="p-4 bg-[#F8FFF9] border-b border-[#B7E4C7]">
-                <h3 className="font-semibold text-[#2D2D2D]">Thông báo</h3>
-                {unreadCount > 0 &&
-                  <p className="text-sm text-[#6B6B6B] mt-0.5">{unreadCount} thông báo chưa đọc</p>
-                }
-              </div>
-              <div className="max-h-96 overflow-y-auto">
-                {notifications.map((n, index) => (
-                  <div
-                    key={n.id}
-                    className={`block p-4 hover:bg-[#F8FFF9] transition-colors cursor-pointer ${index < notifications.length - 1 ? 'border-b border-[#E8FFED]' : ''}`}
-                  >
-                    <div className="flex items-start space-x-3">
-                      {n.unread && <span className="mt-1.5 w-2 h-2 bg-[#2F855A] rounded-full flex-shrink-0"></span>}
-                      <div className="flex-1">
-                        <p className="font-medium text-sm text-[#2D2D2D]">{n.title}</p>
-                        <p className="text-sm text-[#6B6B6B] mt-1">{n.message}</p>
-                        <p className="text-xs text-[#2F855A] mt-2 font-medium">{n.time}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="p-3 bg-[#F8FFF9] text-center border-t border-[#B7E4C7]">
-                <button className="text-sm text-[#2F855A] hover:text-[#8FB491] font-medium transition-colors">
-                  Xem tất cả thông báo
-                </button>
-              </div>
-            </div>
-          </div>
+          {/* Notifications */}
+          <NotificationDropdown />
 
           {/* Divider */}
           <div className="w-px h-6 bg-[#B7E4C7]"></div>

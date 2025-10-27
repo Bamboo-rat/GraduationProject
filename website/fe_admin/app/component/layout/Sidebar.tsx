@@ -83,28 +83,35 @@ const Sidebar: React.FC = () => {
         {menuData.mainMenu.map((menu: MenuItem) => (
           <div key={menu.id} className="mb-2">
             {/* Main Menu Item */}
-            <button
-              onClick={() => toggleMenu(menu.id)}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all ${isActive(menu.link)
-                  ? 'bg-white text-green-700 shadow-md'
-                  : 'text-gray-700 hover:bg-white/50'
-                }`}
-            >
-              <div className="flex items-center space-x-3">
-                {React.createElement(getIcon(menu.icon), {
-                  className: 'w-5 h-5 flex-shrink-0',
-                  size: 20
-                })}
-                {!isCollapsed && <span className="font-medium text-sm">{menu.title}</span>}
-              </div>
+            <div className="flex items-center gap-1">
+              <Link
+                to={menu.link}
+                className={`flex-1 flex items-center px-3 py-2.5 rounded-lg transition-all ${isActive(menu.link)
+                    ? 'bg-white text-green-700 shadow-md'
+                    : 'text-gray-700 hover:bg-white/50'
+                  }`}
+              >
+                <div className="flex items-center space-x-3">
+                  {React.createElement(getIcon(menu.icon), {
+                    className: 'w-5 h-5 flex-shrink-0',
+                    size: 20
+                  })}
+                  {!isCollapsed && <span className="font-medium text-sm">{menu.title}</span>}
+                </div>
+              </Link>
               {!isCollapsed && menu.subMenu && (
-                <Icons.ChevronDown
-                  className={`w-4 h-4 transition-transform ${expandedMenu === menu.id ? 'rotate-180' : ''
-                    }`}
-                  size={16}
-                />
+                <button
+                  onClick={() => toggleMenu(menu.id)}
+                  className="p-2 rounded-lg hover:bg-white/50 transition-colors"
+                >
+                  <Icons.ChevronDown
+                    className={`w-4 h-4 transition-transform ${expandedMenu === menu.id ? 'rotate-180' : ''
+                      }`}
+                    size={16}
+                  />
+                </button>
               )}
-            </button>
+            </div>
 
             {/* Sub Menu Items */}
             {!isCollapsed && menu.subMenu && expandedMenu === menu.id && (

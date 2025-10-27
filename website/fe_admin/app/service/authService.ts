@@ -47,19 +47,32 @@ class AuthService {
         '/auth/login',
         credentials
       );
-      
+
       const loginData = response.data.data;
-      
+
       console.log('🔐 Login response:', loginData);
-      console.log('🔑 Access token:', loginData.accessToken ? 'EXISTS' : 'MISSING');
-      
-      // Save tokens and user info to localStorage
-      this.setTokens(loginData.accessToken, loginData.refreshToken);
-      this.setUserInfo(loginData.userInfo);
-      
-      console.log('💾 Token saved to localStorage:', localStorage.getItem('access_token') ? 'YES' : 'NO');
-      
-      return loginData;
+
+      // Backend returns camelCase (accessToken/refreshToken). Support both formats for compatibility.
+      const access = (loginData as any).accessToken ?? (loginData as any).access_token;
+      const refresh = (loginData as any).refreshToken ?? (loginData as any).refresh_token;
+
+      console.log('🔑 Access token:', access ? 'EXISTS' : 'MISSING');
+      console.log('🔑 Refresh token:', refresh ? 'EXISTS' : 'MISSING');
+
+      if (access && refresh) {
+        // Save tokens and user info to localStorage
+        this.setTokens(access, refresh);
+        this.setUserInfo(loginData.userInfo);
+
+        console.log('💾 Token saved to localStorage:', localStorage.getItem('access_token') ? 'YES' : 'NO');
+
+        return loginData;
+      } else {
+        // Defensive: clear any partial auth
+        console.error('❌ Login response missing tokens!');
+        this.clearAuth();
+        throw new Error('Login response did not include tokens');
+      }
     } catch (error: any) {
       throw this.handleError(error);
     }
@@ -123,9 +136,19 @@ class AuthService {
       );
 
       const loginData = response.data.data;
-      this.setTokens(loginData.accessToken, loginData.refreshToken);
 
-      return loginData.accessToken;
+      // Support both camelCase and snake_case token formats
+      const access = (loginData as any).accessToken ?? (loginData as any).access_token;
+      const refresh = (loginData as any).refreshToken ?? (loginData as any).refresh_token;
+
+      if (access && refresh) {
+        this.setTokens(access, refresh);
+        return access;
+      }
+
+      // If tokens are missing, clear auth and throw error
+      this.clearAuth();
+      throw new Error('Refresh response did not include tokens');
     } catch (error: any) {
       this.clearAuth();
       throw this.handleError(error);

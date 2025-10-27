@@ -4,8 +4,8 @@ import ProtectedRoute from '~/component/common/ProtectedRoute';
 
 export function meta({}: Route.MetaArgs) {
   return [
-    { title: 'Danh sách Đối tác - SaveFood' },
-    { name: 'description', content: 'Quản lý danh sách đối tác' },
+    { title: 'Danh sách Khách hàng - SaveFood' },
+    { name: 'description', content: 'Quản lý danh sách khách hàng' },
   ];
 }
 

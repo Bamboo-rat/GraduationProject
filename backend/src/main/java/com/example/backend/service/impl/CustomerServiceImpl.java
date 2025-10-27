@@ -279,7 +279,7 @@ public class CustomerServiceImpl implements CustomerService {
     @Transactional
     public CustomerResponse setActive(String userId, boolean active) {
         log.info("Setting customer active status: userId={}, active={}", userId, active);
-        
+
         Customer customer = customerRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
 
@@ -288,5 +288,73 @@ public class CustomerServiceImpl implements CustomerService {
 
         log.info("Customer active status updated: userId={}, active={}", userId, active);
         return customerMapper.toResponse(customer);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<CustomerResponse> getAllCustomers(
+            int page,
+            int size,
+            com.example.backend.entity.enums.CustomerStatus status,
+            com.example.backend.entity.enums.CustomerTier tier,
+            String search,
+            String sortBy,
+            String sortDirection
+    ) {
+        log.info("Getting customers: page={}, size={}, status={}, tier={}, search={}",
+                 page, size, status, tier, search);
+
+        // Validate and set default sort
+        if (sortBy == null || sortBy.isBlank()) {
+            sortBy = "createdAt";
+        }
+        if (sortDirection == null || sortDirection.isBlank()) {
+            sortDirection = "DESC";
+        }
+
+        // Create pageable
+        org.springframework.data.domain.Sort.Direction direction =
+                sortDirection.equalsIgnoreCase("ASC") ?
+                        org.springframework.data.domain.Sort.Direction.ASC :
+                        org.springframework.data.domain.Sort.Direction.DESC;
+
+        org.springframework.data.domain.Pageable pageable =
+                org.springframework.data.domain.PageRequest.of(page, size,
+                        org.springframework.data.domain.Sort.by(direction, sortBy));
+
+        // Query with search and filter
+        org.springframework.data.domain.Page<Customer> customersPage =
+                customerRepository.findByStatusAndTierAndSearch(status, tier, search, pageable);
+
+        // Map to response
+        return customersPage.map(customerMapper::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.Map<String, Object> getCustomerStats() {
+        log.info("Getting customer statistics");
+
+        long totalCustomers = customerRepository.count();
+        long activeCustomers = customerRepository.countByStatus(com.example.backend.entity.enums.CustomerStatus.ACTIVE);
+        long pendingCustomers = customerRepository.countByStatus(com.example.backend.entity.enums.CustomerStatus.PENDING_VERIFICATION);
+        long suspendedCustomers = customerRepository.countByStatus(com.example.backend.entity.enums.CustomerStatus.SUSPENDED);
+
+        long bronzeCustomers = customerRepository.countByTier(com.example.backend.entity.enums.CustomerTier.BRONZE);
+        long silverCustomers = customerRepository.countByTier(com.example.backend.entity.enums.CustomerTier.SILVER);
+        long goldCustomers = customerRepository.countByTier(com.example.backend.entity.enums.CustomerTier.GOLD);
+        long platinumCustomers = customerRepository.countByTier(com.example.backend.entity.enums.CustomerTier.PLATINUM);
+
+        java.util.Map<String, Object> stats = new java.util.HashMap<>();
+        stats.put("totalCustomers", totalCustomers);
+        stats.put("activeCustomers", activeCustomers);
+        stats.put("pendingCustomers", pendingCustomers);
+        stats.put("suspendedCustomers", suspendedCustomers);
+        stats.put("bronzeCustomers", bronzeCustomers);
+        stats.put("silverCustomers", silverCustomers);
+        stats.put("goldCustomers", goldCustomers);
+        stats.put("platinumCustomers", platinumCustomers);
+
+        return stats;
     }
 }

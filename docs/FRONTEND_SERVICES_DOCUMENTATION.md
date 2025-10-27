@@ -13,7 +13,6 @@ Complete API documentation for all frontend services implemented in both admin a
    - [Existing Services](#existing-admin-services)
 
 2. [Supplier Portal Services](#supplier-portal-services)
-   - [Promotion Service](#promotion-service-supplier)
    - [Store Service (Supplier)](#store-service-supplier)
    - [Existing Services](#existing-supplier-services)
 
@@ -349,129 +348,7 @@ const rejected = await storeService.rejectStoreUpdate(
 
 ## Supplier Portal Services
 
-### Promotion Service (Supplier)
-
-**Location:** `/website/fe_supplier/app/service/promotionService.ts`
-
-**Description:** Read-only access to promotions + apply functionality.
-
-#### Methods
-
-##### Get All Promotions
-```typescript
-getAllPromotions(
-  page: number,
-  size: number,
-  status?: PromotionStatus,
-  tier?: PromotionTier,
-  isHighlighted?: boolean,
-  search?: string,
-  sortBy?: string,
-  sortDirection?: 'ASC' | 'DESC'
-): Promise<PromotionPageResponse>
-```
-
-**Example:**
-```typescript
-import promotionService from '~/service/promotionService';
-
-const promotions = await promotionService.getAllPromotions(
-  0, 20, 'ACTIVE', undefined, true
-);
-
-promotions.content.forEach(p => {
-  console.log(`${p.code}: ${promotionService.formatDiscountValue(p)}`);
-});
-```
-
-##### Get Promotion by ID
-```typescript
-getPromotionById(promotionId: string): Promise<Promotion>
-```
-
-**Example:**
-```typescript
-const promo = await promotionService.getPromotionById('promo-uuid-123');
-console.log(promo.code, promo.description);
-```
-
-##### Get Promotion by Code
-```typescript
-getPromotionByCode(code: string): Promise<Promotion>
-```
-
-**Example:**
-```typescript
-const promo = await promotionService.getPromotionByCode('SUMMER2025');
-if (promotionService.isPromotionValid(promo)) {
-  console.log('Promotion is valid!');
-}
-```
-
-##### Validate Promotion Code (Preview)
-```typescript
-validatePromotionCode(
-  code: string,
-  customerId?: string,
-  orderAmount?: number
-): Promise<Promotion>
-```
-
-**Example:**
-```typescript
-try {
-  const promo = await promotionService.validatePromotionCode(
-    'SUMMER2025',
-    'customer-uuid-123',
-    500000
-  );
-  const discount = promotionService.calculateDiscountAmount(promo, 500000);
-  console.log(`Discount: ${discount}đ`);
-} catch (error) {
-  console.error('Invalid promotion:', error.message);
-}
-```
-
-##### Apply Promotion to Order
-```typescript
-applyPromotionToOrder(
-  code: string,
-  customerId: string,
-  orderAmount: number
-): Promise<Promotion>
-```
-
-**Example:**
-```typescript
-// This increments usage count - call only when creating order
-const applied = await promotionService.applyPromotionToOrder(
-  'SUMMER2025',
-  'customer-uuid-123',
-  500000
-);
-console.log('Promotion applied, usage count:', applied.usageCount);
-```
-
-##### Utility Methods
-
-```typescript
-// Get Vietnamese label
-promotionService.getTypeLabel('PERCENTAGE'); // "Giảm theo phần trăm"
-promotionService.getStatusLabel('ACTIVE'); // "Đang hoạt động"
-promotionService.getTierLabel('TIER_1'); // "Hạng 1"
-
-// Get CSS class for badge
-promotionService.getStatusColorClass('ACTIVE'); // "bg-green-100 text-green-800"
-
-// Format discount value for display
-promotionService.formatDiscountValue(promo); // "10%" or "50,000đ"
-
-// Calculate discount amount
-promotionService.calculateDiscountAmount(promo, 500000); // number
-
-// Check if valid
-promotionService.isPromotionValid(promo); // boolean
-```
+**Note:** Suppliers do NOT have access to promotion management or usage. Promotions are exclusively for customer incentives and are managed by admins only.
 
 ---
 
@@ -835,8 +712,8 @@ const handleSubmit = async () => {
 - ✅ **storeService.ts** - Store and pending update management
 
 ### Supplier Portal (fe_supplier)
-- ✅ **promotionService.ts** - View and apply promotions (read-only)
 - ✅ **storeService.ts** - Complete store CRUD operations
+- ❌ **promotionService.ts** - Removed (suppliers cannot use promotions)
 
 ### Both Portals
 - ✅ **ProtectedRoute.tsx** - Synchronized authentication component
@@ -873,11 +750,14 @@ For questions or issues:
 
 ## Changelog
 
+**2025-01-26:**
+- ❌ Removed promotionService.ts from fe_supplier (promotions are customer-only)
+- ✅ Updated documentation to reflect promotion access rules
+
 **2025-01-25:**
 - ✅ Created customerService.ts for fe_admin
 - ✅ Created notificationService.ts for fe_admin
 - ✅ Created storeService.ts for fe_admin
-- ✅ Created promotionService.ts for fe_supplier
 - ✅ Updated storeService.ts for fe_supplier with all endpoints
 - ✅ Synchronized ProtectedRoute components
 - ✅ Created comprehensive documentation

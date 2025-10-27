@@ -56,10 +56,10 @@ public class CategorySuggestionController {
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR')")
     @Operation(
-            summary = "Get all category suggestions (Super Admin only)",
-            description = "Super Admin views all category suggestions with optional status filter"
+            summary = "Get all category suggestions (Admin only)",
+            description = "Admin views all category suggestions with optional status filter"
     )
     public ResponseEntity<ApiResponse<Page<CategorySuggestionResponse>>> getAllSuggestions(
             @RequestParam(required = false) SuggestionStatus status,
@@ -109,10 +109,10 @@ public class CategorySuggestionController {
     }
 
     @PatchMapping("/{id}/approve")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR')")
     @Operation(
-            summary = "Approve category suggestion (Super Admin only)",
-            description = "Super Admin approves a pending category suggestion and creates the category"
+            summary = "Approve category suggestion (Admin only)",
+            description = "Admin approves a pending category suggestion and creates the category"
     )
     public ResponseEntity<ApiResponse<CategorySuggestionResponse>> approveSuggestion(
             @PathVariable String id,
@@ -130,10 +130,10 @@ public class CategorySuggestionController {
     }
 
     @PatchMapping("/{id}/reject")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR')")
     @Operation(
-            summary = "Reject category suggestion (Super Admin only)",
-            description = "Super Admin rejects a pending category suggestion"
+            summary = "Reject category suggestion (Admin only)",
+            description = "Admin rejects a pending category suggestion"
     )
     public ResponseEntity<ApiResponse<CategorySuggestionResponse>> rejectSuggestion(
             @PathVariable String id,

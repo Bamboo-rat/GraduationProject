@@ -37,6 +37,26 @@ public class StoreController {
 
     private final StoreService storeService;
 
+    @GetMapping
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF')")
+    @Operation(
+            summary = "Get all stores (Admin only)",
+            description = "Admin retrieves all stores in the system with optional filters"
+    )
+    public ResponseEntity<ApiResponse<Page<StoreResponse>>> getAllStores(
+            @RequestParam(required = false) StoreStatus status,
+            @RequestParam(required = false) String supplierId,
+            @RequestParam(required = false) String search,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+
+        log.info("GET /api/stores - Admin viewing all stores. Status: {}, SupplierId: {}, Search: {}",
+                status, supplierId, search);
+
+        Page<StoreResponse> stores = storeService.getAllStores(status, supplierId, search, pageable);
+
+        return ResponseEntity.ok(ApiResponse.success("All stores retrieved successfully", stores));
+    }
+
     @GetMapping("/my-stores")
     @PreAuthorize("hasRole('SUPPLIER')")
     @Operation(
@@ -72,6 +92,27 @@ public class StoreController {
         StoreResponse store = storeService.getStoreById(id);
 
         return ResponseEntity.ok(ApiResponse.success("Store retrieved successfully", store));
+    }
+
+    @GetMapping("/nearby")
+    @Operation(
+            summary = "Get nearby stores (Public - for customers)",
+            description = "Find stores within specified radius from customer's location. Default radius is 5km. Only returns ACTIVE stores."
+    )
+    public ResponseEntity<ApiResponse<Page<StoreResponse>>> getNearbyStores(
+            @RequestParam double latitude,
+            @RequestParam double longitude,
+            @RequestParam(defaultValue = "5.0") double radiusKm,
+            @PageableDefault(size = 20, sort = "storeName", direction = Sort.Direction.ASC) Pageable pageable) {
+
+        log.info("GET /api/stores/nearby - lat: {}, lon: {}, radius: {}km", latitude, longitude, radiusKm);
+
+        Page<StoreResponse> stores = storeService.getNearbyStores(latitude, longitude, radiusKm, pageable);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                String.format("Found %d stores within %.1fkm radius", stores.getTotalElements(), radiusKm),
+                stores
+        ));
     }
 
     @PostMapping
@@ -179,6 +220,27 @@ public class StoreController {
         Page<StorePendingUpdateResponse> updates = storeService.getAllPendingUpdates(status, pageable);
 
         return ResponseEntity.ok(ApiResponse.success("Pending updates retrieved successfully", updates));
+    }
+
+    @GetMapping("/my-pending-updates")
+    @PreAuthorize("hasRole('SUPPLIER')")
+    @Operation(
+            summary = "Get pending updates for current supplier",
+            description = "Supplier views their own pending store updates with optional status filter"
+    )
+    public ResponseEntity<ApiResponse<Page<StorePendingUpdateResponse>>> getMyPendingUpdates(
+            @RequestParam(required = false) SuggestionStatus status,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
+            Authentication authentication) {
+
+        Jwt jwt = (Jwt) authentication.getPrincipal();
+        String keycloakId = JwtUtils.extractKeycloakId(jwt);
+
+        log.info("GET /api/stores/my-pending-updates - Supplier: {}, Status filter: {}", keycloakId, status);
+
+        Page<StorePendingUpdateResponse> updates = storeService.getMyPendingUpdates(keycloakId, status, pageable);
+
+        return ResponseEntity.ok(ApiResponse.success("Your pending updates retrieved successfully", updates));
     }
 
     @GetMapping("/pending-updates/{id}")

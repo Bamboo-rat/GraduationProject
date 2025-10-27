@@ -127,9 +127,9 @@ public class PromotionController {
     }
 
     @GetMapping("/validate/{code}")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'SUPPLIER', 'SUPER_ADMIN', 'MODERATOR', 'STAFF')")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'SUPER_ADMIN', 'MODERATOR', 'STAFF')")
     @Operation(summary = "Validate promotion code",
-               description = "Validate promotion code for an order (authenticated users). NOTE: This is for preview only. Use /apply to actually apply the promotion.")
+               description = "Validate promotion code for an order (customers and admins only). NOTE: This is for preview only. Use /apply to actually apply the promotion.")
     public ResponseEntity<ApiResponse<PromotionResponse>> validatePromotionCode(
             @PathVariable String code,
             @RequestParam(required = false) String customerId,
@@ -142,9 +142,9 @@ public class PromotionController {
     }
 
     @PostMapping("/apply/{code}")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'SUPPLIER')")
+    @PreAuthorize("hasRole('CUSTOMER')")
     @Operation(summary = "Apply promotion to order",
-               description = "Apply promotion code to an order (atomic operation with race condition protection). " +
+               description = "Apply promotion code to an order (customers only, atomic operation with race condition protection). " +
                              "This increments usage count and should be called when creating the order.")
     public ResponseEntity<ApiResponse<PromotionResponse>> applyPromotionToOrder(
             @PathVariable String code,

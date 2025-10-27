@@ -6,7 +6,7 @@ import ProtectedRoute from '~/component/common/ProtectedRoute';
 export function meta({}: Route.MetaArgs) {
   return [
     { title: 'Thông tin Cửa hàng - SaveFood' },
-    { name: 'description', content: 'Xem thông tin chi tiết cửa hàng' },
+    { name: 'description', content: 'Trang thông tin chi tiết cửa hàng' },
   ];
 }
 

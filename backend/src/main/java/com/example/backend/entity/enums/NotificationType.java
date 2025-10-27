@@ -4,8 +4,24 @@ import lombok.Getter;
 
 @Getter
 public enum NotificationType {
+    // Order related
     NEW_ORDER("Đơn hàng mới", "New order notification"),
     ORDER_STATUS_UPDATE("Cập nhật đơn hàng", "Order status update notification"),
+
+    // Supplier related (for admins)
+    NEW_SUPPLIER_REGISTRATION("Nhà cung cấp mới đăng ký", "New supplier registration notification"),
+    SUPPLIER_UPDATE("Cập nhật thông tin nhà cung cấp", "Supplier profile update notification"),
+
+    // Category related (for admins)
+    NEW_CATEGORY_SUGGESTION("Đề xuất danh mục mới", "New category suggestion notification"),
+
+    // Approval related (for suppliers)
+    SUPPLIER_APPROVED("Tài khoản được phê duyệt", "Supplier account approved notification"),
+    SUPPLIER_REJECTED("Tài khoản bị từ chối", "Supplier account rejected notification"),
+    STORE_APPROVED("Cửa hàng được phê duyệt", "Store approved notification"),
+    STORE_REJECTED("Cửa hàng bị từ chối", "Store rejected notification"),
+
+    // General
     PROMOTION("Khuyến mãi", "Promotion and discount notification"),
     NEW_MESSAGE("Tin nhắn mới", "New message notification"),
     SYSTEM_ANNOUNCEMENT("Thông báo hệ thống", "System announcement notification");

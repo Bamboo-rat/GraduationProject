@@ -84,11 +84,14 @@ export interface LoginRequest {
 }
 
 export interface LoginResponse {
-  access_token: string;
-  refresh_token: string;
-  expires_in: number;
-  refresh_expires_in: number;
-  token_type: string;
+  // support both backend camelCase and older snake_case shapes
+  accessToken?: string;
+  refreshToken?: string;
+  access_token?: string;
+  refresh_token?: string;
+  expires_in?: number;
+  refresh_expires_in?: number;
+  token_type?: string;
   userInfo: UserInfo;
 }
 
@@ -205,7 +208,19 @@ class AuthService {
       const loginData = response.data.data;
 
       // Save tokens and user info to localStorage
-      this.setTokens(loginData.access_token, loginData.refresh_token);
+      // Backend returns camelCase (accessToken/refreshToken). Older clients used snake_case.
+      const access = (loginData as any).accessToken ?? (loginData as any).access_token;
+      const refresh = (loginData as any).refreshToken ?? (loginData as any).refresh_token;
+
+      if (access && refresh) {
+        this.setTokens(access, refresh);
+      } else {
+        // Defensive: clear any partial auth
+        this.clearAuth();
+        throw new Error('Login response did not include tokens');
+      }
+
+      // Store user info
       this.setUserInfo(loginData.userInfo);
 
       return loginData;
@@ -221,7 +236,9 @@ class AuthService {
     try {
       const refreshToken = this.getRefreshToken();
       if (refreshToken) {
-        await axiosInstance.post('/auth/logout', { refresh_token: refreshToken });
+        await axiosInstance.post('/auth/logout', null, {
+          params: { refreshToken }
+        });
       }
       this.clearAuth();
     } catch (error: any) {
@@ -253,15 +270,26 @@ class AuthService {
         throw new Error('No refresh token available');
       }
 
-      const response = await axiosInstance.post<ApiResponse<{ access_token: string }>>(
+      const response = await axiosInstance.post<ApiResponse<LoginResponse>>(
         '/auth/refresh',
-        { refresh_token: refreshToken }
+        null,
+        {
+          params: { refreshToken }
+        }
       );
 
-      const newAccessToken = response.data.data.access_token;
-      localStorage.setItem('access_token', newAccessToken);
+      const loginData = response.data.data;
+      // Update both tokens - support both shapes
+      const access = (loginData as any).accessToken ?? (loginData as any).access_token;
+      const refresh = (loginData as any).refreshToken ?? (loginData as any).refresh_token;
 
-      return newAccessToken;
+      if (access && refresh) {
+        this.setTokens(access, refresh);
+        return access;
+      }
+
+      this.clearAuth();
+      throw new Error('Refresh response did not include tokens');
     } catch (error: any) {
       this.clearAuth();
       throw this.handleError(error);

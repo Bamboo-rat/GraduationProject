@@ -1,0 +1,71 @@
+import axiosInstance from '../config/axios';
+
+export interface InAppNotification {
+  notificationId: string;
+  content: string;
+  type: string;
+  typeDisplayName: string;
+  linkUrl: string | null;
+  isRead: boolean;
+  isBroadcast: boolean;
+  createdAt: string;
+}
+
+export interface NotificationPage {
+  content: InAppNotification[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+}
+
+/**
+ * In-App Notification Service
+ * Handles notification bar notifications for the website
+ */
+class InAppNotificationService {
+  /**
+   * Get all notifications for current user
+   */
+  async getMyNotifications(page: number = 0, size: number = 20): Promise<NotificationPage> {
+    const response = await axiosInstance.get('/notifications', {
+      params: { page, size, sort: 'createdAt,desc' }
+    });
+    return response.data.data;
+  }
+
+  /**
+   * Get unread notifications for current user
+   */
+  async getUnreadNotifications(page: number = 0, size: number = 20): Promise<NotificationPage> {
+    const response = await axiosInstance.get('/notifications/unread', {
+      params: { page, size, sort: 'createdAt,desc' }
+    });
+    return response.data.data;
+  }
+
+  /**
+   * Get unread notification count for badge display
+   */
+  async getUnreadCount(): Promise<number> {
+    const response = await axiosInstance.get('/notifications/unread-count');
+    return response.data.data.unreadCount;
+  }
+
+  /**
+   * Mark a notification as read
+   */
+  async markAsRead(notificationId: string): Promise<void> {
+    await axiosInstance.patch(`/notifications/${notificationId}/read`);
+  }
+
+  /**
+   * Mark all notifications as read
+   */
+  async markAllAsRead(): Promise<number> {
+    const response = await axiosInstance.post('/notifications/mark-all-read');
+    return response.data.data.markedCount;
+  }
+}
+
+export default new InAppNotificationService();

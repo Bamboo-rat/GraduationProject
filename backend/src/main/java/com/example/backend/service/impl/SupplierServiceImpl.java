@@ -16,12 +16,14 @@ import com.example.backend.mapper.SupplierMapper;
 import com.example.backend.repository.SupplierRepository;
 import com.example.backend.repository.StoreRepository;
 import com.example.backend.repository.UserRepository;
+import com.example.backend.service.InAppNotificationService;
 import com.example.backend.service.KeycloakService;
 import com.example.backend.service.NotificationService;
 import com.example.backend.service.OtpService;
 import com.example.backend.service.SupplierService;
 import com.example.backend.service.WalletService;
 import com.example.backend.entity.enums.EmailNotificationType;
+import com.example.backend.entity.enums.NotificationType;
 import com.example.backend.utils.ValidationUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,6 +46,7 @@ public class SupplierServiceImpl implements SupplierService {
     private final OtpService otpService;
     private final SupplierMapper supplierMapper;
     private final NotificationService notificationService;
+    private final InAppNotificationService inAppNotificationService;
     private final WalletService walletService;
 
     // ========== 4-STEP REGISTRATION FLOW ==========
@@ -286,6 +289,24 @@ public class SupplierServiceImpl implements SupplierService {
         // IMPORTANT: Save supplier FIRST before creating store
         supplier = supplierRepository.save(supplier);
 
+        // Send in-app notification to all admins about new supplier registration
+        try {
+            String notificationContent = String.format(
+                    "Nhà cung cấp mới '%s' đã hoàn thành đăng ký và đang chờ phê duyệt.",
+                    supplier.getBusinessName()
+            );
+            String linkUrl = "/partners/pending"; // Link to pending suppliers page
+            inAppNotificationService.createNotificationForAllAdmins(
+                    NotificationType.NEW_SUPPLIER_REGISTRATION,
+                    notificationContent,
+                    linkUrl
+            );
+            log.info("In-app notification sent to admins about new supplier registration: {}", supplier.getUserId());
+        } catch (Exception e) {
+            log.error("Failed to send in-app notification for new supplier registration: {}", supplier.getUserId(), e);
+            // Don't fail the operation if notification fails
+        }
+
         // Now create store with the persisted supplier
         Store store = new Store();
         store.setStoreName(request.getStoreName());
@@ -379,6 +400,24 @@ public class SupplierServiceImpl implements SupplierService {
 
         supplier = supplierRepository.save(supplier);
 
+        // Send in-app notification to all admins about supplier profile update
+        try {
+            String notificationContent = String.format(
+                    "Nhà cung cấp '%s' đã cập nhật thông tin hồ sơ.",
+                    supplier.getBusinessName() != null ? supplier.getBusinessName() : supplier.getFullName()
+            );
+            String linkUrl = "/partners/list"; // Link to suppliers list
+            inAppNotificationService.createNotificationForAllAdmins(
+                    NotificationType.SUPPLIER_UPDATE,
+                    notificationContent,
+                    linkUrl
+            );
+            log.info("In-app notification sent to admins about supplier profile update: {}", supplier.getUserId());
+        } catch (Exception e) {
+            log.error("Failed to send in-app notification for supplier profile update: {}", supplier.getUserId(), e);
+            // Don't fail the operation if notification fails
+        }
+
         // Update Keycloak if name changed (email doesn't change for suppliers)
         if (needsKeycloakUpdate) {
             try {
@@ -465,6 +504,25 @@ public class SupplierServiceImpl implements SupplierService {
 
         supplier = supplierRepository.save(supplier);
 
+        // Send in-app notification to supplier about approval
+        try {
+            String notificationContent = String.format(
+                    "Chúc mừng! Tài khoản nhà cung cấp của bạn đã được phê duyệt. %s",
+                    approvalNote != null && !approvalNote.isBlank() ? "Ghi chú: " + approvalNote : ""
+            );
+            String linkUrl = "/dashboard/overview"; // Link to supplier dashboard
+            inAppNotificationService.createNotificationForUser(
+                    supplier.getUserId(),
+                    NotificationType.SUPPLIER_APPROVED,
+                    notificationContent,
+                    linkUrl
+            );
+            log.info("In-app notification sent to supplier about approval: {}", supplier.getUserId());
+        } catch (Exception e) {
+            log.error("Failed to send in-app notification for supplier approval: {}", supplier.getUserId(), e);
+            // Don't fail the operation if notification fails
+        }
+
         // Create wallet for supplier
         try {
             walletService.createWallet(supplier);
@@ -513,6 +571,25 @@ public class SupplierServiceImpl implements SupplierService {
         supplier.setActive(false);
 
         supplier = supplierRepository.save(supplier);
+
+        // Send in-app notification to supplier about rejection
+        try {
+            String notificationContent = String.format(
+                    "Rất tiếc, đơn đăng ký nhà cung cấp của bạn đã bị từ chối. %s",
+                    rejectionReason != null && !rejectionReason.isBlank() ? "Lý do: " + rejectionReason : ""
+            );
+            String linkUrl = "/profile/my-profile"; // Link to profile page
+            inAppNotificationService.createNotificationForUser(
+                    supplier.getUserId(),
+                    NotificationType.SUPPLIER_REJECTED,
+                    notificationContent,
+                    linkUrl
+            );
+            log.info("In-app notification sent to supplier about rejection: {}", supplier.getUserId());
+        } catch (Exception e) {
+            log.error("Failed to send in-app notification for supplier rejection: {}", supplier.getUserId(), e);
+            // Don't fail the operation if notification fails
+        }
 
         // Queue rejection email notification (will auto-retry on failure)
         try {

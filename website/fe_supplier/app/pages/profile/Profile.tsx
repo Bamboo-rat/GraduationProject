@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import supplierService from '~/service/supplierService';
 import type { SupplierResponse } from '~/service/supplierService';
 import { Building2, Mail, Phone, MapPin, Briefcase, CreditCard, Store, Package, TrendingUp } from 'lucide-react';
+import AvatarUpload from '~/component/common/AvatarUpload';
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -23,6 +24,21 @@ export default function Profile() {
       setError(err.message || 'Không thể tải thông tin nhà cung cấp');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAvatarChange = async (url: string) => {
+    try {
+      // Update avatar on backend
+      await supplierService.updateProfile({ avatarUrl: url });
+
+      // Refresh supplier info to show new avatar
+      await fetchSupplierInfo();
+
+      alert('Cập nhật ảnh đại diện thành công!');
+    } catch (err: any) {
+      console.error('Error updating avatar:', err);
+      alert(err.message || 'Không thể cập nhật ảnh đại diện');
     }
   };
 
@@ -96,15 +112,13 @@ export default function Profile() {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center space-x-4">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center overflow-hidden">
-            {supplier.avatarUrl ? (
-              <img src={supplier.avatarUrl} alt={supplier.fullName} className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-3xl text-white font-bold">
-                {supplier.businessName.charAt(0).toUpperCase()}
-              </span>
-            )}
-          </div>
+          <AvatarUpload
+            currentAvatarUrl={supplier.avatarUrl}
+            onAvatarChange={handleAvatarChange}
+            userName={supplier.businessName}
+            size="medium"
+            editable={true}
+          />
           <div>
             <h1 className="text-3xl font-bold text-gray-800">{supplier.businessName}</h1>
             <p className="text-gray-600 mt-1">Nhà cung cấp: {supplier.fullName}</p>
@@ -256,15 +270,6 @@ export default function Profile() {
                 <p className="font-medium text-gray-900">{formatDate(supplier.updatedAt)}</p>
               </div>
             </div>
-          </div>
-
-          <div className="mt-6 pt-4 border-t">
-            <button
-              onClick={() => navigate('/settings/payment')}
-              className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
-            >
-              Cập nhật thông tin thanh toán
-            </button>
           </div>
         </div>
       </div>

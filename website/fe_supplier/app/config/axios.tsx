@@ -84,12 +84,13 @@ axiosInstance.interceptors.response.use(
         const refreshToken = localStorage.getItem('refresh_token');
 
         if (!refreshToken) {
-          // No refresh token, redirect to login
-          console.error('No refresh token available - redirecting to login');
+          // No refresh token, clear auth and reject
+          console.error('No refresh token available');
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
           localStorage.removeItem('user_info');
-          window.location.href = '/login';
+          isRefreshing = false;
+          processQueue(error, null);
           return Promise.reject(error);
         }
 
@@ -121,16 +122,13 @@ axiosInstance.interceptors.response.use(
           // Retry the original request
           return axiosInstance(originalRequest);
         } catch (refreshError) {
-          // Refresh failed, clear auth and redirect to login
-          console.error('Token refresh failed - redirecting to login');
-          processQueue(refreshError, null);
-          isRefreshing = false;
-
+          // Refresh failed, clear auth
+          console.error('Token refresh failed');
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
           localStorage.removeItem('user_info');
-          window.location.href = '/login';
-
+          processQueue(refreshError, null);
+          isRefreshing = false;
           return Promise.reject(refreshError);
         }
       }
