@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import productService from '~/service/productService';
-import type { Product, ProductListParams} from '~/service/productService';
+import type { ProductResponse, ProductStatus, ProductListParams } from '~/service/productService';
 
 export default function ProductList() {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<ProductResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
-  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<ProductStatus | ''>('');
   const [searchTerm, setSearchTerm] = useState('');
 
   const fetchProducts = async () => {
@@ -18,35 +18,20 @@ export default function ProductList() {
         page: currentPage,
         size: 10,
       };
-      
-      // Only send status if it's one of backend-accepted enum values to avoid server errors
-      const ALLOWED_STATUSES = new Set(['ACTIVE', 'INACTIVE', 'SOLD_OUT', 'EXPIRED', 'SUSPENDED', 'DELETED']);
-      if (statusFilter && ALLOWED_STATUSES.has(statusFilter)) {
-        params.status = statusFilter;
-      } else if (statusFilter) {
-        console.warn('Skipping unknown status filter to avoid server error:', statusFilter);
+
+      if (statusFilter) {
+        params.status = statusFilter as ProductStatus;
       }
-      
+
       if (searchTerm) {
         params.search = searchTerm;
       }
 
-      const response: any = await productService.getMyProducts(params);
+      const response = await productService.getMyProducts(params);
 
-      // Defensive handling: backend may return pagination either as
-      // { content: [], page: { totalPages, totalElements } }
-      // or as Spring Page with top-level totalPages/totalElements fields.
-      const content = response?.content ?? [];
-      const page = response?.page ?? {
-        totalPages: response?.totalPages ?? 0,
-        totalElements: response?.totalElements ?? 0,
-        size: response?.size ?? 10,
-        number: response?.number ?? currentPage,
-      };
-
-      setProducts(content);
-      setTotalPages(page.totalPages ?? 0);
-      setTotalElements(page.totalElements ?? 0);
+      setProducts(response.content);
+      setTotalPages(response.page.totalPages);
+      setTotalElements(response.page.totalElements);
     } catch (error) {
       console.error('Error fetching products:', error);
       alert('Lỗi khi tải danh sách sản phẩm');
@@ -64,25 +49,25 @@ export default function ProductList() {
     fetchProducts();
   };
 
-  const handleToggleStatus = async (productId: number, currentStatus: string) => {
-    if (!confirm('Bạn có chắc muốn thay đổi trạng thái sản phẩm?')) {
+  const handleToggleStatus = async (productId: string, currentStatus: ProductStatus) => {
+    const action = currentStatus === 'ACTIVE' ? 'ẩn' : 'hiện';
+    if (!confirm(`Bạn có chắc muốn ${action} sản phẩm này?`)) {
       return;
     }
 
     try {
-  const newStatus = currentStatus === 'AVAILABLE' ? 'SOLD_OUT' : 'AVAILABLE';
-  // Use updateProduct to set status (UpdateProductRequest includes optional status)
-  await productService.updateProduct(productId, { status: newStatus } as any);
+      const makeActive = currentStatus !== 'ACTIVE';
+      await productService.toggleProductVisibility(productId, makeActive);
       alert('Cập nhật trạng thái thành công');
       fetchProducts();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating status:', error);
-      alert('Lỗi khi cập nhật trạng thái');
+      alert('Lỗi khi cập nhật trạng thái: ' + (error.response?.data?.message || error.message));
     }
   };
 
-  const handleDelete = async (productId: number) => {
-    if (!confirm('Bạn có chắc muốn xóa sản phẩm này?')) {
+  const handleDelete = async (productId: string) => {
+    if (!confirm('Bạn có chắc muốn xóa sản phẩm này? Hành động này không thể hoàn tác.')) {
       return;
     }
 
@@ -90,23 +75,25 @@ export default function ProductList() {
       await productService.deleteProduct(productId);
       alert('Xóa sản phẩm thành công');
       fetchProducts();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting product:', error);
-      alert('Lỗi khi xóa sản phẩm');
+      alert('Lỗi khi xóa sản phẩm: ' + (error.response?.data?.message || error.message));
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      PENDING_APPROVAL: { label: 'Chờ duyệt', color: 'bg-yellow-100 text-yellow-800' },
-      APPROVED: { label: 'Đã duyệt', color: 'bg-green-100 text-green-800' },
-      REJECTED: { label: 'Bị từ chối', color: 'bg-red-100 text-red-800' },
-      SOLD_OUT: { label: 'Hết hàng', color: 'bg-gray-100 text-gray-800' },
+  const getStatusBadge = (status: ProductStatus) => {
+    const statusConfig: Record<ProductStatus, { label: string; class: string }> = {
+      ACTIVE: { label: 'Đang hoạt động', class: 'badge-success' },
+      INACTIVE: { label: 'Đã ẩn', class: 'badge-neutral' },
+      SOLD_OUT: { label: 'Hết hàng', class: 'badge-warning' },
+      EXPIRED: { label: 'Hết hạn', class: 'badge-error' },
+      SUSPENDED: { label: 'Bị tạm ngưng', class: 'badge-error' },
+      DELETED: { label: 'Đã xóa', class: 'badge-neutral' },
     };
 
-    const config = statusConfig[status as keyof typeof statusConfig] || { label: status, color: 'bg-gray-100' };
+    const config = statusConfig[status] || { label: status, class: 'badge-neutral' };
     return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
+      <span className={`px-3 py-1 rounded-full text-sm font-medium ${config.class}`}>
         {config.label}
       </span>
     );
@@ -115,63 +102,84 @@ export default function ProductList() {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="text-gray-600">Đang tải...</div>
+        <div className="text-muted animate-pulse">Đang tải danh sách sản phẩm...</div>
       </div>
     );
   }
 
   return (
-    <div className="p-6">
+    <div className="p-6 animate-fade-in">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800 mb-4">Danh sách sản phẩm</h1>
+        <h1 className="heading-primary mb-2">Danh sách sản phẩm</h1>
+        <p className="text-muted mb-6">Quản lý và theo dõi các sản phẩm của bạn</p>
         
         {/* Filters */}
-        <div className="flex gap-4 mb-4">
-          <div className="flex gap-2">
+        <div className="flex flex-col lg:flex-row gap-4 mb-6">
+          {/* Status Filter Buttons */}
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setStatusFilter('')}
-              className={`px-4 py-2 rounded ${!statusFilter ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+              className={`px-4 py-2 rounded-lg transition-colors font-medium ${
+                !statusFilter ? 'btn-primary' : 'btn-secondary'
+              }`}
             >
               Tất cả
             </button>
             <button
-              onClick={() => setStatusFilter('PENDING_APPROVAL')}
-              className={`px-4 py-2 rounded ${statusFilter === 'PENDING_APPROVAL' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+              onClick={() => setStatusFilter('ACTIVE')}
+              className={`px-4 py-2 rounded-lg transition-colors font-medium ${
+                statusFilter === 'ACTIVE' ? 'btn-primary' : 'bg-surface border-default border text-text hover:bg-surface-light'
+              }`}
             >
-              Chờ duyệt
+              Đang hoạt động
             </button>
             <button
-              onClick={() => setStatusFilter('APPROVED')}
-              className={`px-4 py-2 rounded ${statusFilter === 'APPROVED' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+              onClick={() => setStatusFilter('INACTIVE')}
+              className={`px-4 py-2 rounded-lg transition-colors font-medium ${
+                statusFilter === 'INACTIVE' ? 'btn-primary' : 'bg-surface border-default border text-text hover:bg-surface-light'
+              }`}
             >
-              Đã duyệt
+              Đã ẩn
             </button>
             <button
-              onClick={() => setStatusFilter('REJECTED')}
-              className={`px-4 py-2 rounded ${statusFilter === 'REJECTED' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+              onClick={() => setStatusFilter('SOLD_OUT')}
+              className={`px-4 py-2 rounded-lg transition-colors font-medium ${
+                statusFilter === 'SOLD_OUT' ? 'btn-primary' : 'bg-surface border-default border text-text hover:bg-surface-light'
+              }`}
             >
-              Bị từ chối
+              Hết hàng
+            </button>
+            <button
+              onClick={() => setStatusFilter('EXPIRED')}
+              className={`px-4 py-2 rounded-lg transition-colors font-medium ${
+                statusFilter === 'EXPIRED' ? 'btn-primary' : 'bg-surface border-default border text-text hover:bg-surface-light'
+              }`}
+            >
+              Hết hạn
             </button>
           </div>
 
-          <div className="flex gap-2 ml-auto">
-            <input
-              type="text"
-              placeholder="Tìm kiếm sản phẩm..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-              className="px-4 py-2 border rounded w-64"
-            />
-            <button
-              onClick={handleSearch}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              Tìm kiếm
-            </button>
+          {/* Search and Add Product */}
+          <div className="flex flex-col sm:flex-row gap-3 lg:ml-auto">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Tìm kiếm sản phẩm..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                className="input-field flex-1 min-w-[200px]"
+              />
+              <button
+                onClick={handleSearch}
+                className="btn-primary whitespace-nowrap"
+              >
+                Tìm kiếm
+              </button>
+            </div>
             <a
               href="/products/create"
-              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+              className="btn-secondary whitespace-nowrap text-center"
             >
               + Thêm sản phẩm
             </a>
@@ -180,150 +188,158 @@ export default function ProductList() {
       </div>
 
       {/* Products Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Hình ảnh
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Tên sản phẩm
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Danh mục
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Biến thể
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Trạng thái
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Thao tác
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {products.length === 0 ? (
+      <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-surface-light">
               <tr>
-                <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
-                  Không có sản phẩm nào
-                </td>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-text uppercase tracking-wider">
+                  Hình ảnh
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-text uppercase tracking-wider">
+                  Tên sản phẩm
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-text uppercase tracking-wider">
+                  Danh mục
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-text uppercase tracking-wider">
+                  Biến thể
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-text uppercase tracking-wider">
+                  Trạng thái
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-text uppercase tracking-wider">
+                  Thao tác
+                </th>
               </tr>
-            ) : (
-              products.map((product) => {
-                const primaryImage = product.images?.find((img) => img.isPrimary);
-                return (
-                  <tr key={product.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {primaryImage ? (
-                        <img
-                          src={primaryImage.imageUrl}
-                          alt={product.productName}
-                          className="h-12 w-12 object-cover rounded"
-                        />
-                      ) : (
-                        <div className="h-12 w-12 bg-gray-200 rounded flex items-center justify-center">
-                          <span className="text-gray-400 text-xs">No image</span>
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">{product.productName}</div>
-                      {product.rejectionReason && (
-                        <div className="text-xs text-red-600 mt-1">
-                          Lý do từ chối: {product.rejectionReason}
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {product.categoryName || 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {product.variants?.length || 0} biến thể
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(product.status)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex gap-2">
-                        <a
-                          href={`/products/edit/${product.id}`}
-                          className="text-blue-600 hover:text-blue-900"
-                        >
-                          Sửa
-                        </a>
-                        {product.status === 'APPROVED' && (
-                          <button
-                            onClick={() => handleToggleStatus(product.id!, product.status)}
-                            className="text-yellow-600 hover:text-yellow-900"
-                          >
-                            Ẩn/Hiện
-                          </button>
+            </thead>
+            <tbody className="bg-surface divide-y divide-gray-200">
+              {products.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-muted">
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="text-lg mb-2">📦</div>
+                      <p>Không tìm thấy sản phẩm nào</p>
+                      <p className="text-sm text-light mt-1">Hãy thử thay đổi bộ lọc hoặc thêm sản phẩm mới</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                products.map((product) => {
+                  const primaryImage = product.images?.find((img) => img.isPrimary);
+                  return (
+                    <tr key={product.productId} className="hover:bg-surface-light transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {primaryImage ? (
+                          <img
+                            src={primaryImage.imageUrl}
+                            alt={product.name}
+                            className="h-12 w-12 object-cover rounded-lg border border-default"
+                          />
+                        ) : (
+                          <div className="h-12 w-12 bg-surface-light rounded-lg border border-default flex items-center justify-center">
+                            <span className="text-light text-xs">No image</span>
+                          </div>
                         )}
-                        <button
-                          onClick={() => handleDelete(product.id!)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          Xóa
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-semibold text-text">{product.name}</div>
+                        {product.suspensionReason && (
+                          <div className="text-xs text-accent-red mt-1">
+                            ⚠️ Lý do tạm ngưng: {product.suspensionReason}
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted">
+                        {product.categoryName || 'Chưa phân loại'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-muted">
+                        {product.variants?.length || 0} biến thể
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {getStatusBadge(product.status)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex gap-3">
+                          <a
+                            href={`/products/edit/${product.productId}`}
+                            className="text-secondary hover:text-primary-dark transition-colors font-medium"
+                          >
+                            Sửa
+                          </a>
+                          {(product.status === 'ACTIVE' || product.status === 'INACTIVE') && (
+                            <button
+                              onClick={() => handleToggleStatus(product.productId, product.status)}
+                              className="text-accent-warm hover:text-orange-600 transition-colors font-medium"
+                            >
+                              {product.status === 'ACTIVE' ? 'Ẩn' : 'Hiện'}
+                            </button>
+                          )}
+                          {product.status !== 'DELETED' && product.status !== 'SUSPENDED' && (
+                            <button
+                              onClick={() => handleDelete(product.productId)}
+                              className="text-accent-red hover:text-red-700 transition-colors font-medium"
+                            >
+                              Xóa
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
 
         {/* Pagination */}
         {totalPages > 0 && (
-          <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+          <div className="bg-surface-light px-6 py-4 flex items-center justify-between border-t border-default">
             <div className="flex-1 flex justify-between sm:hidden">
               <button
                 onClick={() => setCurrentPage((prev) => Math.max(0, prev - 1))}
                 disabled={currentPage === 0}
-                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Trước
               </button>
               <button
                 onClick={() => setCurrentPage((prev) => Math.min(totalPages - 1, prev + 1))}
                 disabled={currentPage >= totalPages - 1}
-                className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Sau
               </button>
             </div>
             <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm text-gray-700">
-                  Hiển thị <span className="font-medium">{currentPage * 10 + 1}</span> đến{' '}
-                  <span className="font-medium">
+                <p className="text-sm text-muted">
+                  Hiển thị <span className="font-semibold text-text">{currentPage * 10 + 1}</span> đến{' '}
+                  <span className="font-semibold text-text">
                     {Math.min((currentPage + 1) * 10, totalElements)}
                   </span>{' '}
-                  trong tổng số <span className="font-medium">{totalElements}</span> sản phẩm
+                  trong tổng số <span className="font-semibold text-text">{totalElements}</span> sản phẩm
                 </p>
               </div>
               <div>
-                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                <nav className="relative z-0 inline-flex rounded-lg shadow-sm -space-x-px">
                   <button
                     onClick={() => setCurrentPage((prev) => Math.max(0, prev - 1))}
                     disabled={currentPage === 0}
-                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                    className="btn-secondary rounded-l-lg disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Trước
+                    ← Trước
                   </button>
                   {Array.from({ length: totalPages }, (_, i) => (
                     <button
                       key={i}
                       onClick={() => setCurrentPage(i)}
-                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                      className={`px-4 py-2 border text-sm font-medium transition-colors ${
                         currentPage === i
-                          ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                      }`}
+                          ? 'bg-primary text-surface border-primary-dark z-10'
+                          : 'bg-surface border-default text-text hover:bg-surface-light'
+                      } ${i === 0 ? 'rounded-l-lg' : ''} ${i === totalPages - 1 ? 'rounded-r-lg' : ''}`}
                     >
                       {i + 1}
                     </button>
@@ -331,9 +347,9 @@ export default function ProductList() {
                   <button
                     onClick={() => setCurrentPage((prev) => Math.min(totalPages - 1, prev + 1))}
                     disabled={currentPage >= totalPages - 1}
-                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                    className="btn-secondary rounded-r-lg disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Sau
+                    Sau →
                   </button>
                 </nav>
               </div>

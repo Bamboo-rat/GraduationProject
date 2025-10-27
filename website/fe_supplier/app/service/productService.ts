@@ -1,79 +1,111 @@
 import apiClient from '~/config/axios';
 import type { ApiResponse, PaginatedResponse } from './types';
 
-// Product related interfaces
-export interface ProductImage {
-  id?: number;
+// Product status enum matching backend
+export type ProductStatus = 'ACTIVE' | 'INACTIVE' | 'SOLD_OUT' | 'EXPIRED' | 'SUSPENDED' | 'DELETED';
+
+// Product related interfaces matching backend DTOs
+export interface ProductImageRequest {
+  imageUrl: string;
+  isPrimary: boolean;
+}
+
+export interface ProductImageResponse {
+  imageId: string;
   imageUrl: string;
   isPrimary: boolean;
   displayOrder: number;
 }
 
-export interface ProductAttribute {
-  id?: number;
+export interface ProductAttributeRequest {
   attributeName: string;
   attributeValue: string;
 }
 
-export interface ProductVariant {
-  id?: number;
-  variantName: string;
-  sku: string;
-  price: number;
-  discountPrice?: number;
-  stockQuantity: number;
-  reservedQuantity: number;
-  expiryDate?: string;
-  attributes: ProductAttribute[];
+export interface ProductAttributeResponse {
+  attributeId: string;
+  attributeName: string;
+  attributeValue: string;
 }
 
-export interface Product {
-  id?: number;
-  productName: string;
-  description: string;
-  categoryId: number;
-  categoryName?: string;
-  supplierId?: string;
-  supplierBusinessName?: string;
-  status: 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'SOLD_OUT';
-  rejectionReason?: string;
-  images: ProductImage[];
-  variants: ProductVariant[];
-  createdAt?: string;
-  updatedAt?: string;
+export interface ProductVariantRequest {
+  name: string;
+  originalPrice: number;
+  discountPrice?: number;
+  manufacturingDate?: string; // ISO date string
+  expiryDate: string; // ISO date string (required)
+}
+
+export interface ProductVariantResponse {
+  variantId: string;
+  name: string;
+  sku: string;
+  originalPrice: number;
+  discountPrice?: number;
+  manufacturingDate?: string;
+  expiryDate: string;
+  stockQuantity: number;
+  reservedQuantity: number;
+  attributes: ProductAttributeResponse[];
+}
+
+export interface StoreInventoryRequest {
+  storeId: string;
+  variantSku: string; // SKU is auto-generated, will be filled after variants are created
+  stockQuantity: number;
+  priceOverride?: number;
+}
+
+export interface ProductInfoRequest {
+  name: string;
+  description?: string;
+  categoryId: string;
+}
+
+export interface CreateProductRequest {
+  product: ProductInfoRequest;
+  attributes: ProductAttributeRequest[];
+  variants: ProductVariantRequest[];
+  images: ProductImageRequest[];
+  storeInventory: StoreInventoryRequest[];
+}
+
+export interface UpdateProductRequest {
+  name: string;
+  description?: string;
+  categoryId: string;
+}
+
+export interface ProductResponse {
+  productId: string;
+  name: string;
+  description?: string;
+  categoryId: string;
+  categoryName: string;
+  supplierId: string;
+  supplierName: string;
+  status: ProductStatus;
+  suspensionReason?: string;
+  images: ProductImageResponse[];
+  variants: ProductVariantResponse[];
+  attributes: ProductAttributeResponse[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ProductListParams {
   page?: number;
   size?: number;
-  status?: string;
-  categoryId?: number;
+  status?: ProductStatus;
   search?: string;
-}
-
-export interface CreateProductRequest {
-  productName: string;
-  description: string;
-  categoryId: number;
-  images: ProductImage[];
-  variants: ProductVariant[];
-}
-
-export interface UpdateProductRequest {
-  productName?: string;
-  description?: string;
-  categoryId?: number;
-  images?: ProductImage[];
-  variants?: ProductVariant[];
-  status?: string;
 }
 
 class ProductService {
   private readonly BASE_URL = '/products';
 
   // Get all my products (supplier's own products)
-  async getMyProducts(params?: ProductListParams): Promise<PaginatedResponse<Product>> {
-    const response = await apiClient.get<ApiResponse<PaginatedResponse<Product>>>(
+  async getMyProducts(params?: ProductListParams): Promise<PaginatedResponse<ProductResponse>> {
+    const response = await apiClient.get<ApiResponse<any>>(
       `${this.BASE_URL}/my-products`,
       { params }
     );
@@ -86,7 +118,7 @@ class ProductService {
     // Spring's Page serialization often exposes totalPages/totalElements at top-level
     // while our frontend expects a nested `page` object. Normalize both shapes here.
     if (payload.page) {
-      return payload as PaginatedResponse<Product>;
+      return payload as PaginatedResponse<ProductResponse>;
     }
 
     return {
@@ -97,30 +129,30 @@ class ProductService {
         totalElements: typeof payload.totalElements === 'number' ? payload.totalElements : 0,
         totalPages: typeof payload.totalPages === 'number' ? payload.totalPages : 0,
       },
-    } as PaginatedResponse<Product>;
+    } as PaginatedResponse<ProductResponse>;
   }
 
   // Get product by ID
-  async getProductById(id: number): Promise<Product> {
-    const response = await apiClient.get<ApiResponse<Product>>(`${this.BASE_URL}/${id}`);
+  async getProductById(id: string): Promise<ProductResponse> {
+    const response = await apiClient.get<ApiResponse<ProductResponse>>(`${this.BASE_URL}/${id}`);
     return response.data.data;
   }
 
   // Create new product
-  async createProduct(data: CreateProductRequest): Promise<Product> {
-    const response = await apiClient.post<ApiResponse<Product>>(this.BASE_URL, data);
+  async createProduct(data: CreateProductRequest): Promise<ProductResponse> {
+    const response = await apiClient.post<ApiResponse<ProductResponse>>(this.BASE_URL, data);
     return response.data.data;
   }
 
-  // Update product
-  async updateProduct(id: number, data: UpdateProductRequest): Promise<Product> {
-    const response = await apiClient.put<ApiResponse<Product>>(`${this.BASE_URL}/${id}`, data);
+  // Update product (basic info only: name, description, category)
+  async updateProduct(id: string, data: UpdateProductRequest): Promise<ProductResponse> {
+    const response = await apiClient.put<ApiResponse<ProductResponse>>(`${this.BASE_URL}/${id}`, data);
     return response.data.data;
   }
 
   // Toggle product visibility (ACTIVE/INACTIVE)
-  async toggleProductVisibility(id: number, makeActive: boolean): Promise<Product> {
-    const response = await apiClient.patch<ApiResponse<Product>>(
+  async toggleProductVisibility(id: string, makeActive: boolean): Promise<ProductResponse> {
+    const response = await apiClient.patch<ApiResponse<ProductResponse>>(
       `${this.BASE_URL}/${id}/visibility`,
       null,
       { params: { makeActive } }
@@ -129,7 +161,7 @@ class ProductService {
   }
 
   // Soft delete product
-  async deleteProduct(id: number): Promise<void> {
+  async deleteProduct(id: string): Promise<void> {
     await apiClient.delete(`${this.BASE_URL}/${id}`);
   }
 }

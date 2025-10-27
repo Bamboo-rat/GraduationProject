@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import categorySuggestionService  from '~/service/categorySuggestionService';
+import categorySuggestionService from '~/service/categorySuggestionService';
 import type { CategorySuggestion, CategorySuggestionListParams } from '~/service/categorySuggestionService';
 
 export default function CategorySuggestionList() {
@@ -76,14 +76,14 @@ export default function CategorySuggestionList() {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      PENDING: { label: 'Chờ duyệt', color: 'bg-yellow-100 text-yellow-800' },
-      APPROVED: { label: 'Đã duyệt', color: 'bg-green-100 text-green-800' },
-      REJECTED: { label: 'Bị từ chối', color: 'bg-red-100 text-red-800' },
+      PENDING: { label: 'Chờ duyệt', class: 'badge-warning' },
+      APPROVED: { label: 'Đã duyệt', class: 'badge-success' },
+      REJECTED: { label: 'Bị từ chối', class: 'badge-error' },
     };
 
-    const config = statusConfig[status as keyof typeof statusConfig] || { label: status, color: 'bg-gray-100' };
+    const config = statusConfig[status as keyof typeof statusConfig] || { label: status, class: 'badge-neutral' };
     return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
+      <span className={`px-3 py-1 rounded-full text-sm font-medium ${config.class}`}>
         {config.label}
       </span>
     );
@@ -92,40 +92,50 @@ export default function CategorySuggestionList() {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="text-gray-600">Đang tải...</div>
+        <div className="text-muted animate-pulse">Đang tải danh sách đề xuất...</div>
       </div>
     );
   }
 
   return (
-    <div className="p-6">
+    <div className="p-6 animate-fade-in">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800 mb-4">Đề xuất danh mục sản phẩm</h1>
+        <h1 className="heading-primary mb-2">Đề xuất danh mục sản phẩm</h1>
+        <p className="text-muted mb-6">Gửi đề xuất danh mục mới và theo dõi trạng thái</p>
 
         {/* Filters */}
-        <div className="flex gap-4 mb-4">
-          <div className="flex gap-2">
+        <div className="flex flex-col lg:flex-row gap-4 mb-6">
+          {/* Status Filter Buttons */}
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setStatusFilter('')}
-              className={`px-4 py-2 rounded ${!statusFilter ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+              className={`px-4 py-2 rounded-lg transition-colors font-medium ${
+                !statusFilter ? 'btn-primary' : 'btn-secondary'
+              }`}
             >
               Tất cả
             </button>
             <button
               onClick={() => setStatusFilter('PENDING')}
-              className={`px-4 py-2 rounded ${statusFilter === 'PENDING' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+              className={`px-4 py-2 rounded-lg transition-colors font-medium ${
+                statusFilter === 'PENDING' ? 'btn-primary' : 'bg-surface border-default border text-text hover:bg-surface-light'
+              }`}
             >
               Chờ duyệt
             </button>
             <button
               onClick={() => setStatusFilter('APPROVED')}
-              className={`px-4 py-2 rounded ${statusFilter === 'APPROVED' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+              className={`px-4 py-2 rounded-lg transition-colors font-medium ${
+                statusFilter === 'APPROVED' ? 'btn-primary' : 'bg-surface border-default border text-text hover:bg-surface-light'
+              }`}
             >
               Đã duyệt
             </button>
             <button
               onClick={() => setStatusFilter('REJECTED')}
-              className={`px-4 py-2 rounded ${statusFilter === 'REJECTED' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+              className={`px-4 py-2 rounded-lg transition-colors font-medium ${
+                statusFilter === 'REJECTED' ? 'btn-primary' : 'bg-surface border-default border text-text hover:bg-surface-light'
+              }`}
             >
               Bị từ chối
             </button>
@@ -133,7 +143,7 @@ export default function CategorySuggestionList() {
 
           <button
             onClick={() => setShowCreateModal(true)}
-            className="ml-auto px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+            className="btn-secondary lg:ml-auto whitespace-nowrap"
           >
             + Đề xuất danh mục mới
           </button>
@@ -141,102 +151,113 @@ export default function CategorySuggestionList() {
       </div>
 
       {/* Suggestions Table */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Tên danh mục
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Lý do đề xuất
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Ngày gửi
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Trạng thái
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Phản hồi Admin
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {suggestions.length === 0 ? (
+      <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-surface-light">
               <tr>
-                <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
-                  Chưa có đề xuất nào
-                </td>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-text uppercase tracking-wider">
+                  Tên danh mục
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-text uppercase tracking-wider">
+                  Lý do đề xuất
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-text uppercase tracking-wider">
+                  Ngày gửi
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-text uppercase tracking-wider">
+                  Trạng thái
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-text uppercase tracking-wider">
+                  Phản hồi Admin
+                </th>
               </tr>
-            ) : (
-              suggestions.map((suggestion) => (
-                <tr key={suggestion.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{suggestion.categoryName}</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-500">{suggestion.reason}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(suggestion.createdAt).toLocaleDateString('vi-VN')}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    {getStatusBadge(suggestion.status)}
-                  </td>
-                  <td className="px-6 py-4">
-                    {suggestion.adminNotes ? (
-                      <div className="text-sm text-gray-600">
-                        {suggestion.adminNotes}
-                        {suggestion.processorName && (
-                          <div className="text-xs text-gray-400 mt-1">
-                            Bởi: {suggestion.processorName} -{' '}
-                            {suggestion.processedAt &&
-                              new Date(suggestion.processedAt).toLocaleString('vi-VN')}
-                          </div>
-                        )}
-                      </div>
-                    ) : (
-                      <span className="text-sm text-gray-400">Chưa có phản hồi</span>
-                    )}
+            </thead>
+            <tbody className="bg-surface divide-y divide-gray-200">
+              {suggestions.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-8 text-center text-muted">
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="text-lg mb-2">💡</div>
+                      <p>Chưa có đề xuất nào</p>
+                      <p className="text-sm text-light mt-1">
+                        Hãy tạo đề xuất đầu tiên để đề xuất danh mục mới
+                      </p>
+                    </div>
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                suggestions.map((suggestion) => (
+                  <tr key={suggestion.id} className="hover:bg-surface-light transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-semibold text-text">{suggestion.categoryName}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-muted max-w-xs">{suggestion.reason}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted">
+                      {new Date(suggestion.createdAt).toLocaleDateString('vi-VN')}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {getStatusBadge(suggestion.status)}
+                    </td>
+                    <td className="px-6 py-4">
+                      {suggestion.adminNotes ? (
+                        <div className="text-sm text-text">
+                          <div className="font-medium mb-1">📝 Phản hồi:</div>
+                          <div className="text-muted bg-surface-light p-3 rounded-lg border border-default">
+                            {suggestion.adminNotes}
+                          </div>
+                          {suggestion.processorName && (
+                            <div className="text-xs text-light mt-2">
+                              Xử lý bởi: <span className="font-medium">{suggestion.processorName}</span> -{' '}
+                              {suggestion.processedAt &&
+                                new Date(suggestion.processedAt).toLocaleString('vi-VN')}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-sm text-light italic">Chưa có phản hồi</span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
 
         {/* Pagination */}
         {totalPages > 0 && (
-          <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+          <div className="bg-surface-light px-6 py-4 flex items-center justify-between border-t border-default">
             <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm text-gray-700">
-                  Hiển thị <span className="font-medium">{currentPage * 10 + 1}</span> đến{' '}
-                  <span className="font-medium">
+                <p className="text-sm text-muted">
+                  Hiển thị <span className="font-semibold text-text">{currentPage * 10 + 1}</span> đến{' '}
+                  <span className="font-semibold text-text">
                     {Math.min((currentPage + 1) * 10, totalElements)}
                   </span>{' '}
-                  trong tổng số <span className="font-medium">{totalElements}</span> đề xuất
+                  trong tổng số <span className="font-semibold text-text">{totalElements}</span> đề xuất
                 </p>
               </div>
               <div>
-                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                <nav className="relative z-0 inline-flex rounded-lg shadow-sm -space-x-px">
                   <button
                     onClick={() => setCurrentPage((prev) => Math.max(0, prev - 1))}
                     disabled={currentPage === 0}
-                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                    className="btn-secondary rounded-l-lg disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Trước
+                    ← Trước
                   </button>
                   {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => (
                     <button
                       key={i}
                       onClick={() => setCurrentPage(i)}
-                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                      className={`px-4 py-2 border text-sm font-medium transition-colors ${
                         currentPage === i
-                          ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                      }`}
+                          ? 'bg-primary text-surface border-primary-dark z-10'
+                          : 'bg-surface border-default text-text hover:bg-surface-light'
+                      } ${i === 0 ? 'rounded-l-lg' : ''} ${i === Math.min(totalPages, 5) - 1 ? 'rounded-r-lg' : ''}`}
                     >
                       {i + 1}
                     </button>
@@ -244,9 +265,9 @@ export default function CategorySuggestionList() {
                   <button
                     onClick={() => setCurrentPage((prev) => Math.min(totalPages - 1, prev + 1))}
                     disabled={currentPage >= totalPages - 1}
-                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                    className="btn-secondary rounded-r-lg disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Sau
+                    Sau →
                   </button>
                 </nav>
               </div>
@@ -257,50 +278,50 @@ export default function CategorySuggestionList() {
 
       {/* Create Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <h2 className="text-xl font-bold mb-4">Đề xuất danh mục mới</h2>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in">
+          <div className="bg-surface rounded-lg p-6 w-full max-w-md mx-4 card-hover">
+            <h2 className="heading-secondary mb-4">Đề xuất danh mục mới</h2>
 
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tên danh mục <span className="text-red-500">*</span>
+              <label className="block text-sm font-medium text-text mb-2">
+                Tên danh mục <span className="text-accent-red">*</span>
               </label>
               <input
                 type="text"
                 value={newCategoryName}
                 onChange={(e) => setNewCategoryName(e.target.value)}
-                placeholder="Ví dụ: Thực phẩm hữu cơ"
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Ví dụ: Thực phẩm hữu cơ, Đồ uống tự nhiên..."
+                className="input-field w-full"
               />
             </div>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Lý do đề xuất <span className="text-red-500">*</span>
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-text mb-2">
+                Lý do đề xuất <span className="text-accent-red">*</span>
               </label>
               <textarea
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="Mô tả lý do tại sao nên thêm danh mục này..."
+                placeholder="Mô tả lý do tại sao nên thêm danh mục này, lợi ích mang lại..."
                 rows={4}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="input-field w-full resize-none"
               />
             </div>
 
-            <div className="flex gap-2 justify-end">
+            <div className="flex gap-3 justify-end">
               <button
                 onClick={() => {
                   setShowCreateModal(false);
                   setNewCategoryName('');
                   setReason('');
                 }}
-                className="px-4 py-2 text-gray-700 bg-gray-200 rounded hover:bg-gray-300"
+                className="btn-secondary px-4 py-2"
               >
                 Hủy
               </button>
               <button
                 onClick={handleCreateSuggestion}
-                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                className="btn-primary px-4 py-2"
               >
                 Gửi đề xuất
               </button>

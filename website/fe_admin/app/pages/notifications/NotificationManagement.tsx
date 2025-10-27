@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 import DashboardLayout from '~/component/layout/DashboardLayout';
-import notificationService, {
-  PendingNotification,
-  NotificationStats,
-} from '~/service/notificationService';
+import notificationService  from '~/service/notificationService';
+import type { PendingNotification, NotificationStats } from '~/service/notificationService';
 
 type TabType = 'failed' | 'pending';
 
