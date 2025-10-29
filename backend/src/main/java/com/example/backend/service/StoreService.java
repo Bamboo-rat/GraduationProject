@@ -76,6 +76,24 @@ public interface StoreService {
     StoreResponse rejectStore(String storeId, String keycloakId, String adminNotes);
 
     /**
+     * Admin suspends an active store (change status to SUSPENDED)
+     * @param storeId Store ID
+     * @param keycloakId Admin's Keycloak ID
+     * @param reason Suspension reason
+     * @return Suspended store
+     */
+    StoreResponse suspendStore(String storeId, String keycloakId, String reason);
+
+    /**
+     * Admin unsuspends a suspended store (change status back to ACTIVE)
+     * @param storeId Store ID
+     * @param keycloakId Admin's Keycloak ID
+     * @param adminNotes Optional notes
+     * @return Reactivated store
+     */
+    StoreResponse unsuspendStore(String storeId, String keycloakId, String adminNotes);
+
+    /**
      * Supplier updates store information
      * Minor changes (description, openTime, closeTime, imageUrl) are applied immediately
      * Major changes (storeName, address, latitude, longitude, phoneNumber) require admin approval

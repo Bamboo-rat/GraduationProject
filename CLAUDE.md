@@ -199,14 +199,15 @@ Managed via Keycloak with Spring Security OAuth2 Resource Server:
 - **KeycloakService**: User management in Keycloak (create, update, assign roles, reset password)
 - **OtpService**: OTP generation, verification, rate limiting
 - **EmailService**: SendGrid integration for transactional emails
-- **FileStorageService**: Cloudinary integration for file uploads
+- **FileStorageService**: Cloudinary integration for file uploads (supports both images and documents with explicit resource type detection)
 - **SupplierService**: Supplier registration, approval, profile management
 - **AdminService**: Admin CRUD operations
 - **CustomerService**: Customer registration, profile management
 - **ProductService**: Product CRUD with variants, images, attributes
 - **PromotionService**: Promotion management with validation
 - **CategoryService**: Category management with image upload
-- **StoreService**: Store management with pending updates approval
+- **StoreService**: Store management with pending updates approval, suspend/unsuspend operations
+- **BannerService**: Banner/ads management for homepage and promotions
 - **PartnerPerformanceService**: Reporting metrics for suppliers
 
 ### Database Configuration

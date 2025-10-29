@@ -178,6 +178,48 @@ public class StoreController {
         return ResponseEntity.ok(ApiResponse.success("Store rejected successfully", store));
     }
 
+    @PatchMapping("/{id}/suspend")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR')")
+    @Operation(
+            summary = "Suspend active store (Admin only)",
+            description = "Admin suspends an active store (changes status from ACTIVE to SUSPENDED)"
+    )
+    public ResponseEntity<ApiResponse<StoreResponse>> suspendStore(
+            @PathVariable String id,
+            @RequestParam(required = true) String reason,
+            Authentication authentication) {
+
+        Jwt jwt = (Jwt) authentication.getPrincipal();
+        String keycloakId = JwtUtils.extractKeycloakId(jwt);
+
+        log.info("PATCH /api/stores/{}/suspend - Admin: {}, Reason: {}", id, keycloakId, reason);
+
+        StoreResponse store = storeService.suspendStore(id, keycloakId, reason);
+
+        return ResponseEntity.ok(ApiResponse.success("Store suspended successfully", store));
+    }
+
+    @PatchMapping("/{id}/unsuspend")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR')")
+    @Operation(
+            summary = "Unsuspend suspended store (Admin only)",
+            description = "Admin unsuspends a suspended store (changes status from SUSPENDED back to ACTIVE)"
+    )
+    public ResponseEntity<ApiResponse<StoreResponse>> unsuspendStore(
+            @PathVariable String id,
+            @RequestParam(required = false) String adminNotes,
+            Authentication authentication) {
+
+        Jwt jwt = (Jwt) authentication.getPrincipal();
+        String keycloakId = JwtUtils.extractKeycloakId(jwt);
+
+        log.info("PATCH /api/stores/{}/unsuspend - Admin: {}", id, keycloakId);
+
+        StoreResponse store = storeService.unsuspendStore(id, keycloakId, adminNotes);
+
+        return ResponseEntity.ok(ApiResponse.success("Store unsuspended successfully", store));
+    }
+
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('SUPPLIER')")
     @Operation(

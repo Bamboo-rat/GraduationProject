@@ -2,46 +2,56 @@ import axiosInstance from '../config/axios';
 
 // ============= TYPES =============
 
-export type PromotionStatus = 'ACTIVE' | 'INACTIVE' | 'EXPIRED' | 'SCHEDULED';
-export type PromotionTier = 'TIER_1' | 'TIER_2' | 'TIER_3' | 'TIER_4';
+export type PromotionStatus = 'ACTIVE' | 'INACTIVE';
+export type PromotionTier =
+  | 'GENERAL'
+  | 'BRONZE_PLUS'
+  | 'SILVER_PLUS'
+  | 'GOLD_PLUS'
+  | 'PLATINUM_PLUS'
+  | 'DIAMOND_ONLY'
+  | 'BIRTHDAY'
+  | 'FIRST_TIME';
 export type PromotionType = 'PERCENTAGE' | 'FIXED_AMOUNT' | 'FREE_SHIPPING';
 
 export interface Promotion {
   promotionId: string;
   code: string;
+  title: string;
   description?: string;
   type: PromotionType;
-  discountValue: number;
-  minOrderAmount?: number;
-  maxDiscountAmount?: number;
-  startDate: string;
-  endDate: string;
-  usageLimit?: number;
-  usageCount: number;
-  perUserLimit?: number;
   tier: PromotionTier;
+  discountValue: number;
+  minimumOrderAmount?: number;
+  maxDiscountAmount?: number;
+  startDate: string; // LocalDate from backend
+  endDate: string; // LocalDate from backend
+  totalUsageLimit?: number;
+  usagePerCustomerLimit?: number;
+  currentUsageCount: number;
   status: PromotionStatus;
   isHighlighted: boolean;
-  applicableCategories: string[];
+  isActive: boolean; // Computed field from backend
+  isExpired: boolean; // Computed field from backend
   createdAt: string;
   updatedAt: string;
 }
 
 export interface PromotionRequest {
   code: string;
+  title: string;
   description?: string;
   type: PromotionType;
-  discountValue: number;
-  minOrderAmount?: number;
-  maxDiscountAmount?: number;
-  startDate: string;
-  endDate: string;
-  usageLimit?: number;
-  perUserLimit?: number;
   tier: PromotionTier;
+  discountValue: number;
+  minimumOrderAmount?: number;
+  maxDiscountAmount?: number;
+  startDate: string; // ISO date string (YYYY-MM-DD)
+  endDate: string; // ISO date string (YYYY-MM-DD)
+  totalUsageLimit?: number;
+  usagePerCustomerLimit?: number;
   status?: PromotionStatus;
   isHighlighted?: boolean;
-  applicableCategories?: string[];
 }
 
 export interface PromotionPageResponse {
@@ -245,8 +255,6 @@ class PromotionService {
     const labels: Record<PromotionStatus, string> = {
       ACTIVE: 'Đang hoạt động',
       INACTIVE: 'Không hoạt động',
-      EXPIRED: 'Đã hết hạn',
-      SCHEDULED: 'Đã lên lịch',
     };
     return labels[status] || status;
   }
@@ -258,8 +266,6 @@ class PromotionService {
     const colors: Record<PromotionStatus, string> = {
       ACTIVE: 'bg-green-100 text-green-800',
       INACTIVE: 'bg-gray-100 text-gray-800',
-      EXPIRED: 'bg-red-100 text-red-800',
-      SCHEDULED: 'bg-blue-100 text-blue-800',
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
   }
@@ -269,10 +275,14 @@ class PromotionService {
    */
   getTierLabel(tier: PromotionTier): string {
     const labels: Record<PromotionTier, string> = {
-      TIER_1: 'Hạng 1',
-      TIER_2: 'Hạng 2',
-      TIER_3: 'Hạng 3',
-      TIER_4: 'Hạng 4',
+      GENERAL: 'Khuyến mãi chung',
+      BRONZE_PLUS: 'Khuyến mãi Đồng+',
+      SILVER_PLUS: 'Khuyến mãi Bạc+',
+      GOLD_PLUS: 'Khuyến mãi Vàng+',
+      PLATINUM_PLUS: 'Khuyến mãi Bạch Kim+',
+      DIAMOND_ONLY: 'Khuyến mãi VIP Kim Cương',
+      BIRTHDAY: 'Khuyến mãi sinh nhật',
+      FIRST_TIME: 'Khuyến mãi lần đầu',
     };
     return labels[tier] || tier;
   }

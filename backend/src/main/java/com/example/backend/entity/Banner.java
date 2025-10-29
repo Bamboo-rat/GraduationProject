@@ -29,6 +29,12 @@ public class Banner {
     @Column(nullable = false, length = 255)
     private String imageUrl; // URL ảnh banner
 
+    @Column(length = 200)
+    private String title; // Tiêu đề banner (optional)
+
+    @Column(length = 1000)
+    private String description; // Mô tả banner (optional)
+
     @Column(length = 500)
     private String linkUrl; // URL khi click vào banner (optional)
 

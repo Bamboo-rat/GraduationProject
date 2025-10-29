@@ -249,8 +249,8 @@ public class StoreServiceImpl implements StoreService {
                     "Only PENDING stores can be rejected. Current status: " + store.getStatus());
         }
 
-        // Update status to PERMANENTLY_CLOSED (since it was rejected)
-        store.setStatus(StoreStatus.PERMANENTLY_CLOSED);
+        // Update status to REJECTED
+        store.setStatus(StoreStatus.REJECTED);
         store = storeRepository.save(store);
 
         // Send in-app notification to supplier about store rejection
@@ -274,6 +274,102 @@ public class StoreServiceImpl implements StoreService {
         }
 
         log.info("Store rejected: {} by admin: {}, reason: {}", storeId, admin.getFullName(), adminNotes);
+        return storeMapper.toResponse(store);
+    }
+
+    @Override
+    @Transactional
+    public StoreResponse suspendStore(String storeId, String keycloakId, String reason) {
+        log.info("Suspending store: {} by admin: {}", storeId, keycloakId);
+
+        // Find admin
+        Admin admin = (Admin) userRepository.findByKeycloakId(keycloakId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+
+        // Find store
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.STORE_NOT_FOUND,
+                        "Store not found with ID: " + storeId));
+
+        // Validate status - can only suspend ACTIVE stores
+        if (store.getStatus() != StoreStatus.ACTIVE) {
+            throw new BadRequestException(ErrorCode.INVALID_REQUEST,
+                    "Only ACTIVE stores can be suspended. Current status: " + store.getStatus());
+        }
+
+        // Update status to SUSPENDED
+        store.setStatus(StoreStatus.SUSPENDED);
+        store = storeRepository.save(store);
+
+        // Send in-app notification to supplier about store suspension
+        try {
+            String notificationContent = String.format(
+                    "Cửa hàng '%s' của bạn đã bị tạm khóa bởi quản trị viên. %s",
+                    store.getStoreName(),
+                    reason != null && !reason.isBlank() ? "Lý do: " + reason : ""
+            );
+            String linkUrl = "/store/listStore"; // Link to stores list
+            inAppNotificationService.createNotificationForUser(
+                    store.getSupplier().getUserId(),
+                    NotificationType.STORE_REJECTED, // Using existing notification type
+                    notificationContent,
+                    linkUrl
+            );
+            log.info("In-app notification sent to supplier about store suspension: {}", storeId);
+        } catch (Exception e) {
+            log.error("Failed to send in-app notification for store suspension: {}", storeId, e);
+            // Don't fail the operation if notification fails
+        }
+
+        log.info("Store suspended: {} by admin: {}, reason: {}", storeId, admin.getFullName(), reason);
+        return storeMapper.toResponse(store);
+    }
+
+    @Override
+    @Transactional
+    public StoreResponse unsuspendStore(String storeId, String keycloakId, String adminNotes) {
+        log.info("Unsuspending store: {} by admin: {}", storeId, keycloakId);
+
+        // Find admin
+        Admin admin = (Admin) userRepository.findByKeycloakId(keycloakId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+
+        // Find store
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.STORE_NOT_FOUND,
+                        "Store not found with ID: " + storeId));
+
+        // Validate status - can only unsuspend SUSPENDED stores
+        if (store.getStatus() != StoreStatus.SUSPENDED) {
+            throw new BadRequestException(ErrorCode.INVALID_REQUEST,
+                    "Only SUSPENDED stores can be unsuspended. Current status: " + store.getStatus());
+        }
+
+        // Update status back to ACTIVE
+        store.setStatus(StoreStatus.ACTIVE);
+        store = storeRepository.save(store);
+
+        // Send in-app notification to supplier about store reactivation
+        try {
+            String notificationContent = String.format(
+                    "Chúc mừng! Cửa hàng '%s' của bạn đã được kích hoạt lại và hiện đang hoạt động. %s",
+                    store.getStoreName(),
+                    adminNotes != null && !adminNotes.isBlank() ? "Ghi chú: " + adminNotes : ""
+            );
+            String linkUrl = "/store/listStore"; // Link to stores list
+            inAppNotificationService.createNotificationForUser(
+                    store.getSupplier().getUserId(),
+                    NotificationType.STORE_APPROVED, // Using existing notification type
+                    notificationContent,
+                    linkUrl
+            );
+            log.info("In-app notification sent to supplier about store reactivation: {}", storeId);
+        } catch (Exception e) {
+            log.error("Failed to send in-app notification for store reactivation: {}", storeId, e);
+            // Don't fail the operation if notification fails
+        }
+
+        log.info("Store unsuspended: {} by admin: {}", storeId, admin.getFullName());
         return storeMapper.toResponse(store);
     }
 

@@ -278,7 +278,7 @@ export default function CategorySuggestionList() {
 
       {/* Create Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center w-full h-full z-50 p-4 animate-fadeIn">
           <div className="bg-surface rounded-lg p-6 w-full max-w-md mx-4 card-hover">
             <h2 className="heading-secondary mb-4">Đề xuất danh mục mới</h2>
 

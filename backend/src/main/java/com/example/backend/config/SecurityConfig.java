@@ -26,7 +26,8 @@ public class SecurityConfig {
                                 "/api/auth/register/**",
                                 "/api/auth/forgot-password",
                                 "/api/auth/verify-reset-otp",
-                                "/api/auth/reset-password"
+                                "/api/auth/reset-password",
+                                "/api/banners/active"
                         ).permitAll()
                         .requestMatchers("/api/auth/me").authenticated()
                         .requestMatchers("/sms/**", "/api/admins/**","/api/files/**","/api/products/**", "/api/categories/**", "/api/partners/**", "/api/promotions/**").permitAll()

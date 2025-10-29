@@ -6,6 +6,8 @@ import lombok.Getter;
 public enum StoreStatus {
     PENDING("Chờ duyệt", "Store is pending approval"),
     ACTIVE("Đang hoạt động", "Store is active and operating normally"),
+    REJECTED("Bị từ chối", "Store application was rejected by admin"),
+    SUSPENDED("Bị tạm khóa", "Store is suspended by admin"),
     TEMPORARILY_CLOSED("Tạm đóng cửa", "Store is temporarily closed"),
     PERMANENTLY_CLOSED("Đóng cửa vĩnh viễn", "Store is permanently closed"),
     UNDER_MAINTENANCE("Đang bảo trì", "Store is under maintenance");

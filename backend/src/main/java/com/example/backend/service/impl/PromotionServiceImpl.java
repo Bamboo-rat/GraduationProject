@@ -77,7 +77,20 @@ public class PromotionServiceImpl implements PromotionService {
         // Check if promotion has already started
         if (promotion.getStartDate() != null &&
             promotion.getStartDate().isBefore(LocalDate.now())) {
-            throw new BadRequestException(ErrorCode.PROMOTION_ALREADY_STARTED);
+            // If promotion already started, disallow changing its code or setting a startDate in the past.
+            // Other fields may be updated.
+            // - If request changes the code -> reject
+            if (!promotion.getCode().equals(request.getCode())) {
+                throw new BadRequestException(ErrorCode.PROMOTION_ALREADY_STARTED);
+            }
+
+            // - If request tries to change startDate to a different value that is before today -> reject
+            if (request.getStartDate() != null
+                    && !request.getStartDate().isEqual(promotion.getStartDate())
+                    && request.getStartDate().isBefore(LocalDate.now())) {
+                throw new BadRequestException(ErrorCode.PROMOTION_ALREADY_STARTED);
+            }
+            // otherwise allow updates to other fields
         }
 
         // Check if code is being changed and if new code already exists

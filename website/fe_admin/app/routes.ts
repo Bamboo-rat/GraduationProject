@@ -25,6 +25,10 @@ export default [
     route("products/category-suggestions", "routes/products/category-suggestions.tsx"),
     route("products/categories", "routes/products/categories.tsx"),
 
+    // Banner & Promotions
+    route("marketing/banners", "routes/marketing/banners.tsx"),
+    route("marketing/promotions", "routes/marketing/promotions.tsx"),
+
     // Customers Management
     route("customers/list-customers", "routes/customers/list-customers.tsx"),
     route("customers/:userId", "routes/customers/$userId.tsx"),

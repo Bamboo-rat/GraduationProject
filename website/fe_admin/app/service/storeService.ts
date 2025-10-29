@@ -134,6 +134,30 @@ class StoreService {
   }
 
   /**
+   * Suspend active store (Admin only)
+   */
+  async suspendStore(storeId: string, reason: string): Promise<StoreResponse> {
+    const response = await axiosInstance.patch<ApiResponse<StoreResponse>>(
+      `/stores/${storeId}/suspend`,
+      null,
+      { params: { reason } }
+    );
+    return response.data.data;
+  }
+
+  /**
+   * Unsuspend suspended store (Admin only)
+   */
+  async unsuspendStore(storeId: string, adminNotes?: string): Promise<StoreResponse> {
+    const response = await axiosInstance.patch<ApiResponse<StoreResponse>>(
+      `/stores/${storeId}/unsuspend`,
+      null,
+      { params: { adminNotes } }
+    );
+    return response.data.data;
+  }
+
+  /**
    * Get all pending store updates (Super Admin only)
    */
   async getAllPendingUpdates(params: {

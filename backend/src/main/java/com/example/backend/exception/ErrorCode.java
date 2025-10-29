@@ -57,6 +57,7 @@ public enum ErrorCode {
     CATEGORY_ALREADY_EXISTS("4007", "Category already exists", "Danh mục này đã tồn tại", HttpStatus.CONFLICT),
     STORE_NOT_FOUND("4008", "Store not found", "Không tìm thấy cửa hàng", HttpStatus.NOT_FOUND),
     STORE_NAME_ALREADY_EXISTS("4009", "Store name already exists", "Tên cửa hàng này đã tồn tại cho nhà cung cấp", HttpStatus.CONFLICT),
+    BANNER_NOT_FOUND("4010", "Banner not found", "Không tìm thấy banner", HttpStatus.NOT_FOUND),
 
     // ===== 5xxx: Cart, Order, Payment, Promotion Errors =====
     ORDER_NOT_FOUND("5001", "Order not found", "Không tìm thấy đơn hàng", HttpStatus.NOT_FOUND),

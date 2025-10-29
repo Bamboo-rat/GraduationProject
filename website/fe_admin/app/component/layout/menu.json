@@ -37,6 +37,16 @@
     },
     {
       "id": 4,
+      "title": "Banner & Khuyến mãi",
+      "icon": "percent",
+      "link": "/marketing/promotions",
+      "subMenu": [
+        { "title": "Quản lý Khuyến mãi", "link": "/marketing/promotions", "icon": "ticket" },
+        { "title": "Banner", "link": "/marketing/banners", "icon": "megaphone" }
+      ]
+    },
+    {
+      "id": 5,
       "title": "Quản lý Khách hàng",
       "icon": "users",
       "link": "/customers/list-customers",
@@ -46,7 +56,7 @@
       ]
     },
     {
-      "id": 5,
+      "id": 6,
       "title": "Quản lý Vận hành",
       "icon": "truck",
       "link": "/orders/list-orders",
@@ -56,7 +66,7 @@
       ]
     },
     {
-      "id": 6,
+      "id": 7,
       "title": "Tài chính",
       "icon": "wallet",
       "link": "/finance/reconciliation",
@@ -66,7 +76,7 @@
       ]
     },
     {
-      "id": 7,
+      "id": 8,
       "title": "Quản lý Nhân sự",
       "icon": "users",
       "link": "/employees/admins",
@@ -75,7 +85,7 @@
       ]
     },
     {
-      "id": 8,
+      "id": 9,
       "title": "Phân tích & Báo cáo",
       "icon": "bar-chart-3",
       "link": "/reports/revenue",
@@ -86,13 +96,12 @@
       ]
     },
     {
-      "id": 9,
+      "id": 10,
       "title": "Hệ thống",
       "icon": "settings",
       "link": "/settings/roles",
       "subMenu": [
         { "title": "Phân quyền & Vai trò", "link": "/settings/roles", "icon": "shield" },
-        { "title": "Banner & Quảng cáo", "link": "/settings/marketing", "icon": "megaphone" },
         { "title": "Cấu hình Thông báo", "link": "/settings/notifications", "icon": "bell" },
         { "title": "Nhật ký Hoạt động", "link": "/settings/audit", "icon": "file-text" }
       ]
