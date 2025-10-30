@@ -45,7 +45,11 @@ export interface SupplierRegisterStep4Request {
   taxCode: string;
   businessType: BusinessType;
   storeName: string;
-  storeAddress: string;
+  storeAddress: string; // dùng cho tìm vị trí lat/long
+  storeStreet: string;
+  storeWard: string;
+  storeDistrict: string;
+  storeProvince: string;
   storePhoneNumber: string;
   latitude: string;
   longitude: string;

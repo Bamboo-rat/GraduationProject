@@ -3,7 +3,7 @@ import type { ApiResponse, PaginatedResponse } from './types';
 
 export interface CategorySuggestion {
   id: number;
-  categoryName: string;
+  name: string;
   reason: string;
   status: 'PENDING' | 'APPROVED' | 'REJECTED';
   supplierId: string;
@@ -17,7 +17,7 @@ export interface CategorySuggestion {
 }
 
 export interface CreateCategorySuggestionRequest {
-  categoryName: string;
+  name: string;
   reason: string;
 }
 

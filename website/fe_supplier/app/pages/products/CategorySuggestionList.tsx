@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import categorySuggestionService from '~/service/categorySuggestionService';
 import type { CategorySuggestion, CategorySuggestionListParams } from '~/service/categorySuggestionService';
 
@@ -10,7 +12,7 @@ export default function CategorySuggestionList() {
   const [totalElements, setTotalElements] = useState(0);
   const [statusFilter, setStatusFilter] = useState<'PENDING' | 'APPROVED' | 'REJECTED' | ''>('');
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newName, setNewName] = useState('');
   const [reason, setReason] = useState('');
 
   const fetchSuggestions = async () => {
@@ -41,7 +43,7 @@ export default function CategorySuggestionList() {
       setTotalElements(page.totalElements ?? 0);
     } catch (error) {
       console.error('Error fetching suggestions:', error);
-      alert('Lỗi khi tải danh sách đề xuất');
+  toast.error('Lỗi khi tải danh sách đề xuất');
     } finally {
       setLoading(false);
     }
@@ -52,25 +54,25 @@ export default function CategorySuggestionList() {
   }, [currentPage, statusFilter]);
 
   const handleCreateSuggestion = async () => {
-    if (!newCategoryName.trim() || !reason.trim()) {
-      alert('Vui lòng nhập đầy đủ thông tin');
+    if (!newName.trim() || !reason.trim()) {
+      toast.warn('Vui lòng nhập đầy đủ thông tin');
       return;
     }
 
     try {
       await categorySuggestionService.createSuggestion({
-        categoryName: newCategoryName.trim(),
+        name: newName.trim(),
         reason: reason.trim(),
       });
-      alert('Gửi đề xuất thành công');
+      toast.success('Gửi đề xuất thành công');
       setShowCreateModal(false);
-      setNewCategoryName('');
+      setNewName('');
       setReason('');
       setCurrentPage(0);
       fetchSuggestions();
     } catch (error) {
       console.error('Error creating suggestion:', error);
-      alert('Lỗi khi tạo đề xuất');
+  toast.error('Lỗi khi tạo đề xuất');
     }
   };
 
@@ -99,6 +101,7 @@ export default function CategorySuggestionList() {
 
   return (
     <div className="p-6 animate-fade-in">
+      <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} newestOnTop closeOnClick pauseOnFocusLoss draggable pauseOnHover />
       <div className="mb-6">
         <h1 className="heading-primary mb-2">Đề xuất danh mục sản phẩm</h1>
         <p className="text-muted mb-6">Gửi đề xuất danh mục mới và theo dõi trạng thái</p>
@@ -190,7 +193,7 @@ export default function CategorySuggestionList() {
                 suggestions.map((suggestion) => (
                   <tr key={suggestion.id} className="hover:bg-surface-light transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-semibold text-text">{suggestion.categoryName}</div>
+                      <div className="text-sm font-semibold text-text">{suggestion.name}</div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm text-muted max-w-xs">{suggestion.reason}</div>
@@ -288,8 +291,8 @@ export default function CategorySuggestionList() {
               </label>
               <input
                 type="text"
-                value={newCategoryName}
-                onChange={(e) => setNewCategoryName(e.target.value)}
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
                 placeholder="Ví dụ: Thực phẩm hữu cơ, Đồ uống tự nhiên..."
                 className="input-field w-full"
               />
@@ -312,7 +315,7 @@ export default function CategorySuggestionList() {
               <button
                 onClick={() => {
                   setShowCreateModal(false);
-                  setNewCategoryName('');
+                  setNewName('');
                   setReason('');
                 }}
                 className="btn-secondary px-4 py-2"

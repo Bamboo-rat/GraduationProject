@@ -142,7 +142,7 @@ class FileStorageService {
   /**
    * Validate file before upload
    */
-  validateFile(file: File, maxSizeMB: number = 5, allowedTypes: string[] = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf']): { valid: boolean; error?: string } {
+  validateFile(file: File, maxSizeMB: number = 5, allowedTypes: string[] = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf','application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']): { valid: boolean; error?: string } {
     // Check file size
     const maxSizeBytes = maxSizeMB * 1024 * 1024;
     if (file.size > maxSizeBytes) {

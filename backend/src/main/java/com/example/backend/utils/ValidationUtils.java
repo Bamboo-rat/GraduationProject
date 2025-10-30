@@ -32,6 +32,9 @@ public class ValidationUtils {
     // Age requirement
     private static final int MIN_AGE = 18;
 
+    // Tax code pattern (Vietnam: 10 or 13 digits)
+    private static final Pattern TAX_CODE_PATTERN = Pattern.compile("^[0-9]{10}$|^[0-9]{13}$");
+
     /**
      * Validate email format
      *
@@ -160,6 +163,26 @@ public class ValidationUtils {
         if (!username.matches("^[a-zA-Z0-9_.-]+$")) {
             throw new BadRequestException(ErrorCode.INVALID_INPUT, 
                     "Username can only contain letters, numbers, dots, hyphens, and underscores");
+        }
+    }
+
+    /**
+     * Validate tax code format (Vietnam: 10 or 13 digits)
+     *
+     * @param taxCode Tax code to validate
+     * @throws BadRequestException if tax code is invalid
+     */
+    public static void validateTaxCode(String taxCode) {
+        if (taxCode == null || taxCode.trim().isEmpty()) {
+            throw new BadRequestException(ErrorCode.INVALID_INPUT, 
+                    "Tax code cannot be empty");
+        }
+
+        String cleanedTaxCode = taxCode.trim().replaceAll("\\s+", "");
+
+        if (!TAX_CODE_PATTERN.matcher(cleanedTaxCode).matches()) {
+            throw new BadRequestException(ErrorCode.INVALID_INPUT, 
+                    "Tax code must be 10 or 13 digits");
         }
     }
 }

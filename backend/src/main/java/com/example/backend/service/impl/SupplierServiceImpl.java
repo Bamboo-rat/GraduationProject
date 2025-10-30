@@ -2,17 +2,23 @@ package com.example.backend.service.impl;
 
 import com.example.backend.dto.request.*;
 import com.example.backend.dto.response.RegisterResponse;
+import com.example.backend.dto.response.SupplierPendingUpdateResponse;
 import com.example.backend.dto.response.SupplierResponse;
+import com.example.backend.entity.Admin;
 import com.example.backend.entity.Supplier;
+import com.example.backend.entity.SupplierPendingUpdate;
 import com.example.backend.entity.Store;
 import com.example.backend.entity.User;
 import com.example.backend.entity.enums.StoreStatus;
 import com.example.backend.entity.enums.SupplierStatus;
+import com.example.backend.entity.enums.SuggestionStatus;
 import com.example.backend.exception.ErrorCode;
 import com.example.backend.exception.custom.BadRequestException;
 import com.example.backend.exception.custom.ConflictException;
 import com.example.backend.exception.custom.NotFoundException;
 import com.example.backend.mapper.SupplierMapper;
+import com.example.backend.mapper.SupplierPendingUpdateMapper;
+import com.example.backend.repository.SupplierPendingUpdateRepository;
 import com.example.backend.repository.SupplierRepository;
 import com.example.backend.repository.StoreRepository;
 import com.example.backend.repository.UserRepository;
@@ -28,8 +34,12 @@ import com.example.backend.utils.ValidationUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 
 /**
  * Service implementation for Supplier management with 4-step registration
@@ -42,9 +52,11 @@ public class SupplierServiceImpl implements SupplierService {
     private final SupplierRepository supplierRepository;
     private final UserRepository userRepository;
     private final StoreRepository storeRepository;
+    private final SupplierPendingUpdateRepository pendingUpdateRepository;
     private final KeycloakService keycloakService;
     private final OtpService otpService;
     private final SupplierMapper supplierMapper;
+    private final SupplierPendingUpdateMapper pendingUpdateMapper;
     private final NotificationService notificationService;
     private final InAppNotificationService inAppNotificationService;
     private final WalletService walletService;
@@ -724,5 +736,230 @@ public class SupplierServiceImpl implements SupplierService {
         message.append("SaveFood Team");
 
         return message.toString();
+    }
+
+    // =============== Business Info Update Methods ===============
+
+    @Override
+    @Transactional
+    public SupplierPendingUpdateResponse requestBusinessInfoUpdate(
+            String keycloakId,
+            SupplierBusinessUpdateRequest request) {
+        log.info("Supplier {} requesting business info update", keycloakId);
+
+        // Find supplier
+        Supplier supplier = (Supplier) userRepository.findByKeycloakId(keycloakId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+
+        // Check if there's already a pending update for this supplier
+        if (pendingUpdateRepository.existsBySupplierUserIdAndUpdateStatus(
+                supplier.getUserId(), SuggestionStatus.PENDING)) {
+            throw new ConflictException(ErrorCode.INVALID_REQUEST,
+                    "There is already a pending business info update request. Please wait for admin approval.");
+        }
+
+        // Validate at least one field is provided
+        if (request.getTaxCode() == null && 
+            request.getBusinessLicense() == null && 
+            request.getBusinessLicenseUrl() == null &&
+            request.getFoodSafetyCertificate() == null && 
+            request.getFoodSafetyCertificateUrl() == null) {
+            throw new BadRequestException(ErrorCode.INVALID_REQUEST,
+                    "At least one business information field must be provided");
+        }
+
+        // Validate taxCode format if provided
+        if (request.getTaxCode() != null) {
+            ValidationUtils.validateTaxCode(request.getTaxCode());
+        }
+
+        // Create pending update
+        SupplierPendingUpdate pendingUpdate = new SupplierPendingUpdate();
+        pendingUpdate.setSupplier(supplier);
+        pendingUpdate.setTaxCode(request.getTaxCode());
+        pendingUpdate.setBusinessLicense(request.getBusinessLicense());
+        pendingUpdate.setBusinessLicenseUrl(request.getBusinessLicenseUrl());
+        pendingUpdate.setFoodSafetyCertificate(request.getFoodSafetyCertificate());
+        pendingUpdate.setFoodSafetyCertificateUrl(request.getFoodSafetyCertificateUrl());
+        pendingUpdate.setSupplierNotes(request.getSupplierNotes());
+        pendingUpdate.setUpdateStatus(SuggestionStatus.PENDING);
+
+        pendingUpdate = pendingUpdateRepository.save(pendingUpdate);
+        log.info("Business info update request created: {}", pendingUpdate.getUpdateId());
+
+        // Send notification to admins
+        inAppNotificationService.createNotificationForAllAdmins(
+                NotificationType.SUPPLIER_UPDATE_PENDING,
+                String.format("Supplier '%s' has requested to update their business information. Please review and approve/reject.",
+                        supplier.getFullName()),
+                "/admin/supplier-updates/" + pendingUpdate.getUpdateId()
+        );
+
+        return pendingUpdateMapper.toResponse(pendingUpdate);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<SupplierPendingUpdateResponse> getAllPendingBusinessUpdates(
+            SuggestionStatus status,
+            Pageable pageable) {
+        log.info("Getting all pending business updates with status: {}", status);
+
+        Page<SupplierPendingUpdate> updates;
+        if (status != null) {
+            updates = pendingUpdateRepository.findAllByUpdateStatus(status, pageable);
+        } else {
+            updates = pendingUpdateRepository.findAll(pageable);
+        }
+
+        return updates.map(pendingUpdateMapper::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<SupplierPendingUpdateResponse> getMyPendingBusinessUpdates(
+            String keycloakId,
+            SuggestionStatus status,
+            Pageable pageable) {
+        log.info("Getting pending business updates for supplier: {} with status: {}", keycloakId, status);
+
+        // Find supplier
+        Supplier supplier = (Supplier) userRepository.findByKeycloakId(keycloakId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+
+        Page<SupplierPendingUpdate> updates;
+        if (status != null) {
+            updates = pendingUpdateRepository.findBySupplierUserIdAndUpdateStatus(
+                    supplier.getUserId(), status, pageable);
+        } else {
+            updates = pendingUpdateRepository.findBySupplierUserId(
+                    supplier.getUserId(), pageable);
+        }
+
+        return updates.map(pendingUpdateMapper::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SupplierPendingUpdateResponse getPendingBusinessUpdateById(String updateId) {
+        log.info("Getting pending business update: {}", updateId);
+
+        SupplierPendingUpdate update = pendingUpdateRepository.findById(updateId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.INVALID_REQUEST,
+                        "Pending business update not found with ID: " + updateId));
+
+        return pendingUpdateMapper.toResponse(update);
+    }
+
+    @Override
+    @Transactional
+    public SupplierPendingUpdateResponse approveBusinessInfoUpdate(
+            String updateId,
+            String keycloakId,
+            String adminNotes) {
+        log.info("Admin {} approving business info update: {}", keycloakId, updateId);
+
+        // Find admin
+        Admin admin = (Admin) userRepository.findByKeycloakId(keycloakId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+
+        // Find pending update
+        SupplierPendingUpdate pendingUpdate = pendingUpdateRepository.findById(updateId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.INVALID_REQUEST,
+                        "Pending business update not found with ID: " + updateId));
+
+        // Check if already processed
+        if (pendingUpdate.getUpdateStatus() != SuggestionStatus.PENDING) {
+            throw new BadRequestException(ErrorCode.INVALID_REQUEST,
+                    "This update request has already been processed");
+        }
+
+        // Apply changes to supplier
+        Supplier supplier = pendingUpdate.getSupplier();
+
+        if (pendingUpdate.getTaxCode() != null) {
+            supplier.setTaxCode(pendingUpdate.getTaxCode());
+        }
+        if (pendingUpdate.getBusinessLicense() != null) {
+            supplier.setBusinessLicense(pendingUpdate.getBusinessLicense());
+        }
+        if (pendingUpdate.getBusinessLicenseUrl() != null) {
+            supplier.setBusinessLicenseUrl(pendingUpdate.getBusinessLicenseUrl());
+        }
+        if (pendingUpdate.getFoodSafetyCertificate() != null) {
+            supplier.setFoodSafetyCertificate(pendingUpdate.getFoodSafetyCertificate());
+        }
+        if (pendingUpdate.getFoodSafetyCertificateUrl() != null) {
+            supplier.setFoodSafetyCertificateUrl(pendingUpdate.getFoodSafetyCertificateUrl());
+        }
+
+        supplierRepository.save(supplier);
+
+        // Update pending update status
+        pendingUpdate.setUpdateStatus(SuggestionStatus.APPROVED);
+        pendingUpdate.setAdmin(admin);
+        pendingUpdate.setAdminNotes(adminNotes);
+        pendingUpdate.setProcessedAt(LocalDateTime.now());
+        pendingUpdate = pendingUpdateRepository.save(pendingUpdate);
+
+        log.info("Business info update approved and applied: {}", updateId);
+
+        // Send notification to supplier
+        inAppNotificationService.createNotificationForUser(
+                supplier.getUserId(),
+                NotificationType.SUPPLIER_UPDATE_APPROVED,
+                "Your business information update request has been approved by admin. The changes are now live.",
+                "/profile"
+        );
+
+        return pendingUpdateMapper.toResponse(pendingUpdate);
+    }
+
+    @Override
+    @Transactional
+    public SupplierPendingUpdateResponse rejectBusinessInfoUpdate(
+            String updateId,
+            String keycloakId,
+            String adminNotes) {
+        log.info("Admin {} rejecting business info update: {}", keycloakId, updateId);
+
+        // Find admin
+        Admin admin = (Admin) userRepository.findByKeycloakId(keycloakId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+
+        // Find pending update
+        SupplierPendingUpdate pendingUpdate = pendingUpdateRepository.findById(updateId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.INVALID_REQUEST,
+                        "Pending business update not found with ID: " + updateId));
+
+        // Check if already processed
+        if (pendingUpdate.getUpdateStatus() != SuggestionStatus.PENDING) {
+            throw new BadRequestException(ErrorCode.INVALID_REQUEST,
+                    "This update request has already been processed");
+        }
+
+        // Update status to rejected
+        pendingUpdate.setUpdateStatus(SuggestionStatus.REJECTED);
+        pendingUpdate.setAdmin(admin);
+        pendingUpdate.setAdminNotes(adminNotes);
+        pendingUpdate.setProcessedAt(LocalDateTime.now());
+        pendingUpdate = pendingUpdateRepository.save(pendingUpdate);
+
+        log.info("Business info update rejected: {}", updateId);
+
+        // Send notification to supplier
+        String notificationMessage = "Your business information update request has been rejected.";
+        if (adminNotes != null && !adminNotes.isBlank()) {
+            notificationMessage += " Reason: " + adminNotes;
+        }
+
+        inAppNotificationService.createNotificationForUser(
+                pendingUpdate.getSupplier().getUserId(),
+                NotificationType.SUPPLIER_UPDATE_REJECTED,
+                notificationMessage,
+                "/profile/business-updates"
+        );
+
+        return pendingUpdateMapper.toResponse(pendingUpdate);
     }
 }

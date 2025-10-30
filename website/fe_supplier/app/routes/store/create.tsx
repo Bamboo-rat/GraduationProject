@@ -1,5 +1,5 @@
 import type { Route } from './+types/create';
-import StoreForm from '~/pages/store/StoreForm';
+import StoreForm from '~/pages/store/StoreUpdateForm';
 import DashboardLayout from '~/component/layout/DashboardLayout';
 import ProtectedRoute from '~/component/common/ProtectedRoute';
 

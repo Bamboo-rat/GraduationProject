@@ -10,10 +10,38 @@ export interface SupplierProfileUpdateRequest {
   businessAddress?: string;
 }
 
-export interface SupplierBankUpdateRequest {
-  bankAccountNumber: string;
-  bankName: string;
-  bankBranch: string;
+export interface SupplierBusinessUpdateRequest {
+  taxCode?: string;
+  businessLicense?: string;
+  businessLicenseUrl?: string;
+  foodSafetyCertificate?: string;
+  foodSafetyCertificateUrl?: string;
+  supplierNotes?: string;
+}
+
+export interface SupplierPendingUpdateResponse {
+  updateId: string;
+  supplier: {
+    userId: string;
+    fullName: string;
+    businessName: string;
+    email: string;
+  };
+  admin?: {
+    userId: string;
+    fullName: string;
+    email: string;
+  } | null;
+  taxCode?: string;
+  businessLicense?: string;
+  businessLicenseUrl?: string;
+  foodSafetyCertificate?: string;
+  foodSafetyCertificateUrl?: string;
+  supplierNotes?: string;
+  adminNotes?: string;
+  updateStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
+  createdAt: string;
+  processedAt?: string | null;
 }
 
 /**
@@ -134,21 +162,6 @@ class SupplierService {
   }
 
   /**
-   * Update bank information
-   */
-  async updateBankInfo(request: SupplierBankUpdateRequest): Promise<SupplierResponse> {
-    try {
-      const response = await axiosInstance.put<ApiResponse<SupplierResponse>>(
-        '/suppliers/me/bank',
-        request
-      );
-      return response.data.data;
-    } catch (error: any) {
-      throw this.handleError(error);
-    }
-  }
-
-  /**
    * Get all suppliers (admin only)
    */
   async getAllSuppliers(page: number = 0, size: number = 20, status?: string): Promise<any> {
@@ -190,6 +203,54 @@ class SupplierService {
       await axiosInstance.patch(
         `/suppliers/${userId}/reject${params}`
       );
+    } catch (error: any) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Request business info update (requires admin approval)
+   */
+  async requestBusinessInfoUpdate(request: SupplierBusinessUpdateRequest): Promise<SupplierPendingUpdateResponse> {
+    try {
+      const response = await axiosInstance.post<ApiResponse<SupplierPendingUpdateResponse>>(
+        '/suppliers/me/business-info-update',
+        request
+      );
+      return response.data.data;
+    } catch (error: any) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Get my business info update requests
+   */
+  async getMyBusinessInfoUpdates(status?: string, page: number = 0, size: number = 20): Promise<any> {
+    try {
+      const params = new URLSearchParams();
+      params.append('page', page.toString());
+      params.append('size', size.toString());
+      if (status) params.append('status', status);
+
+      const response = await axiosInstance.get<ApiResponse<any>>(
+        `/suppliers/me/business-info-updates?${params.toString()}`
+      );
+      return response.data.data;
+    } catch (error: any) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Get business info update by ID
+   */
+  async getBusinessInfoUpdateById(updateId: string): Promise<SupplierPendingUpdateResponse> {
+    try {
+      const response = await axiosInstance.get<ApiResponse<SupplierPendingUpdateResponse>>(
+        `/suppliers/business-info-updates/${updateId}`
+      );
+      return response.data.data;
     } catch (error: any) {
       throw this.handleError(error);
     }

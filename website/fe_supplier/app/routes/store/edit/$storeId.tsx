@@ -1,5 +1,5 @@
 import type { Route } from './+types/$storeId';
-import StoreForm from '~/pages/store/StoreForm';
+import StoreUpdateForm from '~/pages/store/StoreUpdateForm';
 import DashboardLayout from '~/component/layout/DashboardLayout';
 import ProtectedRoute from '~/component/common/ProtectedRoute';
 
@@ -14,7 +14,7 @@ export default function StoreEditRoute() {
   return (
     <ProtectedRoute requiredRoles={['SUPPLIER']}>
       <DashboardLayout>
-        <StoreForm />
+        <StoreUpdateForm />
       </DashboardLayout>
     </ProtectedRoute>
   );

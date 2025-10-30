@@ -7,62 +7,66 @@ export type StoreStatus = 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'REJECTED';
 
 export interface StoreResponse {
   storeId: string;
-  name: string;
+  storeName: string;
   description?: string;
   address: string;
-  ward: string;
-  district: string;
-  city: string;
+  street?: string;
+  ward?: string;
+  district?: string;
+  province?: string;
   latitude?: number;
   longitude?: number;
   phoneNumber: string;
-  email?: string;
-  imageUrls?: string[];
-  openingHours?: string;
-  status: StoreStatus;
-  supplierId: string;
+  imageUrl?: string;
+  openTime?: string;
+  closeTime?: string;
+  status?: StoreStatus | string;
+  supplierId?: string;
   supplierName?: string;
   approvedBy?: string;
   approvedAt?: string;
   rejectedBy?: string;
   rejectedAt?: string;
   adminNotes?: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
+  // ...other fields as needed
 }
 
 export interface StoreCreateRequest {
-  name: string;
-  description?: string;
+  storeName: string;
   address: string;
-  ward: string;
-  district: string;
-  city: string;
+  street?: string;
+  ward?: string;
+  district?: string;
+  province?: string;
+  phoneNumber: string;
+  description?: string;
+  imageUrl?: string;
+  openTime?: string;
+  closeTime?: string;
   latitude?: number;
   longitude?: number;
-  phoneNumber: string;
-  email?: string;
-  imageUrls?: string[];
-  openingHours?: string;
 }
 
 export interface StoreUpdateRequest {
-  name?: string;
-  description?: string;
+  storeName?: string;
   address?: string;
+  street?: string;
   ward?: string;
   district?: string;
-  city?: string;
+  province?: string;
+  phoneNumber?: string;
+  description?: string;
+  imageUrl?: string;
+  openTime?: string;
+  closeTime?: string;
   latitude?: number;
   longitude?: number;
-  phoneNumber?: string;
-  email?: string;
-  imageUrls?: string[];
-  openingHours?: string;
 }
 
 export interface StoreUpdateResponse {
-  updateType: 'IMMEDIATE' | 'PENDING_APPROVAL';
+  updateType: 'IMMEDIATE' | 'PENDING';
   message: string;
   store?: StoreResponse;
   pendingUpdate?: StorePendingUpdateResponse;
@@ -70,45 +74,32 @@ export interface StoreUpdateResponse {
 
 export interface StorePendingUpdateResponse {
   updateId: string;
+  // Store info
   storeId: string;
-  storeName: string;
-  supplierId: string;
-  supplierName?: string;
-  requestedChanges: {
-    name?: string;
-    description?: string;
-    address?: string;
-    ward?: string;
-    district?: string;
-    city?: string;
-    latitude?: number;
-    longitude?: number;
-    phoneNumber?: string;
-    email?: string;
-    imageUrls?: string[];
-    openingHours?: string;
-  };
-  currentValues: {
-    name?: string;
-    description?: string;
-    address?: string;
-    ward?: string;
-    district?: string;
-    city?: string;
-    latitude?: number;
-    longitude?: number;
-    phoneNumber?: string;
-    email?: string;
-    imageUrls?: string[];
-    openingHours?: string;
-  };
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  requiresApproval: boolean;
-  reviewedBy?: string;
-  reviewedAt?: string;
+  currentStoreName?: string;
+  // Pending update fields (only set when requested)
+  storeName?: string;
+  address?: string;
+  street?: string;
+  ward?: string;
+  district?: string;
+  province?: string;
+  phoneNumber?: string;
+  description?: string;
+  latitude?: number;
+  longitude?: number;
+  imageUrl?: string;
+  openTime?: string;
+  closeTime?: string;
+  status?: string;
+  // Update metadata
+  updateStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
   adminNotes?: string;
   createdAt: string;
-  updatedAt: string;
+  processedAt?: string;
+  // Admin info
+  adminId?: string;
+  adminName?: string;
 }
 
 // Type alias for backward compatibility
@@ -325,16 +316,17 @@ class StoreService {
    * Format full address
    */
   formatFullAddress(store: StoreResponse): string {
-    const parts = [store.address, store.ward, store.district, store.city].filter(Boolean);
+    const parts = [store.address, store.street, store.ward, store.district, store.province].filter(Boolean);
     return parts.join(', ');
   }
 
   /**
    * Check if store update requires admin approval
+   * FIX: Include street, ward, district, province in major fields check
    */
   requiresApproval(changes: StoreUpdateRequest): boolean {
-    // Major fields that require approval
-    const majorFields = ['name', 'address', 'ward', 'district', 'city', 'latitude', 'longitude'];
+    // Major fields that require approval (align with backend rules)
+    const majorFields = ['storeName', 'address', 'street', 'ward', 'district', 'province', 'phoneNumber', 'latitude', 'longitude'];
     return majorFields.some((field) => changes[field as keyof StoreUpdateRequest] !== undefined);
   }
 }

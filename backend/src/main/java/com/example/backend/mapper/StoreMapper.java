@@ -18,10 +18,15 @@ public interface StoreMapper {
     /**
      * Convert Store entity to StoreResponse DTO
      */
+
     @Mapping(target = "status", source = "status", qualifiedByName = "storeStatusToString")
     @Mapping(target = "supplierId", source = "supplier.userId")
     @Mapping(target = "supplierName", source = "supplier.businessName")
     @Mapping(target = "totalProducts", expression = "java(store.getStoreProducts() != null ? store.getStoreProducts().size() : 0)")
+    @Mapping(target = "street", source = "street")
+    @Mapping(target = "ward", source = "ward")
+    @Mapping(target = "district", source = "district")
+    @Mapping(target = "province", source = "province")
     StoreResponse toResponse(Store store);
 
     /**
@@ -43,6 +48,10 @@ public interface StoreMapper {
     @Mapping(target = "status", constant = "ACTIVE")
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "street", source = "street")
+    @Mapping(target = "ward", source = "ward")
+    @Mapping(target = "district", source = "district")
+    @Mapping(target = "province", source = "province")
     Store toEntity(StoreCreateRequest request);
 
     /**
@@ -59,6 +68,10 @@ public interface StoreMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @Mapping(target = "street", source = "street")
+    @Mapping(target = "ward", source = "ward")
+    @Mapping(target = "district", source = "district")
+    @Mapping(target = "province", source = "province")
     void updateEntity(@MappingTarget Store store, StoreUpdateRequest request);
 
     /**

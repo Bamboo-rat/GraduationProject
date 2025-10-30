@@ -76,12 +76,17 @@ export default function StoreManagement() {
     navigate(`/store/edit/${storeId}`);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('vi-VN', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '';
+    try {
+      return new Date(dateString).toLocaleDateString('vi-VN', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+    } catch (e) {
+      return dateString;
+    }
   };
 
   if (loading && stores.length === 0) {
@@ -211,10 +216,10 @@ export default function StoreManagement() {
             <div key={store.storeId} className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow">
               {/* Store Image */}
               <div className="relative h-48 bg-gray-200 rounded-t-lg overflow-hidden">
-                {store.imageUrls && store.imageUrls.length > 0 ? (
+                {store.imageUrl ? (
                   <img
-                    src={store.imageUrls[0]}
-                    alt={store.name}
+                    src={store.imageUrl}
+                    alt={store.storeName}
                     className="w-full h-full object-cover"
                   />
                 ) : (
@@ -231,17 +236,17 @@ export default function StoreManagement() {
                 <div className="absolute top-2 right-2">
                   <span
                     className={`px-2 py-1 rounded text-xs font-medium ${storeService.getStatusColorClass(
-                      store.status
+                      store.status as any
                     )}`}
                   >
-                    {storeService.getStatusLabel(store.status)}
+                    {storeService.getStatusLabel(store.status as any)}
                   </span>
                 </div>
               </div>
 
               {/* Store Info */}
               <div className="p-4">
-                <h3 className="text-lg font-bold text-gray-900 mb-2 truncate">{store.name}</h3>
+                <h3 className="text-lg font-bold text-gray-900 mb-2 truncate">{store.storeName}</h3>
                 <div className="space-y-2 mb-4">
                   <div className="flex items-start text-sm text-gray-600">
                     <svg className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -357,16 +362,16 @@ export default function StoreManagement() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-600 mb-1">Tên cửa hàng</label>
-                    <p className="text-gray-900">{selectedStore.name}</p>
+                    <p className="text-gray-900">{selectedStore.storeName}</p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-600 mb-1">Trạng thái</label>
                     <span
                       className={`px-2 py-1 rounded text-xs font-medium ${storeService.getStatusColorClass(
-                        selectedStore.status
+                        selectedStore.status as any
                       )}`}
                     >
-                      {storeService.getStatusLabel(selectedStore.status)}
+                      {storeService.getStatusLabel(selectedStore.status as any)}
                     </span>
                   </div>
                   <div className="col-span-2">
@@ -376,10 +381,6 @@ export default function StoreManagement() {
                   <div>
                     <label className="block text-sm font-medium text-gray-600 mb-1">Số điện thoại</label>
                     <p className="text-gray-900">{selectedStore.phoneNumber}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-1">Email</label>
-                    <p className="text-gray-900">{selectedStore.email || 'Không có'}</p>
                   </div>
                   {(selectedStore.latitude || selectedStore.longitude) && (
                     <div className="col-span-2">
@@ -395,24 +396,21 @@ export default function StoreManagement() {
                       <p className="text-gray-900">{selectedStore.description}</p>
                     </div>
                   )}
-                  {selectedStore.openingHours && (
+                  {selectedStore.openTime && (
                     <div className="col-span-2">
                       <label className="block text-sm font-medium text-gray-600 mb-1">Giờ mở cửa</label>
-                      <p className="text-gray-900">{selectedStore.openingHours}</p>
+                      <p className="text-gray-900">{selectedStore.openTime}</p>
                     </div>
                   )}
-                  {selectedStore.imageUrls && selectedStore.imageUrls.length > 0 && (
+                  {selectedStore.imageUrl && (
                     <div className="col-span-2">
                       <label className="block text-sm font-medium text-gray-600 mb-2">Hình ảnh</label>
                       <div className="grid grid-cols-3 gap-2">
-                        {selectedStore.imageUrls.map((url, index) => (
-                          <img
-                            key={index}
-                            src={url}
-                            alt={`Store ${index + 1}`}
-                            className="w-full h-32 object-cover rounded"
-                          />
-                        ))}
+                        <img
+                          src={selectedStore.imageUrl}
+                          alt={`Store`}
+                          className="w-full h-32 object-cover rounded"
+                        />
                       </div>
                     </div>
                   )}

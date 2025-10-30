@@ -29,7 +29,7 @@ export interface StorePendingUpdateParams {
 }
 
 class StoreUpdateService {
-  private readonly BASE_URL = '/api/stores';
+  private readonly BASE_URL = '/stores';
 
   async getAllPendingUpdates(params: StorePendingUpdateParams = {}): Promise<ApiResponse<PaginatedResponse<StorePendingUpdate>>> {
     const response = await apiClient.get(`${this.BASE_URL}/pending-updates`, { params });

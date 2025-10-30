@@ -2,8 +2,9 @@ package com.example.backend.controller;
 
 import com.example.backend.dto.request.*;
 import com.example.backend.dto.response.ApiResponse;
-import com.example.backend.dto.response.RegisterResponse;
+import com.example.backend.dto.response.SupplierPendingUpdateResponse;
 import com.example.backend.dto.response.SupplierResponse;
+import com.example.backend.entity.enums.SuggestionStatus;
 import com.example.backend.service.SupplierService;
 import com.example.backend.utils.JwtUtils;
 import io.swagger.v3.oas.annotations.Operation;
@@ -12,6 +13,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -160,5 +165,121 @@ public class SupplierController {
 
         SupplierResponse response = supplierService.updateCommissionRate(userId, request);
         return ResponseEntity.ok(ApiResponse.success("Commission rate updated successfully", response));
+    }
+
+    // ===== BUSINESS INFO UPDATE ENDPOINTS =====
+
+    @PostMapping("/me/business-info-update")
+    @PreAuthorize("hasRole('SUPPLIER')")
+    @Operation(summary = "Request business info update",
+               description = "Submit a request to update sensitive business information (tax code, licenses). Requires admin approval.")
+    public ResponseEntity<ApiResponse<SupplierPendingUpdateResponse>> requestBusinessInfoUpdate(
+            Authentication authentication,
+            @Valid @RequestBody SupplierBusinessUpdateRequest request) {
+        log.info("POST /api/suppliers/me/business-info-update - Submitting business info update request");
+
+        Jwt jwt = (Jwt) authentication.getPrincipal();
+        String keycloakId = JwtUtils.extractKeycloakId(jwt);
+
+        SupplierPendingUpdateResponse response = supplierService.requestBusinessInfoUpdate(keycloakId, request);
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Business info update request submitted successfully. Waiting for admin approval.", response));
+    }
+
+    @GetMapping("/me/business-info-updates")
+    @PreAuthorize("hasRole('SUPPLIER')")
+    @Operation(summary = "Get my business info update requests",
+               description = "Get all business info update requests submitted by current supplier")
+    public ResponseEntity<ApiResponse<Page<SupplierPendingUpdateResponse>>> getMyBusinessInfoUpdates(
+            Authentication authentication,
+            @RequestParam(required = false) SuggestionStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "DESC") String sortDirection) {
+        log.info("GET /api/suppliers/me/business-info-updates - Getting my update requests (status: {})", status);
+
+        Jwt jwt = (Jwt) authentication.getPrincipal();
+        String keycloakId = JwtUtils.extractKeycloakId(jwt);
+
+        Sort sort = Sort.by(Sort.Direction.fromString(sortDirection), sortBy);
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Page<SupplierPendingUpdateResponse> updates = 
+                supplierService.getMyPendingBusinessUpdates(keycloakId, status, pageable);
+
+        return ResponseEntity.ok(ApiResponse.success(updates));
+    }
+
+    @GetMapping("/business-info-updates")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF')")
+    @Operation(summary = "Get all business info update requests",
+               description = "Get all business info update requests from all suppliers (admin only)")
+    public ResponseEntity<ApiResponse<Page<SupplierPendingUpdateResponse>>> getAllBusinessInfoUpdates(
+            @RequestParam(required = false) SuggestionStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "DESC") String sortDirection) {
+        log.info("GET /api/suppliers/business-info-updates - Getting all update requests (status: {})", status);
+
+        Sort sort = Sort.by(Sort.Direction.fromString(sortDirection), sortBy);
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Page<SupplierPendingUpdateResponse> updates = 
+                supplierService.getAllPendingBusinessUpdates(status, pageable);
+
+        return ResponseEntity.ok(ApiResponse.success(updates));
+    }
+
+    @GetMapping("/business-info-updates/{updateId}")
+    @PreAuthorize("hasAnyRole('SUPPLIER', 'SUPER_ADMIN', 'MODERATOR', 'STAFF')")
+    @Operation(summary = "Get business info update by ID",
+               description = "Get details of a specific business info update request")
+    public ResponseEntity<ApiResponse<SupplierPendingUpdateResponse>> getBusinessInfoUpdateById(
+            @PathVariable String updateId) {
+        log.info("GET /api/suppliers/business-info-updates/{} - Getting update request details", updateId);
+
+        SupplierPendingUpdateResponse response = supplierService.getPendingBusinessUpdateById(updateId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PatchMapping("/business-info-updates/{updateId}/approve")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR')")
+    @Operation(summary = "Approve business info update",
+               description = "Approve pending business info update request and apply changes (admin only)")
+    public ResponseEntity<ApiResponse<SupplierPendingUpdateResponse>> approveBusinessInfoUpdate(
+            Authentication authentication,
+            @PathVariable String updateId,
+            @RequestParam(required = false) String adminNotes) {
+        log.info("PATCH /api/suppliers/business-info-updates/{}/approve - Approving update request", updateId);
+
+        Jwt jwt = (Jwt) authentication.getPrincipal();
+        String keycloakId = JwtUtils.extractKeycloakId(jwt);
+
+        SupplierPendingUpdateResponse response = 
+                supplierService.approveBusinessInfoUpdate(updateId, keycloakId, adminNotes);
+
+        return ResponseEntity.ok(ApiResponse.success("Business info update approved and applied successfully", response));
+    }
+
+    @PatchMapping("/business-info-updates/{updateId}/reject")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR')")
+    @Operation(summary = "Reject business info update",
+               description = "Reject pending business info update request (admin only)")
+    public ResponseEntity<ApiResponse<SupplierPendingUpdateResponse>> rejectBusinessInfoUpdate(
+            Authentication authentication,
+            @PathVariable String updateId,
+            @RequestParam(required = false) String adminNotes) {
+        log.info("PATCH /api/suppliers/business-info-updates/{}/reject - Rejecting update request", updateId);
+
+        Jwt jwt = (Jwt) authentication.getPrincipal();
+        String keycloakId = JwtUtils.extractKeycloakId(jwt);
+
+        SupplierPendingUpdateResponse response = 
+                supplierService.rejectBusinessInfoUpdate(updateId, keycloakId, adminNotes);
+
+        return ResponseEntity.ok(ApiResponse.success("Business info update request rejected", response));
     }
 }

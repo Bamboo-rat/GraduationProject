@@ -45,7 +45,6 @@ export default [
   route("store/profile", "routes/store/profile.tsx"),
   route("store/create", "routes/store/create.tsx"),
   route("store/edit/:storeId", "routes/store/edit/$storeId.tsx"),
-  route("store/update-request", "routes/store/update-request.tsx"),
   route("store/update-history", "routes/store/update-history.tsx"),
 
   // Feedback routes

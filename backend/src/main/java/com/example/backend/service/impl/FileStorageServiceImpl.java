@@ -111,7 +111,7 @@ public class FileStorageServiceImpl implements FileStorageService {
         if (filename == null || !filename.contains(".")) {
             return "";
         }
-        return filename.substring(filename.lastIndexOf('.') + 1);
+        return filename.substring(filename.lastIndexOf('.') + 1).trim();
     }
 
     @Override

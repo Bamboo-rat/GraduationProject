@@ -23,9 +23,22 @@ public class StoreCreateRequest {
     @Size(min = 2, max = 100, message = "Store name must be between 2 and 100 characters")
     private String storeName;
 
+
     @NotBlank(message = "Address is required")
     @Size(max = 255, message = "Address must not exceed 255 characters")
     private String address;
+
+    @Size(max = 255, message = "Street must not exceed 255 characters")
+    private String street;
+
+    @Size(max = 100, message = "Ward must not exceed 100 characters")
+    private String ward;
+
+    @Size(max = 100, message = "District must not exceed 100 characters")
+    private String district;
+
+    @Size(max = 100, message = "Province must not exceed 100 characters")
+    private String province;
 
     @NotBlank(message = "Phone number is required")
     @Pattern(regexp = "^(\\+84|0)[0-9]{9,10}$", message = "Invalid Vietnamese phone number")

@@ -1,6 +1,5 @@
 package com.example.backend.entity;
 
-import com.example.backend.entity.enums.StoreStatus;
 import com.example.backend.entity.enums.SuggestionStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -11,47 +10,42 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UuidGenerator;
 
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 
+/**
+ * Entity for tracking pending updates to supplier business information
+ * Changes require admin approval before being applied
+ */
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "store_pending_updates")
-public class StorePendingUpdate {
+@Table(name = "supplier_pending_updates")
+public class SupplierPendingUpdate {
     
     @Id
     @UuidGenerator
     private String updateId;
 
-    // Store being updated
+    // Supplier requesting the update
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "store_id", nullable = false)
-    private Store store;
+    @JoinColumn(name = "supplier_id", nullable = false)
+    private Supplier supplier;
 
     // Pending update fields (nullable means no change requested for that field)
-    private String storeName;
-    private String address;
-    private String street;
-    private String ward;
-    private String district;
-    private String province;
-    private String phoneNumber;
-    private String description;
-    private Double latitude;
-    private Double longitude;
-    private String imageUrl;
-    private LocalTime openTime;
-    private LocalTime closeTime;
-
-    @Enumerated(EnumType.STRING)
-    private StoreStatus status;
+    private String taxCode;
+    private String businessLicense;
+    private String businessLicenseUrl;
+    private String foodSafetyCertificate;
+    private String foodSafetyCertificateUrl;
 
     // Update status
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private SuggestionStatus updateStatus = SuggestionStatus.PENDING;
+
+    @Column(columnDefinition = "TEXT")
+    private String supplierNotes; // Supplier's reason for update
 
     @Column(columnDefinition = "TEXT")
     private String adminNotes; // Admin's notes when approving/rejecting

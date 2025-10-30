@@ -40,8 +40,22 @@ public class Store {
     @Column(nullable = false)
     private String storeName; // Tên cửa hàng cụ thể
 
+
+    // Địa chỉ chi tiết
     @Column(nullable = false)
-    private String address;
+    private String address; // Địa chỉ đầy đủ (nếu muốn giữ lại)
+
+    @Column(length = 255)
+    private String street; // Số nhà, tên đường
+
+    @Column(length = 100)
+    private String ward; // Phường/xã
+
+    @Column(length = 100)
+    private String district; // Quận/huyện
+
+    @Column(length = 100)
+    private String province; // Tỉnh/thành phố
 
     @Column(nullable = false)
     private Double latitude;

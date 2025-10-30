@@ -22,7 +22,12 @@ public class StoreResponse {
     
     private String storeName;
     
+
     private String address;
+    private String street;
+    private String ward;
+    private String district;
+    private String province;
     
     private String phoneNumber;
     

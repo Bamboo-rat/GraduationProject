@@ -11,6 +11,9 @@ public enum NotificationType {
     // Supplier related (for admins)
     NEW_SUPPLIER_REGISTRATION("Nhà cung cấp mới đăng ký", "New supplier registration notification"),
     SUPPLIER_UPDATE("Cập nhật thông tin nhà cung cấp", "Supplier profile update notification"),
+    SUPPLIER_UPDATE_PENDING("Đề xuất cập nhật thông tin nhà cung cấp", "Supplier business info update pending"),
+    SUPPLIER_UPDATE_APPROVED("Cập nhật thông tin được phê duyệt", "Supplier business info update approved"),
+    SUPPLIER_UPDATE_REJECTED("Cập nhật thông tin bị từ chối", "Supplier business info update rejected"),
 
     // Category related (for admins)
     NEW_CATEGORY_SUGGESTION("Đề xuất danh mục mới", "New category suggestion notification"),

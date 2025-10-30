@@ -2,8 +2,12 @@ package com.example.backend.service;
 
 import com.example.backend.dto.request.*;
 import com.example.backend.dto.response.RegisterResponse;
+import com.example.backend.dto.response.SupplierPendingUpdateResponse;
 import com.example.backend.dto.response.SupplierResponse;
 import com.example.backend.entity.enums.SupplierStatus;
+import com.example.backend.entity.enums.SuggestionStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 /**
  * Service for Supplier management with 4-step registration flow
@@ -145,4 +149,56 @@ public interface SupplierService {
      * @return Updated supplier response
      */
     SupplierResponse setActive(String userId, boolean active);
+
+    // ========== BUSINESS INFORMATION UPDATE REQUESTS ==========
+
+    /**
+     * Submit request to update business information (requires admin approval)
+     * @param keycloakId Keycloak user ID
+     * @param request Update request with new business info
+     * @return Pending update response
+     */
+    SupplierPendingUpdateResponse requestBusinessInfoUpdate(String keycloakId, SupplierBusinessUpdateRequest request);
+
+    /**
+     * Get all pending business info updates (admin only)
+     * @param status Filter by status (optional)
+     * @param pageable Pagination
+     * @return Page of pending updates
+     */
+    Page<SupplierPendingUpdateResponse> getAllPendingBusinessUpdates(SuggestionStatus status, Pageable pageable);
+
+    /**
+     * Get pending business info updates for current supplier
+     * @param keycloakId Keycloak user ID
+     * @param status Filter by status (optional)
+     * @param pageable Pagination
+     * @return Page of pending updates
+     */
+    Page<SupplierPendingUpdateResponse> getMyPendingBusinessUpdates(String keycloakId, SuggestionStatus status, Pageable pageable);
+
+    /**
+     * Get pending business info update by ID
+     * @param updateId Update ID
+     * @return Pending update response
+     */
+    SupplierPendingUpdateResponse getPendingBusinessUpdateById(String updateId);
+
+    /**
+     * Approve business info update (admin only)
+     * @param updateId Update ID
+     * @param keycloakId Admin keycloak ID
+     * @param adminNotes Admin notes (optional)
+     * @return Updated pending update response
+     */
+    SupplierPendingUpdateResponse approveBusinessInfoUpdate(String updateId, String keycloakId, String adminNotes);
+
+    /**
+     * Reject business info update (admin only)
+     * @param updateId Update ID
+     * @param keycloakId Admin keycloak ID
+     * @param adminNotes Admin notes (required)
+     * @return Updated pending update response
+     */
+    SupplierPendingUpdateResponse rejectBusinessInfoUpdate(String updateId, String keycloakId, String adminNotes);
 }

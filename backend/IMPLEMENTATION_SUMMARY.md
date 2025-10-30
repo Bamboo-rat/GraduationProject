@@ -122,12 +122,6 @@ PATCH  /api/stores/pending-updates/{id}/reject    [SUPER_ADMIN] - Từ chối y�
   - `hasStorePendingUpdate()`
   - `countByUpdateStatus()`
 
----
-
-## 🔧 Error Codes Added
-
-```java
-CATEGORY_ALREADY_EXISTS("4007", "Category already exists", "Danh mục này đã tồn tại", HttpStatus.CONFLICT)
 ```
 
 ---

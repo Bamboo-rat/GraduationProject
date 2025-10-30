@@ -18,7 +18,7 @@
       "link": "/products/list",
       "subMenu": [
         { "title": "Danh sách sản phẩm", "link": "/products/list" },
-        { "title": "Danh mục cá nhân", "link": "/products/categories" },
+        { "title": "Đề xuất danh mục", "link": "/products/categories" },
         { "title": "Trạng thái duyệt", "link": "/products/review-status" }
       ]
     },

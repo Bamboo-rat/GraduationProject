@@ -36,17 +36,22 @@ export default function StoreProfile() {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('vi-VN', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '';
+    try {
+      return new Date(dateString).toLocaleDateString('vi-VN', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch (e) {
+      return dateString;
+    }
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status?: string) => {
     return (
       <span className={`px-3 py-1 rounded-full text-sm font-medium ${storeService.getStatusColorClass(status as any)}`}>
         {storeService.getStatusLabel(status as any)}
@@ -94,7 +99,7 @@ export default function StoreProfile() {
         </button>
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">{store.name}</h1>
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">{store.storeName}</h1>
             <div className="flex items-center space-x-3">
               {getStatusBadge(store.status)}
             </div>
@@ -112,18 +117,16 @@ export default function StoreProfile() {
       </div>
 
       {/* Images Gallery */}
-      {store.imageUrls && store.imageUrls.length > 0 && (
+      {store.imageUrl && (
         <div className="mb-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {store.imageUrls.map((url, index) => (
-              <div key={index} className="relative h-64 rounded-lg overflow-hidden">
-                <img
-                  src={url}
-                  alt={`${store.name} - Image ${index + 1}`}
-                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                />
-              </div>
-            ))}
+            <div className="relative h-64 rounded-lg overflow-hidden">
+              <img
+                src={store.imageUrl}
+                alt={`${store.storeName} - Image`}
+                className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+              />
+            </div>
           </div>
         </div>
       )}
@@ -172,22 +175,14 @@ export default function StoreProfile() {
                 </div>
               </div>
 
-              {store.email && (
-                <div className="flex items-center">
-                  <Mail className="w-5 h-5 mr-3 text-green-600" />
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-600 mb-1">Email</label>
-                    <p className="text-gray-900">{store.email}</p>
-                  </div>
-                </div>
-              )}
+              {/* email removed from backend StoreResponse */}
 
-              {store.openingHours && (
+              {(store.openTime || store.closeTime) && (
                 <div className="flex items-start">
                   <Clock className="w-5 h-5 mr-3 mt-0.5 text-green-600" />
                   <div className="flex-1">
                     <label className="block text-sm font-medium text-gray-600 mb-1">Giờ mở cửa</label>
-                    <p className="text-gray-900">{store.openingHours}</p>
+                    <p className="text-gray-900">{`${store.openTime || ''}${store.openTime && store.closeTime ? ' - ' : ''}${store.closeTime || ''}`}</p>
                   </div>
                 </div>
               )}

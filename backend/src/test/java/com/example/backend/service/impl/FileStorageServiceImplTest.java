@@ -256,9 +256,9 @@ class FileStorageServiceImplTest {
         // Act
         fileStorageService.uploadFile(file, StorageBucket.BUSINESS_LICENSES);
 
-        // Assert
+        // Assert: document (pdf) uploaded to BUSINESS_LICENSES should use 'raw' resource type
         verify(uploader).upload(any(byte[].class), argThat(params -> {
-            return "auto".equals(params.get("resource_type"));
+            return "raw".equals(params.get("resource_type"));
         }));
     }
 

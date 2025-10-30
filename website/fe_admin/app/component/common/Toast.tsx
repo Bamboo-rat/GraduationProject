@@ -58,7 +58,7 @@ export default function Toast({ message, type, onClose, duration = 3000 }: Toast
   return (
     <>
       {/* Backdrop - Mờ nhẹ nền */}
-      <div className="fixed inset-0 bg-black bg-opacity-20 z-40 backdrop-blur-[2px] animate-fadeIn" />
+      <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center w-full h-full z-50 p-4 animate-fadeIn" />
       
       {/* Toast */}
       <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 animate-scaleIn">

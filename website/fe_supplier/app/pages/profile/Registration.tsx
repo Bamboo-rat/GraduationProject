@@ -1,11 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import authService from '../../service/authService';
-import type { SupplierRegisterStep1Request,
+import locationService from '../../service/locationService';
+import { MapPin } from 'lucide-react';
+import type {
+  SupplierRegisterStep1Request,
   SupplierRegisterStep2Request,
   SupplierRegisterStep3Request,
   SupplierRegisterStep4Request,
-  BusinessType } from '../../types/supplierAuthTypes';
+  BusinessType
+} from '../../types/supplierAuthTypes';
 import fileStorageService from '../../service/fileStorageService';
 import AddressAutocomplete from '../../component/features/AddressAutocomplete';
 import Toast from '../../component/common/Toast';
@@ -19,7 +23,7 @@ const Registration: React.FC = () => {
   const [currentStep, setCurrentStep] = useState<RegistrationStep>(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [toast, setToast] = useState<{type: ToastType; message: string} | null>(null);
+  const [toast, setToast] = useState<{ type: ToastType; message: string } | null>(null);
 
   // Step 1 data
   const [step1Data, setStep1Data] = useState<SupplierRegisterStep1Request>({
@@ -64,11 +68,90 @@ const Registration: React.FC = () => {
     businessType: 'RESTAURANT' as BusinessType,
     storeName: '',
     storeAddress: '',
+    storeStreet: '',
+    storeWard: '',
+    storeDistrict: '',
+    storeProvince: '',
     storePhoneNumber: '',
     latitude: '',
     longitude: '',
     storeDescription: '',
   });
+
+  // State cho dropdown địa chỉ
+  const [provinces, setProvinces] = useState<any[]>([]);
+  const [districts, setDistricts] = useState<any[]>([]);
+  const [wards, setWards] = useState<any[]>([]);
+  const [loadingLocation, setLoadingLocation] = useState(false);
+
+  // Lấy danh sách tỉnh/thành khi mount
+  useEffect(() => {
+    const fetchProvinces = async () => {
+      setLoadingLocation(true);
+      try {
+        const data = await locationService.getProvinces();
+        setProvinces(data);
+      } catch (error) {
+        console.error('Error fetching provinces:', error);
+        setProvinces([]);
+      } finally {
+        setLoadingLocation(false);
+      }
+    };
+    fetchProvinces();
+  }, []);
+
+  // Lấy quận/huyện khi chọn tỉnh
+  useEffect(() => {
+    if (!step4Data.storeProvince) {
+      setDistricts([]);
+      setStep4Data(prev => ({ ...prev, storeDistrict: '', storeWard: '' }));
+      return;
+    }
+
+    const fetchDistricts = async () => {
+      setLoadingLocation(true);
+      try {
+        const province = provinces.find(p => p.name === step4Data.storeProvince);
+        if (!province) return;
+
+        const data = await locationService.getDistricts(province.code);
+        setDistricts(data);
+      } catch (error) {
+        console.error('Error fetching districts:', error);
+        setDistricts([]);
+      } finally {
+        setLoadingLocation(false);
+      }
+    };
+    fetchDistricts();
+  }, [step4Data.storeProvince, provinces]);
+
+  // Lấy phường/xã khi chọn quận/huyện
+  useEffect(() => {
+    if (!step4Data.storeDistrict) {
+      setWards([]);
+      setStep4Data(prev => ({ ...prev, storeWard: '' }));
+      return;
+    }
+
+    const fetchWards = async () => {
+      setLoadingLocation(true);
+      try {
+        const district = districts.find(d => d.name === step4Data.storeDistrict);
+        if (!district) return;
+
+        const data = await locationService.getWards(district.code);
+        setWards(data);
+      } catch (error) {
+        console.error('Error fetching wards:', error);
+        setWards([]);
+      } finally {
+        setLoadingLocation(false);
+      }
+    };
+    fetchWards();
+  }, [step4Data.storeDistrict, districts]);
 
   // ===== STEP 1: Basic Account Registration =====
   const handleStep1Submit = async (e: React.FormEvent) => {
@@ -83,12 +166,12 @@ const Registration: React.FC = () => {
     setLoading(true);
     try {
       const response = await authService.registerSupplierStep1(step1Data);
-      
+
       if (response.userId) {
         setSupplierId(response.userId);
         console.log('Supplier ID saved:', response.userId);
       }
-      
+
       setToast({
         type: 'success',
         message: `Đăng ký thành công! Mã OTP đã được gửi đến email ${step1Data.email}`
@@ -119,7 +202,7 @@ const Registration: React.FC = () => {
     setLoading(true);
     try {
       const request: SupplierRegisterStep2Request = {
-        supplierId: supplierId, 
+        supplierId: supplierId,
         email: step1Data.email,
         otp: otp,
       };
@@ -140,15 +223,15 @@ const Registration: React.FC = () => {
   const handleResendOtp = async () => {
     setLoading(true);
     setError(null);
-    
+
     if (!supplierId) {
       setError('Không tìm thấy Supplier ID. Vui lòng thực hiện lại bước 1.');
       setLoading(false);
       return;
     }
-    
+
     try {
-      await authService.resendSupplierOtp(supplierId); 
+      await authService.resendSupplierOtp(supplierId);
       setToast({
         type: 'success',
         message: 'Mã OTP mới đã được gửi đến email của bạn!'
@@ -310,23 +393,20 @@ const Registration: React.FC = () => {
           {steps.map((step, index) => (
             <React.Fragment key={step.number}>
               <div className="flex flex-col items-center">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg transition-all ${
-                  currentStep >= step.number
-                    ? 'bg-[#2F855A] text-white shadow-lg'
-                    : 'bg-gray-200 text-gray-500'
-                }`}>
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg transition-all ${currentStep >= step.number
+                  ? 'bg-[#2F855A] text-white shadow-lg'
+                  : 'bg-gray-200 text-gray-500'
+                  }`}>
                   {currentStep > step.number ? '✓' : step.icon}
                 </div>
-                <span className={`text-xs mt-2 font-medium ${
-                  currentStep >= step.number ? 'text-[#2F855A]' : 'text-gray-500'
-                }`}>
+                <span className={`text-xs mt-2 font-medium ${currentStep >= step.number ? 'text-[#2F855A]' : 'text-gray-500'
+                  }`}>
                   {step.title}
                 </span>
               </div>
               {index < steps.length - 1 && (
-                <div className={`flex-1 h-1 mx-4 rounded transition-all ${
-                  currentStep > step.number ? 'bg-[#2F855A]' : 'bg-gray-200'
-                }`} />
+                <div className={`flex-1 h-1 mx-4 rounded transition-all ${currentStep > step.number ? 'bg-[#2F855A]' : 'bg-gray-200'
+                  }`} />
               )}
             </React.Fragment>
           ))}
@@ -876,6 +956,7 @@ const Registration: React.FC = () => {
                 </h3>
               </div>
 
+
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Tên cửa hàng <span className="text-red-500">*</span>
@@ -890,22 +971,136 @@ const Registration: React.FC = () => {
                 />
               </div>
 
-              {/* Address Search with Google Maps Autocomplete */}
-              <AddressAutocomplete
-                value={step4Data.storeAddress}
-                onChange={(address) => setStep4Data({ ...step4Data, storeAddress: address })}
-                onPlaceSelected={(place) => {
-                  setStep4Data({
-                    ...step4Data,
-                    storeAddress: place.address,
-                    latitude: place.latitude.toString(),
-                    longitude: place.longitude.toString(),
-                  });
-                }}
-                label="Địa chỉ cửa hàng"
-                placeholder="Nhập và chọn địa chỉ từ gợi ý..."
-                required
-              />
+              {/* Address Autocomplete */}
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Địa chỉ cửa hàng <span className="text-red-500">*</span>
+                </label>
+                <AddressAutocomplete
+                  value={step4Data.storeAddress}
+                  onChange={(value) => setStep4Data(prev => ({ ...prev, storeAddress: value }))}
+                  onPlaceSelected={(place) => {
+                    setStep4Data(prev => ({
+                      ...prev,
+                      storeAddress: place.address,
+                      latitude: place.latitude.toString(),
+                      longitude: place.longitude.toString(),
+                    }));
+                  }}
+                  placeholder="Nhập địa chỉ cửa hàng để tìm kiếm..."
+                  required
+                />
+              </div>
+
+              {/* Address Details */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Province */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Tỉnh/Thành phố <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={step4Data.storeProvince}
+                    onChange={e => setStep4Data(prev => ({
+                      ...prev,
+                      storeProvince: e.target.value,
+                      storeDistrict: '',
+                      storeWard: ''
+                    }))}
+                    required
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#2F855A] focus:ring-2 focus:ring-[#A4C3A2]/30 transition-all outline-none"
+                    disabled={loadingLocation}
+                  >
+                    <option value="">{loadingLocation ? 'Đang tải...' : 'Chọn tỉnh/thành'}</option>
+                    {provinces.map((p: any) => (
+                      <option key={p.code} value={p.name}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* District */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Quận/Huyện <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={step4Data.storeDistrict}
+                    onChange={e => setStep4Data(prev => ({
+                      ...prev,
+                      storeDistrict: e.target.value,
+                      storeWard: ''
+                    }))}
+                    required
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#2F855A] focus:ring-2 focus:ring-[#A4C3A2]/30 transition-all outline-none"
+                    disabled={!step4Data.storeProvince || loadingLocation}
+                  >
+                    <option value="">
+                      {loadingLocation ? 'Đang tải...' : !step4Data.storeProvince ? 'Chọn tỉnh trước' : 'Chọn quận/huyện'}
+                    </option>
+                    {districts.map((d: any) => (
+                      <option key={d.code} value={d.name}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Ward */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Phường/Xã <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={step4Data.storeWard}
+                    onChange={e => setStep4Data(prev => ({ ...prev, storeWard: e.target.value }))}
+                    required
+                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#2F855A] focus:ring-2 focus:ring-[#A4C3A2]/30 transition-all outline-none"
+                    disabled={!step4Data.storeDistrict || loadingLocation}
+                  >
+                    <option value="">
+                      {loadingLocation ? 'Đang tải...' : !step4Data.storeDistrict ? 'Chọn quận trước' : 'Chọn phường/xã'}
+                    </option>
+                    {wards.map((w: any) => (
+                      <option key={w.code} value={w.name}>{w.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Street */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Số nhà, tên đường <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={step4Data.storeStreet}
+                  onChange={e => setStep4Data(prev => ({ ...prev, storeStreet: e.target.value }))}
+                  required
+                  maxLength={255}
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-[#2F855A] focus:ring-2 focus:ring-[#A4C3A2]/30 transition-all outline-none"
+                  placeholder="Số nhà, tên đường..."
+                />
+              </div>
+
+              {/* Coordinates Display */}
+              {step4Data.latitude && step4Data.longitude && (
+                <div className="p-4 bg-[#E8FFED] border border-[#B7E4C7] rounded-xl">
+                  <p className="text-sm text-[#2F855A] flex items-center">
+                    <MapPin className="w-4 h-4 mr-2" />
+                    <strong>Vị trí đã được xác định!</strong>
+                  </p>
+                  <p className="text-xs text-[#2F855A] ml-6 mt-1">
+                    Tọa độ: {step4Data.latitude}, {step4Data.longitude}
+                  </p>
+                  <a
+                    href={`https://www.google.com/maps?q=${step4Data.latitude},${step4Data.longitude}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-[#2F855A] hover:text-[#2F855A] underline ml-6 mt-1 inline-block"
+                  >
+                    📍 Xem trên Google Maps →
+                  </a>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -1014,7 +1209,8 @@ const Registration: React.FC = () => {
       )}
 
       {/* Custom CSS for animations */}
-      <style dangerouslySetInnerHTML={{__html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         @keyframes blob {
           0%, 100% { transform: translate(0, 0) scale(1); }
           33% { transform: translate(30px, -50px) scale(1.1); }

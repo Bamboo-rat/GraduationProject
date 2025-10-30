@@ -410,9 +410,19 @@ public class StoreServiceImpl implements StoreService {
             pendingUpdate.setStore(store);
             pendingUpdate.setStoreName(request.getStoreName());
             pendingUpdate.setAddress(request.getAddress());
+            pendingUpdate.setStreet(request.getStreet());
+            pendingUpdate.setWard(request.getWard());
+            pendingUpdate.setDistrict(request.getDistrict());
+            pendingUpdate.setProvince(request.getProvince());
             pendingUpdate.setPhoneNumber(request.getPhoneNumber());
             pendingUpdate.setDescription(request.getDescription());
             pendingUpdate.setImageUrl(request.getImageUrl());
+            if (request.getOpenTime() != null) {
+                pendingUpdate.setOpenTime(request.getOpenTime());
+            }
+            if (request.getCloseTime() != null) {
+                pendingUpdate.setCloseTime(request.getCloseTime());
+            }
 
             if (request.getLatitude() != null) {
                 pendingUpdate.setLatitude(request.getLatitude());
@@ -420,9 +430,7 @@ public class StoreServiceImpl implements StoreService {
             if (request.getLongitude() != null) {
                 pendingUpdate.setLongitude(request.getLongitude());
             }
-            if (request.getStatus() != null) {
-                pendingUpdate.setStatus(request.getStatus());
-            }
+            // Status changes should be admin-driven only; ignore supplier-provided status here
 
             pendingUpdate.setUpdateStatus(SuggestionStatus.PENDING);
             pendingUpdate = pendingUpdateRepository.save(pendingUpdate);
@@ -466,7 +474,7 @@ public class StoreServiceImpl implements StoreService {
 
     /**
      * Check if update request contains major changes that require admin approval
-     * Major changes: storeName, address, latitude, longitude, phoneNumber
+     * Major changes: storeName, address, street, ward, district, province, latitude, longitude, phoneNumber
      * Minor changes: description, imageUrl, openTime, closeTime
      */
     private boolean hasMajorChanges(StoreUpdateRequest request, Store currentStore) {
@@ -479,6 +487,30 @@ public class StoreServiceImpl implements StoreService {
         // Check for address change
         if (request.getAddress() != null &&
             !request.getAddress().equals(currentStore.getAddress())) {
+            return true;
+        }
+
+        // FIX: Check for street change
+        if (request.getStreet() != null &&
+            !request.getStreet().equals(currentStore.getStreet())) {
+            return true;
+        }
+
+        // FIX: Check for ward change
+        if (request.getWard() != null &&
+            !request.getWard().equals(currentStore.getWard())) {
+            return true;
+        }
+
+        // FIX: Check for district change
+        if (request.getDistrict() != null &&
+            !request.getDistrict().equals(currentStore.getDistrict())) {
+            return true;
+        }
+
+        // FIX: Check for province change
+        if (request.getProvince() != null &&
+            !request.getProvince().equals(currentStore.getProvince())) {
             return true;
         }
 
@@ -585,6 +617,19 @@ public class StoreServiceImpl implements StoreService {
         if (pendingUpdate.getAddress() != null) {
             store.setAddress(pendingUpdate.getAddress());
         }
+        // FIX: Apply street, ward, district, province updates
+        if (pendingUpdate.getStreet() != null) {
+            store.setStreet(pendingUpdate.getStreet());
+        }
+        if (pendingUpdate.getWard() != null) {
+            store.setWard(pendingUpdate.getWard());
+        }
+        if (pendingUpdate.getDistrict() != null) {
+            store.setDistrict(pendingUpdate.getDistrict());
+        }
+        if (pendingUpdate.getProvince() != null) {
+            store.setProvince(pendingUpdate.getProvince());
+        }
         if (pendingUpdate.getPhoneNumber() != null) {
             store.setPhoneNumber(pendingUpdate.getPhoneNumber());
         }
@@ -600,9 +645,13 @@ public class StoreServiceImpl implements StoreService {
         if (pendingUpdate.getImageUrl() != null) {
             store.setImageUrl(pendingUpdate.getImageUrl());
         }
-        if (pendingUpdate.getStatus() != null) {
-            store.setStatus(pendingUpdate.getStatus());
+        if (pendingUpdate.getOpenTime() != null) {
+            store.setOpenTime(pendingUpdate.getOpenTime());
         }
+        if (pendingUpdate.getCloseTime() != null) {
+            store.setCloseTime(pendingUpdate.getCloseTime());
+        }
+        // Do not change store status here based on supplier-submitted updates
 
         storeRepository.save(store);
 

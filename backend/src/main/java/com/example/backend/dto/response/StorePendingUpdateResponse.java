@@ -24,6 +24,10 @@ public class StorePendingUpdateResponse {
     // Pending update fields
     private String storeName;
     private String address;
+    private String street;
+    private String ward;
+    private String district;
+    private String province;
     private String phoneNumber;
     private String description;
     private Double latitude;
