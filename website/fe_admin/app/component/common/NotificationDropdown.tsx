@@ -124,12 +124,12 @@ const NotificationDropdown: React.FC = () => {
       {/* Bell Icon with Badge */}
       <button
         onClick={toggleDropdown}
-        className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
+        className="relative p-2 text-[#2D2D2D] hover:text-[#2F855A] hover:bg-[#F8FFF9] rounded-full transition-all duration-200 group"
         aria-label="Notifications"
       >
-        <Bell className="w-6 h-6" />
+        <Bell className="w-6 h-6 group-hover:scale-110 transition-transform" />
         {unreadCount > 0 && (
-          <span className="absolute top-0 right-0 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full">
+          <span className="absolute top-0 right-0 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-[#E63946] rounded-full animate-pulse">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}
@@ -137,24 +137,31 @@ const NotificationDropdown: React.FC = () => {
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+        <div className="absolute right-0 mt-2 w-96 bg-surface rounded-lg shadow-lg border border-default z-50 animate-scaleIn">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">Thông báo</h3>
+          <div className="flex items-center justify-between px-4 py-3 border-b border-default bg-surface-light rounded-t-lg">
+            <div>
+              <h3 className="text-lg font-semibold text-text">Thông báo</h3>
+              {unreadCount > 0 && (
+                <p className="text-sm text-muted mt-1">
+                  {unreadCount} thông báo chưa đọc
+                </p>
+              )}
+            </div>
             <div className="flex items-center gap-2">
               {unreadCount > 0 && (
                 <button
                   onClick={handleMarkAllAsRead}
-                  className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                  className="text-sm text-[#2F855A] hover:text-[#8FB491] flex items-center gap-1 transition-colors px-3 py-1 rounded-md hover:bg-[#E8FFED]"
                   title="Đánh dấu tất cả là đã đọc"
                 >
                   <CheckCheck className="w-4 h-4" />
-                  Đã đọc tất cả
+                  Đọc tất cả
                 </button>
               )}
               <button
                 onClick={() => setIsOpen(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-[#6B6B6B] hover:text-[#E63946] p-1 rounded-full hover:bg-[#F5EDE6] transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -164,58 +171,73 @@ const NotificationDropdown: React.FC = () => {
           {/* Notification List */}
           <div className="max-h-96 overflow-y-auto">
             {loading ? (
-              <div className="px-4 py-8 text-center text-gray-500">
-                Đang tải...
+              <div className="flex flex-col items-center justify-center px-4 py-8 text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2F855A] mb-2"></div>
+                <p className="text-light">Đang tải thông báo...</p>
               </div>
             ) : notifications.length === 0 ? (
-              <div className="px-4 py-8 text-center text-gray-500">
-                Không có thông báo
+              <div className="flex flex-col items-center justify-center px-4 py-8 text-center">
+                <Bell className="w-12 h-12 text-light mb-3 opacity-50" />
+                <p className="text-light text-lg">Không có thông báo</p>
+                <p className="text-muted text-sm mt-1">Các thông báo mới sẽ xuất hiện ở đây</p>
               </div>
             ) : (
-              <div className="divide-y divide-gray-100">
+              <div className="divide-y divide-[#B7E4C7]">
                 {notifications.map(notification => (
                   <div
                     key={notification.notificationId}
                     onClick={() => handleNotificationClick(notification)}
-                    className={`px-4 py-3 cursor-pointer transition-all ${
+                    className={`px-4 py-3 cursor-pointer transition-all duration-200 group ${
                       !notification.isRead 
-                        ? 'bg-blue-50 hover:bg-blue-100 border-l-4 border-blue-500' 
-                        : 'bg-gray-50 hover:bg-gray-100 opacity-70'
+                        ? 'bg-[#E8FFED] hover:bg-[#D9FFDF] border-l-4 border-[#2F855A]' 
+                        : 'bg-surface hover:bg-surface-light opacity-90 hover:opacity-100'
                     }`}
                   >
                     <div className="flex items-start gap-3">
-                      {/* Read/Unread Indicator */}
-                      <div className="mt-1">
+                      {/* Status Icon */}
+                      <div className={`mt-1 p-1 rounded-full ${
+                        !notification.isRead 
+                          ? 'bg-[#2F855A] text-white' 
+                          : 'bg-[#F5EDE6] text-[#6B6B6B]'
+                      }`}>
                         {notification.isRead ? (
-                          <CheckCheck className="w-4 h-4 text-gray-400" />
+                          <CheckCheck className="w-3 h-3" />
                         ) : (
-                          <div className="w-2.5 h-2.5 bg-blue-500 rounded-full mt-1 animate-pulse"></div>
+                          <div className="w-3 h-3 flex items-center justify-center">
+                            <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                          </div>
                         )}
                       </div>
 
                       {/* Notification Content */}
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm ${
+                        <p className={`text-sm leading-relaxed ${
                           !notification.isRead 
-                            ? 'font-semibold text-gray-900' 
-                            : 'font-normal text-gray-500'
+                            ? 'font-semibold text-text' 
+                            : 'font-normal text-text'
                         }`}>
                           {notification.content}
                         </p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className={`text-xs ${
-                            !notification.isRead ? 'text-blue-600 font-medium' : 'text-gray-400'
+                        <div className="flex items-center gap-2 mt-2">
+                          <span className={`text-xs px-2 py-1 rounded-full ${
+                            !notification.isRead 
+                              ? 'badge-success' 
+                              : 'badge-neutral'
                           }`}>
                             {notification.typeDisplayName}
                           </span>
-                          <span className="text-xs text-gray-300">•</span>
-                          <span className={`text-xs ${
-                            !notification.isRead ? 'text-gray-600' : 'text-gray-400'
-                          }`}>
+                          <span className="text-xs text-light">
                             {formatTimeAgo(notification.createdAt)}
                           </span>
                         </div>
                       </div>
+
+                      {/* Hover Action */}
+                      {!notification.isRead && (
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="w-2 h-2 bg-[#2F855A] rounded-full"></div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -225,15 +247,18 @@ const NotificationDropdown: React.FC = () => {
 
           {/* Footer */}
           {notifications.length > 0 && (
-            <div className="px-4 py-3 border-t border-gray-200 text-center">
+            <div className="px-4 py-3 border-t border-default bg-surface-light rounded-b-lg text-center">
               <button
                 onClick={() => {
                   navigate('/profile');
                   setIsOpen(false);
                 }}
-                className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                className="text-sm text-[#2F855A] hover:text-[#8FB491] font-medium flex items-center justify-center gap-2 w-full py-2 rounded-md hover:bg-[#E8FFED] transition-colors"
               >
                 Xem tất cả thông báo
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
               </button>
             </div>
           )}

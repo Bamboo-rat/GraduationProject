@@ -228,21 +228,30 @@ export default function ProductList() {
                 </tr>
               ) : (
                 products.map((product) => {
-                  const primaryImage = product.images?.find((img) => img.isPrimary);
+                  // Find primary image with fallback for both isPrimary and primary fields
+                  // Also handle case where images array might be null/undefined
+                  const primaryImage = product.images?.find((img: any) =>
+                    img.isPrimary === true || img.primary === true
+                  ) || product.images?.[0]; // Fallback to first image if no primary
+
                   return (
                     <tr key={product.productId} className="hover:bg-surface-light transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {primaryImage ? (
+                        {primaryImage?.imageUrl ? (
                           <img
                             src={primaryImage.imageUrl}
                             alt={product.name}
                             className="h-12 w-12 object-cover rounded-lg border border-default"
+                            onError={(e) => {
+                              // Handle broken image
+                              e.currentTarget.style.display = 'none';
+                              e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                            }}
                           />
-                        ) : (
-                          <div className="h-12 w-12 bg-surface-light rounded-lg border border-default flex items-center justify-center">
-                            <span className="text-light text-xs">No image</span>
-                          </div>
-                        )}
+                        ) : null}
+                        <div className={`h-12 w-12 bg-surface-light rounded-lg border border-default flex items-center justify-center ${primaryImage?.imageUrl ? 'hidden' : ''}`}>
+                          <span className="text-light text-xs">📦</span>
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm font-semibold text-text">{product.name}</div>

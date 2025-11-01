@@ -50,6 +50,7 @@ public interface StoreProductRepository extends JpaRepository<StoreProduct, Stri
     /**
      * Find StoreProduct IDs for a store (for pagination)
      * This is used for the two-query approach to avoid JOIN FETCH + pagination issues
+     * Supports sorting by StoreProduct fields: createdAt, updatedAt, stockQuantity, priceOverride
      */
     @Query("SELECT sp.storeProductId FROM StoreProduct sp WHERE sp.store.storeId = :storeId")
     Page<String> findIdsByStoreId(@Param("storeId") String storeId, Pageable pageable);
@@ -57,6 +58,8 @@ public interface StoreProductRepository extends JpaRepository<StoreProduct, Stri
     /**
      * Find StoreProducts by IDs with all relationships loaded
      * This is the second query in the two-query approach
+     * Note: Does not include ORDER BY - sorting is preserved in service layer
+     * by reordering results based on the input ID list order from Query 1
      */
     @Query("SELECT sp FROM StoreProduct sp " +
             "JOIN FETCH sp.variant v " +

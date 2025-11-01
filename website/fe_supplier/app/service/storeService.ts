@@ -305,6 +305,7 @@ class StoreService {
    * Get all product variants available at a specific store (Public access)
    * Returns detailed variant-level data with stock information for each variant
    * Only returns data for ACTIVE stores
+   * Valid sort fields: createdAt, updatedAt, stockQuantity, priceOverride
    * Endpoint: GET /api/stores/{id}/products
    */
   async getStoreProductVariants(
@@ -323,8 +324,8 @@ class StoreService {
           params: {
             page: params.page || 0,
             size: params.size || 20,
-            sortBy: params.sortBy || 'productId',
-            sortDirection: params.sortDirection || 'ASC',
+            sortBy: params.sortBy || 'createdAt',
+            sortDirection: params.sortDirection || 'DESC',
           },
         }
       );
@@ -340,6 +341,7 @@ class StoreService {
    * Returns detailed variant-level data with stock information for each variant
    * Works for stores in ANY status (PENDING, ACTIVE, SUSPENDED, REJECTED, etc.)
    * Suppliers need to manage inventory regardless of store approval status
+   * Valid sort fields: createdAt, updatedAt, stockQuantity, priceOverride
    * Endpoint: GET /api/stores/{id}/products/manage
    */
   async getStoreProductVariantsForManagement(
@@ -358,8 +360,8 @@ class StoreService {
           params: {
             page: params.page || 0,
             size: params.size || 20,
-            sortBy: params.sortBy || 'productId',
-            sortDirection: params.sortDirection || 'ASC',
+            sortBy: params.sortBy || 'createdAt',
+            sortDirection: params.sortDirection || 'DESC',
           },
         }
       );

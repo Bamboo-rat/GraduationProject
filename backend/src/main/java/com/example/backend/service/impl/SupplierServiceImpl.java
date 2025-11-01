@@ -418,7 +418,7 @@ public class SupplierServiceImpl implements SupplierService {
                     "Nhà cung cấp '%s' đã cập nhật thông tin hồ sơ.",
                     supplier.getBusinessName() != null ? supplier.getBusinessName() : supplier.getFullName()
             );
-            String linkUrl = "/partners/list"; // Link to suppliers list
+            String linkUrl = "/partners/list-partners"; // Link to suppliers list (admin panel)
             inAppNotificationService.createNotificationForAllAdmins(
                     NotificationType.SUPPLIER_UPDATE,
                     notificationContent,
@@ -792,7 +792,7 @@ public class SupplierServiceImpl implements SupplierService {
                 NotificationType.SUPPLIER_UPDATE_PENDING,
                 String.format("Supplier '%s' has requested to update their business information. Please review and approve/reject.",
                         supplier.getFullName()),
-                "/admin/supplier-updates/" + pendingUpdate.getUpdateId()
+                "/partners/list-partners"
         );
 
         return pendingUpdateMapper.toResponse(pendingUpdate);
@@ -909,7 +909,7 @@ public class SupplierServiceImpl implements SupplierService {
                 supplier.getUserId(),
                 NotificationType.SUPPLIER_UPDATE_APPROVED,
                 "Your business information update request has been approved by admin. The changes are now live.",
-                "/profile"
+                "/profile/my-profile"
         );
 
         return pendingUpdateMapper.toResponse(pendingUpdate);
@@ -957,7 +957,7 @@ public class SupplierServiceImpl implements SupplierService {
                 pendingUpdate.getSupplier().getUserId(),
                 NotificationType.SUPPLIER_UPDATE_REJECTED,
                 notificationMessage,
-                "/profile/business-updates"
+                "/profile/my-profile"
         );
 
         return pendingUpdateMapper.toResponse(pendingUpdate);

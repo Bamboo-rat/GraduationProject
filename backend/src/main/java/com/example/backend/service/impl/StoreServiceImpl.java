@@ -213,7 +213,7 @@ public class StoreServiceImpl implements StoreService {
                     store.getStoreName(),
                     adminNotes != null && !adminNotes.isBlank() ? "Ghi chú: " + adminNotes : ""
             );
-            String linkUrl = "/store/listStore"; // Link to stores list
+            String linkUrl = "/store/list"; // Link to supplier's stores list
             inAppNotificationService.createNotificationForUser(
                     store.getSupplier().getUserId(),
                     NotificationType.STORE_APPROVED,
@@ -261,7 +261,7 @@ public class StoreServiceImpl implements StoreService {
                     store.getStoreName(),
                     adminNotes != null && !adminNotes.isBlank() ? "Lý do: " + adminNotes : ""
             );
-            String linkUrl = "/store/listStore"; // Link to stores list
+            String linkUrl = "/store/list"; // Link to supplier's stores list
             inAppNotificationService.createNotificationForUser(
                     store.getSupplier().getUserId(),
                     NotificationType.STORE_REJECTED,
@@ -309,7 +309,7 @@ public class StoreServiceImpl implements StoreService {
                     store.getStoreName(),
                     reason != null && !reason.isBlank() ? "Lý do: " + reason : ""
             );
-            String linkUrl = "/store/listStore"; // Link to stores list
+            String linkUrl = "/store/list"; // Link to supplier's stores list
             inAppNotificationService.createNotificationForUser(
                     store.getSupplier().getUserId(),
                     NotificationType.STORE_REJECTED, // Using existing notification type
@@ -357,7 +357,7 @@ public class StoreServiceImpl implements StoreService {
                     store.getStoreName(),
                     adminNotes != null && !adminNotes.isBlank() ? "Ghi chú: " + adminNotes : ""
             );
-            String linkUrl = "/store/listStore"; // Link to stores list
+            String linkUrl = "/store/list"; // Link to supplier's stores list
             inAppNotificationService.createNotificationForUser(
                     store.getSupplier().getUserId(),
                     NotificationType.STORE_APPROVED, // Using existing notification type
@@ -725,7 +725,8 @@ public class StoreServiceImpl implements StoreService {
         }
 
         // Query 2: Fetch full entities with relationships for the current page
-        List<StoreProduct> storeProducts = storeProductRepository.findByIdsWithDetails(storeProductIds.getContent());
+        List<String> orderedIds = storeProductIds.getContent();
+        List<StoreProduct> storeProducts = storeProductRepository.findByIdsWithDetails(orderedIds);
 
         // Initialize lazy collections (images) within the transaction
         storeProducts.forEach(sp -> {
@@ -733,8 +734,18 @@ public class StoreServiceImpl implements StoreService {
             Hibernate.initialize(sp.getVariant().getProduct().getImages());
         });
 
+        // Preserve the original sort order from Query 1 by reordering based on ID list
+        // This ensures pagination sorting is maintained correctly
+        List<StoreProduct> sortedProducts = orderedIds.stream()
+                .map(id -> storeProducts.stream()
+                        .filter(sp -> sp.getStoreProductId().equals(id))
+                        .findFirst()
+                        .orElse(null))
+                .filter(sp -> sp != null)
+                .collect(Collectors.toList());
+
         // Convert to DTOs
-        List<StoreProductVariantResponse> dtos = storeProducts.stream()
+        List<StoreProductVariantResponse> dtos = sortedProducts.stream()
                 .map(this::mapToStoreProductVariantResponse)
                 .collect(Collectors.toList());
 
@@ -777,7 +788,8 @@ public class StoreServiceImpl implements StoreService {
         }
 
         // Query 2: Fetch full entities with relationships for the current page
-        List<StoreProduct> storeProducts = storeProductRepository.findByIdsWithDetails(storeProductIds.getContent());
+        List<String> orderedIds = storeProductIds.getContent();
+        List<StoreProduct> storeProducts = storeProductRepository.findByIdsWithDetails(orderedIds);
 
         // Initialize lazy collections (images) within the transaction
         storeProducts.forEach(sp -> {
@@ -785,8 +797,18 @@ public class StoreServiceImpl implements StoreService {
             Hibernate.initialize(sp.getVariant().getProduct().getImages());
         });
 
+        // Preserve the original sort order from Query 1 by reordering based on ID list
+        // This ensures pagination sorting is maintained correctly
+        List<StoreProduct> sortedProducts = orderedIds.stream()
+                .map(id -> storeProducts.stream()
+                        .filter(sp -> sp.getStoreProductId().equals(id))
+                        .findFirst()
+                        .orElse(null))
+                .filter(sp -> sp != null)
+                .collect(Collectors.toList());
+
         // Convert to DTOs
-        List<StoreProductVariantResponse> dtos = storeProducts.stream()
+        List<StoreProductVariantResponse> dtos = sortedProducts.stream()
                 .map(this::mapToStoreProductVariantResponse)
                 .collect(Collectors.toList());
 

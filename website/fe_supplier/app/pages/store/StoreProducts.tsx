@@ -43,8 +43,8 @@ export default function StoreProducts() {
       const response = await storeService.getStoreProductVariantsForManagement(storeId, {
         page,
         size: pageSize,
-        sortBy: 'productId',
-        sortDirection: 'ASC'
+        sortBy: 'createdAt',
+        sortDirection: 'DESC'
       });
 
       if (response && Array.isArray(response.content)) {
@@ -169,7 +169,10 @@ export default function StoreProducts() {
         ) : (
           <div className="space-y-3">
             {storeProducts.map((variantProduct) => {
-              const primaryImage = variantProduct.variantImages?.find((img) => img.isPrimary) || variantProduct.variantImages?.[0];
+              // Find primary image with fallback for both isPrimary and primary fields
+              const primaryImage = variantProduct.variantImages?.find((img: any) =>
+                img.isPrimary === true || img.primary === true
+              ) || variantProduct.variantImages?.[0];
               const isExpired = variantProduct.expiryDate && new Date(variantProduct.expiryDate) < new Date();
               const isOutOfStock = variantProduct.stockQuantity === 0;
 

@@ -361,11 +361,12 @@ public class StoreController {
             description = "Get all product variants available at a specific store with their inventory information. " +
                     "Returns detailed variant-level data including stock quantity, prices, expiry dates, and images. " +
                     "This endpoint is public so customers can view products available at each store. " +
-                    "Only returns data for ACTIVE stores."
+                    "Only returns data for ACTIVE stores. " +
+                    "Default sort: createdAt DESC (newest products first)"
     )
     public ResponseEntity<ApiResponse<Page<StoreProductVariantResponse>>> getStoreProductVariants(
             @PathVariable String id,
-            @PageableDefault(size = 20, sort = "productId", direction = Sort.Direction.ASC) Pageable pageable) {
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
         log.info("GET /api/stores/{}/products - Get product variants for store (public)", id);
 
@@ -381,11 +382,12 @@ public class StoreController {
             description = "Supplier endpoint to view product variants and inventory for their store. " +
                     "Works for stores in ANY status (PENDING, ACTIVE, SUSPENDED, REJECTED, etc.). " +
                     "Suppliers need to manage inventory regardless of store approval status. " +
-                    "Only the store owner can access this endpoint."
+                    "Only the store owner can access this endpoint. " +
+                    "Default sort: createdAt DESC (newest products first)"
     )
     public ResponseEntity<ApiResponse<Page<StoreProductVariantResponse>>> getStoreProductVariantsForManagement(
             @PathVariable String id,
-            @PageableDefault(size = 20, sort = "productId", direction = Sort.Direction.ASC) Pageable pageable,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
             Authentication authentication) {
 
         Jwt jwt = (Jwt) authentication.getPrincipal();
