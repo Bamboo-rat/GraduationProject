@@ -742,6 +742,58 @@ public class StoreServiceImpl implements StoreService {
         return new PageImpl<>(dtos, pageable, storeProductIds.getTotalElements());
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Page<StoreProductVariantResponse> getProductVariantsForStoreManagement(String storeId, String keycloakId, Pageable pageable) {
+        log.info("Getting product variants for store management: {} by supplier: {}", storeId, keycloakId);
+
+        // Find supplier
+        Supplier supplier = (Supplier) userRepository.findByKeycloakId(keycloakId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+
+        // Validate store exists
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.STORE_NOT_FOUND,
+                        "Store not found with ID: " + storeId));
+
+        // Verify ownership - only the store owner can manage inventory
+        if (!store.getSupplier().getUserId().equals(supplier.getUserId())) {
+            throw new BadRequestException(ErrorCode.UNAUTHORIZED,
+                    "You do not have permission to manage this store's inventory");
+        }
+
+        // NO status check - suppliers can view inventory for stores in ANY status
+        // (PENDING, ACTIVE, SUSPENDED, REJECTED, etc.)
+
+        // Two-query approach to avoid Hibernate's JOIN FETCH + pagination issues
+        // Query 1: Get paginated IDs only
+        Page<String> storeProductIds = storeProductRepository.findIdsByStoreId(storeId, pageable);
+
+        log.info("Found {} product variants at store {} (status: {})",
+                storeProductIds.getTotalElements(), store.getStoreName(), store.getStatus());
+
+        if (storeProductIds.isEmpty()) {
+            return new PageImpl<>(new ArrayList<>(), pageable, 0);
+        }
+
+        // Query 2: Fetch full entities with relationships for the current page
+        List<StoreProduct> storeProducts = storeProductRepository.findByIdsWithDetails(storeProductIds.getContent());
+
+        // Initialize lazy collections (images) within the transaction
+        storeProducts.forEach(sp -> {
+            Hibernate.initialize(sp.getVariant().getVariantImages());
+            Hibernate.initialize(sp.getVariant().getProduct().getImages());
+        });
+
+        // Convert to DTOs
+        List<StoreProductVariantResponse> dtos = storeProducts.stream()
+                .map(this::mapToStoreProductVariantResponse)
+                .collect(Collectors.toList());
+
+        // Return as Page with pagination metadata
+        return new PageImpl<>(dtos, pageable, storeProductIds.getTotalElements());
+    }
+
     /**
      * Helper method to map StoreProduct entity to StoreProductVariantResponse DTO
      * Includes product info, variant details, images, and store-specific inventory

@@ -304,12 +304,13 @@ class StoreService {
   /**
    * Get all product variants available at a specific store (Public access)
    * Returns detailed variant-level data with stock information for each variant
+   * Only returns data for ACTIVE stores
    * Endpoint: GET /api/stores/{id}/products
    */
   async getStoreProductVariants(
-    storeId: string, 
-    params: { 
-      page?: number; 
+    storeId: string,
+    params: {
+      page?: number;
       size?: number;
       sortBy?: string;
       sortDirection?: 'ASC' | 'DESC';
@@ -330,6 +331,41 @@ class StoreService {
       return response.data.data;
     } catch (error: any) {
       console.error('Error fetching store product variants:', error);
+      throw new Error(error.response?.data?.message || 'Không thể tải danh sách biến thể sản phẩm');
+    }
+  }
+
+  /**
+   * Get all product variants for a store for inventory management (Supplier only)
+   * Returns detailed variant-level data with stock information for each variant
+   * Works for stores in ANY status (PENDING, ACTIVE, SUSPENDED, REJECTED, etc.)
+   * Suppliers need to manage inventory regardless of store approval status
+   * Endpoint: GET /api/stores/{id}/products/manage
+   */
+  async getStoreProductVariantsForManagement(
+    storeId: string,
+    params: {
+      page?: number;
+      size?: number;
+      sortBy?: string;
+      sortDirection?: 'ASC' | 'DESC';
+    }
+  ): Promise<PageResponse<StoreProductVariantResponse>> {
+    try {
+      const response = await apiClient.get<ApiResponse<PageResponse<StoreProductVariantResponse>>>(
+        `${this.BASE_URL}/${storeId}/products/manage`,
+        {
+          params: {
+            page: params.page || 0,
+            size: params.size || 20,
+            sortBy: params.sortBy || 'productId',
+            sortDirection: params.sortDirection || 'ASC',
+          },
+        }
+      );
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Error fetching store product variants for management:', error);
       throw new Error(error.response?.data?.message || 'Không thể tải danh sách biến thể sản phẩm');
     }
   }

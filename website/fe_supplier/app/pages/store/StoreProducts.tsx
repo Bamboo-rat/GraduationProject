@@ -38,14 +38,15 @@ export default function StoreProducts() {
     if (!storeId) return;
     setLoading(true);
     try {
-      // Call new API to get product variants (not generic products)
-      const response = await storeService.getStoreProductVariants(storeId, { 
-        page, 
+      // Use management endpoint for suppliers - works for stores in ANY status
+      // (PENDING, ACTIVE, SUSPENDED, REJECTED, etc.)
+      const response = await storeService.getStoreProductVariantsForManagement(storeId, {
+        page,
         size: pageSize,
         sortBy: 'productId',
         sortDirection: 'ASC'
       });
-      
+
       if (response && Array.isArray(response.content)) {
         setStoreProducts(response.content);
         setTotalElements(response.totalElements);

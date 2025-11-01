@@ -1,5 +1,6 @@
 package com.example.backend.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -20,7 +21,15 @@ public class StoreProductVariantResponse {
     private BigDecimal originalPrice;
     private BigDecimal discountPrice;
     private LocalDate expiryDate;
-    private boolean isAvailable; // Logic từ ProductVariant.isAvailable()
+
+    /**
+     * Whether the variant is available for purchase (not expired and has stock)
+     * Logic from ProductVariant.isAvailable()
+     * @JsonProperty ensures Jackson serializes this as "isAvailable" instead of "available"
+     */
+    @JsonProperty("isAvailable")
+    private boolean isAvailable;
+
     private List<ProductImageResponse> variantImages;
 
     // Từ StoreProduct (Thông tin tại cửa hàng)

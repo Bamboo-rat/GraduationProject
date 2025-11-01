@@ -360,16 +360,41 @@ public class StoreController {
             summary = "Get all product variants at a store (Public access)",
             description = "Get all product variants available at a specific store with their inventory information. " +
                     "Returns detailed variant-level data including stock quantity, prices, expiry dates, and images. " +
-                    "This endpoint is public so customers can view products available at each store."
+                    "This endpoint is public so customers can view products available at each store. " +
+                    "Only returns data for ACTIVE stores."
     )
     public ResponseEntity<ApiResponse<Page<StoreProductVariantResponse>>> getStoreProductVariants(
             @PathVariable String id,
             @PageableDefault(size = 20, sort = "productId", direction = Sort.Direction.ASC) Pageable pageable) {
 
-        log.info("GET /api/stores/{}/products - Get product variants for store", id);
+        log.info("GET /api/stores/{}/products - Get product variants for store (public)", id);
 
         Page<StoreProductVariantResponse> products = storeService.getProductVariantsForStore(id, pageable);
 
         return ResponseEntity.ok(ApiResponse.success("Store product variants retrieved successfully", products));
+    }
+
+    @GetMapping("/{id}/products/manage")
+    @PreAuthorize("hasRole('SUPPLIER')")
+    @Operation(
+            summary = "Get all product variants at a store for inventory management (Supplier only)",
+            description = "Supplier endpoint to view product variants and inventory for their store. " +
+                    "Works for stores in ANY status (PENDING, ACTIVE, SUSPENDED, REJECTED, etc.). " +
+                    "Suppliers need to manage inventory regardless of store approval status. " +
+                    "Only the store owner can access this endpoint."
+    )
+    public ResponseEntity<ApiResponse<Page<StoreProductVariantResponse>>> getStoreProductVariantsForManagement(
+            @PathVariable String id,
+            @PageableDefault(size = 20, sort = "productId", direction = Sort.Direction.ASC) Pageable pageable,
+            Authentication authentication) {
+
+        Jwt jwt = (Jwt) authentication.getPrincipal();
+        String keycloakId = JwtUtils.extractKeycloakId(jwt);
+
+        log.info("GET /api/stores/{}/products/manage - Get product variants for store management by supplier: {}", id, keycloakId);
+
+        Page<StoreProductVariantResponse> products = storeService.getProductVariantsForStoreManagement(id, keycloakId, pageable);
+
+        return ResponseEntity.ok(ApiResponse.success("Store product variants retrieved successfully for management", products));
     }
 }

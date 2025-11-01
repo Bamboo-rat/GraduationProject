@@ -1,5 +1,6 @@
 package com.example.backend.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -23,7 +24,14 @@ public class AddressResponse {
     private String district;
     private String ward;
     private String street;
+
+    /**
+     * Whether this is the user's default/primary address
+     * @JsonProperty ensures Jackson serializes this as "isDefault" instead of "default"
+     */
+    @JsonProperty("isDefault")
     private boolean isDefault;
+
     private Double latitude;
     private Double longitude;
 

@@ -1,5 +1,6 @@
 package com.example.backend.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -46,6 +47,10 @@ public class AddressRequest {
     private Double latitude;
     private Double longitude;
 
-    // If true, this address will be set as default
+    /**
+     * If true, this address will be set as default
+     * @JsonProperty ensures Jackson deserializes "isDefault" from JSON (not "default")
+     */
+    @JsonProperty("isDefault")
     private boolean isDefault = false;
 }

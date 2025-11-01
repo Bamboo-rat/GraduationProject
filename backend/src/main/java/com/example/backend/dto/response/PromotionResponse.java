@@ -3,6 +3,7 @@ package com.example.backend.dto.response;
 import com.example.backend.entity.enums.PromotionStatus;
 import com.example.backend.entity.enums.PromotionTier;
 import com.example.backend.entity.enums.PromotionType;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -33,9 +34,28 @@ public class PromotionResponse {
     private Integer usagePerCustomerLimit;
     private Integer currentUsageCount;
     private PromotionStatus status;
+
+    /**
+     * Whether this promotion should be highlighted in the UI
+     * @JsonProperty ensures Jackson serializes this as "isHighlighted" instead of "highlighted"
+     */
+    @JsonProperty("isHighlighted")
     private boolean isHighlighted;
-    private boolean isActive; // Computed field: valid dates + ACTIVE status
-    private boolean isExpired; // Computed field: past end date
+
+    /**
+     * Computed field: whether promotion is currently active (valid dates + ACTIVE status)
+     * @JsonProperty ensures Jackson serializes this as "isActive" instead of "active"
+     */
+    @JsonProperty("isActive")
+    private boolean isActive;
+
+    /**
+     * Computed field: whether promotion has expired (past end date)
+     * @JsonProperty ensures Jackson serializes this as "isExpired" instead of "expired"
+     */
+    @JsonProperty("isExpired")
+    private boolean isExpired;
+
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

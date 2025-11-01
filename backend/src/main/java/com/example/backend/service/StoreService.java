@@ -155,9 +155,22 @@ public interface StoreService {
     /**
      * Get all product variants available at a specific store (Public access)
      * Returns detailed variant-level data with stock information for this store
+     * Only returns data for ACTIVE stores
      * @param storeId Store ID
      * @param pageable Pagination parameters
      * @return Page of product variants with store-specific inventory
      */
     Page<StoreProductVariantResponse> getProductVariantsForStore(String storeId, Pageable pageable);
+
+    /**
+     * Get all product variants for a store (Supplier access for inventory management)
+     * Returns detailed variant-level data with stock information for this store
+     * Works for stores in ANY status (PENDING, ACTIVE, SUSPENDED, etc.)
+     * Suppliers need to see inventory regardless of store status
+     * @param storeId Store ID
+     * @param keycloakId Supplier's Keycloak ID (for ownership verification)
+     * @param pageable Pagination parameters
+     * @return Page of product variants with store-specific inventory
+     */
+    Page<StoreProductVariantResponse> getProductVariantsForStoreManagement(String storeId, String keycloakId, Pageable pageable);
 }
