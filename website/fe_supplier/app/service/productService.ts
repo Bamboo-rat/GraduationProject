@@ -14,7 +14,6 @@ export interface ProductImageResponse {
   imageId: string;
   imageUrl: string;
   isPrimary: boolean;
-  // Fallback field for backward compatibility (in case backend hasn't been restarted)
   primary?: boolean;
   displayOrder?: number;
   productId?: string;

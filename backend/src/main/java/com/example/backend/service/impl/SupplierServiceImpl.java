@@ -418,7 +418,7 @@ public class SupplierServiceImpl implements SupplierService {
                     "Nhà cung cấp '%s' đã cập nhật thông tin hồ sơ.",
                     supplier.getBusinessName() != null ? supplier.getBusinessName() : supplier.getFullName()
             );
-            String linkUrl = "/partners/list-partners"; // Link to suppliers list (admin panel)
+            String linkUrl = "/partners/list-partners";
             inAppNotificationService.createNotificationForAllAdmins(
                     NotificationType.SUPPLIER_UPDATE,
                     notificationContent,
