@@ -2,10 +2,7 @@ package com.example.backend.controller;
 
 import com.example.backend.dto.request.StoreCreateRequest;
 import com.example.backend.dto.request.StoreUpdateRequest;
-import com.example.backend.dto.response.ApiResponse;
-import com.example.backend.dto.response.StorePendingUpdateResponse;
-import com.example.backend.dto.response.StoreResponse;
-import com.example.backend.dto.response.StoreUpdateResponse;
+import com.example.backend.dto.response.*;
 import com.example.backend.entity.enums.StoreStatus;
 import com.example.backend.entity.enums.SuggestionStatus;
 import com.example.backend.service.StoreService;
@@ -360,17 +357,19 @@ public class StoreController {
 
     @GetMapping("/{id}/products")
     @Operation(
-            summary = "Get all products available at a specific store",
-            description = "Retrieve all products and their variants available at this store with stock information"
+            summary = "Get all product variants at a store (Public access)",
+            description = "Get all product variants available at a specific store with their inventory information. " +
+                    "Returns detailed variant-level data including stock quantity, prices, expiry dates, and images. " +
+                    "This endpoint is public so customers can view products available at each store."
     )
-    public ResponseEntity<ApiResponse<Page<com.example.backend.dto.response.ProductResponse>>> getStoreProducts(
+    public ResponseEntity<ApiResponse<Page<StoreProductVariantResponse>>> getStoreProductVariants(
             @PathVariable String id,
-            @PageableDefault(size = 20, sort = "name", direction = Sort.Direction.ASC) Pageable pageable) {
+            @PageableDefault(size = 20, sort = "productId", direction = Sort.Direction.ASC) Pageable pageable) {
 
-        log.info("GET /api/stores/{}/products - Get products for store", id);
+        log.info("GET /api/stores/{}/products - Get product variants for store", id);
 
-        Page<com.example.backend.dto.response.ProductResponse> products = storeService.getStoreProducts(id, pageable);
+        Page<StoreProductVariantResponse> products = storeService.getProductVariantsForStore(id, pageable);
 
-        return ResponseEntity.ok(ApiResponse.success("Store products retrieved successfully", products));
+        return ResponseEntity.ok(ApiResponse.success("Store product variants retrieved successfully", products));
     }
 }

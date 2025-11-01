@@ -312,14 +312,14 @@ export default function NotificationManagement() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {notifications.map((notification) => (
-                    <tr key={notification.id} className="hover:bg-gray-50">
+                    <tr key={notification.notificationId} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <div className="text-sm font-medium text-gray-900">{notification.recipientEmail}</div>
                         <div className="text-sm text-gray-500 truncate max-w-xs">{notification.subject}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
-                          {getNotificationTypeLabel(notification.notificationType)}
+                          {getNotificationTypeLabel(notification.type)}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(notification.status)}</td>
@@ -337,7 +337,7 @@ export default function NotificationManagement() {
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         {activeTab === 'failed' && notification.retryCount < notification.maxRetries && (
                           <button
-                            onClick={() => handleRetryNotification(notification.id)}
+                            onClick={() => handleRetryNotification(notification.notificationId)}
                             className="text-blue-600 hover:text-blue-900"
                           >
                             Thử lại
@@ -353,23 +353,23 @@ export default function NotificationManagement() {
         </div>
 
         {/* Error Details (for failed notifications) */}
-        {activeTab === 'failed' && notifications.some((n) => n.lastError) && (
+        {activeTab === 'failed' && notifications.some((n) => n.errorMessage) && (
           <div className="mt-6 bg-red-50 rounded-lg shadow p-6">
             <h3 className="text-lg font-bold text-red-800 mb-4">Chi tiết lỗi gần nhất</h3>
             <div className="space-y-3">
               {notifications
-                .filter((n) => n.lastError)
+                .filter((n) => n.errorMessage)
                 .map((notification) => (
-                  <div key={notification.id} className="bg-white rounded p-3 border border-red-200">
+                  <div key={notification.notificationId} className="bg-white rounded p-3 border border-red-200">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <div className="text-sm font-medium text-gray-900 mb-1">
                           {notification.recipientEmail}
                         </div>
-                        <div className="text-sm text-red-600">{notification.lastError}</div>
+                        <div className="text-sm text-red-600">{notification.errorMessage}</div>
                       </div>
                       <button
-                        onClick={() => handleRetryNotification(notification.id)}
+                        onClick={() => handleRetryNotification(notification.notificationId)}
                         className="ml-4 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
                       >
                         Thử lại

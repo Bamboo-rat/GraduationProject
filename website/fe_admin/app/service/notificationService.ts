@@ -2,15 +2,18 @@ import axiosInstance from '../config/axios';
 import type { ApiResponse } from './types';
 
 export interface PendingNotification {
-  id: string;
+  notificationId: string;
   recipientEmail: string;
   subject: string;
-  body: string;
-  notificationType: string; // EMAIL_VERIFICATION, PASSWORD_RESET, etc.
+  content: string;
+  type: string; // EMAIL_VERIFICATION, PASSWORD_RESET, etc.
   status: string; // PENDING, PROCESSING, SENT, FAILED
   retryCount: number;
   maxRetries: number;
-  lastError?: string;
+  errorMessage?: string;
+  relatedEntityId?: string;
+  lastAttemptAt?: string;
+  nextRetryAt?: string;
   createdAt: string;
   updatedAt: string;
   sentAt?: string;

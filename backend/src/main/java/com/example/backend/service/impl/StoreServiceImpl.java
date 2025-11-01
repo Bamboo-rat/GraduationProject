@@ -2,10 +2,7 @@ package com.example.backend.service.impl;
 
 import com.example.backend.dto.request.StoreCreateRequest;
 import com.example.backend.dto.request.StoreUpdateRequest;
-import com.example.backend.dto.response.ProductResponse;
-import com.example.backend.dto.response.StorePendingUpdateResponse;
-import com.example.backend.dto.response.StoreResponse;
-import com.example.backend.dto.response.StoreUpdateResponse;
+import com.example.backend.dto.response.*;
 import com.example.backend.entity.*;
 import com.example.backend.entity.enums.StoreStatus;
 import com.example.backend.entity.enums.SuggestionStatus;
@@ -26,6 +23,7 @@ import com.example.backend.entity.enums.NotificationType;
 import com.example.backend.utils.LocationUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.Hibernate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -33,6 +31,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -702,34 +701,98 @@ public class StoreServiceImpl implements StoreService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<ProductResponse> getStoreProducts(String storeId, Pageable pageable) {
-        log.info("Getting products for store: {}", storeId);
+    public Page<StoreProductVariantResponse> getProductVariantsForStore(String storeId, Pageable pageable) {
+        log.info("Getting product variants for store: {}", storeId);
 
-        // Validate store exists
+        // Validate store exists and is ACTIVE (for public access)
         Store store = storeRepository.findById(storeId)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.STORE_NOT_FOUND));
+                .orElseThrow(() -> new NotFoundException(ErrorCode.STORE_NOT_FOUND,
+                        "Store not found with ID: " + storeId));
 
-        // Get all store products for this store
-        List<StoreProduct> storeProducts = storeProductRepository.findByStoreStoreId(storeId);
+        if (store.getStatus() != StoreStatus.ACTIVE) {
+            throw new BadRequestException(ErrorCode.INVALID_REQUEST,
+                    "Cannot view products for non-active store. Current status: " + store.getStatus());
+        }
 
-        // Get unique products from store products
-        List<Product> uniqueProducts = storeProducts.stream()
-                .map(sp -> sp.getVariant().getProduct())
-                .distinct()
+        // Two-query approach to avoid Hibernate's JOIN FETCH + pagination issues
+        // Query 1: Get paginated IDs only
+        Page<String> storeProductIds = storeProductRepository.findIdsByStoreId(storeId, pageable);
+
+        log.info("Found {} product variants at store {}", storeProductIds.getTotalElements(), store.getStoreName());
+
+        if (storeProductIds.isEmpty()) {
+            return new PageImpl<>(new ArrayList<>(), pageable, 0);
+        }
+
+        // Query 2: Fetch full entities with relationships for the current page
+        List<StoreProduct> storeProducts = storeProductRepository.findByIdsWithDetails(storeProductIds.getContent());
+
+        // Initialize lazy collections (images) within the transaction
+        storeProducts.forEach(sp -> {
+            Hibernate.initialize(sp.getVariant().getVariantImages());
+            Hibernate.initialize(sp.getVariant().getProduct().getImages());
+        });
+
+        // Convert to DTOs
+        List<StoreProductVariantResponse> dtos = storeProducts.stream()
+                .map(this::mapToStoreProductVariantResponse)
                 .collect(Collectors.toList());
 
-        log.info("Found {} unique products at store {}", uniqueProducts.size(), store.getStoreName());
+        // Return as Page with pagination metadata
+        return new PageImpl<>(dtos, pageable, storeProductIds.getTotalElements());
+    }
 
-        // Convert to ProductResponse with store-specific data
-        List<ProductResponse> productResponses = uniqueProducts.stream()
-                .map(productMapper::toResponse)
-                .collect(Collectors.toList());
+    /**
+     * Helper method to map StoreProduct entity to StoreProductVariantResponse DTO
+     * Includes product info, variant details, images, and store-specific inventory
+     * All relationships are eagerly loaded via JOIN FETCH, so no lazy loading issues
+     */
+    private StoreProductVariantResponse mapToStoreProductVariantResponse(StoreProduct sp) {
+        ProductVariant variant = sp.getVariant();
+        Product product = variant.getProduct();
 
-        // Apply pagination
-        int start = (int) pageable.getOffset();
-        int end = Math.min((start + pageable.getPageSize()), productResponses.size());
-        List<ProductResponse> paginatedList = productResponses.subList(start, end);
+        StoreProductVariantResponse dto = new StoreProductVariantResponse();
 
-        return new PageImpl<>(paginatedList, pageable, productResponses.size());
+        // Map product information
+        dto.setProductId(product.getProductId());
+        dto.setProductName(product.getName());
+        dto.setCategoryName(product.getCategory() != null ? product.getCategory().getName() : "N/A");
+
+        // Map variant information
+        dto.setVariantId(variant.getVariantId());
+        dto.setVariantName(variant.getName());
+        dto.setSku(variant.getSku());
+        dto.setOriginalPrice(variant.getOriginalPrice());
+        dto.setDiscountPrice(variant.getDiscountPrice());
+        dto.setExpiryDate(variant.getExpiryDate());
+
+        // Check if variant is available (not expired and has stock at this store)
+        dto.setAvailable(variant.isAvailable() && sp.getStockQuantity() > 0);
+
+        // Map images - prefer variant images, fallback to product images
+        // All images are eagerly loaded, so no lazy loading exceptions
+        List<ProductImageResponse> images = new ArrayList<>();
+
+        // Try to get variant images first
+        if (variant.getVariantImages() != null && !variant.getVariantImages().isEmpty()) {
+            images = variant.getVariantImages().stream()
+                    .map(productMapper::toImageResponse)
+                    .toList();
+        }
+
+        // Fallback to product images if no variant images
+        if (images.isEmpty() && product.getImages() != null && !product.getImages().isEmpty()) {
+            images = product.getImages().stream()
+                    .map(productMapper::toImageResponse)
+                    .toList();
+        }
+
+        dto.setVariantImages(images);
+
+        // Map store-specific inventory information
+        dto.setStockQuantity(sp.getStockQuantity());
+        dto.setPriceOverride(sp.getPriceOverride());
+
+        return dto;
     }
 }

@@ -223,10 +223,8 @@ export default function CreateProduct() {
       return;
     }
     setVariants(variants.filter((_, i) => i !== index));
-    // Xóa ảnh của biến thể này
     const updatedVariantImages = { ...variantImages };
     delete updatedVariantImages[index];
-    // Re-index các variant images còn lại
     const reindexed: { [key: number]: ProductImageRequest[] } = {};
     Object.keys(updatedVariantImages).forEach((key) => {
       const oldIndex = parseInt(key);
@@ -234,6 +232,30 @@ export default function CreateProduct() {
       reindexed[newIndex] = updatedVariantImages[oldIndex];
     });
     setVariantImages(reindexed);
+    setStoreInventory((prevInventory) => {
+      const updatedInventory = prevInventory
+        .map(inv => {
+          const parts = inv.variantSku?.split('-') || [];
+          const vIndex = parseInt(parts[parts.length - 1], 10);
+
+          if (isNaN(vIndex)) {
+            return null; 
+          }
+          if (vIndex === index) {
+            return null;
+          }
+          if (vIndex > index) {
+            const newIndex = vIndex - 1;
+            const newSku = `${inv.storeId}-${newIndex}`; 
+            return { ...inv, variantSku: newSku };
+          }
+
+          return inv;
+        })
+        .filter(Boolean); 
+
+      return updatedInventory as StoreInventoryRequest[];
+    });
   };
 
   const updateVariant = <K extends keyof ProductVariantRequest>(index: number, field: K, value: ProductVariantRequest[K]) => {

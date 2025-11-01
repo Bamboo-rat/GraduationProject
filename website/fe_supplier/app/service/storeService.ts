@@ -1,5 +1,6 @@
 import apiClient from '~/config/axios';
 import type { ApiResponse, PaginatedResponse } from './types';
+import type { ProductImageResponse } from './productService';
 
 // ============= TYPES =============
 
@@ -100,6 +101,22 @@ export interface StorePendingUpdateResponse {
   // Admin info
   adminId?: string;
   adminName?: string;
+}
+
+export interface StoreProductVariantResponse {
+  productId: string;
+  productName: string;
+  categoryName: string;
+  variantId: string;
+  variantName: string;
+  sku: string;
+  originalPrice: number;
+  discountPrice?: number;
+  expiryDate: string;
+  isAvailable: boolean;
+  variantImages: ProductImageResponse[];
+  stockQuantity: number;
+  priceOverride?: number;
 }
 
 // Type alias for backward compatibility
@@ -285,27 +302,35 @@ class StoreService {
   }
 
   /**
-   * Get all products available at a specific store
+   * Get all product variants available at a specific store (Public access)
+   * Returns detailed variant-level data with stock information for each variant
    * Endpoint: GET /api/stores/{id}/products
    */
-  async getStoreProducts(storeId: string, params: {
-    page?: number;
-    size?: number;
-  }): Promise<PageResponse<import('./productService').ProductResponse>> {
+  async getStoreProductVariants(
+    storeId: string, 
+    params: { 
+      page?: number; 
+      size?: number;
+      sortBy?: string;
+      sortDirection?: 'ASC' | 'DESC';
+    }
+  ): Promise<PageResponse<StoreProductVariantResponse>> {
     try {
-      const response = await apiClient.get<ApiResponse<PageResponse<import('./productService').ProductResponse>>>(
+      const response = await apiClient.get<ApiResponse<PageResponse<StoreProductVariantResponse>>>(
         `${this.BASE_URL}/${storeId}/products`,
         {
           params: {
             page: params.page || 0,
             size: params.size || 20,
+            sortBy: params.sortBy || 'productId',
+            sortDirection: params.sortDirection || 'ASC',
           },
         }
       );
       return response.data.data;
     } catch (error: any) {
-      console.error('Error fetching store products:', error);
-      throw new Error(error.response?.data?.message || 'Không thể tải danh sách sản phẩm');
+      console.error('Error fetching store product variants:', error);
+      throw new Error(error.response?.data?.message || 'Không thể tải danh sách biến thể sản phẩm');
     }
   }
 

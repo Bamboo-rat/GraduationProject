@@ -47,7 +47,7 @@ public class InAppNotificationController {
     )
     public ResponseEntity<ApiResponse<Page<NotificationResponse>>> getMyNotifications(
             Authentication authentication,
-            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+            @PageableDefault(size = 20, sort = "notification.createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
         Jwt jwt = (Jwt) authentication.getPrincipal();
         String keycloakId = JwtUtils.extractKeycloakId(jwt);
@@ -71,7 +71,7 @@ public class InAppNotificationController {
     )
     public ResponseEntity<ApiResponse<Page<NotificationResponse>>> getUnreadNotifications(
             Authentication authentication,
-            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+            @PageableDefault(size = 20, sort = "notification.createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
         Jwt jwt = (Jwt) authentication.getPrincipal();
         String keycloakId = JwtUtils.extractKeycloakId(jwt);

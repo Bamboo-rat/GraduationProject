@@ -2,9 +2,7 @@ package com.example.backend.service;
 
 import com.example.backend.dto.request.StoreCreateRequest;
 import com.example.backend.dto.request.StoreUpdateRequest;
-import com.example.backend.dto.response.StorePendingUpdateResponse;
-import com.example.backend.dto.response.StoreResponse;
-import com.example.backend.dto.response.StoreUpdateResponse;
+import com.example.backend.dto.response.*;
 import com.example.backend.entity.enums.StoreStatus;
 import com.example.backend.entity.enums.SuggestionStatus;
 import org.springframework.data.domain.Page;
@@ -155,11 +153,11 @@ public interface StoreService {
     StorePendingUpdateResponse rejectStoreUpdate(String updateId, String keycloakId, String adminNotes);
 
     /**
-     * Get all products available at a specific store
-     * Returns products with their variants and stock information for this store
+     * Get all product variants available at a specific store (Public access)
+     * Returns detailed variant-level data with stock information for this store
      * @param storeId Store ID
      * @param pageable Pagination parameters
-     * @return Page of products with store-specific inventory
+     * @return Page of product variants with store-specific inventory
      */
-    Page<com.example.backend.dto.response.ProductResponse> getStoreProducts(String storeId, Pageable pageable);
+    Page<StoreProductVariantResponse> getProductVariantsForStore(String storeId, Pageable pageable);
 }

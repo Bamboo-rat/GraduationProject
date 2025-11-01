@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router';
 import storeService from '~/service/storeService';
 import type { StoreResponse } from '~/service/storeService';
 import type { ProductResponse } from '~/service/productService';
+import type { StoreProductVariantResponse } from '~/service/storeService';
 import { ArrowLeft, Package, ShoppingBag, Layers, AlertCircle, Store } from 'lucide-react';
 
 export default function StoreProducts() {
@@ -10,7 +11,7 @@ export default function StoreProducts() {
   const { storeId } = useParams<{ storeId: string }>();
   const [loading, setLoading] = useState(true);
   const [store, setStore] = useState<StoreResponse | null>(null);
-  const [products, setProducts] = useState<ProductResponse[]>([]);
+  const [storeProducts, setStoreProducts] = useState<StoreProductVariantResponse[]>([]);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
@@ -19,7 +20,7 @@ export default function StoreProducts() {
   useEffect(() => {
     if (storeId) {
       loadStoreInfo();
-      loadProducts();
+      loadStoreProducts();
     }
   }, [storeId, page]);
 
@@ -33,22 +34,30 @@ export default function StoreProducts() {
     }
   };
 
-  const loadProducts = async () => {
+  const loadStoreProducts = async () => {
+    if (!storeId) return;
+    setLoading(true);
     try {
-      setLoading(true);
-      const response = await storeService.getStoreProducts(storeId!, { page, size: pageSize });
-      setProducts(response.content);
-      setTotalPages(response.totalPages);
-      setTotalElements(response.totalElements);
-    } catch (error: any) {
-      console.error('Error loading products:', error);
-      alert('Không thể tải danh sách sản phẩm: ' + error.message);
+      // Call new API to get product variants (not generic products)
+      const response = await storeService.getStoreProductVariants(storeId, { 
+        page, 
+        size: pageSize,
+        sortBy: 'productId',
+        sortDirection: 'ASC'
+      });
+      
+      if (response && Array.isArray(response.content)) {
+        setStoreProducts(response.content);
+        setTotalElements(response.totalElements);
+        setTotalPages(response.totalPages);
+      }
+    } catch (error) {
+      console.error('Error loading store product variants:', error);
+      alert('Không thể tải danh sách biến thể sản phẩm của cửa hàng');
     } finally {
       setLoading(false);
     }
-  };
-
-  const formatPrice = (price: number) => {
+  };  const formatPrice = (price: number) => {
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
   };
 
@@ -148,126 +157,144 @@ export default function StoreProducts() {
         {loading ? (
           <div className="flex justify-center items-center py-12">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            <p className="text-muted ml-4">Đang tải sản phẩm...</p>
+            <p className="text-muted ml-4">Đang tải biến thể sản phẩm...</p>
           </div>
-        ) : products.length === 0 ? (
+        ) : storeProducts.length === 0 ? (
           <div className="text-center py-12 border-2 border-dashed border-default rounded-lg bg-surface-light">
             <ShoppingBag size={48} className="mx-auto text-light mb-3" />
-            <p className="text-muted mb-2">Chưa có sản phẩm nào tại cửa hàng này</p>
-            <p className="text-sm text-light">Thêm tồn kho cho sản phẩm để hiển thị ở đây</p>
+            <p className="text-muted mb-2">Chưa có biến thể sản phẩm nào tại cửa hàng này</p>
+            <p className="text-sm text-light">Thêm tồn kho cho các biến thể sản phẩm để hiển thị ở đây</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {products.map((product) => {
-              const statusBadge = getProductStatusBadge(product.status);
-              const primaryImage = product.images?.find((img) => img.isPrimary) || product.images?.[0];
+          <div className="space-y-3">
+            {storeProducts.map((variantProduct) => {
+              const primaryImage = variantProduct.variantImages?.find((img) => img.isPrimary) || variantProduct.variantImages?.[0];
+              const isExpired = variantProduct.expiryDate && new Date(variantProduct.expiryDate) < new Date();
+              const isOutOfStock = variantProduct.stockQuantity === 0;
 
               return (
-                <div key={product.productId} className="border border-default rounded-lg overflow-hidden hover:shadow-lg transition-shadow">
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4">
-                    {/* Product Image */}
+                <div 
+                  key={variantProduct.variantId} 
+                  className={`border rounded-lg overflow-hidden hover:shadow-md transition-shadow ${
+                    isExpired || isOutOfStock ? 'opacity-60 border-light' : 'border-default'
+                  }`}
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4">
+                    {/* Variant Image */}
                     <div className="flex items-center justify-center">
                       {primaryImage ? (
                         <img
                           src={primaryImage.imageUrl}
-                          alt={product.name}
-                          className="w-full h-32 object-cover rounded-lg border border-default"
+                          alt={variantProduct.variantName}
+                          className="w-full h-28 object-cover rounded-lg border border-default"
                         />
                       ) : (
-                        <div className="w-full h-32 bg-surface-light rounded-lg border border-default flex items-center justify-center">
-                          <Package size={32} className="text-light" />
+                        <div className="w-full h-28 bg-surface-light rounded-lg border border-default flex items-center justify-center">
+                          <Package size={28} className="text-light" />
                         </div>
                       )}
                     </div>
 
-                    {/* Product Info */}
-                    <div className="md:col-span-3">
+                    {/* Variant Details */}
+                    <div className="md:col-span-4">
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1">
-                          <h3 className="font-semibold text-text mb-1">{product.name}</h3>
-                          <p className="text-sm text-muted line-clamp-2">{product.description}</p>
-                        </div>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusBadge.className} ml-3`}>
-                          {statusBadge.label}
-                        </span>
-                      </div>
-
-                      {/* Variants */}
-                      {product.variants && product.variants.length > 0 && (
-                        <div className="mt-3">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Layers size={14} className="text-secondary" />
-                            <p className="text-xs font-medium text-text">
-                              {product.variants.length} biến thể
+                          {/* Product Name & Category */}
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-semibold text-text">{variantProduct.productName}</h3>
+                            <span className="text-xs px-2 py-0.5 bg-secondary/10 text-secondary rounded">
+                              {variantProduct.categoryName}
+                            </span>
+                          </div>
+                          
+                          {/* Variant Name */}
+                          <div className="flex items-center gap-2 mb-1">
+                            <Layers size={14} className="text-muted" />
+                            <p className="text-sm font-medium text-muted">
+                              Biến thể: {variantProduct.variantName}
                             </p>
                           </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                            {product.variants.map((variant) => {
-                              // Find stock for this store
-                              const storeStock = variant.storeStocks?.find((s) => s.storeId === storeId);
-                              const stockQuantity = storeStock?.stockQuantity || 0;
+                          
+                          {/* SKU */}
+                          <p className="text-xs text-light">SKU: {variantProduct.sku}</p>
+                        </div>
 
-                              return (
-                                <div key={variant.variantId} className="bg-surface-light p-3 rounded-lg border border-default">
-                                  <p className="text-sm font-medium text-text mb-1">{variant.name}</p>
-                                  <p className="text-xs text-muted mb-1">SKU: {variant.sku}</p>
-                                  <div className="flex items-center justify-between">
-                                    <div>
-                                      {variant.discountPrice && variant.discountPrice > 0 ? (
-                                        <div className="flex items-center gap-2">
-                                          <span className="text-xs line-through text-light">
-                                            {formatPrice(variant.originalPrice)}
-                                          </span>
-                                          <span className="text-sm font-semibold text-accent-red">
-                                            {formatPrice(variant.discountPrice)}
-                                          </span>
-                                        </div>
-                                      ) : (
-                                        <span className="text-sm font-semibold text-text">
-                                          {formatPrice(variant.originalPrice)}
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div className={`text-xs font-medium ${stockQuantity > 0 ? 'text-secondary' : 'text-light'}`}>
-                                      {stockQuantity} sp
-                                    </div>
-                                  </div>
-                                  {variant.expiryDate && (
-                                    <p className="text-xs text-muted mt-1">
-                                      HSD: {formatDate(variant.expiryDate)}
-                                    </p>
-                                  )}
-                                </div>
-                              );
-                            })}
+                        {/* Status Badges */}
+                        <div className="flex flex-col gap-1 items-end ml-3">
+                          {isExpired && (
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                              Hết hạn
+                            </span>
+                          )}
+                          {isOutOfStock && !isExpired && (
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                              Hết hàng
+                            </span>
+                          )}
+                          {variantProduct.isAvailable && !isExpired && !isOutOfStock && (
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              Còn hàng
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Price & Stock Info */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+                        {/* Price */}
+                        <div className="bg-surface-light p-3 rounded-lg">
+                          <p className="text-xs text-muted mb-1">Giá bán</p>
+                          <div className="flex flex-col">
+                            {variantProduct.priceOverride ? (
+                              <>
+                                <span className="text-sm font-semibold text-accent-red">
+                                  {formatPrice(variantProduct.priceOverride)}
+                                </span>
+                                <span className="text-xs line-through text-light">
+                                  {formatPrice(variantProduct.originalPrice)}
+                                </span>
+                              </>
+                            ) : variantProduct.discountPrice ? (
+                              <>
+                                <span className="text-sm font-semibold text-accent-red">
+                                  {formatPrice(variantProduct.discountPrice)}
+                                </span>
+                                <span className="text-xs line-through text-light">
+                                  {formatPrice(variantProduct.originalPrice)}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-sm font-semibold text-text">
+                                {formatPrice(variantProduct.originalPrice)}
+                              </span>
+                            )}
                           </div>
                         </div>
-                      )}
 
-                      {/* Stock Overview */}
-                      {(product.totalInventory !== undefined || product.availableVariantCount !== undefined) && (
-                        <div className="flex items-center gap-4 mt-3 pt-3 border-t border-default">
-                          {product.totalInventory !== undefined && (
-                            <div className="flex items-center gap-2">
-                              <AlertCircle size={14} className="text-muted" />
-                              <p className="text-xs text-muted">
-                                Tổng tồn kho: <span className="font-medium text-text">{product.totalInventory}</span>
-                              </p>
-                            </div>
-                          )}
-                          {product.availableVariantCount !== undefined && product.totalVariantCount !== undefined && (
-                            <div className="flex items-center gap-2">
-                              <Layers size={14} className="text-muted" />
-                              <p className="text-xs text-muted">
-                                Biến thể khả dụng:{' '}
-                                <span className="font-medium text-text">
-                                  {product.availableVariantCount}/{product.totalVariantCount}
-                                </span>
-                              </p>
-                            </div>
+                        {/* Stock */}
+                        <div className="bg-surface-light p-3 rounded-lg">
+                          <p className="text-xs text-muted mb-1">Tồn kho</p>
+                          <p className={`text-lg font-semibold ${
+                            variantProduct.stockQuantity > 10 ? 'text-secondary' : 
+                            variantProduct.stockQuantity > 0 ? 'text-yellow-600' : 
+                            'text-red-600'
+                          }`}>
+                            {variantProduct.stockQuantity} sản phẩm
+                          </p>
+                        </div>
+
+                        {/* Expiry Date */}
+                        <div className="bg-surface-light p-3 rounded-lg">
+                          <p className="text-xs text-muted mb-1">Hạn sử dụng</p>
+                          {variantProduct.expiryDate ? (
+                            <p className={`text-sm font-medium ${isExpired ? 'text-red-600' : 'text-text'}`}>
+                              {formatDate(variantProduct.expiryDate)}
+                            </p>
+                          ) : (
+                            <p className="text-sm text-light">Không có</p>
                           )}
                         </div>
-                      )}
+                      </div>
                     </div>
                   </div>
                 </div>

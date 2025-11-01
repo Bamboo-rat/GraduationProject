@@ -177,31 +177,41 @@ const NotificationDropdown: React.FC = () => {
                   <div
                     key={notification.notificationId}
                     onClick={() => handleNotificationClick(notification)}
-                    className={`px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors ${
-                      !notification.isRead ? 'bg-blue-50' : ''
+                    className={`px-4 py-3 cursor-pointer transition-all ${
+                      !notification.isRead 
+                        ? 'bg-blue-50 hover:bg-blue-100 border-l-4 border-blue-500' 
+                        : 'bg-gray-50 hover:bg-gray-100 opacity-70'
                     }`}
                   >
                     <div className="flex items-start gap-3">
                       {/* Read/Unread Indicator */}
                       <div className="mt-1">
                         {notification.isRead ? (
-                          <Check className="w-4 h-4 text-gray-400" />
+                          <CheckCheck className="w-4 h-4 text-gray-400" />
                         ) : (
-                          <div className="w-2 h-2 bg-blue-500 rounded-full mt-1"></div>
+                          <div className="w-2.5 h-2.5 bg-blue-500 rounded-full mt-1 animate-pulse"></div>
                         )}
                       </div>
 
                       {/* Notification Content */}
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm ${!notification.isRead ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
+                        <p className={`text-sm ${
+                          !notification.isRead 
+                            ? 'font-semibold text-gray-900' 
+                            : 'font-normal text-gray-500'
+                        }`}>
                           {notification.content}
                         </p>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs text-gray-500">
+                          <span className={`text-xs ${
+                            !notification.isRead ? 'text-blue-600 font-medium' : 'text-gray-400'
+                          }`}>
                             {notification.typeDisplayName}
                           </span>
-                          <span className="text-xs text-gray-400">"</span>
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-gray-300">•</span>
+                          <span className={`text-xs ${
+                            !notification.isRead ? 'text-gray-600' : 'text-gray-400'
+                          }`}>
                             {formatTimeAgo(notification.createdAt)}
                           </span>
                         </div>
