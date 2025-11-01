@@ -64,6 +64,7 @@ public class OtpServiceImpl implements OtpService {
         System.out.println("OTP for phone " + normalizedPhone + " is " + otp);
         System.out.println("=".repeat(60));
         log.info("OTP displayed on console for phone: {}", normalizedPhone);
+        log.info("OTP for phone " + normalizedPhone + " is " + otp);
     }
 
     @Override

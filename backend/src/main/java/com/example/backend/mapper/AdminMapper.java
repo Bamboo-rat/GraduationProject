@@ -14,7 +14,9 @@ import java.util.List;
  * MapStruct Mapper for Admin entity to DTO conversion
  */
 @Mapper(componentModel = "spring")
-public interface AdminMapper {
+public interface
+
+AdminMapper {
 
     /**
      * Convert Admin entity to AdminResponse DTO

@@ -41,12 +41,6 @@ public interface AuthService {
      */
     void logout(String refreshToken);
 
-    /**
-     * Request OTP for customer login via phone number
-     * @param phoneNumber Customer phone number
-     * @return Message confirming OTP sent
-     */
-    String requestCustomerLoginOtp(String phoneNumber);
 
     /**
      * Verify OTP and login customer (passwordless)

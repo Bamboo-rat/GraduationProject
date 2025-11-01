@@ -1,10 +1,13 @@
 package com.example.backend.dto.request;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 public class ProductVariantRequest {
@@ -28,4 +31,7 @@ public class ProductVariantRequest {
     @NotNull(message = "Expiry date is required")
     @Future(message = "Expiry date must be in the future")
     private LocalDate expiryDate;
+
+    @Valid
+    private List<ProductImageRequest> images = new ArrayList<>();
 }

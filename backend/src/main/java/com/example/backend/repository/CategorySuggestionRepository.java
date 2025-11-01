@@ -12,19 +12,48 @@ import org.springframework.stereotype.Repository;
 public interface CategorySuggestionRepository extends JpaRepository<CategorySuggestion, String> {
 
     /**
-     * Find suggestions by status
+     * Find suggestions by status with eager loading
      */
+    @Query("SELECT cs FROM CategorySuggestion cs " +
+           "LEFT JOIN FETCH cs.supplier " +
+           "LEFT JOIN FETCH cs.admin " +
+           "WHERE cs.status = :status")
     Page<CategorySuggestion> findByStatus(SuggestionStatus status, Pageable pageable);
 
     /**
-     * Find suggestions by supplier
+     * Find all suggestions with eager loading
      */
+    @Query("SELECT cs FROM CategorySuggestion cs " +
+           "LEFT JOIN FETCH cs.supplier " +
+           "LEFT JOIN FETCH cs.admin")
+    Page<CategorySuggestion> findAllWithDetails(Pageable pageable);
+
+    /**
+     * Find suggestions by supplier with eager loading
+     */
+    @Query("SELECT cs FROM CategorySuggestion cs " +
+           "LEFT JOIN FETCH cs.supplier " +
+           "LEFT JOIN FETCH cs.admin " +
+           "WHERE cs.supplier.userId = :supplierUserId")
     Page<CategorySuggestion> findBySupplierUserId(String supplierUserId, Pageable pageable);
 
     /**
-     * Find suggestions by supplier and status
+     * Find suggestions by supplier and status with eager loading
      */
+    @Query("SELECT cs FROM CategorySuggestion cs " +
+           "LEFT JOIN FETCH cs.supplier " +
+           "LEFT JOIN FETCH cs.admin " +
+           "WHERE cs.supplier.userId = :supplierUserId AND cs.status = :status")
     Page<CategorySuggestion> findBySupplierUserIdAndStatus(String supplierUserId, SuggestionStatus status, Pageable pageable);
+
+    /**
+     * Find suggestion by ID with eager loading
+     */
+    @Query("SELECT cs FROM CategorySuggestion cs " +
+           "LEFT JOIN FETCH cs.supplier " +
+           "LEFT JOIN FETCH cs.admin " +
+           "WHERE cs.suggestionId = :id")
+    java.util.Optional<CategorySuggestion> findByIdWithDetails(String id);
 
     /**
      * Check if category name already exists (case-insensitive)

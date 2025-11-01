@@ -29,13 +29,35 @@ public interface ProductMapper {
     @Mapping(target = "variants", source = "variants")
     @Mapping(target = "images", source = "images")
     @Mapping(target = "attributes", source = "attributes")
+    @Mapping(target = "totalInventory", expression = "java(product.getTotalInventory())")
+    @Mapping(target = "availableVariantCount", expression = "java(product.getAvailableVariantCount())")
+    @Mapping(target = "totalVariantCount", expression = "java((long) product.getVariants().size())")
     ProductResponse toResponse(Product product);
 
     /**
      * Convert ProductVariant entity to ProductVariantResponse DTO
      */
     @Mapping(target = "variantImages", source = "variantImages")
+    @Mapping(target = "totalStock", expression = "java(variant.getTotalStock())")
+    @Mapping(target = "isOutOfStock", expression = "java(variant.isOutOfStock())")
+    @Mapping(target = "isExpired", expression = "java(variant.isExpired())")
+    @Mapping(target = "isAvailable", expression = "java(variant.isAvailable())")
+    @Mapping(target = "storeStocks", expression = "java(mapStoreStocks(variant))")
     ProductVariantResponse toVariantResponse(ProductVariant variant);
+
+    /**
+     * Map store stocks for a variant
+     */
+    default List<ProductVariantResponse.StoreStockInfo> mapStoreStocks(ProductVariant variant) {
+        return variant.getStoreProducts().stream()
+                .map(sp -> ProductVariantResponse.StoreStockInfo.builder()
+                        .storeId(sp.getStore().getStoreId())
+                        .storeName(sp.getStore().getStoreName())
+                        .stockQuantity(sp.getStockQuantity())
+                        .priceOverride(sp.getPriceOverride())
+                        .build())
+                .toList();
+    }
 
     /**
      * Convert list of ProductVariant entities to list of ProductVariantResponse DTOs

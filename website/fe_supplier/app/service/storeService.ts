@@ -284,6 +284,31 @@ class StoreService {
     }
   }
 
+  /**
+   * Get all products available at a specific store
+   * Endpoint: GET /api/stores/{id}/products
+   */
+  async getStoreProducts(storeId: string, params: {
+    page?: number;
+    size?: number;
+  }): Promise<PageResponse<import('./productService').ProductResponse>> {
+    try {
+      const response = await apiClient.get<ApiResponse<PageResponse<import('./productService').ProductResponse>>>(
+        `${this.BASE_URL}/${storeId}/products`,
+        {
+          params: {
+            page: params.page || 0,
+            size: params.size || 20,
+          },
+        }
+      );
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Error fetching store products:', error);
+      throw new Error(error.response?.data?.message || 'Không thể tải danh sách sản phẩm');
+    }
+  }
+
   // ============= UTILITY METHODS =============
 
   /**

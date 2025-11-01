@@ -32,6 +32,7 @@ public class ProductServiceImpl implements ProductService {
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
     private final StoreRepository storeRepository;
+    private final StoreProductRepository storeProductRepository;
     private final ProductMapper productMapper;
     private final FileStorageService fileStorageService;
 
@@ -74,13 +75,14 @@ public class ProductServiceImpl implements ProductService {
             }
         }
 
-        // 7. Add Images
+        // 7. Add Product-level Images
         if (request.getImages() != null && !request.getImages().isEmpty()) {
             for (ProductImageRequest imgReq : request.getImages()) {
                 ProductImage image = new ProductImage();
                 image.setImageUrl(imgReq.getImageUrl());
                 image.setPrimary(imgReq.isPrimary());
                 image.setProduct(product);
+                image.setVariant(null); // Product-level image, not variant-specific
                 product.getImages().add(image);
             }
         }
@@ -102,6 +104,18 @@ public class ProductServiceImpl implements ProductService {
                 variant.setExpiryDate(varReq.getExpiryDate());
                 variant.setProduct(product);
 
+                // Add variant-specific images if provided
+                if (varReq.getImages() != null && !varReq.getImages().isEmpty()) {
+                    for (ProductImageRequest imgReq : varReq.getImages()) {
+                        ProductImage variantImage = new ProductImage();
+                        variantImage.setImageUrl(imgReq.getImageUrl());
+                        variantImage.setPrimary(imgReq.isPrimary());
+                        variantImage.setProduct(product); // Still reference the product
+                        variantImage.setVariant(variant); // Link to this specific variant
+                        variant.getVariantImages().add(variantImage);
+                    }
+                }
+
                 product.getVariants().add(variant);
                 variantMap.put(variant.getSku(), variant);
             }
@@ -111,17 +125,41 @@ public class ProductServiceImpl implements ProductService {
         product = productRepository.save(product);
         log.info("Product saved successfully with ID: {}", product.getProductId());
 
+        // Re-build the variant map with persisted variants to ensure they are managed by JPA
+        final Map<String, ProductVariant> persistedVariantMap = new HashMap<>();
+        product.getVariants().forEach(v -> persistedVariantMap.put(v.getSku(), v));
+
         // 10. Create Store Inventory (after variants are persisted)
         if (request.getStoreInventory() != null && !request.getStoreInventory().isEmpty()) {
             for (StoreInventoryRequest invReq : request.getStoreInventory()) {
-                ProductVariant variant = variantMap.get(invReq.getVariantSku());
-                if (variant == null) {
-                    log.warn("Variant not found for SKU: {}", invReq.getVariantSku());
+                ProductVariant variant = null;
+
+                // Support both SKU (for updates) and index (for creation)
+                if (invReq.getVariantSku() != null && !invReq.getVariantSku().isBlank()) {
+                    // Use SKU to find variant
+                    variant = persistedVariantMap.get(invReq.getVariantSku());
+                    if (variant == null) {
+                        log.warn("Variant not found for SKU: {}. Skipping inventory creation.", invReq.getVariantSku());
+                        continue;
+                    }
+                } else if (invReq.getVariantIndex() != null) {
+                    // Use index to get variant from the ordered list
+                    List<ProductVariant> variantList = new ArrayList<>(product.getVariants());
+                    if (invReq.getVariantIndex() >= 0 && invReq.getVariantIndex() < variantList.size()) {
+                        variant = variantList.get(invReq.getVariantIndex());
+                        log.debug("Found variant by index {}: {}", invReq.getVariantIndex(), variant.getSku());
+                    } else {
+                        log.warn("Variant index {} out of bounds (size: {}). Skipping inventory creation.",
+                                invReq.getVariantIndex(), variantList.size());
+                        continue;
+                    }
+                } else {
+                    log.warn("Neither variantSku nor variantIndex provided. Skipping inventory creation.");
                     continue;
                 }
 
                 Store store = storeRepository.findById(invReq.getStoreId())
-                        .orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND));
+                        .orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "Store not found with ID: " + invReq.getStoreId()));
 
                 StoreProduct storeProduct = new StoreProduct();
                 storeProduct.setStore(store);
@@ -130,9 +168,11 @@ public class ProductServiceImpl implements ProductService {
                 storeProduct.setPriceOverride(invReq.getPriceOverride());
 
                 variant.getStoreProducts().add(storeProduct);
+                log.info("Added inventory for variant {} at store {}: {} units",
+                        variant.getSku(), store.getStoreName(), invReq.getStockQuantity());
             }
 
-            // Save again to persist StoreProducts
+            // Save again to persist the newly created StoreProduct entities
             product = productRepository.save(product);
         }
 
@@ -355,31 +395,43 @@ public class ProductServiceImpl implements ProductService {
         java.time.LocalDate today = java.time.LocalDate.now();
         boolean statusChanged = false;
 
-        // Check for expired variants
-        if (product.hasExpiredVariant()) {
+        // Priority 1: Check if ALL variants are expired
+        if (product.allVariantsExpired()) {
             if (product.getStatus() != ProductStatus.EXPIRED) {
                 product.setStatus(ProductStatus.EXPIRED);
                 product.setExpiredSince(today);
                 statusChanged = true;
-                log.info("Product {} auto-set to EXPIRED (variants have passed expiry date)", productId);
+                log.info("Product {} auto-set to EXPIRED (all variants have expired)", productId);
             }
         }
-        // Check for zero inventory
+        // Priority 2: Check if ALL variants are out of stock
         else if (product.getTotalInventory() == 0) {
             if (product.getStatus() != ProductStatus.SOLD_OUT) {
                 product.setStatus(ProductStatus.SOLD_OUT);
                 product.setSoldOutSince(today);
                 statusChanged = true;
-                log.info("Product {} auto-set to SOLD_OUT (inventory = 0)", productId);
+                log.info("Product {} auto-set to SOLD_OUT (all variants out of stock, total inventory = 0)", productId);
             }
         }
-        // If inventory is available and not expired, ensure ACTIVE
-        else if (product.getStatus() == ProductStatus.SOLD_OUT || product.getStatus() == ProductStatus.EXPIRED) {
-            product.setStatus(ProductStatus.ACTIVE);
-            product.setSoldOutSince(null);
-            product.setExpiredSince(null);
-            statusChanged = true;
-            log.info("Product {} auto-restored to ACTIVE (inventory available and not expired)", productId);
+        // Priority 3: If at least one variant is available (in stock and not expired), set ACTIVE
+        else if (product.hasAvailableVariant()) {
+            if (product.getStatus() == ProductStatus.SOLD_OUT || product.getStatus() == ProductStatus.EXPIRED) {
+                product.setStatus(ProductStatus.ACTIVE);
+                product.setSoldOutSince(null);
+                product.setExpiredSince(null);
+                statusChanged = true;
+                log.info("Product {} auto-restored to ACTIVE ({} available variants found)", 
+                        productId, product.getAvailableVariantCount());
+            }
+        }
+        // Edge case: Has inventory but all variants expired
+        else if (product.getTotalInventory() > 0 && product.hasExpiredVariant()) {
+            if (product.getStatus() != ProductStatus.EXPIRED) {
+                product.setStatus(ProductStatus.EXPIRED);
+                product.setExpiredSince(today);
+                statusChanged = true;
+                log.info("Product {} auto-set to EXPIRED (has inventory but all available variants expired)", productId);
+            }
         }
 
         if (statusChanged) {
@@ -471,5 +523,72 @@ public class ProductServiceImpl implements ProductService {
                         "Store ID " + inv.getStoreId() + " does not belong to this supplier");
             }
         }
+    }
+
+    @Override
+    @Transactional
+    public ProductResponse updateVariantStockAtStore(String productId, String variantId, String storeId, 
+                                                     Integer newStockQuantity, String keycloakId) {
+        log.info("Updating stock for product: {}, variant: {}, store: {} to quantity: {}", 
+                productId, variantId, storeId, newStockQuantity);
+
+        // 1. Find and validate product
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND));
+
+        // 2. Validate ownership - only supplier can update their product's stock
+        Supplier supplier = (Supplier) userRepository.findByKeycloakId(keycloakId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+
+        if (!product.getSupplier().getUserId().equals(supplier.getUserId())) {
+            throw new BadRequestException(ErrorCode.UNAUTHORIZED, "You can only update stock for your own products");
+        }
+
+        // 3. Find variant
+        ProductVariant variant = productVariantRepository.findById(variantId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "Product variant not found"));
+
+        // Validate variant belongs to this product
+        if (!variant.getProduct().getProductId().equals(productId)) {
+            throw new BadRequestException(ErrorCode.INVALID_REQUEST, "Variant does not belong to this product");
+        }
+
+        // 4. Find store
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.STORE_NOT_FOUND));
+
+        // Validate store belongs to this supplier
+        if (!store.getSupplier().getUserId().equals(supplier.getUserId())) {
+            throw new BadRequestException(ErrorCode.UNAUTHORIZED, "Store does not belong to you");
+        }
+
+        // 5. Find or create StoreProduct
+        StoreProduct storeProduct = storeProductRepository
+                .findByStoreStoreIdAndVariantVariantId(storeId, variantId)
+                .orElseGet(() -> {
+                    log.info("Creating new StoreProduct entry for store: {} and variant: {}", storeId, variantId);
+                    StoreProduct newStoreProduct = new StoreProduct();
+                    newStoreProduct.setStore(store);
+                    newStoreProduct.setVariant(variant);
+                    newStoreProduct.setStockQuantity(0);
+                    return newStoreProduct;
+                });
+
+        // 6. Update stock quantity
+        int oldStock = storeProduct.getStockQuantity();
+        storeProduct.setStockQuantity(newStockQuantity);
+        storeProductRepository.save(storeProduct);
+
+        log.info("Stock updated from {} to {} for variant {} at store {}", 
+                oldStock, newStockQuantity, variantId, storeId);
+
+        // 7. Check and update product status (EXPIRED/SOLD_OUT/ACTIVE)
+        checkAndUpdateProductStatus(productId);
+
+        // 8. Return updated product with all variants
+        Product updatedProduct = productRepository.findById(productId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND));
+
+        return productMapper.toResponse(updatedProduct);
     }
 }

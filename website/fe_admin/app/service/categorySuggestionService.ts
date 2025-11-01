@@ -1,5 +1,5 @@
 import apiClient from '~/config/axios';
-import type { ApiResponse, PaginatedResponse } from './types';
+import type { ApiResponse, PageResponse } from './types';
 
 export interface CategorySuggestion {
   suggestionId: string;
@@ -9,11 +9,11 @@ export interface CategorySuggestion {
   adminNotes?: string;
   createdAt: string;
   processedAt?: string;
-  suggesterId: string;
-  suggesterName: string;
-  suggesterBusinessName: string;
-  processorId?: string;
-  processorName?: string;
+  supplierId: string;
+  supplierName: string;
+  supplierBusinessName: string;
+  adminId?: string;
+  adminName?: string;
 }
 
 export interface CategorySuggestionParams {
@@ -24,11 +24,11 @@ export interface CategorySuggestionParams {
 }
 
 class CategorySuggestionService {
-  private readonly BASE_URL = '/api/category-suggestions';
+  private readonly BASE_URL = '/category-suggestions';
 
-  async getAllSuggestions(params: CategorySuggestionParams = {}): Promise<ApiResponse<PaginatedResponse<CategorySuggestion>>> {
-    const response = await apiClient.get(this.BASE_URL, { params });
-    return response.data;
+  async getAllSuggestions(params: CategorySuggestionParams = {}): Promise<PageResponse<CategorySuggestion>> {
+    const response = await apiClient.get<ApiResponse<PageResponse<CategorySuggestion>>>(this.BASE_URL, { params });
+    return response.data.data;
   }
 
   async getSuggestionById(id: string): Promise<ApiResponse<CategorySuggestion>> {

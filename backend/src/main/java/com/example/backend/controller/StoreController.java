@@ -357,4 +357,20 @@ public class StoreController {
 
         return ResponseEntity.ok(ApiResponse.success("Store update rejected successfully", update));
     }
+
+    @GetMapping("/{id}/products")
+    @Operation(
+            summary = "Get all products available at a specific store",
+            description = "Retrieve all products and their variants available at this store with stock information"
+    )
+    public ResponseEntity<ApiResponse<Page<com.example.backend.dto.response.ProductResponse>>> getStoreProducts(
+            @PathVariable String id,
+            @PageableDefault(size = 20, sort = "name", direction = Sort.Direction.ASC) Pageable pageable) {
+
+        log.info("GET /api/stores/{}/products - Get products for store", id);
+
+        Page<com.example.backend.dto.response.ProductResponse> products = storeService.getStoreProducts(id, pageable);
+
+        return ResponseEntity.ok(ApiResponse.success("Store products retrieved successfully", products));
+    }
 }

@@ -24,13 +24,13 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/categories")
 @RequiredArgsConstructor
 @Tag(name = "Category", description = "Product category management endpoints")
-@SecurityRequirement(name = "Bearer Authentication")
 public class CategoryController {
 
     private final CategoryService categoryService;
 
     @PostMapping
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF')")
+    @SecurityRequirement(name = "Bearer Authentication")
     @Operation(summary = "Create new category",
                description = "Create a new product category (admin only)")
     public ResponseEntity<ApiResponse<CategoryResponse>> createCategory(
@@ -44,6 +44,7 @@ public class CategoryController {
 
     @PutMapping("/{categoryId}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF')")
+    @SecurityRequirement(name = "Bearer Authentication")
     @Operation(summary = "Update category",
                description = "Update an existing category (admin only)")
     public ResponseEntity<ApiResponse<CategoryResponse>> updateCategory(
@@ -86,6 +87,7 @@ public class CategoryController {
 
     @DeleteMapping("/{categoryId}")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR')")
+    @SecurityRequirement(name = "Bearer Authentication")
     @Operation(summary = "Delete category",
                description = "Soft delete a category (admin only)")
     public ResponseEntity<ApiResponse<Void>> deleteCategory(@PathVariable String categoryId) {
@@ -97,6 +99,7 @@ public class CategoryController {
 
     @PatchMapping("/{categoryId}/toggle-active")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF')")
+    @SecurityRequirement(name = "Bearer Authentication")
     @Operation(summary = "Toggle category active status",
                description = "Activate or deactivate a category (admin only)")
     public ResponseEntity<ApiResponse<CategoryResponse>> toggleActive(

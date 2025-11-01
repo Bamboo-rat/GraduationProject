@@ -178,7 +178,13 @@ const Registration: React.FC = () => {
       });
       setCurrentStep(2);
     } catch (err: any) {
-      setError(err.message || 'Đăng ký thất bại!');
+      // Hiển thị lỗi cụ thể từ backend (VD: username đã tồn tại, email đã được sử dụng...)
+      const errorMessage = err.response?.data?.vietnameseMessage || 
+                          err.response?.data?.message || 
+                          err.message || 
+                          'Đăng ký thất bại!';
+      setError(errorMessage);
+      console.error('Step 1 error:', err.response?.data || err);
     } finally {
       setLoading(false);
     }
@@ -214,7 +220,13 @@ const Registration: React.FC = () => {
       });
       setCurrentStep(3);
     } catch (err: any) {
-      setError(err.message || 'Xác thực OTP thất bại!');
+      // Hiển thị lỗi cụ thể từ backend (VD: OTP không đúng, OTP hết hạn...)
+      const errorMessage = err.response?.data?.vietnameseMessage || 
+                          err.response?.data?.message || 
+                          err.message || 
+                          'Xác thực OTP thất bại!';
+      setError(errorMessage);
+      console.error('Step 2 error:', err.response?.data || err);
     } finally {
       setLoading(false);
     }
@@ -237,7 +249,13 @@ const Registration: React.FC = () => {
         message: 'Mã OTP mới đã được gửi đến email của bạn!'
       });
     } catch (err: any) {
-      setError(err.message || 'Gửi lại OTP thất bại!');
+      // Hiển thị lỗi cụ thể từ backend
+      const errorMessage = err.response?.data?.vietnameseMessage || 
+                          err.response?.data?.message || 
+                          err.message || 
+                          'Gửi lại OTP thất bại!';
+      setError(errorMessage);
+      console.error('Resend OTP error:', err.response?.data || err);
     } finally {
       setLoading(false);
     }
@@ -338,7 +356,13 @@ const Registration: React.FC = () => {
       });
       setCurrentStep(4);
     } catch (err: any) {
-      setError(err.message || 'Tải lên giấy tờ thất bại!');
+      // Hiển thị lỗi cụ thể từ backend (VD: file quá lớn, định dạng không hợp lệ...)
+      const errorMessage = err.response?.data?.vietnameseMessage || 
+                          err.response?.data?.message || 
+                          err.message || 
+                          'Tải lên giấy tờ thất bại!';
+      setError(errorMessage);
+      console.error('Step 3 error:', err.response?.data || err);
     } finally {
       setLoading(false);
     }
@@ -372,7 +396,13 @@ const Registration: React.FC = () => {
         navigate('/login');
       }, 3000);
     } catch (err: any) {
-      setError(err.message || 'Hoàn tất đăng ký thất bại!');
+      // Hiển thị lỗi cụ thể từ backend (VD: thông tin không hợp lệ, thiếu trường bắt buộc...)
+      const errorMessage = err.response?.data?.vietnameseMessage || 
+                          err.response?.data?.message || 
+                          err.message || 
+                          'Hoàn tất đăng ký thất bại!';
+      setError(errorMessage);
+      console.error('Step 4 error:', err.response?.data || err);
     } finally {
       setLoading(false);
     }

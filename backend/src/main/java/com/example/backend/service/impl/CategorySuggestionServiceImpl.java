@@ -96,11 +96,11 @@ public class CategorySuggestionServiceImpl implements CategorySuggestionService 
     @Transactional(readOnly = true)
     public Page<CategorySuggestionResponse> getAllSuggestions(SuggestionStatus status, Pageable pageable) {
         Page<CategorySuggestion> suggestions;
-        
+
         if (status != null) {
             suggestions = suggestionRepository.findByStatus(status, pageable);
         } else {
-            suggestions = suggestionRepository.findAll(pageable);
+            suggestions = suggestionRepository.findAllWithDetails(pageable);
         }
 
         return suggestions.map(suggestionMapper::toResponse);
@@ -126,7 +126,7 @@ public class CategorySuggestionServiceImpl implements CategorySuggestionService 
     @Override
     @Transactional(readOnly = true)
     public CategorySuggestionResponse getSuggestionById(String suggestionId) {
-        CategorySuggestion suggestion = suggestionRepository.findById(suggestionId)
+        CategorySuggestion suggestion = suggestionRepository.findByIdWithDetails(suggestionId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND));
 
         return suggestionMapper.toResponse(suggestion);
@@ -141,13 +141,13 @@ public class CategorySuggestionServiceImpl implements CategorySuggestionService 
         Admin admin = adminRepository.findByKeycloakId(keycloakId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
 
-        // Find suggestion
-        CategorySuggestion suggestion = suggestionRepository.findById(suggestionId)
+        // Find suggestion with eager loading
+        CategorySuggestion suggestion = suggestionRepository.findByIdWithDetails(suggestionId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND));
 
         // Validate status
         if (suggestion.getStatus() != SuggestionStatus.PENDING) {
-            throw new BadRequestException(ErrorCode.INVALID_REQUEST, 
+            throw new BadRequestException(ErrorCode.INVALID_REQUEST,
                     "Only PENDING suggestions can be approved");
         }
 
@@ -185,13 +185,13 @@ public class CategorySuggestionServiceImpl implements CategorySuggestionService 
         Admin admin = adminRepository.findByKeycloakId(keycloakId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
 
-        // Find suggestion
-        CategorySuggestion suggestion = suggestionRepository.findById(suggestionId)
+        // Find suggestion with eager loading
+        CategorySuggestion suggestion = suggestionRepository.findByIdWithDetails(suggestionId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND));
 
         // Validate status
         if (suggestion.getStatus() != SuggestionStatus.PENDING) {
-            throw new BadRequestException(ErrorCode.INVALID_REQUEST, 
+            throw new BadRequestException(ErrorCode.INVALID_REQUEST,
                     "Only PENDING suggestions can be rejected");
         }
 

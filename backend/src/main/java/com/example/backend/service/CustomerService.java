@@ -1,10 +1,11 @@
 package com.example.backend.service;
 
 import com.example.backend.dto.request.CustomerUpdateRequest;
-import com.example.backend.dto.request.CustomerRequest;
+import com.example.backend.dto.request.PhoneAuthStep1Request;
+import com.example.backend.dto.request.PhoneAuthStep2Request;
 import com.example.backend.dto.response.CustomerResponse;
 import com.example.backend.dto.response.LoginResponse;
-import com.example.backend.dto.response.RegisterResponse;
+import com.example.backend.dto.response.PhoneAuthStep1Response;
 import com.example.backend.entity.enums.CustomerStatus;
 import com.example.backend.entity.enums.CustomerTier;
 import org.springframework.data.domain.Page;
@@ -15,51 +16,29 @@ import java.util.Map;
  * Service interface for customer-related operations
  */
 public interface CustomerService {
-    /**
-     * Send OTP to customer's phone for login (console log in dev mode)
-     * @param phoneNumber Customer's phone number
-     */
-    void sendLoginOtp(String phoneNumber);
-
-    /**
-     * Verify OTP and login, return JWT token
-     * @param phoneNumber Customer's phone number
-     * @param otp OTP code
-     * @return LoginResponse with JWT token
-     */
-    LoginResponse verifyLoginOtpAndLogin(String phoneNumber, String otp);
+    
+    // ===== NEW UNIFIED PHONE AUTHENTICATION API =====
     
     /**
-     * Step 1: Register customer with phone number only
-     * - Generates random username (user_xxxxxxxx)
-     * - Creates account with PENDING_VERIFICATION status
-     * - Sends OTP to phone via eSMS
+     * Step 1: Send OTP for phone authentication (unified login/register)
+     * - If phone exists: Send OTP for login
+     * - If phone doesn't exist: Auto-create account + Send OTP
      * 
-     * @param request Customer registration request with phone number
-     * @return RegisterResponse with userId and OTP sent message
+     * @param request Phone authentication step 1 request
+     * @return PhoneAuthStep1Response with account status and OTP info
      */
-    RegisterResponse registerStep1(CustomerRequest request);
+    PhoneAuthStep1Response phoneAuthStep1(PhoneAuthStep1Request request);
     
     /**
-     * Step 2: Verify OTP sent to phone number via eSMS
-     * - Verifies OTP from Redis
-     * - Activates customer account (status = ACTIVE)
-     * - Generates random password and creates Keycloak user
-     * - Assigns 'customer' role in Keycloak
+     * Step 2: Verify OTP and authenticate (unified login/register)
+     * - Verify OTP from Redis
+     * - If new account: Activate account + Create Keycloak user
+     * - Return JWT tokens for login
      * 
-     * @param phoneNumber Customer's phone number
-     * @param otp OTP code received via SMS (6 digits)
-     * @return RegisterResponse with complete account details and temp password
+     * @param request Phone authentication step 2 request
+     * @return LoginResponse with JWT tokens and user info
      */
-    RegisterResponse verifyOtpStep2(String phoneNumber, String otp);
-    
-    /**
-     * Resend OTP to customer's phone number
-     * 
-     * @param phoneNumber Customer's phone number
-     * @return Success message
-     */
-    String resendOtp(String phoneNumber);
+    LoginResponse phoneAuthStep2(PhoneAuthStep2Request request);
     
     /**
      * Get customer information by Keycloak ID

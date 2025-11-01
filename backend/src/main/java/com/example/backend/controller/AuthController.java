@@ -1,10 +1,15 @@
 package com.example.backend.controller;
 
 import com.example.backend.dto.request.LoginRequest;
+import com.example.backend.dto.request.PhoneAuthStep1Request;
+import com.example.backend.dto.request.PhoneAuthStep2Request;
 import com.example.backend.dto.response.ApiResponse;
 import com.example.backend.dto.response.LoginResponse;
+import com.example.backend.dto.response.PhoneAuthStep1Response;
 import com.example.backend.dto.response.UserInfoResponse;
 import com.example.backend.service.AuthService;
+import com.example.backend.service.CustomerService;
+import com.example.backend.service.SupplierService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -21,58 +26,34 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @Tag(name = "Authentication", description = "Common authentication endpoints (login, logout, registration)")
 public class AuthController {
-    // ===== CUSTOMER LOGIN (Phone + OTP) - No authentication required =====
-
-    @PostMapping("/login/customer/step1")
-    @Operation(summary = "Customer login - Step 1", description = "Send OTP to customer's phone for login (console log in dev mode)")
-    public ResponseEntity<ApiResponse<String>> loginCustomerStep1(@RequestParam String phoneNumber) {
-        log.info("POST /api/auth/login/customer/step1 - Sending OTP to phone: {}", phoneNumber);
-        customerService.sendLoginOtp(phoneNumber);
-        return ResponseEntity.ok(ApiResponse.success("OTP sent to phone (check console log in dev mode)"));
-    }
-
-    @PostMapping("/login/customer/step2")
-    @Operation(summary = "Customer login - Step 2", description = "Verify OTP and login, return JWT token")
-    public ResponseEntity<ApiResponse<LoginResponse>> loginCustomerStep2(@RequestParam String phoneNumber, @RequestParam String otp) {
-        log.info("POST /api/auth/login/customer/step2 - Verifying OTP for phone: {}", phoneNumber);
-        LoginResponse response = customerService.verifyLoginOtpAndLogin(phoneNumber, otp);
-        return ResponseEntity.ok(ApiResponse.success("Login successful", response));
-    }
-
     private final AuthService authService;
-    private final com.example.backend.service.CustomerService customerService;
-    private final com.example.backend.service.SupplierService supplierService;
+    private final CustomerService customerService;
+    private final SupplierService supplierService;
 
-    // ===== CUSTOMER REGISTRATION (Phone + OTP) - No authentication required =====
+    // ===== PHONE AUTHENTICATION (Login/Register) =====
     
-    @PostMapping("/register/customer/step1")
-    @Operation(summary = "Customer registration - Step 1", 
-               description = "Register with phone number only. OTP will be sent via SMS (console log in dev mode).")
-    public ResponseEntity<ApiResponse<com.example.backend.dto.response.RegisterResponse>> registerCustomerStep1(
-            @Valid @RequestBody com.example.backend.dto.request.CustomerRequest request) {
-        log.info("POST /api/auth/register/customer/step1 - Registering customer with phone: {}", request.getPhoneNumber());
-        com.example.backend.dto.response.RegisterResponse response = customerService.registerStep1(request);
-        return ResponseEntity.status(org.springframework.http.HttpStatus.CREATED)
-                .body(ApiResponse.success("OTP sent successfully", response));
+    @PostMapping("/customer/phone-auth/step1")
+    @Operation(
+        summary = "Phone authentication - Step 1: Send OTP",
+        description = "Unified login/register for customers. If phone exists: login flow. If phone doesn't exist: auto-create account. OTP will be sent via SMS."
+    )
+    public ResponseEntity<ApiResponse<PhoneAuthStep1Response>> phoneAuthStep1(
+            @Valid @RequestBody PhoneAuthStep1Request request) {
+        log.info("POST /api/auth/customer/phone-auth/step1 - Phone: {}", request.getPhoneNumber());
+        com.example.backend.dto.response.PhoneAuthStep1Response response = customerService.phoneAuthStep1(request);
+        return ResponseEntity.ok(ApiResponse.success("OTP sent successfully", response));
     }
-
-    @PostMapping("/register/customer/step2")
-    @Operation(summary = "Customer registration - Step 2", 
-               description = "Verify OTP sent to phone number. Account will be activated after successful verification.")
-    public ResponseEntity<ApiResponse<com.example.backend.dto.response.RegisterResponse>> verifyCustomerOtpStep2(
-            @Valid @RequestBody com.example.backend.dto.request.CustomerVerifyOtpRequest request) {
-        log.info("POST /api/auth/register/customer/step2 - Verifying OTP for phone: {}", request.getPhoneNumber());
-        com.example.backend.dto.response.RegisterResponse response = customerService.verifyOtpStep2(request.getPhoneNumber(), request.getOtp());
-        return ResponseEntity.ok(ApiResponse.success("Account activated successfully", response));
-    }
-
-    @PostMapping("/register/customer/resend-otp")
-    @Operation(summary = "Resend OTP for customer registration", 
-               description = "Resend OTP to phone number for pending verification account (console log in dev mode)")
-    public ResponseEntity<ApiResponse<String>> resendCustomerOtp(@RequestParam String phoneNumber) {
-        log.info("POST /api/auth/register/customer/resend-otp - Resending OTP to phone: {}", phoneNumber);
-        String message = customerService.resendOtp(phoneNumber);
-        return ResponseEntity.ok(ApiResponse.success(message));
+    
+    @PostMapping("/customer/phone-auth/step2")
+    @Operation(
+        summary = "Phone authentication - Step 2: Verify OTP & Login",
+        description = "Verify OTP and authenticate. Returns JWT tokens for both new and existing customers."
+    )
+    public ResponseEntity<ApiResponse<LoginResponse>> phoneAuthStep2(
+            @Valid @RequestBody PhoneAuthStep2Request request) {
+        log.info("POST /api/auth/customer/phone-auth/step2 - Phone: {}", request.getPhoneNumber());
+        LoginResponse response = customerService.phoneAuthStep2(request);
+        return ResponseEntity.ok(ApiResponse.success("Login successful", response));
     }
 
     // ===== COMMON LOGIN =====

@@ -32,4 +32,9 @@ public class ProductResponse {
 
     @Builder.Default
     private List<ProductAttributeResponse> attributes = new ArrayList<>();
+    
+    // Thông tin tổng quan về tồn kho
+    private Integer totalInventory;           // Tổng tồn kho tất cả variants + stores
+    private Long availableVariantCount;       // Số lượng variants còn hàng và chưa hết hạn
+    private Long totalVariantCount;           // Tổng số variants
 }

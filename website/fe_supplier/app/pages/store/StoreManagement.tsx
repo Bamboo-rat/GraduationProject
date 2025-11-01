@@ -290,17 +290,23 @@ export default function StoreManagement() {
                 </div>
 
                 {/* Actions */}
-                <div className="flex space-x-2">
+                <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={() => navigate(`/store/profile?storeId=${store.storeId}`)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    className="px-3 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
                   >
                     Chi tiết
+                  </button>
+                  <button
+                    onClick={() => navigate(`/store/products/${store.storeId}`)}
+                    className="px-3 py-2 border border-blue-300 bg-blue-50 rounded-lg text-sm font-medium text-blue-700 hover:bg-blue-100"
+                  >
+                    Sản phẩm
                   </button>
                   {store.status !== 'REJECTED' && (
                     <button
                       onClick={() => handleEditStore(store.storeId)}
-                      className="flex-1 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium"
+                      className="col-span-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium"
                     >
                       Chỉnh sửa
                     </button>

@@ -39,9 +39,10 @@ export default function CreateProduct() {
       manufacturingDate: '',
     },
   ]);
-  const [images, setImages] = useState<ProductImageRequest[]>([]);
+  const [productImages, setProductImages] = useState<ProductImageRequest[]>([]); // Ảnh chung sản phẩm
+  const [variantImages, setVariantImages] = useState<{ [variantIndex: number]: ProductImageRequest[] }>({}); // Ảnh từng biến thể
   const [storeInventory, setStoreInventory] = useState<StoreInventoryRequest[]>([]);
-  const [uploadingImages, setUploadingImages] = useState(false);
+  const [uploadingImages, setUploadingImages] = useState<{ type: 'product' | 'variant'; index?: number } | null>(null);
 
   // Load categories and stores
   useEffect(() => {
@@ -125,8 +126,8 @@ export default function CreateProduct() {
         >
           <option value="">-- Chọn danh mục --</option>
           {Array.isArray(categories) && categories.map((cat) => (
-            <option key={cat.id} value={cat.id.toString()}>
-              {cat.categoryName}
+            <option key={cat.categoryId} value={cat.categoryId}>
+              {cat.name}
             </option>
           ))}
         </select>
@@ -222,6 +223,17 @@ export default function CreateProduct() {
       return;
     }
     setVariants(variants.filter((_, i) => i !== index));
+    // Xóa ảnh của biến thể này
+    const updatedVariantImages = { ...variantImages };
+    delete updatedVariantImages[index];
+    // Re-index các variant images còn lại
+    const reindexed: { [key: number]: ProductImageRequest[] } = {};
+    Object.keys(updatedVariantImages).forEach((key) => {
+      const oldIndex = parseInt(key);
+      const newIndex = oldIndex > index ? oldIndex - 1 : oldIndex;
+      reindexed[newIndex] = updatedVariantImages[oldIndex];
+    });
+    setVariantImages(reindexed);
   };
 
   const updateVariant = <K extends keyof ProductVariantRequest>(index: number, field: K, value: ProductVariantRequest[K]) => {
@@ -327,17 +339,81 @@ export default function CreateProduct() {
               />
             </div>
           </div>
+
+          {/* Ảnh riêng cho biến thể này */}
+          <div className="mt-4 pt-4 border-t border-default">
+            <label className="block text-sm font-medium text-text mb-3">
+              📸 Ảnh riêng cho biến thể này <span className="text-light text-xs font-normal">(Tùy chọn)</span>
+            </label>
+            
+            {/* Upload button */}
+            <div className="mb-3">
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={(e) => handleVariantImageUpload(e, index)}
+                className="hidden"
+                id={`variant-image-upload-${index}`}
+                disabled={uploadingImages?.type === 'variant' && uploadingImages.index === index}
+              />
+              <label
+                htmlFor={`variant-image-upload-${index}`}
+                className={`inline-flex items-center gap-2 px-4 py-2 bg-surface-light border border-default rounded-lg cursor-pointer hover:bg-surface transition-colors ${
+                  uploadingImages?.type === 'variant' && uploadingImages.index === index ? 'opacity-50' : ''
+                }`}
+              >
+                <Upload size={16} />
+                <span className="text-sm">
+                  {uploadingImages?.type === 'variant' && uploadingImages.index === index ? 'Đang tải...' : 'Tải ảnh lên'}
+                </span>
+              </label>
+            </div>
+
+            {/* Image grid */}
+            {variantImages[index] && variantImages[index].length > 0 && (
+              <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
+                {variantImages[index].map((img, imgIndex) => (
+                  <div key={imgIndex} className="relative group bg-surface rounded border border-default overflow-hidden">
+                    <img
+                      src={img.imageUrl}
+                      alt={`Variant ${index + 1} - ${imgIndex + 1}`}
+                      className="w-full h-20 object-cover"
+                    />
+                    <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        type="button"
+                        onClick={() => removeVariantImage(index, imgIndex)}
+                        className="p-1 bg-accent-red text-surface rounded hover:bg-red-600 transition-colors"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                    {img.isPrimary && (
+                      <div className="absolute bottom-0 left-0 right-0 bg-primary/90 text-surface text-xs text-center py-0.5">
+                        Ảnh chính
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {(!variantImages[index] || variantImages[index].length === 0) && (
+              <p className="text-xs text-muted italic">Chưa có ảnh cho biến thể này</p>
+            )}
+          </div>
         </div>
       ))}
     </div>
   );
 
-  // Step 4: Images
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Step 4: Product-level Images (Ảnh chung)
+  const handleProductImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    setUploadingImages(true);
+    setUploadingImages({ type: 'product' });
     try {
       for (const file of Array.from(files)) {
         const validation = fileStorageService.validateFile(file, 5, ['image/jpeg', 'image/png', 'image/jpg']);
@@ -347,7 +423,7 @@ export default function CreateProduct() {
         }
 
         const url = await fileStorageService.uploadProductImage(file);
-        setImages((prev) => [
+        setProductImages((prev) => [
           ...prev,
           {
             imageUrl: url,
@@ -359,56 +435,117 @@ export default function CreateProduct() {
       console.error('Error uploading images:', error);
       alert('Lỗi khi tải ảnh: ' + error.message);
     } finally {
-      setUploadingImages(false);
+      setUploadingImages(null);
     }
   };
 
-  const removeImage = (index: number) => {
-    const updated = images.filter((_, i) => i !== index);
+  const removeProductImage = (index: number) => {
+    const updated = productImages.filter((_, i) => i !== index);
     // If removed image was primary, make first image primary
-    if (updated.length > 0 && images[index].isPrimary) {
+    if (updated.length > 0 && productImages[index].isPrimary) {
       updated[0].isPrimary = true;
     }
-    setImages(updated);
+    setProductImages(updated);
   };
 
-  const setPrimaryImage = (index: number) => {
-    const updated = images.map((img, i) => ({
+  const setPrimaryProductImage = (index: number) => {
+    const updated = productImages.map((img, i) => ({
       ...img,
       isPrimary: i === index,
     }));
-    setImages(updated);
+    setProductImages(updated);
   };
 
-  const renderImagesForm = () => (
+  // Variant-level Images (Ảnh riêng biến thể)
+  const handleVariantImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, variantIndex: number) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploadingImages({ type: 'variant', index: variantIndex });
+    try {
+      const newImages: ProductImageRequest[] = [];
+      for (const file of Array.from(files)) {
+        const validation = fileStorageService.validateFile(file, 5, ['image/jpeg', 'image/png', 'image/jpg']);
+        if (!validation.valid) {
+          alert(validation.error);
+          continue;
+        }
+
+        const url = await fileStorageService.uploadProductImage(file);
+        newImages.push({
+          imageUrl: url,
+          isPrimary: false,
+        });
+      }
+
+      setVariantImages((prev) => {
+        const currentImages = prev[variantIndex] || [];
+        const updatedImages = [...currentImages, ...newImages];
+        // If this is the first image, make it primary
+        if (currentImages.length === 0 && updatedImages.length > 0) {
+          updatedImages[0].isPrimary = true;
+        }
+        return {
+          ...prev,
+          [variantIndex]: updatedImages,
+        };
+      });
+    } catch (error: any) {
+      console.error('Error uploading variant images:', error);
+      alert('Lỗi khi tải ảnh: ' + error.message);
+    } finally {
+      setUploadingImages(null);
+    }
+  };
+
+  const removeVariantImage = (variantIndex: number, imageIndex: number) => {
+    setVariantImages((prev) => {
+      const currentImages = prev[variantIndex] || [];
+      const updated = currentImages.filter((_, i) => i !== imageIndex);
+      // If removed image was primary, make first image primary
+      if (updated.length > 0 && currentImages[imageIndex].isPrimary) {
+        updated[0].isPrimary = true;
+      }
+      return {
+        ...prev,
+        [variantIndex]: updated,
+      };
+    });
+  };
+
+  const renderProductImagesForm = () => (
     <div className="space-y-4">
+      <p className="text-sm text-muted mb-3">
+        Ảnh chung sẽ hiển thị cho tất cả biến thể. Bạn cũng có thể thêm ảnh riêng cho từng biến thể ở bước 3.
+      </p>
+
       <div className="border-2 border-dashed border-default rounded-lg p-8 text-center bg-surface-light transition-colors hover:border-primary">
         <input
           type="file"
           multiple
           accept="image/*"
-          onChange={handleImageUpload}
+          onChange={handleProductImageUpload}
           className="hidden"
-          id="image-upload"
-          disabled={uploadingImages}
+          id="product-image-upload"
+          disabled={uploadingImages?.type === 'product'}
         />
         <label
-          htmlFor="image-upload"
-          className={`cursor-pointer flex flex-col items-center gap-3 ${uploadingImages ? 'opacity-50' : ''}`}
+          htmlFor="product-image-upload"
+          className={`cursor-pointer flex flex-col items-center gap-3 ${uploadingImages?.type === 'product' ? 'opacity-50' : ''}`}
         >
           <Upload size={48} className="text-light" />
           <div>
             <p className="text-text font-medium">
-              {uploadingImages ? 'Đang tải ảnh...' : 'Bấm để chọn ảnh hoặc kéo thả ảnh vào đây'}
+              {uploadingImages?.type === 'product' ? 'Đang tải ảnh...' : 'Bấm để chọn ảnh chung cho sản phẩm'}
             </p>
             <p className="text-sm text-muted mt-1">PNG, JPG, JPEG (tối đa 5MB mỗi ảnh)</p>
           </div>
         </label>
       </div>
 
-      {images.length > 0 && (
+      {productImages.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {images.map((img, index) => (
+          {productImages.map((img, index) => (
             <div key={index} className="relative group bg-surface rounded-lg border border-default overflow-hidden card-hover">
               <img
                 src={img.imageUrl}
@@ -418,7 +555,7 @@ export default function CreateProduct() {
               <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <button
                   type="button"
-                  onClick={() => removeImage(index)}
+                  onClick={() => removeProductImage(index)}
                   className="p-1 bg-accent-red text-surface rounded hover:bg-red-600 transition-colors"
                 >
                   <Trash2 size={14} />
@@ -428,9 +565,9 @@ export default function CreateProduct() {
                 <label className="flex items-center gap-2 text-xs text-text cursor-pointer">
                   <input
                     type="radio"
-                    name="primary-image"
+                    name="primary-product-image"
                     checked={img.isPrimary}
-                    onChange={() => setPrimaryImage(index)}
+                    onChange={() => setPrimaryProductImage(index)}
                     className="text-primary focus:ring-primary"
                   />
                   <span className={img.isPrimary ? 'font-semibold text-primary' : ''}>
@@ -469,7 +606,7 @@ export default function CreateProduct() {
 
             return (
               <div key={store.storeId} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center p-3 bg-surface-light rounded-lg">
-                <div className="text-sm font-medium text-text">{store.name}</div>
+                <div className="text-sm font-medium text-text">{store.storeName}</div>
                 <div>
                   <label className="block text-xs text-muted mb-1">Số lượng</label>
                   <input
@@ -582,14 +719,30 @@ export default function CreateProduct() {
 
     setLoading(true);
     try {
-      // Note: Backend auto-generates SKUs, so we need to pass empty storeInventory
-      // or handle it differently. For now, we'll send an empty array.
+      // Map variant images to each variant
+      const variantsWithImages = variants.map((variant, index) => ({
+        ...variant,
+        images: variantImages[index] || [], // Include variant-specific images if any
+      }));
+
+      // Convert storeInventory to use variant indices instead of temporary SKUs
+      const storeInventoryWithIndices = storeInventory.map((inv) => {
+        // Extract variant index from the temporary key: "storeId-variantIndex"
+        const variantIndex = parseInt(inv.variantSku?.split('-').pop() || '0');
+        return {
+          storeId: inv.storeId,
+          variantIndex: variantIndex, // Use index instead of SKU
+          stockQuantity: inv.stockQuantity,
+          priceOverride: inv.priceOverride,
+        };
+      });
+
       const request: CreateProductRequest = {
         product: productInfo,
         attributes: attributes.filter((a) => a.attributeName && a.attributeValue),
-        variants: variants,
-        images: images,
-        storeInventory: [], // Backend requires SKUs which are auto-generated
+        variants: variantsWithImages, // Variants now include their images
+        images: productImages, // Product-level images (shared by all variants)
+        storeInventory: storeInventoryWithIndices, // Send actual inventory data with indices
       };
 
       await productService.createProduct(request);
@@ -643,12 +796,12 @@ export default function CreateProduct() {
           {renderVariantsForm()}
         </div>
 
-        {/* Images */}
+        {/* Product Images */}
         <div className="card p-6">
           <h2 className="heading-secondary mb-4 pb-3 border-b border-default">
-            4. Hình ảnh sản phẩm <span className="text-light text-sm font-normal">(Tùy chọn)</span>
+            4. Hình ảnh chung sản phẩm <span className="text-light text-sm font-normal">(Tùy chọn)</span>
           </h2>
-          {renderImagesForm()}
+          {renderProductImagesForm()}
         </div>
 
         {/* Store Inventory */}

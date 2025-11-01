@@ -32,8 +32,16 @@ export interface ProductVariantRequest {
   name: string;
   originalPrice: number;
   discountPrice?: number;
-  manufacturingDate?: string; // ISO date string
-  expiryDate: string; // ISO date string (required)
+  manufacturingDate?: string; 
+  expiryDate: string; 
+  images?: ProductImageRequest[]; 
+}
+
+export interface StoreStockInfo {
+  storeId: string;
+  storeName: string;
+  stockQuantity: number;
+  priceOverride?: number;
 }
 
 export interface ProductVariantResponse {
@@ -44,14 +52,23 @@ export interface ProductVariantResponse {
   discountPrice?: number;
   manufacturingDate?: string;
   expiryDate: string;
-  stockQuantity: number;
-  reservedQuantity: number;
-  attributes: ProductAttributeResponse[];
+  // Stock info
+  totalStock?: number;        // Tổng tồn kho tất cả cửa hàng
+  isOutOfStock?: boolean;     // Hết hàng
+  isExpired?: boolean;        // Hết hạn
+  isAvailable?: boolean;      // Có sẵn (còn hàng + chưa hết hạn)
+  // Legacy fields
+  stockQuantity?: number;
+  reservedQuantity?: number;
+  attributes?: ProductAttributeResponse[];
+  variantImages?: ProductImageResponse[];
+  storeStocks?: StoreStockInfo[]; // Chi tiết tồn kho theo cửa hàng
 }
 
 export interface StoreInventoryRequest {
   storeId: string;
-  variantSku: string; // SKU is auto-generated, will be filled after variants are created
+  variantSku?: string;      // For updates: use existing variant SKU
+  variantIndex?: number;    // For creation: use variant index (position in variants array)
   stockQuantity: number;
   priceOverride?: number;
 }
@@ -89,8 +106,12 @@ export interface ProductResponse {
   images: ProductImageResponse[];
   variants: ProductVariantResponse[];
   attributes: ProductAttributeResponse[];
-  createdAt: string;
-  updatedAt: string;
+  // Stock overview
+  totalInventory?: number;        // Tổng tồn kho tất cả variants + stores
+  availableVariantCount?: number; // Số variants còn hàng và chưa hết hạn
+  totalVariantCount?: number;     // Tổng số variants
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ProductListParams {
@@ -109,14 +130,11 @@ class ProductService {
       `${this.BASE_URL}/my-products`,
       { params }
     );
-    // Normalize backend Page<> JSON to our PaginatedResponse<T> shape.
     const payload: any = response.data.data;
     if (!payload) {
       return { content: [], page: { size: 0, number: 0, totalElements: 0, totalPages: 0 } };
     }
 
-    // Spring's Page serialization often exposes totalPages/totalElements at top-level
-    // while our frontend expects a nested `page` object. Normalize both shapes here.
     if (payload.page) {
       return payload as PaginatedResponse<ProductResponse>;
     }
@@ -163,6 +181,21 @@ class ProductService {
   // Soft delete product
   async deleteProduct(id: string): Promise<void> {
     await apiClient.delete(`${this.BASE_URL}/${id}`);
+  }
+
+  // Update stock quantity for a variant at a store
+  async updateVariantStock(
+    productId: string,
+    variantId: string,
+    storeId: string,
+    stockQuantity: number,
+    note?: string
+  ): Promise<ProductResponse> {
+    const response = await apiClient.patch<ApiResponse<ProductResponse>>(
+      `${this.BASE_URL}/${productId}/variants/${variantId}/stores/${storeId}/stock`,
+      { stockQuantity, note }
+    );
+    return response.data.data;
   }
 }
 

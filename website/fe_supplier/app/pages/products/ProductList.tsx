@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import productService from '~/service/productService';
 import type { ProductResponse, ProductStatus, ProductListParams } from '~/service/productService';
+import ProductDetailModal from '~/component/features/product/ProductDetailModal';
 
 export default function ProductList() {
   const [products, setProducts] = useState<ProductResponse[]>([]);
@@ -10,6 +11,7 @@ export default function ProductList() {
   const [totalElements, setTotalElements] = useState(0);
   const [statusFilter, setStatusFilter] = useState<ProductStatus | ''>('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState<ProductResponse | null>(null);
 
   const fetchProducts = async () => {
     try {
@@ -249,18 +251,35 @@ export default function ProductList() {
                             ⚠️ Lý do tạm ngưng: {product.suspensionReason}
                           </div>
                         )}
+                        {/* Stock Info */}
+                        {product.totalInventory !== undefined && (
+                          <div className="text-xs text-muted mt-1">
+                            📦 Tồn kho: <span className="font-semibold text-secondary">{product.totalInventory}</span>
+                            {product.availableVariantCount !== undefined && product.totalVariantCount !== undefined && (
+                              <span className="ml-2">
+                                ({product.availableVariantCount}/{product.totalVariantCount} biến thể khả dụng)
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-muted">
                         {product.categoryName || 'Chưa phân loại'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-muted">
-                        {product.variants?.length || 0} biến thể
+                        {product.totalVariantCount || product.variants?.length || 0} biến thể
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {getStatusBadge(product.status)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex gap-3">
+                          <button
+                            onClick={() => setSelectedProduct(product)}
+                            className="text-primary hover:text-primary-dark transition-colors font-medium"
+                          >
+                            Chi tiết
+                          </button>
                           <a
                             href={`/products/edit/${product.productId}`}
                             className="text-secondary hover:text-primary-dark transition-colors font-medium"
@@ -357,6 +376,11 @@ export default function ProductList() {
           </div>
         )}
       </div>
+
+      {/* Product Detail Modal */}
+      {selectedProduct && (
+        <ProductDetailModal product={selectedProduct} onClose={() => setSelectedProduct(null)} />
+      )}
     </div>
   );
 }

@@ -23,7 +23,13 @@ const Login: React.FC = () => {
       // Redirect to dashboard after successful login
       navigate('/dashboard/overview');
     } catch (err: any) {
-      setError(err.response?.data?.message || err.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
+      // Hiển thị lỗi cụ thể từ backend (VD: sai mật khẩu, tài khoản không tồn tại, tài khoản bị khóa...)
+      const errorMessage = err.response?.data?.vietnameseMessage || 
+                          err.response?.data?.message || 
+                          err.message || 
+                          'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.';
+      setError(errorMessage);
+      console.error('Login error:', err.response?.data || err);
     } finally {
       setLoading(false);
     }

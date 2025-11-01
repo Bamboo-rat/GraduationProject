@@ -27,9 +27,13 @@ const NotificationDropdown: React.FC = () => {
     try {
       setLoading(true);
       const data = await inAppNotificationService.getMyNotifications(0, 10);
-      setNotifications(data.content);
-    } catch (error) {
+      console.log('Fetched notifications:', data);
+      console.log('Notifications content:', data?.content);
+      setNotifications(data.content || []);
+    } catch (error: any) {
       console.error('Failed to fetch notifications:', error);
+      console.error('Error details:', error.response?.data);
+      alert('Lỗi khi tải thông báo: ' + (error.response?.data?.message || error.message));
     } finally {
       setLoading(false);
     }

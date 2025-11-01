@@ -33,7 +33,10 @@ public class Product {
     @UuidGenerator
     private String productId;
 
+    @Column(nullable = false, length = 200)
     private String name;
+    
+    @Column(columnDefinition = "TEXT")
     private String description;
 
     @Enumerated(EnumType.STRING)
@@ -78,14 +81,47 @@ public class Product {
     }
 
     /**
-     * Check if any variant has expired
-     * @return true if any variant's expiry date has passed
+     * Check if ALL variants have expired
+     * @return true if all variants have expired
      */
     public boolean hasExpiredVariant() {
         LocalDate today = LocalDate.now();
         return variants.stream()
                 .anyMatch(variant -> variant.getExpiryDate() != null
                         && variant.getExpiryDate().isBefore(today));
+    }
+
+    /**
+     * Check if ALL variants are expired (every variant has passed expiry date)
+     * @return true if all variants are expired
+     */
+    public boolean allVariantsExpired() {
+        if (variants.isEmpty()) {
+            return false;
+        }
+        LocalDate today = LocalDate.now();
+        return variants.stream()
+                .allMatch(variant -> variant.getExpiryDate() != null
+                        && variant.getExpiryDate().isBefore(today));
+    }
+
+    /**
+     * Check if product has at least one available variant (in stock and not expired)
+     * @return true if at least one variant is available
+     */
+    public boolean hasAvailableVariant() {
+        return variants.stream()
+                .anyMatch(ProductVariant::isAvailable);
+    }
+
+    /**
+     * Get count of available variants
+     * @return number of variants that are in stock and not expired
+     */
+    public long getAvailableVariantCount() {
+        return variants.stream()
+                .filter(ProductVariant::isAvailable)
+                .count();
     }
 
     /**

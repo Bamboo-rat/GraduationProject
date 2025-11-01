@@ -3,6 +3,7 @@ package com.example.backend.repository;
 import com.example.backend.entity.UserNotificationStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -16,26 +17,30 @@ public interface UserNotificationStatusRepository extends JpaRepository<UserNoti
 
     /**
      * Find all notifications for a user with pagination
+     * Uses EntityGraph to eagerly fetch notification relationship
      * @param userId User ID
      * @param pageable Pagination
      * @return Page of user notification statuses
      */
-    @Query("SELECT uns FROM UserNotificationStatus uns " +
-           "JOIN FETCH uns.notification n " +
+    @EntityGraph(attributePaths = {"notification"})
+    @Query(value = "SELECT uns FROM UserNotificationStatus uns " +
            "WHERE uns.user.userId = :userId " +
-           "ORDER BY n.createdAt DESC")
+           "ORDER BY uns.notification.createdAt DESC",
+           countQuery = "SELECT COUNT(uns) FROM UserNotificationStatus uns WHERE uns.user.userId = :userId")
     Page<UserNotificationStatus> findByUserUserId(@Param("userId") String userId, Pageable pageable);
 
     /**
      * Find unread notifications for a user
+     * Uses EntityGraph to eagerly fetch notification relationship
      * @param userId User ID
      * @param pageable Pagination
      * @return Page of unread notifications
      */
-    @Query("SELECT uns FROM UserNotificationStatus uns " +
-           "JOIN FETCH uns.notification n " +
+    @EntityGraph(attributePaths = {"notification"})
+    @Query(value = "SELECT uns FROM UserNotificationStatus uns " +
            "WHERE uns.user.userId = :userId AND uns.isRead = false " +
-           "ORDER BY n.createdAt DESC")
+           "ORDER BY uns.notification.createdAt DESC",
+           countQuery = "SELECT COUNT(uns) FROM UserNotificationStatus uns WHERE uns.user.userId = :userId AND uns.isRead = false")
     Page<UserNotificationStatus> findUnreadByUserId(@Param("userId") String userId, Pageable pageable);
 
     /**
@@ -49,10 +54,12 @@ public interface UserNotificationStatusRepository extends JpaRepository<UserNoti
 
     /**
      * Find a specific notification status for a user
+     * Uses EntityGraph to eagerly fetch notification relationship
      * @param userId User ID
      * @param notificationId Notification ID
      * @return Optional UserNotificationStatus
      */
+    @EntityGraph(attributePaths = {"notification"})
     @Query("SELECT uns FROM UserNotificationStatus uns " +
            "WHERE uns.user.userId = :userId AND uns.notification.notificationId = :notificationId")
     Optional<UserNotificationStatus> findByUserIdAndNotificationId(

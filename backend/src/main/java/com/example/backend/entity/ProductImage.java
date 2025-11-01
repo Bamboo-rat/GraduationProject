@@ -19,10 +19,10 @@ public class ProductImage {
     private String imageId;
 
     private String imageUrl;
-    
+
     // Đánh dấu ảnh chính (primary/default image)
     @Column(name = "is_primary")
-    private boolean isPrimary = false;
+    private boolean primary = false;
 
     // Liên kết với sản phẩm gốc (cho ảnh chung của sản phẩm)
     @ManyToOne(fetch = FetchType.LAZY)

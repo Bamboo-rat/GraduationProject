@@ -98,4 +98,15 @@ public interface ProductService {
      * Called by scheduler
      */
     void autoSetInactiveForOldProducts();
+
+    /**
+     * Update stock quantity for a specific variant at a specific store
+     * @param productId Product ID
+     * @param variantId Variant ID
+     * @param storeId Store ID
+     * @param newStockQuantity New stock quantity
+     * @param keycloakId Keycloak ID from JWT (for ownership validation)
+     * @return Updated product with all variants
+     */
+    ProductResponse updateVariantStockAtStore(String productId, String variantId, String storeId, Integer newStockQuantity, String keycloakId);
 }

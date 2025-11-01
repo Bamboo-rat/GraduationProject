@@ -29,14 +29,14 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/products")
 @RequiredArgsConstructor
-@Tag(name = "Product", description = "Product management endpoints")
-@SecurityRequirement(name = "Bearer Authentication")
+@Tag(name = "Product", description = "Product management endpoints (GET methods are public, write operations require authentication)")
 public class ProductController {
 
     private final ProductService productService;
 
     @PostMapping
     @PreAuthorize("hasRole('SUPPLIER')")
+    @SecurityRequirement(name = "Bearer Authentication")
     @Operation(
             summary = "Create new product with variants and attributes",
             description = "Create a complete product with all variants, attributes, images, and inventory in a single request"
@@ -78,6 +78,7 @@ public class ProductController {
 
     @GetMapping("/my-products")
     @PreAuthorize("hasRole('SUPPLIER')")
+    @SecurityRequirement(name = "Bearer Authentication")
     @Operation(
             summary = "Get my products",
             description = "Get products of current supplier with optional filters"
@@ -114,6 +115,7 @@ public class ProductController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('SUPPLIER')")
+    @SecurityRequirement(name = "Bearer Authentication")
     @Operation(
             summary = "Update product",
             description = "Update product basic information (name, description, category)"
@@ -135,6 +137,7 @@ public class ProductController {
 
     @PatchMapping("/{id}/visibility")
     @PreAuthorize("hasRole('SUPPLIER')")
+    @SecurityRequirement(name = "Bearer Authentication")
     @Operation(
             summary = "Toggle product visibility",
             description = "Supplier can hide (INACTIVE) or show (ACTIVE) their product"
@@ -157,6 +160,7 @@ public class ProductController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('SUPPLIER')")
+    @SecurityRequirement(name = "Bearer Authentication")
     @Operation(
             summary = "Delete product (soft delete with Cloudinary cleanup)",
             description = "Soft delete product by setting status to DELETED and removing images from Cloudinary"
@@ -177,6 +181,7 @@ public class ProductController {
 
     @PatchMapping("/{id}/suspend")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR')")
+    @SecurityRequirement(name = "Bearer Authentication")
     @Operation(
             summary = "Suspend product (Admin only)",
             description = "Admin suspends a product for policy violation"
@@ -194,6 +199,7 @@ public class ProductController {
 
     @PatchMapping("/{id}/unsuspend")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR')")
+    @SecurityRequirement(name = "Bearer Authentication")
     @Operation(
             summary = "Unsuspend product (Admin only)",
             description = "Admin unsuspends a previously suspended product"
@@ -205,5 +211,31 @@ public class ProductController {
         ProductResponse product = productService.unsuspendProduct(id);
 
         return ResponseEntity.ok(ApiResponse.success("Product unsuspended successfully", product));
+    }
+
+    @PatchMapping("/{productId}/variants/{variantId}/stores/{storeId}/stock")
+    @PreAuthorize("hasRole('SUPPLIER')")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @Operation(
+            summary = "Update stock quantity for a variant at a store",
+            description = "Supplier updates stock quantity for a specific variant at a specific store"
+    )
+    public ResponseEntity<ApiResponse<ProductResponse>> updateVariantStock(
+            @PathVariable String productId,
+            @PathVariable String variantId,
+            @PathVariable String storeId,
+            @Valid @RequestBody com.example.backend.dto.request.StockUpdateRequest request,
+            Authentication authentication) {
+
+        Jwt jwt = (Jwt) authentication.getPrincipal();
+        String keycloakId = JwtUtils.extractKeycloakId(jwt);
+
+        log.info("PATCH /api/products/{}/variants/{}/stores/{}/stock - Updating stock to {} by supplier {}",
+                productId, variantId, storeId, request.getStockQuantity(), keycloakId);
+
+        ProductResponse product = productService.updateVariantStockAtStore(
+                productId, variantId, storeId, request.getStockQuantity(), keycloakId);
+
+        return ResponseEntity.ok(ApiResponse.success("Stock updated successfully", product));
     }
 }

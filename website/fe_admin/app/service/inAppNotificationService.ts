@@ -29,9 +29,11 @@ class InAppNotificationService {
    * Get all notifications for current user
    */
   async getMyNotifications(page: number = 0, size: number = 20): Promise<NotificationPage> {
+    console.log('Calling getMyNotifications API with params:', { page, size });
     const response = await axiosInstance.get<ApiResponse<NotificationPage>>('/notifications', {
-      params: { page, size, sort: 'createdAt,desc' }
+      params: { page, size }
     });
+    console.log('API Response:', response.data);
     return response.data.data;
   }
 
@@ -40,7 +42,7 @@ class InAppNotificationService {
    */
   async getUnreadNotifications(page: number = 0, size: number = 20): Promise<NotificationPage> {
     const response = await axiosInstance.get<ApiResponse<NotificationPage>>('/notifications/unread', {
-      params: { page, size, sort: 'createdAt,desc' }
+      params: { page, size }
     });
     return response.data.data;
   }

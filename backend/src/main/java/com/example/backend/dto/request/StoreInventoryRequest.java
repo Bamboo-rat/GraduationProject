@@ -12,8 +12,12 @@ public class StoreInventoryRequest {
     @NotBlank(message = "Store ID is required")
     private String storeId;
 
-    @NotBlank(message = "Variant SKU is required")
+    // For updates: use existing variant SKU
     private String variantSku;
+
+    // For creation: use variant index (position in variants array)
+    @Min(value = 0, message = "Variant index must be at least 0")
+    private Integer variantIndex;
 
     @Min(value = 0, message = "Stock quantity must be at least 0")
     private int stockQuantity;

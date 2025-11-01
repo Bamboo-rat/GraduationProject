@@ -341,10 +341,12 @@ class AuthService {
   // ===== ERROR HANDLING =====
 
   private handleError(error: any): Error {
-    if (error.response?.data?.message) {
-      return new Error(error.response.data.message);
-    }
-    return new Error(error.message || 'An unexpected error occurred');
+    // Ưu tiên vietnameseMessage từ backend, sau đó mới đến message
+    const errorMessage = error.response?.data?.vietnameseMessage || 
+                        error.response?.data?.message || 
+                        error.message || 
+                        'Đã xảy ra lỗi không mong muốn';
+    return new Error(errorMessage);
   }
 }
 

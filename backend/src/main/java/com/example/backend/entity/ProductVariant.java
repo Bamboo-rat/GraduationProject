@@ -52,4 +52,41 @@ public class ProductVariant {
     // Ảnh riêng cho biến thể này
     @OneToMany(mappedBy = "variant", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private List<ProductImage> variantImages = new ArrayList<>();
+
+    /**
+     * Get total stock quantity across all stores for this variant
+     * @return total stock quantity
+     */
+    public int getTotalStock() {
+        return storeProducts.stream()
+                .mapToInt(StoreProduct::getStockQuantity)
+                .sum();
+    }
+
+    /**
+     * Check if this variant is out of stock (0 quantity in all stores)
+     * @return true if out of stock
+     */
+    public boolean isOutOfStock() {
+        return getTotalStock() == 0;
+    }
+
+    /**
+     * Check if this variant has expired
+     * @return true if expiry date has passed
+     */
+    public boolean isExpired() {
+        if (expiryDate == null) {
+            return false;
+        }
+        return expiryDate.isBefore(LocalDate.now());
+    }
+
+    /**
+     * Check if this variant is available (has stock and not expired)
+     * @return true if available for purchase
+     */
+    public boolean isAvailable() {
+        return !isOutOfStock() && !isExpired();
+    }
 }

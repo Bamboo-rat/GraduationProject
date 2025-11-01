@@ -1,16 +1,19 @@
 package com.example.backend.config;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
 @EnableWebSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final HybridJwtDecoder hybridJwtDecoder;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -22,30 +25,56 @@ public class SecurityConfig {
                                 "/api/auth/login",
                                 "/api/auth/refresh",
                                 "/api/auth/logout",
-                                "/api/auth/login/customer/**",
+                                "/api/auth/customer/phone-auth/step1",
+                                "/api/auth/customer/phone-auth/step2",
                                 "/api/auth/register/**",
                                 "/api/auth/forgot-password",
                                 "/api/auth/verify-reset-otp",
                                 "/api/auth/reset-password",
                                 "/api/locations/**",
-                                "/api/banners/active"
+                                "/api/banners/active",
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**"
                         ).permitAll()
+
+                        // Authenticated endpoints
                         .requestMatchers("/api/auth/me").authenticated()
-                        .requestMatchers("/sms/**", "/api/admins/**","/api/files/**","/api/products/**", "/api/categories/**", "/api/partners/**", "/api/promotions/**").permitAll()
-                        .requestMatchers("/api/customers/**").hasAnyRole("CUSTOMER","SUPER_ADMIN", "MODERATOR", "STAFF")
-                        .requestMatchers("/api/suppliers/**").hasAnyRole("SUPER_ADMIN", "MODERATOR", "STAFF","SUPPLIER")
+
+                        // Customer-only endpoints
+                        .requestMatchers("/api/addresses/**").hasRole("CUSTOMER")
+                        .requestMatchers("/api/favorites/**").hasRole("CUSTOMER")
+
+                        // Customer endpoints (accessible by customer and admins)
+                        .requestMatchers("/api/customers/**").hasAnyRole("CUSTOMER", "SUPER_ADMIN", "MODERATOR", "STAFF")
+
+                        // Supplier endpoints (accessible by supplier and admins)
+                        .requestMatchers("/api/suppliers/**").hasAnyRole("SUPPLIER", "SUPER_ADMIN", "MODERATOR", "STAFF")
+
+                        // Admin endpoints
+                        .requestMatchers("/api/admins/**").hasAnyRole("SUPER_ADMIN", "MODERATOR", "STAFF")
+
+                        // File storage endpoints (authenticated users)
+                        .requestMatchers("/api/files/**").authenticated()
+
+                        // Product endpoints (temporary permitAll for development, should be restricted later)
+                        .requestMatchers("/api/products/**", "/api/categories/**").permitAll()
+
+                        // Partner/Promotion endpoints (temporary permitAll for development)
+                        .requestMatchers("/api/partners/**", "/api/promotions/**").permitAll()
+
+                        // SMS testing endpoints (development only - should be removed in production)
+                        .requestMatchers("/sms/**").permitAll()
+
+                        // All other requests require authentication
                         .anyRequest().authenticated())
 
-                .oauth2ResourceServer(
-                        oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .jwt(jwt -> jwt
+                                .decoder(hybridJwtDecoder)
+                                .jwtAuthenticationConverter(new HybridJwtAuthenticationConverter())
+                        )
+                );
 
         return http.build();
-    }
-
-    @Bean
-    public JwtAuthenticationConverter jwtAuthenticationConverter() {
-        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
-        converter.setJwtGrantedAuthoritiesConverter(new KeycloakRoleConverter());
-        return converter;
     }
 }

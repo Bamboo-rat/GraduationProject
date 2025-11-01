@@ -153,4 +153,13 @@ public interface StoreService {
      * @return Rejected update
      */
     StorePendingUpdateResponse rejectStoreUpdate(String updateId, String keycloakId, String adminNotes);
+
+    /**
+     * Get all products available at a specific store
+     * Returns products with their variants and stock information for this store
+     * @param storeId Store ID
+     * @param pageable Pagination parameters
+     * @return Page of products with store-specific inventory
+     */
+    Page<com.example.backend.dto.response.ProductResponse> getStoreProducts(String storeId, Pageable pageable);
 }

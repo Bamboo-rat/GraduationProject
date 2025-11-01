@@ -44,14 +44,24 @@ export default function StoreApproval() {
     try {
       setLoading(true);
       setError(null);
-      const response = await storeService.getAllStores({
+      const params: any = {
         page,
         size,
-        status: statusFilter,
-        search: debouncedSearch,
         sortBy: 'createdAt',
         sortDirection: 'DESC',
-      });
+      };
+      
+      // Only add status if it's not empty
+      if (statusFilter) {
+        params.status = statusFilter;
+      }
+      
+      // Only add search if it's not empty
+      if (debouncedSearch) {
+        params.search = debouncedSearch;
+      }
+      
+      const response = await storeService.getAllStores(params);
       setStores(response.content);
       setTotalPages(response.totalPages);
       setTotalElements(response.totalElements);
@@ -392,7 +402,7 @@ export default function StoreApproval() {
 
         {/* Detail Modal */}
         {showDetailModal && selectedStore && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center w-full h-full z-50 p-4 animate-fadeIn">
             <div className="relative top-20 mx-auto p-5 border w-[700px] shadow-lg rounded-md bg-white max-h-[80vh] overflow-y-auto">
               <div className="mt-3">
                 <h3 className="text-lg font-bold text-gray-900 mb-4">Chi tiết cửa hàng</h3>
@@ -476,7 +486,7 @@ export default function StoreApproval() {
 
         {/* Action Modal */}
         {showActionModal && selectedStore && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center w-full h-full z-50 p-4 animate-fadeIn">
             <div className="relative top-20 mx-auto p-5 border w-[500px] shadow-lg rounded-md bg-white">
               <div className="mt-3">
                 <h3 className="text-lg font-medium text-gray-900 mb-4">

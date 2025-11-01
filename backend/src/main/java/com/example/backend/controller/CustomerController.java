@@ -1,11 +1,8 @@
 package com.example.backend.controller;
 
 import com.example.backend.dto.request.CustomerUpdateRequest;
-import com.example.backend.dto.request.CustomerRequest;
-import com.example.backend.dto.request.CustomerVerifyOtpRequest;
 import com.example.backend.dto.response.ApiResponse;
 import com.example.backend.dto.response.CustomerResponse;
-import com.example.backend.dto.response.RegisterResponse;
 import com.example.backend.service.CustomerService;
 import com.example.backend.utils.JwtUtils;
 import io.swagger.v3.oas.annotations.Operation;
@@ -14,7 +11,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -39,14 +35,14 @@ public class CustomerController {
     // ===== Profile Management Endpoints (Authentication required) =====
 
     @GetMapping("/me")
-    @Operation(summary = "Get current customer profile", 
+    @Operation(summary = "Get current customer profile",
                description = "Get detailed profile information of the authenticated customer")
     public ResponseEntity<ApiResponse<CustomerResponse>> getCurrentCustomer(Authentication authentication) {
         log.info("GET /api/customers/me - Getting current customer profile");
-        
+
         Jwt jwt = (Jwt) authentication.getPrincipal();
-        String keycloakId = JwtUtils.extractKeycloakId(jwt);
-        CustomerResponse response = customerService.getCustomerInfo(keycloakId);
+        String userId = jwt.getSubject(); // For customers, subject is userId (not keycloakId)
+        CustomerResponse response = customerService.getCustomerInfo(userId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -70,8 +66,8 @@ public class CustomerController {
         log.info("PUT /api/customers/me - Updating customer profile");
 
         Jwt jwt = (Jwt) authentication.getPrincipal();
-        String keycloakId = JwtUtils.extractKeycloakId(jwt);
-        CustomerResponse response = customerService.updateProfile(keycloakId, request);
+        String userId = jwt.getSubject(); // For customers, subject is userId
+        CustomerResponse response = customerService.updateProfile(userId, request);
         return ResponseEntity.ok(ApiResponse.success("Profile updated successfully", response));
     }
 

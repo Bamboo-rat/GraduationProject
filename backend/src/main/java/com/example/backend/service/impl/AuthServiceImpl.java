@@ -2,10 +2,7 @@ package com.example.backend.service.impl;
 
 import com.example.backend.dto.request.LoginRequest;
 import com.example.backend.dto.response.*;
-import com.example.backend.entity.Admin;
-import com.example.backend.entity.Customer;
-import com.example.backend.entity.Supplier;
-import com.example.backend.entity.User;
+import com.example.backend.entity.*;
 import com.example.backend.entity.enums.AdminStatus;
 import com.example.backend.entity.enums.CustomerStatus;
 import com.example.backend.entity.enums.SupplierStatus;
@@ -13,10 +10,11 @@ import com.example.backend.exception.ErrorCode;
 import com.example.backend.exception.custom.BadRequestException;
 import com.example.backend.exception.custom.NotFoundException;
 import com.example.backend.exception.custom.UnauthorizedException;
+import com.example.backend.repository.AdminRepository;
+import com.example.backend.repository.PasswordResetTokenRepository;
+import com.example.backend.repository.SupplierRepository;
 import com.example.backend.repository.UserRepository;
-import com.example.backend.service.AuthService;
-import com.example.backend.service.KeycloakService;
-import com.example.backend.service.OtpService;
+import com.example.backend.service.*;
 import com.example.backend.utils.JwtUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,10 +38,11 @@ public class AuthServiceImpl implements AuthService {
     private final KeycloakService keycloakService;
     private final UserRepository userRepository;
     private final OtpService otpService;
-    private final com.example.backend.repository.AdminRepository adminRepository;
-    private final com.example.backend.repository.SupplierRepository supplierRepository;
-    private final com.example.backend.repository.PasswordResetTokenRepository passwordResetTokenRepository;
-    private final com.example.backend.service.EmailService emailService;
+    private final AdminRepository adminRepository;
+    private final SupplierRepository supplierRepository;
+    private final PasswordResetTokenRepository passwordResetTokenRepository;
+    private final EmailService emailService;
+    private final JwtTokenService jwtTokenService;
 
     @Override
     @Transactional(readOnly = true)
@@ -221,107 +220,67 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public String requestCustomerLoginOtp(String phoneNumber) {
-        log.info("Customer requesting login OTP for phone: {}", phoneNumber);
-
-        // Find customer by phone number
-        User user = userRepository.findByPhoneNumber(phoneNumber)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
-
-        // Check if user is customer
-        if (!(user instanceof Customer customer)) {
-            throw new BadRequestException(ErrorCode.INVALID_REQUEST, "This phone number is not registered as a customer");
-        }
-
-        // Check if customer is active
-        if (customer.getStatus() != CustomerStatus.ACTIVE) {
-            throw new UnauthorizedException(ErrorCode.ACCOUNT_INACTIVE);
-        }
-
-        // Send OTP via SMS
-        try {
-            otpService.sendOtp(phoneNumber);
-            log.info("OTP sent to phone: {}", phoneNumber);
-            return "OTP has been sent to your phone number";
-        } catch (Exception e) {
-            log.error("Failed to send OTP to phone: {}", phoneNumber, e);
-            throw new BadRequestException(ErrorCode.SMS_SEND_FAILED);
-        }
-    }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public LoginResponse verifyCustomerLoginOtp(String phoneNumber, String otp) {
-        log.info("Customer verifying login OTP for phone: {}", phoneNumber);
+        log.info("Processing customer phone authentication for: {}", phoneNumber);
 
         // Find customer by phone number
         User user = userRepository.findByPhoneNumber(phoneNumber)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
 
-        // Check if user is customer
+        // Ensure user is a customer
         if (!(user instanceof Customer customer)) {
             throw new BadRequestException(ErrorCode.INVALID_REQUEST, "This phone number is not registered as a customer");
         }
 
-        // Check if customer is active
-        if (customer.getStatus() != CustomerStatus.ACTIVE) {
-            throw new UnauthorizedException(ErrorCode.ACCOUNT_INACTIVE);
-        }
-
-        // Verify OTP
+        // Verify OTP (single verification point)
         boolean isValid = otpService.verifyOtp(phoneNumber, otp);
         if (!isValid) {
             throw new BadRequestException(ErrorCode.INVALID_OTP);
         }
-
         log.info("OTP verified successfully for phone: {}", phoneNumber);
 
-        // Create a temporary password for this login session
-        String tempPassword = UUID.randomUUID().toString();
-        
-        // Update password in Keycloak
-        try {
-            keycloakService.updateUserPassword(customer.getKeycloakId(), tempPassword);
-        } catch (Exception e) {
-            log.error("Failed to update temp password for customer: {}", customer.getUsername(), e);
-            throw new BadRequestException(ErrorCode.KEYCLOAK_PASSWORD_UPDATE_FAILED);
+        // Activate customer if this is first-time registration
+        if (customer.getStatus() == CustomerStatus.PENDING_VERIFICATION) {
+            log.info("New customer registration detected - activating account: {}", customer.getUsername());
+            customer.setStatus(CustomerStatus.ACTIVE);
+            customer.setActive(true);
+            userRepository.save(customer);
+            log.info("Customer activated successfully: userId={}", customer.getUserId());
+        } else if (customer.getStatus() != CustomerStatus.ACTIVE) {
+            // Customer exists but is not active (suspended, etc.)
+            log.warn("Login attempt for inactive customer: {}", customer.getUsername());
+            throw new UnauthorizedException(ErrorCode.ACCOUNT_INACTIVE);
         }
 
-        // Now login with username and temp password
-        LoginRequest loginRequest = new LoginRequest();
-        loginRequest.setUsername(customer.getUsername());
-        loginRequest.setPassword(tempPassword);
+        // Generate custom JWT tokens (no Keycloak needed for customers)
+        String accessToken = jwtTokenService.generateCustomerAccessToken(customer);
+        String refreshToken = jwtTokenService.generateCustomerRefreshToken(customer);
 
-        try {
-            Map<String, Object> tokenResponse = keycloakService.authenticateUser(loginRequest);
+        log.info("Customer authentication successful: {}", customer.getUsername());
 
-            return LoginResponse.builder()
-                    .userId(customer.getUserId())
-                    .username(customer.getUsername())
-                    .email(customer.getEmail())
-                    .phoneNumber(customer.getPhoneNumber())
-                    .fullName(customer.getFullName())
-                    .avatarUrl(customer.getAvatarUrl())
-                    .userType("customer")
-                    .accessToken((String) tokenResponse.get("access_token"))
-                    .refreshToken((String) tokenResponse.get("refresh_token"))
-                    .tokenType((String) tokenResponse.get("token_type"))
-                    .expiresIn((Integer) tokenResponse.get("expires_in"))
-                    .refreshExpiresIn((Integer) tokenResponse.get("refresh_expires_in"))
-                    .scope((String) tokenResponse.get("scope"))
-                    .build();
-
-        } catch (Exception e) {
-            log.error("Failed to authenticate customer after OTP verification", e);
-            throw new UnauthorizedException(ErrorCode.KEYCLOAK_AUTHENTICATION_FAILED);
-        }
+        // Build login response with custom tokens
+        return LoginResponse.builder()
+                .userId(customer.getUserId())
+                .username(customer.getUsername())
+                .email(customer.getEmail())
+                .phoneNumber(customer.getPhoneNumber())
+                .fullName(customer.getFullName())
+                .avatarUrl(customer.getAvatarUrl())
+                .userType("customer")
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .tokenType("Bearer")
+                .expiresIn(3600) // 1 hour in seconds
+                .refreshExpiresIn(604800) // 7 days in seconds
+                .build();
     }
 
     @Override
     @Transactional
-    public com.example.backend.dto.response.ResetPasswordResponse requestPasswordReset(String email, String userType) {
+    public ResetPasswordResponse requestPasswordReset(String email, String userType) {
         log.info("Step 1: Password reset OTP requested for email: {}, userType: {}", email, userType);
 
         // Validate userType
@@ -353,7 +312,7 @@ public class AuthServiceImpl implements AuthService {
         otpService.sendPasswordResetOtp(email);
         log.info("Password reset OTP sent successfully to: {}", email);
 
-        return com.example.backend.dto.response.ResetPasswordResponse.builder()
+        return ResetPasswordResponse.builder()
                 .success(true)
                 .message("A 6-digit OTP has been sent to your email. Please check your inbox.")
                 .email(email)
@@ -363,7 +322,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public com.example.backend.dto.response.ResetPasswordResponse verifyResetOtp(String email, String otp) {
+    public ResetPasswordResponse verifyResetOtp(String email, String otp) {
         log.info("Step 2: Verifying reset OTP for email: {}", email);
 
         // Verify OTP from Redis
@@ -397,7 +356,7 @@ public class AuthServiceImpl implements AuthService {
         String resetToken = UUID.randomUUID().toString();
 
         // Create token entity with 10-minute expiry
-        com.example.backend.entity.PasswordResetToken tokenEntity = new com.example.backend.entity.PasswordResetToken();
+        PasswordResetToken tokenEntity = new PasswordResetToken();
         tokenEntity.setToken(resetToken);
         tokenEntity.setKeycloakId(keycloakId);
         tokenEntity.setUserType(userType);
@@ -419,7 +378,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public com.example.backend.dto.response.ResetPasswordResponse resetPassword(String token, String newPassword, String confirmPassword) {
+    public ResetPasswordResponse resetPassword(String token, String newPassword, String confirmPassword) {
         log.info("Resetting password with token: {}", token);
 
         // Check if passwords match
@@ -428,7 +387,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         // Find and validate token
-        com.example.backend.entity.PasswordResetToken tokenEntity = passwordResetTokenRepository.findByToken(token)
+        PasswordResetToken tokenEntity = passwordResetTokenRepository.findByToken(token)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.INVALID_TOKEN, "Invalid or expired reset token"));
 
         // Check if token is valid
@@ -455,7 +414,7 @@ public class AuthServiceImpl implements AuthService {
 
         log.info("Password reset successful for user: {}", tokenEntity.getEmail());
 
-        return com.example.backend.dto.response.ResetPasswordResponse.builder()
+        return ResetPasswordResponse.builder()
                 .success(true)
                 .message("Password has been reset successfully. You can now login with your new password.")
                 .email(tokenEntity.getEmail())

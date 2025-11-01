@@ -10,7 +10,7 @@ import java.util.List;
 public interface ProductImageRepository extends JpaRepository<ProductImage, String> {
 
     // Find images by product (primary images first)
-    List<ProductImage> findByProductProductIdOrderByIsPrimaryDesc(String productProductId);
+    List<ProductImage> findByProductProductIdOrderByPrimaryDesc(String productProductId);
 
     // Delete all images of a product
     void deleteByProductProductId(String productProductId);

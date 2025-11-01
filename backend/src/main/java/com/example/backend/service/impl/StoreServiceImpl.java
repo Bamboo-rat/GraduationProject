@@ -2,22 +2,22 @@ package com.example.backend.service.impl;
 
 import com.example.backend.dto.request.StoreCreateRequest;
 import com.example.backend.dto.request.StoreUpdateRequest;
+import com.example.backend.dto.response.ProductResponse;
 import com.example.backend.dto.response.StorePendingUpdateResponse;
 import com.example.backend.dto.response.StoreResponse;
 import com.example.backend.dto.response.StoreUpdateResponse;
-import com.example.backend.entity.Admin;
-import com.example.backend.entity.Store;
-import com.example.backend.entity.StorePendingUpdate;
-import com.example.backend.entity.Supplier;
+import com.example.backend.entity.*;
 import com.example.backend.entity.enums.StoreStatus;
 import com.example.backend.entity.enums.SuggestionStatus;
 import com.example.backend.exception.ErrorCode;
 import com.example.backend.exception.custom.BadRequestException;
 import com.example.backend.exception.custom.ConflictException;
 import com.example.backend.exception.custom.NotFoundException;
+import com.example.backend.mapper.ProductMapper;
 import com.example.backend.mapper.StoreMapper;
 import com.example.backend.mapper.StorePendingUpdateMapper;
 import com.example.backend.repository.StorePendingUpdateRepository;
+import com.example.backend.repository.StoreProductRepository;
 import com.example.backend.repository.StoreRepository;
 import com.example.backend.repository.UserRepository;
 import com.example.backend.service.InAppNotificationService;
@@ -43,9 +43,11 @@ public class StoreServiceImpl implements StoreService {
 
     private final StoreRepository storeRepository;
     private final StorePendingUpdateRepository pendingUpdateRepository;
+    private final StoreProductRepository storeProductRepository;
     private final UserRepository userRepository;
     private final StorePendingUpdateMapper updateMapper;
     private final StoreMapper storeMapper;
+    private final ProductMapper productMapper;
     private final InAppNotificationService inAppNotificationService;
 
     @Override
@@ -696,5 +698,38 @@ public class StoreServiceImpl implements StoreService {
         log.info("Store update rejected: {}", updateId);
 
         return updateMapper.toResponse(pendingUpdate);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ProductResponse> getStoreProducts(String storeId, Pageable pageable) {
+        log.info("Getting products for store: {}", storeId);
+
+        // Validate store exists
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.STORE_NOT_FOUND));
+
+        // Get all store products for this store
+        List<StoreProduct> storeProducts = storeProductRepository.findByStoreStoreId(storeId);
+
+        // Get unique products from store products
+        List<Product> uniqueProducts = storeProducts.stream()
+                .map(sp -> sp.getVariant().getProduct())
+                .distinct()
+                .collect(Collectors.toList());
+
+        log.info("Found {} unique products at store {}", uniqueProducts.size(), store.getStoreName());
+
+        // Convert to ProductResponse with store-specific data
+        List<ProductResponse> productResponses = uniqueProducts.stream()
+                .map(productMapper::toResponse)
+                .collect(Collectors.toList());
+
+        // Apply pagination
+        int start = (int) pageable.getOffset();
+        int end = Math.min((start + pageable.getPageSize()), productResponses.size());
+        List<ProductResponse> paginatedList = productResponses.subList(start, end);
+
+        return new PageImpl<>(paginatedList, pageable, productResponses.size());
     }
 }

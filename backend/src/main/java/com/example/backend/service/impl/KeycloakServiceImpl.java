@@ -73,7 +73,7 @@ KeycloakServiceImpl implements KeycloakService {
             user.setEmail(email);
             user.setFirstName(firstName);
             user.setLastName(lastName);
-            user.setEmailVerified(false);
+            user.setEmailVerified(true); // Set to true to allow immediate login
 
             // Create user
             Response response = usersResource.create(user);
