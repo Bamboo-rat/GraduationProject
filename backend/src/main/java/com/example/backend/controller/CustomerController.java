@@ -27,7 +27,6 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @Tag(name = "Customer", description = "Customer profile and management endpoints (authenticated)")
 @SecurityRequirement(name = "Bearer Authentication")
-@PreAuthorize("hasRole('CUSTOMER')")
 public class CustomerController {
 
     private final CustomerService customerService;
@@ -35,6 +34,7 @@ public class CustomerController {
     // ===== Profile Management Endpoints (Authentication required) =====
 
     @GetMapping("/me")
+    @PreAuthorize("hasRole('CUSTOMER')")
     @Operation(summary = "Get current customer profile",
                description = "Get detailed profile information of the authenticated customer")
     public ResponseEntity<ApiResponse<CustomerResponse>> getCurrentCustomer(Authentication authentication) {
@@ -58,6 +58,7 @@ public class CustomerController {
     }
 
     @PutMapping("/me")
+    @PreAuthorize("hasRole('CUSTOMER')")
     @Operation(summary = "Update customer profile",
                description = "Update current customer's profile information")
     public ResponseEntity<ApiResponse<CustomerResponse>> updateProfile(

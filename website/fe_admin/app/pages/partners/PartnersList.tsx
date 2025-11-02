@@ -65,9 +65,63 @@ export default function PartnersList() {
     );
   };
 
+  const [showSuspendModal, setShowSuspendModal] = useState(false);
+  const [showUnsuspendModal, setShowUnsuspendModal] = useState(false);
+  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
+  const [suspendReason, setSuspendReason] = useState('');
+
   const handleViewDetail = (supplierId: string) => {
     // Navigate to supplier detail page (to be implemented)
     navigate(`/partners/${supplierId}`);
+  };
+
+  const handleSuspendClick = (supplier: Supplier) => {
+    setSelectedSupplier(supplier);
+    setSuspendReason('');
+    setShowSuspendModal(true);
+  };
+
+  const handleUnsuspendClick = (supplier: Supplier) => {
+    setSelectedSupplier(supplier);
+    setShowUnsuspendModal(true);
+  };
+
+  const handleSuspend = async () => {
+    if (!selectedSupplier || !suspendReason.trim()) {
+      alert('Vui lòng nhập lý do đình chỉ');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await supplierService.suspendSupplier(selectedSupplier.userId, suspendReason);
+      alert('Đã đình chỉ nhà cung cấp thành công');
+      setShowSuspendModal(false);
+      setSuspendReason('');
+      setSelectedSupplier(null);
+      await fetchSuppliers();
+    } catch (error: any) {
+      alert('Lỗi: ' + (error.message || 'Không thể đình chỉ nhà cung cấp'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUnsuspend = async () => {
+    if (!selectedSupplier) return;
+
+    try {
+      setLoading(true);
+      await supplierService.unsuspendSupplier(selectedSupplier.userId);
+      alert('Đã gỡ bỏ đình chỉ thành công');
+      setShowUnsuspendModal(false);
+      setSelectedSupplier(null);
+      await fetchSuppliers();
+    } catch (error: any) {
+      alert('Lỗi: ' + (error.message || 'Không thể gỡ bỏ đình chỉ'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading && suppliers.length === 0) {
@@ -233,6 +287,22 @@ export default function PartnersList() {
                         >
                           Xem chi tiết
                         </button>
+                        {supplier.status === 'ACTIVE' && (
+                          <button
+                            onClick={() => handleSuspendClick(supplier)}
+                            className="text-red-600 hover:text-red-900 mr-3"
+                          >
+                            Đình chỉ
+                          </button>
+                        )}
+                        {supplier.status === 'SUSPENDED' && (
+                          <button
+                            onClick={() => handleUnsuspendClick(supplier)}
+                            className="text-green-600 hover:text-green-900 mr-3"
+                          >
+                            Gỡ đình chỉ
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -314,6 +384,133 @@ export default function PartnersList() {
           )}
         </div>
       </div>
+
+      {/* Suspend Modal */}
+      {showSuspendModal && selectedSupplier && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={() => setShowSuspendModal(false)}></div>
+
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="sm:flex sm:items-start">
+                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                    <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900 mb-2">
+                      Đình chỉ nhà cung cấp
+                    </h3>
+                    <div className="mt-2">
+                      <p className="text-sm text-gray-500 mb-4">
+                        Đình chỉ <strong>{selectedSupplier.fullName}</strong> ({selectedSupplier.businessName})?
+                      </p>
+                      <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-sm text-red-700">
+                        <strong>Lưu ý:</strong> Tất cả hoạt động bán hàng sẽ bị khóa:
+                        <ul className="list-disc list-inside mt-1 ml-2">
+                          <li>Cửa hàng bị ẩn khỏi tìm kiếm</li>
+                          <li>Sản phẩm không hiển thị</li>
+                          <li>Không thể truy cập hệ thống</li>
+                        </ul>
+                      </div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Lý do đình chỉ *
+                      </label>
+                      <textarea
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                        rows={4}
+                        placeholder="Nhập lý do đình chỉ (ví dụ: Vi phạm chính sách, Sản phẩm giả...)"
+                        value={suspendReason}
+                        onChange={(e) => setSuspendReason(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  onClick={handleSuspend}
+                  disabled={loading || !suspendReason.trim()}
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-red-600 text-base font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? 'Đang xử lý...' : 'Xác nhận đình chỉ'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowSuspendModal(false);
+                    setSuspendReason('');
+                  }}
+                  disabled={loading}
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                >
+                  Hủy
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Unsuspend Modal */}
+      {showUnsuspendModal && selectedSupplier && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={() => setShowUnsuspendModal(false)}></div>
+
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="sm:flex sm:items-start">
+                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-green-100 sm:mx-0 sm:h-10 sm:w-10">
+                    <svg className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900 mb-2">
+                      Gỡ bỏ đình chỉ
+                    </h3>
+                    <div className="mt-2">
+                      <p className="text-sm text-gray-500 mb-4">
+                        Gỡ bỏ đình chỉ cho <strong>{selectedSupplier.fullName}</strong> ({selectedSupplier.businessName})?
+                      </p>
+                      <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md text-sm text-green-700">
+                        Nhà cung cấp sẽ được khôi phục hoạt động:
+                        <ul className="list-disc list-inside mt-1 ml-2">
+                          <li>Cửa hàng hiển thị trở lại</li>
+                          <li>Sản phẩm có thể bán</li>
+                          <li>Truy cập hệ thống bình thường</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  onClick={handleUnsuspend}
+                  disabled={loading}
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? 'Đang xử lý...' : 'Xác nhận gỡ đình chỉ'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowUnsuspendModal(false)}
+                  disabled={loading}
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                >
+                  Hủy
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }

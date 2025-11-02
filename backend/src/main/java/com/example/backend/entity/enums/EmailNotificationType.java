@@ -15,6 +15,16 @@ public enum EmailNotificationType {
     SUPPLIER_REJECTION,
 
     /**
+     * Account suspended notification
+     */
+    ACCOUNT_SUSPENDED,
+
+    /**
+     * Account activated notification
+     */
+    ACCOUNT_ACTIVATED,
+
+    /**
      * Order confirmation notification
      */
     ORDER_CONFIRMATION,

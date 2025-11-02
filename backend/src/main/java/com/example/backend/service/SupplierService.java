@@ -150,6 +150,36 @@ public interface SupplierService {
      */
     SupplierResponse setActive(String userId, boolean active);
 
+    /**
+     * Suspend supplier (by admin) - Block all operations
+     * @param userId User ID (String UUID)
+     * @param reason Reason for suspension
+     * @return Updated supplier response
+     */
+    SupplierResponse suspendSupplier(String userId, String reason);
+
+    /**
+     * Unsuspend supplier (by admin) - Restore to ACTIVE
+     * @param userId User ID (String UUID)
+     * @return Updated supplier response
+     */
+    SupplierResponse unsuspendSupplier(String userId);
+
+    /**
+     * Pause operations (by supplier) - Self-pause temporarily
+     * @param keycloakId Keycloak user ID
+     * @param reason Reason for pausing (optional)
+     * @return Updated supplier response
+     */
+    SupplierResponse pauseOperations(String keycloakId, String reason);
+
+    /**
+     * Resume operations (by supplier) - Resume from PAUSE
+     * @param keycloakId Keycloak user ID
+     * @return Updated supplier response
+     */
+    SupplierResponse resumeOperations(String keycloakId);
+
     // ========== BUSINESS INFORMATION UPDATE REQUESTS ==========
 
     /**

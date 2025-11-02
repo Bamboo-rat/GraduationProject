@@ -167,6 +167,60 @@ public class SupplierController {
         return ResponseEntity.ok(ApiResponse.success("Commission rate updated successfully", response));
     }
 
+    @PatchMapping("/{userId}/suspend")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR')")
+    @Operation(summary = "Suspend supplier (Admin only)",
+               description = "Suspend supplier for policy violation. Blocks all operations including stores, products, and system access.")
+    public ResponseEntity<ApiResponse<SupplierResponse>> suspendSupplier(
+            @PathVariable String userId,
+            @RequestParam String reason) {
+        log.info("PATCH /api/suppliers/{}/suspend - Admin suspending supplier. Reason: {}", userId, reason);
+
+        SupplierResponse response = supplierService.suspendSupplier(userId, reason);
+        return ResponseEntity.ok(ApiResponse.success("Supplier suspended successfully", response));
+    }
+
+    @PatchMapping("/{userId}/unsuspend")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR')")
+    @Operation(summary = "Unsuspend supplier (Admin only)",
+               description = "Remove suspension and restore supplier to ACTIVE status")
+    public ResponseEntity<ApiResponse<SupplierResponse>> unsuspendSupplier(@PathVariable String userId) {
+        log.info("PATCH /api/suppliers/{}/unsuspend - Admin unsuspending supplier", userId);
+
+        SupplierResponse response = supplierService.unsuspendSupplier(userId);
+        return ResponseEntity.ok(ApiResponse.success("Supplier unsuspended successfully", response));
+    }
+
+    @PatchMapping("/me/pause")
+    @PreAuthorize("hasRole('SUPPLIER')")
+    @Operation(summary = "Pause operations (Supplier)",
+               description = "Temporarily pause business operations. Stores hidden from search, no new orders accepted, but backend access retained.")
+    public ResponseEntity<ApiResponse<SupplierResponse>> pauseOperations(
+            Authentication authentication,
+            @RequestParam(required = false) String reason) {
+        log.info("PATCH /api/suppliers/me/pause - Supplier pausing operations. Reason: {}", reason);
+
+        Jwt jwt = (Jwt) authentication.getPrincipal();
+        String keycloakId = JwtUtils.extractKeycloakId(jwt);
+
+        SupplierResponse response = supplierService.pauseOperations(keycloakId, reason);
+        return ResponseEntity.ok(ApiResponse.success("Operations paused successfully", response));
+    }
+
+    @PatchMapping("/me/resume")
+    @PreAuthorize("hasRole('SUPPLIER')")
+    @Operation(summary = "Resume operations (Supplier)",
+               description = "Resume business operations from PAUSE status")
+    public ResponseEntity<ApiResponse<SupplierResponse>> resumeOperations(Authentication authentication) {
+        log.info("PATCH /api/suppliers/me/resume - Supplier resuming operations");
+
+        Jwt jwt = (Jwt) authentication.getPrincipal();
+        String keycloakId = JwtUtils.extractKeycloakId(jwt);
+
+        SupplierResponse response = supplierService.resumeOperations(keycloakId);
+        return ResponseEntity.ok(ApiResponse.success("Operations resumed successfully", response));
+    }
+
     // ===== BUSINESS INFO UPDATE ENDPOINTS =====
 
     @PostMapping("/me/business-info-update")

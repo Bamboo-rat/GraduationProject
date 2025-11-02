@@ -170,9 +170,22 @@ public class CustomerServiceImpl implements CustomerService {
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
 
         customer.setActive(active);
+
+        // Sync status with active flag
+        if (active) {
+            // If activating and not in a pending state, set to ACTIVE
+            if (customer.getStatus() != CustomerStatus.PENDING_VERIFICATION) {
+                customer.setStatus(CustomerStatus.ACTIVE);
+            }
+        } else {
+            // If deactivating, set to SUSPENDED
+            customer.setStatus(CustomerStatus.SUSPENDED);
+        }
+
         customer = customerRepository.save(customer);
 
-        log.info("Customer active status updated: userId={}, active={}", userId, active);
+        log.info("Customer active status updated: userId={}, active={}, status={}",
+                userId, active, customer.getStatus());
         return customerMapper.toResponse(customer);
     }
 

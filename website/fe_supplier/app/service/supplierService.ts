@@ -257,6 +257,35 @@ class SupplierService {
   }
 
   /**
+   * Pause operations (supplier self-pause)
+   */
+  async pauseOperations(reason?: string): Promise<SupplierResponse> {
+    try {
+      const params = reason ? `?reason=${encodeURIComponent(reason)}` : '';
+      const response = await axiosInstance.patch<ApiResponse<SupplierResponse>>(
+        `/suppliers/me/pause${params}`
+      );
+      return response.data.data;
+    } catch (error: any) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Resume operations (resume from PAUSE)
+   */
+  async resumeOperations(): Promise<SupplierResponse> {
+    try {
+      const response = await axiosInstance.patch<ApiResponse<SupplierResponse>>(
+        '/suppliers/me/resume'
+      );
+      return response.data.data;
+    } catch (error: any) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
    * Handle API errors
    */
   private handleError(error: any): Error {

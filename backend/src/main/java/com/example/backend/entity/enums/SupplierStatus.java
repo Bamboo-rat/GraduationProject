@@ -13,7 +13,9 @@ import lombok.Getter;
  * 5. ACTIVE - Approved and can operate
  */
 @Getter
-public enum SupplierStatus {
+public enum
+
+SupplierStatus {
     PENDING_VERIFICATION("Chờ xác thực", "Supplier is pending email verification"),
     PENDING_DOCUMENTS("Chờ tải tài liệu", "Supplier is pending document upload"),
     PENDING_STORE_INFO("Chờ thông tin cửa hàng", "Supplier is pending store information"),

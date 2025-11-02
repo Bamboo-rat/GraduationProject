@@ -21,7 +21,6 @@ export default [
 
     // Products Management
     route("products/list-products", "routes/products/list-products.tsx"),
-    route("products/review", "routes/products/review.tsx"),
     route("products/category-suggestions", "routes/products/category-suggestions.tsx"),
     route("products/categories", "routes/products/categories.tsx"),
 

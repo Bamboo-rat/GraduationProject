@@ -1,0 +1,226 @@
+package com.example.backend.controller;
+
+import com.example.backend.dto.response.ApiResponse;
+import com.example.backend.entity.CustomerViolation;
+import com.example.backend.entity.CustomerSuspensionHistory;
+import com.example.backend.repository.CustomerViolationRepository;
+import com.example.backend.repository.CustomerSuspensionHistoryRepository;
+import com.example.backend.service.AutomatedSuspensionService;
+import com.example.backend.service.AutomatedSuspensionService.ViolationSummary;
+import com.example.backend.utils.JwtUtils;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.web.bind.annotation.*;
+
+/**
+ * Controller for managing customer violations and automated suspensions
+ * Admin-only access
+ */
+@Slf4j
+@RestController
+@RequestMapping("/api/violations")
+@RequiredArgsConstructor
+@Tag(name = "Violation Management", description = "Customer violation tracking and suspension management (admin only)")
+@SecurityRequirement(name = "Bearer Authentication")
+@PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF')")
+public class ViolationManagementController {
+
+    private final AutomatedSuspensionService suspensionService;
+    private final CustomerViolationRepository violationRepository;
+    private final CustomerSuspensionHistoryRepository suspensionHistoryRepository;
+
+    // ========== VIOLATION MANAGEMENT ==========
+
+    @GetMapping("/customer/{customerId}")
+    @Operation(summary = "Get all violations for a customer",
+               description = "Get paginated list of all violations for a specific customer")
+    public ResponseEntity<ApiResponse<Page<CustomerViolation>>> getCustomerViolations(
+            @PathVariable String customerId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        log.info("GET /api/violations/customer/{} - Getting violations", customerId);
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<CustomerViolation> violations = violationRepository
+                .findByCustomerUserIdOrderByCreatedAtDesc(customerId, pageable);
+
+        return ResponseEntity.ok(ApiResponse.success(violations));
+    }
+
+    @GetMapping("/customer/{customerId}/summary")
+    @Operation(summary = "Get violation summary for a customer",
+               description = "Get comprehensive violation statistics and current status")
+    public ResponseEntity<ApiResponse<ViolationSummary>> getViolationSummary(
+            @PathVariable String customerId) {
+        log.info("GET /api/violations/customer/{}/summary - Getting violation summary", customerId);
+
+        ViolationSummary summary = suspensionService.getViolationSummary(customerId);
+        return ResponseEntity.ok(ApiResponse.success(summary));
+    }
+
+    @GetMapping("/pending-review")
+    @Operation(summary = "Get all violations pending admin review",
+               description = "Get violations that require manual admin review")
+    public ResponseEntity<ApiResponse<Page<CustomerViolation>>> getPendingReview(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        log.info("GET /api/violations/pending-review - Getting pending violations");
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<CustomerViolation> violations = violationRepository.findAllPendingReview(pageable);
+
+        return ResponseEntity.ok(ApiResponse.success(violations));
+    }
+
+    @PostMapping("/{violationId}/resolve")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR')")
+    @Operation(summary = "Resolve a violation",
+               description = "Mark violation as resolved with admin notes")
+    public ResponseEntity<ApiResponse<String>> resolveViolation(
+            @PathVariable String violationId,
+            @RequestParam String notes,
+            Authentication authentication) {
+        log.info("POST /api/violations/{}/resolve - Resolving violation", violationId);
+
+        Jwt jwt = (Jwt) authentication.getPrincipal();
+        String adminId = JwtUtils.extractKeycloakId(jwt);
+
+        suspensionService.resolveViolation(violationId, adminId, notes);
+
+        return ResponseEntity.ok(ApiResponse.success("Violation resolved successfully"));
+    }
+
+    // ========== SUSPENSION HISTORY ==========
+
+    @GetMapping("/suspensions/customer/{customerId}")
+    @Operation(summary = "Get suspension history for a customer",
+               description = "Get all suspension history records for a specific customer")
+    public ResponseEntity<ApiResponse<Page<CustomerSuspensionHistory>>> getSuspensionHistory(
+            @PathVariable String customerId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        log.info("GET /api/violations/suspensions/customer/{} - Getting suspension history", customerId);
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<CustomerSuspensionHistory> history = suspensionHistoryRepository
+                .findByCustomerUserIdOrderByCreatedAtDesc(customerId, pageable);
+
+        return ResponseEntity.ok(ApiResponse.success(history));
+    }
+
+    // ========== MANUAL ACTIONS ==========
+
+    @PostMapping("/customer/{customerId}/warn")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR')")
+    @Operation(summary = "Issue manual warning to customer",
+               description = "Manually issue a warning to a customer")
+    public ResponseEntity<ApiResponse<String>> issueWarning(
+            @PathVariable String customerId,
+            @RequestParam String reason) {
+        log.info("POST /api/violations/customer/{}/warn - Issuing warning", customerId);
+
+        suspensionService.issueWarning(customerId, reason,
+                com.example.backend.entity.enums.ViolationType.POLICY_VIOLATION);
+
+        return ResponseEntity.ok(ApiResponse.success("Warning issued successfully"));
+    }
+
+    @PostMapping("/customer/{customerId}/suspend")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR')")
+    @Operation(summary = "Manually suspend customer",
+               description = "Manually apply temporary suspension to a customer")
+    public ResponseEntity<ApiResponse<String>> suspendCustomer(
+            @PathVariable String customerId,
+            @RequestParam int durationDays,
+            @RequestParam String reason) {
+        log.info("POST /api/violations/customer/{}/suspend - Suspending for {} days", customerId, durationDays);
+
+        suspensionService.applySuspension(customerId, durationDays, reason,
+                com.example.backend.entity.enums.ViolationType.POLICY_VIOLATION);
+
+        return ResponseEntity.ok(ApiResponse.success(
+                String.format("Customer suspended for %d days", durationDays)));
+    }
+
+    @PostMapping("/customer/{customerId}/ban")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @Operation(summary = "Permanently ban customer",
+               description = "Permanently ban a customer (SUPER_ADMIN only)")
+    public ResponseEntity<ApiResponse<String>> banCustomer(
+            @PathVariable String customerId,
+            @RequestParam String reason) {
+        log.info("POST /api/violations/customer/{}/ban - Permanently banning", customerId);
+
+        suspensionService.applyPermanentBan(customerId, reason,
+                com.example.backend.entity.enums.ViolationType.POLICY_VIOLATION);
+
+        return ResponseEntity.ok(ApiResponse.success("Customer permanently banned"));
+    }
+
+    @PostMapping("/record/comment")
+    @Operation(summary = "Record a comment for tracking",
+               description = "Record a comment/review for spam detection")
+    public ResponseEntity<ApiResponse<String>> recordComment(
+            @RequestParam String customerId,
+            @RequestParam String commentId,
+            @RequestParam String commentType) {
+        log.debug("Recording comment {} for customer {}", commentId, customerId);
+
+        suspensionService.recordComment(customerId, commentId, commentType);
+
+        return ResponseEntity.ok(ApiResponse.success("Comment recorded"));
+    }
+
+    @PostMapping("/record/violating-comment")
+    @Operation(summary = "Record a violating comment",
+               description = "Record a comment containing banned keywords or reported")
+    public ResponseEntity<ApiResponse<String>> recordViolatingComment(
+            @RequestParam String customerId,
+            @RequestParam String commentId,
+            @RequestParam String reason) {
+        log.warn("Recording violating comment {} for customer {}", commentId, customerId);
+
+        suspensionService.recordViolatingComment(customerId, commentId, reason);
+
+        return ResponseEntity.ok(ApiResponse.success("Violating comment recorded"));
+    }
+
+    @PostMapping("/record/cancellation")
+    @Operation(summary = "Record an order cancellation",
+               description = "Record an order cancellation for tracking")
+    public ResponseEntity<ApiResponse<String>> recordCancellation(
+            @RequestParam String customerId,
+            @RequestParam String orderId,
+            @RequestParam boolean customerFault) {
+        log.info("Recording cancellation for order {} by customer {}", orderId, customerId);
+
+        suspensionService.recordOrderCancellation(customerId, orderId, customerFault);
+
+        return ResponseEntity.ok(ApiResponse.success("Cancellation recorded"));
+    }
+
+    @PostMapping("/record/report")
+    @Operation(summary = "Record a community report",
+               description = "Record a community report against a customer")
+    public ResponseEntity<ApiResponse<String>> recordReport(
+            @RequestParam String customerId,
+            @RequestParam String reportedBy,
+            @RequestParam String reason,
+            @RequestParam String referenceId) {
+        log.warn("Recording community report for customer {} by {}", customerId, reportedBy);
+
+        suspensionService.recordCommunityReport(customerId, reportedBy, reason, referenceId);
+
+        return ResponseEntity.ok(ApiResponse.success("Report recorded"));
+    }
+}

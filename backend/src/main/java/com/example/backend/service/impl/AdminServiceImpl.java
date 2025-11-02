@@ -249,17 +249,28 @@ public class AdminServiceImpl implements AdminService {
 
         log.info("Updating admin role from {} to {}", admin.getRole(), role);
 
+        // Get old role before updating
+        Role oldRole = admin.getRole();
+
         // Update role in database
         admin.setRole(role);
         admin = adminRepository.save(admin);
 
-        // Update role in Keycloak
+        // Update role in Keycloak: Remove old role, then assign new role
         try {
-            String keycloakRoleName = toKeycloakRoleName(role.name());
-            keycloakService.assignRoleToUser(admin.getKeycloakId(), keycloakRoleName);
-            log.info("Keycloak role updated successfully for keycloakId: {}", admin.getKeycloakId());
+            String oldKeycloakRoleName = toKeycloakRoleName(oldRole.name());
+            String newKeycloakRoleName = toKeycloakRoleName(role.name());
+
+            // Remove old role first to prevent role accumulation
+            keycloakService.removeRoleFromUser(admin.getKeycloakId(), oldKeycloakRoleName);
+            log.info("Removed old Keycloak role {} from user {}", oldKeycloakRoleName, admin.getKeycloakId());
+
+            // Assign new role
+            keycloakService.assignRoleToUser(admin.getKeycloakId(), newKeycloakRoleName);
+            log.info("Assigned new Keycloak role {} to user {}", newKeycloakRoleName, admin.getKeycloakId());
+
         } catch (Exception e) {
-            log.error("Failed to update Keycloak role: {}", admin.getKeycloakId(), e);
+            log.error("Failed to update Keycloak role for user {}: {}", admin.getKeycloakId(), e.getMessage(), e);
             // Don't fail the operation, log the error
         }
 

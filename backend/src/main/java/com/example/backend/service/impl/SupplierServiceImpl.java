@@ -631,10 +631,12 @@ public class SupplierServiceImpl implements SupplierService {
 
         supplier.setStatus(status);
 
-        // If approved, activate account and update stores
+        // Sync active flag with status
+        // Only ACTIVE status should have active=true
+        supplier.setActive(status == SupplierStatus.ACTIVE);
+
+        // If approved, activate all pending stores
         if (status == SupplierStatus.ACTIVE) {
-            supplier.setActive(true);
-            // Activate all pending stores
             supplier.getStores().forEach(store -> {
                 if (store.getStatus() == StoreStatus.PENDING) {
                     store.setStatus(StoreStatus.ACTIVE);
@@ -666,8 +668,216 @@ public class SupplierServiceImpl implements SupplierService {
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
 
         supplier.setActive(active);
+
+        // Sync status with active flag
+        if (active) {
+            // If activating and not in a pending/rejected state, set to ACTIVE
+            if (supplier.getStatus() != SupplierStatus.PENDING_VERIFICATION &&
+                supplier.getStatus() != SupplierStatus.PENDING_DOCUMENTS &&
+                supplier.getStatus() != SupplierStatus.PENDING_STORE_INFO &&
+                supplier.getStatus() != SupplierStatus.PENDING_APPROVAL &&
+                supplier.getStatus() != SupplierStatus.REJECTED) {
+                supplier.setStatus(SupplierStatus.ACTIVE);
+
+                // Reactivate suspended stores
+                supplier.getStores().forEach(store -> {
+                    if (store.getStatus() == StoreStatus.SUSPENDED) {
+                        store.setStatus(StoreStatus.ACTIVE);
+                    }
+                });
+            }
+        } else {
+            // If deactivating, set to SUSPENDED
+            supplier.setStatus(SupplierStatus.SUSPENDED);
+
+            // Suspend all active stores
+            supplier.getStores().forEach(store -> {
+                if (store.getStatus() == StoreStatus.ACTIVE) {
+                    store.setStatus(StoreStatus.SUSPENDED);
+                }
+            });
+        }
+
         supplier = supplierRepository.save(supplier);
-        
+
+        return supplierMapper.toResponse(supplier);
+    }
+
+    @Override
+    @Transactional
+    public SupplierResponse suspendSupplier(String userId, String reason) {
+        log.info("Suspending supplier: userId={}, reason={}", userId, reason);
+
+        Supplier supplier = supplierRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+
+        if (supplier.getStatus() == SupplierStatus.SUSPENDED) {
+            throw new BadRequestException(ErrorCode.SUPPLIER_ALREADY_SUSPENDED);
+        }
+
+        // Set to SUSPENDED - Block all operations
+        supplier.setStatus(SupplierStatus.SUSPENDED);
+        supplier.setActive(false);
+
+        // Suspend all stores
+        supplier.getStores().forEach(store -> {
+            if (store.getStatus() == StoreStatus.ACTIVE) {
+                store.setStatus(StoreStatus.SUSPENDED);
+                log.info("Store {} suspended due to supplier suspension", store.getStoreId());
+            }
+        });
+
+        supplier = supplierRepository.save(supplier);
+
+        // Send notification
+        String notificationContent = String.format(
+                "Tài khoản của bạn đã bị đình chỉ. Lý do: %s. Vui lòng liên hệ admin để được hỗ trợ.",
+                reason != null ? reason : "Vi phạm chính sách");
+
+        inAppNotificationService.createNotificationForUser(
+                supplier.getUserId(),
+                NotificationType.SUPPLIER_SUSPENDED,
+                notificationContent,
+                null
+        );
+
+        notificationService.queueNotification(
+                EmailNotificationType.ACCOUNT_SUSPENDED,
+                supplier.getEmail(),
+                "SaveFood - Tài khoản bị đình chỉ",
+                notificationContent,
+                supplier.getUserId()
+        );
+
+        log.info("Supplier {} suspended successfully", userId);
+        return supplierMapper.toResponse(supplier);
+    }
+
+    @Override
+    @Transactional
+    public SupplierResponse unsuspendSupplier(String userId) {
+        log.info("Unsuspending supplier: userId={}", userId);
+
+        Supplier supplier = supplierRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+
+        if (supplier.getStatus() != SupplierStatus.SUSPENDED) {
+            throw new BadRequestException(ErrorCode.SUPPLIER_NOT_SUSPENDED);
+        }
+
+        // Restore to ACTIVE
+        supplier.setStatus(SupplierStatus.ACTIVE);
+        supplier.setActive(true);
+
+        // Reactivate stores
+        supplier.getStores().forEach(store -> {
+            if (store.getStatus() == StoreStatus.SUSPENDED) {
+                store.setStatus(StoreStatus.ACTIVE);
+                log.info("Store {} reactivated after supplier unsuspension", store.getStoreId());
+            }
+        });
+
+        supplier = supplierRepository.save(supplier);
+
+        // Send notification
+        String notificationContent = "Tài khoản của bạn đã được gỡ bỏ lệnh đình chỉ và hoạt động trở lại bình thường.";
+
+        inAppNotificationService.createNotificationForUser(
+                supplier.getUserId(),
+                NotificationType.SUPPLIER_UNSUSPENDED,
+                notificationContent,
+                null
+        );
+
+        notificationService.queueNotification(
+                EmailNotificationType.ACCOUNT_ACTIVATED,
+                supplier.getEmail(),
+                "SaveFood - Tài khoản đã được kích hoạt lại",
+                notificationContent,
+                supplier.getUserId()
+        );
+
+        log.info("Supplier {} unsuspended successfully", userId);
+        return supplierMapper.toResponse(supplier);
+    }
+
+    @Override
+    @Transactional
+    public SupplierResponse pauseOperations(String keycloakId, String reason) {
+        log.info("Supplier pausing operations: keycloakId={}, reason={}", keycloakId, reason);
+
+        Supplier supplier = supplierRepository.findByKeycloakId(keycloakId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+
+        if (supplier.getStatus() != SupplierStatus.ACTIVE) {
+            throw new BadRequestException(ErrorCode.SUPPLIER_NOT_ACTIVE);
+        }
+
+        // Set to PAUSE - Partial restrictions
+        supplier.setStatus(SupplierStatus.PAUSE);
+        // Keep active = true to allow backend access
+
+        // Hide stores from public search but keep accessible in backend
+        supplier.getStores().forEach(store -> {
+            if (store.getStatus() == StoreStatus.ACTIVE) {
+                // Note: Store will be hidden in public APIs through status check
+                log.info("Store {} hidden from public due to supplier pause", store.getStoreId());
+            }
+        });
+
+        supplier = supplierRepository.save(supplier);
+
+        // Send notification
+        String notificationContent = String.format(
+                "Bạn đã tạm dừng hoạt động kinh doanh. %s. Cửa hàng sẽ được ẩn khỏi tìm kiếm và không nhận đơn mới.",
+                reason != null ? "Lý do: " + reason : "");
+
+        inAppNotificationService.createNotificationForUser(
+                supplier.getUserId(),
+                NotificationType.SUPPLIER_PAUSED,
+                notificationContent,
+                null
+        );
+
+        log.info("Supplier {} paused operations successfully", keycloakId);
+        return supplierMapper.toResponse(supplier);
+    }
+
+    @Override
+    @Transactional
+    public SupplierResponse resumeOperations(String keycloakId) {
+        log.info("Supplier resuming operations: keycloakId={}", keycloakId);
+
+        Supplier supplier = supplierRepository.findByKeycloakId(keycloakId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+
+        if (supplier.getStatus() != SupplierStatus.PAUSE) {
+            throw new BadRequestException(ErrorCode.SUPPLIER_NOT_PAUSED);
+        }
+
+        // Restore to ACTIVE
+        supplier.setStatus(SupplierStatus.ACTIVE);
+
+        // Restore stores visibility
+        supplier.getStores().forEach(store -> {
+            if (store.getStatus() == StoreStatus.ACTIVE) {
+                log.info("Store {} restored to public visibility", store.getStoreId());
+            }
+        });
+
+        supplier = supplierRepository.save(supplier);
+
+        // Send notification
+        String notificationContent = "Bạn đã tiếp tục hoạt động kinh doanh. Cửa hàng và sản phẩm đã được hiển thị trở lại.";
+
+        inAppNotificationService.createNotificationForUser(
+                supplier.getUserId(),
+                NotificationType.SUPPLIER_RESUMED,
+                notificationContent,
+                null
+        );
+
+        log.info("Supplier {} resumed operations successfully", keycloakId);
         return supplierMapper.toResponse(supplier);
     }
 

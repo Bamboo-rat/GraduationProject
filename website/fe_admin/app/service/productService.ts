@@ -5,7 +5,7 @@ export interface Product {
   productId: string;
   name: string;
   description: string;
-  status: 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'SOLD_OUT';
+  status: 'ACTIVE' | 'INACTIVE' | 'SOLD_OUT' | 'EXPIRED' | 'SUSPENDED' | 'DELETED';
   categoryId: string;
   categoryName: string;
   supplierId: string;
@@ -60,15 +60,15 @@ class ProductService {
     return response.data;
   }
 
-  async approveProduct(id: string): Promise<ApiResponse<Product>> {
-    const response = await apiClient.patch(`${this.BASE_URL}/${id}/approve`);
+  async suspendProduct(id: string, reason: string): Promise<ApiResponse<Product>> {
+    const response = await apiClient.patch(`${this.BASE_URL}/${id}/suspend`, null, {
+      params: { reason }
+    });
     return response.data;
   }
 
-  async rejectProduct(id: string, reason: string): Promise<ApiResponse<Product>> {
-    const response = await apiClient.patch(`${this.BASE_URL}/${id}/reject`, null, {
-      params: { reason }
-    });
+  async unsuspendProduct(id: string): Promise<ApiResponse<Product>> {
+    const response = await apiClient.patch(`${this.BASE_URL}/${id}/unsuspend`);
     return response.data;
   }
 }

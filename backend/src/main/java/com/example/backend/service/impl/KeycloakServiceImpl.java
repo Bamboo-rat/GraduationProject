@@ -129,6 +129,26 @@ KeycloakServiceImpl implements KeycloakService {
     }
 
     @Override
+    public void removeRoleFromUser(String keycloakId, String roleName) {
+        try (Keycloak keycloak = getKeycloakAdminClient()) {
+            RealmResource realmResource = keycloak.realm(realm);
+            UserResource userResource = realmResource.users().get(keycloakId);
+
+            // Get realm role (not client role)
+            RoleRepresentation role = realmResource.roles().get(roleName).toRepresentation();
+
+            // Remove realm role
+            userResource.roles().realmLevel().remove(Collections.singletonList(role));
+
+            log.info("Successfully removed realm role {} from user {}", roleName, keycloakId);
+
+        } catch (Exception e) {
+            log.error("Error removing role '{}' from user {} in Keycloak: {}", roleName, keycloakId, e.getMessage());
+            throw new KeycloakException(ErrorCode.KEYCLOAK_ROLE_ASSIGNMENT_FAILED);
+        }
+    }
+
+    @Override
     public Map<String, Object> authenticateUser(LoginRequest request) {
         try {
             RestTemplate restTemplate = new RestTemplate();

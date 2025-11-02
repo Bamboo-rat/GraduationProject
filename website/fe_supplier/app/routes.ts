@@ -8,6 +8,7 @@ export default [
   route("forgot-password", "routes/profile/forgot-password.tsx"),
   route("reset-password", "routes/profile/reset-password.tsx"),
   route("my-profile", "routes/profile/my-profile.tsx"),
+  route("profile/pause-operations", "routes/profile/pause-operations.tsx"),
 
   // Dashboard routes
   route("dashboard/overview", "routes/dashboard/overview.tsx"),

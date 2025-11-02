@@ -25,6 +25,13 @@ public interface KeycloakService {
     void assignRoleToUser(String keycloakId, String roleName);
 
     /**
+     * Remove role from user in Keycloak
+     * @param keycloakId Keycloak user ID
+     * @param roleName Role name to remove
+     */
+    void removeRoleFromUser(String keycloakId, String roleName);
+
+    /**
      * Authenticate user and get access token
      * @param request Login request
      * @return Token response with access token, refresh token, etc.

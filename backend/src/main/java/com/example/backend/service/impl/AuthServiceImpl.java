@@ -249,9 +249,10 @@ public class AuthServiceImpl implements AuthService {
             customer.setActive(true);
             userRepository.save(customer);
             log.info("Customer activated successfully: userId={}", customer.getUserId());
-        } else if (customer.getStatus() != CustomerStatus.ACTIVE) {
-            // Customer exists but is not active (suspended, etc.)
-            log.warn("Login attempt for inactive customer: {}", customer.getUsername());
+        } else if (customer.getStatus() != CustomerStatus.ACTIVE || !customer.isActive()) {
+            // Customer exists but is not active (suspended, etc.) or account is disabled
+            log.warn("Login attempt for inactive customer: username={}, status={}, active={}",
+                    customer.getUsername(), customer.getStatus(), customer.isActive());
             throw new UnauthorizedException(ErrorCode.ACCOUNT_INACTIVE);
         }
 

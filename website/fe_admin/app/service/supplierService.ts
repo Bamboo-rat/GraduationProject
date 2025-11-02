@@ -34,8 +34,8 @@ export type SupplierStatus =
   | 'PENDING_STORE_INFO'     // Chờ thông tin cửa hàng
   | 'PENDING_APPROVAL'       // Chờ admin duyệt
   | 'ACTIVE'                 // Đã kích hoạt
-  | 'INACTIVE'               // Ngừng hoạt động
-  | 'SUSPENDED'              // Bị tạm khóa
+  | 'PAUSE'                  // Tạm dừng (supplier tự dừng)
+  | 'SUSPENDED'              // Bị đình chỉ (admin khóa)
   | 'REJECTED';              // Bị từ chối
 
 export interface StoreBasicInfo {
@@ -215,6 +215,37 @@ class SupplierService {
   }
 
   /**
+   * Suspend supplier (Admin only)
+   */
+  async suspendSupplier(userId: string, reason: string): Promise<Supplier> {
+    try {
+      const params = `?reason=${encodeURIComponent(reason)}`;
+      const response = await axiosInstance.patch<ApiResponse<Supplier>>(
+        `${this.baseUrl}/${userId}/suspend${params}`
+      );
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Error suspending supplier:', error);
+      throw new Error(error.response?.data?.message || 'Không thể đình chỉ nhà cung cấp');
+    }
+  }
+
+  /**
+   * Unsuspend supplier (Admin only)
+   */
+  async unsuspendSupplier(userId: string): Promise<Supplier> {
+    try {
+      const response = await axiosInstance.patch<ApiResponse<Supplier>>(
+        `${this.baseUrl}/${userId}/unsuspend`
+      );
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Error unsuspending supplier:', error);
+      throw new Error(error.response?.data?.message || 'Không thể gỡ bỏ đình chỉ nhà cung cấp');
+    }
+  }
+
+  /**
    * Get supplier status label in Vietnamese
    */
   getStatusLabel(status: SupplierStatus): string {
@@ -224,8 +255,8 @@ class SupplierService {
       PENDING_STORE_INFO: 'Chờ thông tin cửa hàng',
       PENDING_APPROVAL: 'Chờ duyệt',
       ACTIVE: 'Đang hoạt động',
-      INACTIVE: 'Ngừng hoạt động',
-      SUSPENDED: 'Bị tạm khóa',
+      PAUSE: 'Tạm dừng',
+      SUSPENDED: 'Bị đình chỉ',
       REJECTED: 'Bị từ chối',
     };
     return labels[status] || status;
@@ -241,7 +272,7 @@ class SupplierService {
       PENDING_STORE_INFO: 'bg-yellow-100 text-yellow-800',
       PENDING_APPROVAL: 'bg-orange-100 text-orange-800',
       ACTIVE: 'bg-green-100 text-green-800',
-      INACTIVE: 'bg-gray-100 text-gray-800',
+      PAUSE: 'bg-yellow-100 text-yellow-800',
       SUSPENDED: 'bg-red-100 text-red-800',
       REJECTED: 'bg-red-100 text-red-800',
     };

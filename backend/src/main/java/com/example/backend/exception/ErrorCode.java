@@ -46,6 +46,12 @@ public enum ErrorCode {
     TAX_CODE_ALREADY_EXISTS("3006", "Tax code already exists", "Mã số thuế này đã được đăng ký", HttpStatus.CONFLICT),
     SUPPLIER_NOT_APPROVED("3007", "Supplier not yet approved", "Tài khoản nhà cung cấp của bạn chưa được duyệt", HttpStatus.FORBIDDEN),
     REGISTRATION_FAILED("3008", "Registration failed", "Đăng ký tài khoản thất bại", HttpStatus.BAD_REQUEST),
+    INVALID_STATUS_TRANSITION("3009", "Invalid status transition", "Không thể chuyển đổi trạng thái này", HttpStatus.BAD_REQUEST),
+    SUPPLIER_ALREADY_SUSPENDED("3010", "Supplier is already suspended", "Nhà cung cấp đã bị đình chỉ", HttpStatus.BAD_REQUEST),
+    SUPPLIER_NOT_SUSPENDED("3011", "Supplier is not suspended", "Nhà cung cấp không ở trạng thái đình chỉ", HttpStatus.BAD_REQUEST),
+    SUPPLIER_NOT_ACTIVE("3012", "Supplier is not active", "Nhà cung cấp không ở trạng thái hoạt động", HttpStatus.BAD_REQUEST),
+    SUPPLIER_NOT_PAUSED("3013", "Supplier is not paused", "Nhà cung cấp không ở trạng thái tạm dừng", HttpStatus.BAD_REQUEST),
+    CANNOT_SELF_UNSUSPEND("3014", "Cannot unsuspend by yourself", "Bạn không thể tự gỡ bỏ đình chỉ", HttpStatus.FORBIDDEN),
 
     // ===== 4xxx: Product & Category Errors =====
     PRODUCT_NOT_FOUND("4001", "Product not found", "Không tìm thấy sản phẩm", HttpStatus.NOT_FOUND),

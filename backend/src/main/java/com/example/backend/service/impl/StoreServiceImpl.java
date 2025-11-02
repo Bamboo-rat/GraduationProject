@@ -5,6 +5,7 @@ import com.example.backend.dto.request.StoreUpdateRequest;
 import com.example.backend.dto.response.*;
 import com.example.backend.entity.*;
 import com.example.backend.entity.enums.StoreStatus;
+import com.example.backend.entity.enums.SupplierStatus;
 import com.example.backend.entity.enums.SuggestionStatus;
 import com.example.backend.exception.ErrorCode;
 import com.example.backend.exception.custom.BadRequestException;
@@ -128,12 +129,20 @@ public class StoreServiceImpl implements StoreService {
         // Get all ACTIVE stores (we'll filter by distance in memory)
         List<Store> allActiveStores = storeRepository.findByStatus(StoreStatus.ACTIVE, Pageable.unpaged()).getContent();
 
-        // Filter stores within the specified radius
+        // Filter stores within the specified radius AND check supplier status
         List<StoreResponse> nearbyStores = allActiveStores.stream()
                 .filter(store -> {
                     if (store.getLatitude() == null || store.getLongitude() == null) {
                         return false; // Skip stores without coordinates
                     }
+                    
+                    // Hide stores if supplier is SUSPENDED or PAUSE
+                    Supplier supplier = store.getSupplier();
+                    if (supplier.getStatus() == SupplierStatus.SUSPENDED || 
+                        supplier.getStatus() == SupplierStatus.PAUSE) {
+                        return false;
+                    }
+                    
                     double distance = LocationUtils.calculateDistance(
                             latitude, longitude,
                             store.getLatitude(), store.getLongitude()
