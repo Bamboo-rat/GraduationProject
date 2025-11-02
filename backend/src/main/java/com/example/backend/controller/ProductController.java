@@ -1,6 +1,7 @@
 package com.example.backend.controller;
 
 import com.example.backend.dto.request.ProductCreateRequest;
+import com.example.backend.dto.request.ProductFilterRequest;
 import com.example.backend.dto.request.ProductStatusUpdateRequest;
 import com.example.backend.dto.request.ProductUpdateRequest;
 import com.example.backend.dto.response.ApiResponse;
@@ -18,12 +19,16 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @Slf4j
 @RestController
@@ -74,6 +79,64 @@ public class ProductController {
         Page<ProductResponse> products = productService.getAllProducts(status, categoryId, supplierId, search, pageable);
 
         return ResponseEntity.ok(ApiResponse.success("Products retrieved successfully", products));
+    }
+
+    @GetMapping("/search")
+    @Operation(
+            summary = "Advanced product search with filters",
+            description = "Search products with comprehensive filters: keyword search, price range, expiry date, location/distance. " +
+                    "Ideal for customer shopping experience."
+    )
+    public ResponseEntity<ApiResponse<Page<ProductResponse>>> searchProducts(
+            // Basic filters
+            @RequestParam(required = false) ProductStatus status,
+            @RequestParam(required = false) String categoryId,
+            @RequestParam(required = false) String supplierId,
+            @RequestParam(required = false) String search,
+
+            // Price range filters
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+
+            // Expiry date filters
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate expiryDateFrom,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate expiryDateTo,
+            @RequestParam(required = false) Integer expiringWithinDays,
+
+            // Location filters
+            @RequestParam(required = false) Double userLatitude,
+            @RequestParam(required = false) Double userLongitude,
+            @RequestParam(required = false) Double maxDistanceKm,
+            @RequestParam(required = false) String province,
+            @RequestParam(required = false) String district,
+            @RequestParam(required = false) String ward,
+
+            @PageableDefault(size = 20, sort = "name", direction = Sort.Direction.ASC) Pageable pageable) {
+
+        log.info("GET /api/products/search - Advanced search with filters");
+
+        // Build filter request
+        ProductFilterRequest filter = ProductFilterRequest.builder()
+                .status(status)
+                .categoryId(categoryId)
+                .supplierId(supplierId)
+                .search(search)
+                .minPrice(minPrice)
+                .maxPrice(maxPrice)
+                .expiryDateFrom(expiryDateFrom)
+                .expiryDateTo(expiryDateTo)
+                .expiringWithinDays(expiringWithinDays)
+                .userLatitude(userLatitude)
+                .userLongitude(userLongitude)
+                .maxDistanceKm(maxDistanceKm)
+                .province(province)
+                .district(district)
+                .ward(ward)
+                .build();
+
+        Page<ProductResponse> products = productService.searchProducts(filter, pageable);
+
+        return ResponseEntity.ok(ApiResponse.success("Products searched successfully", products));
     }
 
     @GetMapping("/my-products")

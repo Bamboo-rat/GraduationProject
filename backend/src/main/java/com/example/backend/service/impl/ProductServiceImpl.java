@@ -12,11 +12,13 @@ import com.example.backend.mapper.ProductMapper;
 import com.example.backend.repository.*;
 import com.example.backend.service.FileStorageService;
 import com.example.backend.service.ProductService;
+import com.example.backend.utils.ProductSpecification;
 import com.example.backend.utils.SkuGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -238,7 +240,7 @@ public class ProductServiceImpl implements ProductService {
     @Transactional(readOnly = true)
     public Page<ProductResponse> getAllProducts(ProductStatus status, String categoryId, String supplierId, String search, Pageable pageable) {
         Page<Product> products;
-        
+
         if (status != null && categoryId != null) {
             products = productRepository.findByStatusAndCategoryCategoryId(status, categoryId, pageable);
         } else if (status != null) {
@@ -250,7 +252,30 @@ public class ProductServiceImpl implements ProductService {
         } else {
             products = productRepository.findAll(pageable);
         }
-        
+
+        return products.map(productMapper::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ProductResponse> searchProducts(ProductFilterRequest filter, Pageable pageable) {
+        log.info("Searching products with filters: status={}, categoryId={}, search={}, " +
+                        "priceRange=[{}-{}], expiryRange=[{}-{}], expiringWithinDays={}, " +
+                        "location=[{}, {}, {}], userLocation=[{}, {}], maxDistance={}",
+                filter.getStatus(), filter.getCategoryId(), filter.getSearch(),
+                filter.getMinPrice(), filter.getMaxPrice(),
+                filter.getExpiryDateFrom(), filter.getExpiryDateTo(), filter.getExpiringWithinDays(),
+                filter.getProvince(), filter.getDistrict(), filter.getWard(),
+                filter.getUserLatitude(), filter.getUserLongitude(), filter.getMaxDistanceKm());
+
+        // Build dynamic specification from filter
+        Specification<Product> spec = ProductSpecification.buildSpecification(filter);
+
+        // Execute query with specification
+        Page<Product> products = productRepository.findAll(spec, pageable);
+
+        log.info("Found {} products matching filter criteria", products.getTotalElements());
+
         return products.map(productMapper::toResponse);
     }
 

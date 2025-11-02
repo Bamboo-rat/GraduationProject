@@ -169,23 +169,53 @@ public class CustomerServiceImpl implements CustomerService {
         Customer customer = customerRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
 
+        CustomerStatus currentStatus = customer.getStatus();
         customer.setActive(active);
 
-        // Sync status with active flag
+        // Sync status with active flag, respecting status hierarchy
         if (active) {
-            // If activating and not in a pending state, set to ACTIVE
-            if (customer.getStatus() != CustomerStatus.PENDING_VERIFICATION) {
+            // When enabling, only allow activation for non-permanent states
+            // NEVER automatically reactivate BANNED customers
+            if (currentStatus == CustomerStatus.BANNED) {
+                log.warn("Cannot auto-activate BANNED customer {}. Requires explicit unban.", userId);
+                // Keep as BANNED, but set active=true for consistency
+                // Admin must explicitly unban to change status
+            } else if (currentStatus == CustomerStatus.PENDING_VERIFICATION) {
+                // Keep as PENDING_VERIFICATION until they complete verification
+                log.info("Keeping customer {} in PENDING_VERIFICATION status", userId);
+            } else if (currentStatus == CustomerStatus.RESTRICTED) {
+                // Keep as RESTRICTED - this is a special limited state
+                // Requires explicit action to remove restriction
+                log.info("Keeping customer {} in RESTRICTED status", userId);
+            } else {
+                // SUSPENDED, INACTIVE, ACTIVE → set to ACTIVE
                 customer.setStatus(CustomerStatus.ACTIVE);
             }
         } else {
-            // If deactivating, set to SUSPENDED
-            customer.setStatus(CustomerStatus.SUSPENDED);
+            // When disabling, respect severity hierarchy
+            // NEVER downgrade a more severe status to a less severe one
+            if (currentStatus == CustomerStatus.BANNED) {
+                // BANNED is permanent - don't downgrade to SUSPENDED
+                log.warn("Customer {} is BANNED - not downgrading to SUSPENDED", userId);
+                // Keep as BANNED
+            } else if (currentStatus == CustomerStatus.SUSPENDED) {
+                // Already suspended - no change needed
+                log.info("Customer {} is already SUSPENDED", userId);
+            } else if (currentStatus == CustomerStatus.RESTRICTED) {
+                // RESTRICTED is a special state - don't change to SUSPENDED
+                // unless explicitly required by business logic
+                log.info("Customer {} is RESTRICTED - not changing to SUSPENDED", userId);
+                // Keep as RESTRICTED
+            } else {
+                // ACTIVE, INACTIVE, PENDING_VERIFICATION → set to SUSPENDED
+                customer.setStatus(CustomerStatus.SUSPENDED);
+            }
         }
 
         customer = customerRepository.save(customer);
 
-        log.info("Customer active status updated: userId={}, active={}, status={}",
-                userId, active, customer.getStatus());
+        log.info("Customer active status updated: userId={}, active={}, previousStatus={}, newStatus={}",
+                userId, active, currentStatus, customer.getStatus());
         return customerMapper.toResponse(customer);
     }
 

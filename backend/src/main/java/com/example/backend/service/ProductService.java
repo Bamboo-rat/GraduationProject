@@ -1,6 +1,7 @@
 package com.example.backend.service;
 
 import com.example.backend.dto.request.ProductCreateRequest;
+import com.example.backend.dto.request.ProductFilterRequest;
 import com.example.backend.dto.request.ProductStatusUpdateRequest;
 import com.example.backend.dto.request.ProductUpdateRequest;
 import com.example.backend.dto.response.ProductResponse;
@@ -35,6 +36,15 @@ public interface ProductService {
      * @return Page of products
      */
     Page<ProductResponse> getAllProducts(ProductStatus status, String categoryId, String supplierId, String search, Pageable pageable);
+
+    /**
+     * Get all products with advanced filtering for shopping experience
+     * Supports: search, price range, expiry date, location/distance filters
+     * @param filter Comprehensive filter request
+     * @param pageable Pagination parameters
+     * @return Page of filtered products
+     */
+    Page<ProductResponse> searchProducts(ProductFilterRequest filter, Pageable pageable);
 
     /**
      * Get products for current supplier
