@@ -209,6 +209,11 @@ Managed via Keycloak with Spring Security OAuth2 Resource Server:
 - **StoreService**: Store management with pending updates approval, suspend/unsuspend operations
 - **BannerService**: Banner/ads management for homepage and promotions
 - **PartnerPerformanceService**: Reporting metrics for suppliers
+- **CartService**: Multi-store cart management with real-time inventory sync
+- **OrderService**: Complete order lifecycle from checkout to delivery
+- **WalletService**: Supplier wallet management with commission deduction
+- **InAppNotificationService**: Real-time notification system for order updates
+- **AutomatedSuspensionService**: Customer violation tracking and automated suspension
 
 ### Database Configuration
 
@@ -359,6 +364,44 @@ File-based routing via React Router 7. Routes defined in `app/routes.ts`:
 - Track usage in `PromotionUsage` entity with PESSIMISTIC_WRITE lock
 - Use transaction isolation SERIALIZABLE for promotion application
 
+**9. Cart-to-Order Flow:**
+- Multi-store cart: One cart per customer per store (constraint: `uk_cart_customer_store`)
+- Cart validation syncs inventory and removes expired/invalid promotions
+- Checkout uses `SERIALIZABLE` isolation to prevent race conditions
+- Order statuses: PENDING → CONFIRMED → PREPARING → SHIPPING → DELIVERED
+- Cancel operations restricted based on order status (customers can only cancel PENDING/CONFIRMED directly)
+
+**10. Promotion Tier Eligibility:**
+- `PromotionTier` defines customer tier requirements (GENERAL, BRONZE_PLUS, SILVER_PLUS, GOLD_PLUS, PLATINUM_PLUS, DIAMOND_ONLY)
+- Special tiers: BIRTHDAY (checks current month), FIRST_TIME (checks order history)
+- Use `isCustomerEligibleForPromotionTier()` helper method for validation
+- Atomic promotion usage tracking with `incrementUsageCountIfAvailable()` to prevent race conditions
+
+**11. Wallet System:**
+- `WalletService.addPendingBalance()` handles commission deduction automatically
+- `WalletService.refundOrder()` processes refunds with proper balance calculations
+- Supplier ID is accessed via `supplier.getUserId()` (not `getSupplierId()`)
+- End-of-day scheduler releases pending balance to available balance
+
+**12. Entity Field Names (Common Mistakes):**
+- Product expiry: `variant.getExpiryDate()` (NOT `product.getExpiryDate()`)
+- Product images: `product.getImages()` (NOT `getProductImages()`)
+- Variant price: Use `discountPrice` or `originalPrice` (NOT generic `price`)
+- Promotion code: `promotion.getCode()` (NOT `getPromotionCode()`)
+- Promotion tier: `promotion.getTier()` returns `PromotionTier` (NOT `CustomerTier`)
+- Usage limit: `promotion.getTotalUsageLimit()` (NOT `getMaxUsageCount()`)
+- Supplier ID: `supplier.getUserId()` (NOT `getSupplierId()`)
+- Date comparisons: Use `LocalDate.now()` for dates (NOT `LocalDateTime.now()`)
+
+**13. Repository Method Names:**
+- Promotion: Use `findByCode()` (NOT `findByPromotionCode()`)
+- PromotionUsage: Use `countByPromotionId()` for total count (NOT `countByPromotion()`)
+- Use `countByPromotionAndCustomer()` for per-customer usage tracking
+
+**14. Enum Values:**
+- PaymentProvider: VNPAY, MOMO, ZALOPAY, SHOPEEPAY, INTERNAL (use INTERNAL for bank transfers and COD)
+- ShipmentStatus: PREPARING, SHIPPING, DELIVERED, FAILED, CANCELED (use SHIPPING for in-transit)
+
 ### Frontend Rules
 
 **1. Authentication Token Management:**
@@ -499,6 +542,13 @@ MapStruct processors configured with Lombok compatibility in `pom.xml`:
 - **Do NOT** forget to check OTP rate limits before sending
 - **Do NOT** use `@Transactional` on methods that call external APIs without proper rollback handling
 - **Do NOT** use LAZY loading for entities that will be serialized to JSON (use EAGER or JOIN FETCH)
+- **Do NOT** use `product.getExpiryDate()` - expiry is on ProductVariant (use `variant.getExpiryDate()`)
+- **Do NOT** compare `PromotionTier` with `CustomerTier` - they are different enum types
+- **Do NOT** use `LocalDateTime.now()` for date-only comparisons - use `LocalDate.now()`
+- **Do NOT** access supplier ID with `getSupplierId()` - use `getUserId()` (Supplier extends User)
+- **Do NOT** call `walletService.recordTransaction()` - use `addPendingBalance()` or `refundOrder()`
+- **Do NOT** allow customers to cancel orders in PREPARING/SHIPPING status directly - require cancel request workflow
+- **Do NOT** skip atomic promotion usage checks - use `incrementUsageCountIfAvailable()` with pessimistic locks
 
 ### Frontend
 

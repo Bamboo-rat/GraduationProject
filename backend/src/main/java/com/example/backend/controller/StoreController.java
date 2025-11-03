@@ -28,11 +28,45 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/stores")
 @RequiredArgsConstructor
-@Tag(name = "Store", description = "Store management endpoints")
-@SecurityRequirement(name = "Bearer Authentication")
+@Tag(name = "Store", description = "Store management endpoints (some endpoints are public, others require authentication)")
 public class StoreController {
 
     private final StoreService storeService;
+
+    @GetMapping("/public")
+    @Operation(
+            summary = "Get all active stores (Customer-facing, public access)",
+            description = "Returns all ACTIVE stores with optional province filter. " +
+                    "Useful for customers browsing stores. Default page size: 20."
+    )
+    public ResponseEntity<ApiResponse<Page<StoreResponse>>> getPublicStores(
+            @RequestParam(required = false) String province,
+            @PageableDefault(size = 20, sort = "storeName", direction = Sort.Direction.ASC) Pageable pageable) {
+
+        log.info("GET /api/stores/public - province: {}, page: {}, size: {}",
+                province, pageable.getPageNumber(), pageable.getPageSize());
+
+        Page<StoreResponse> stores = storeService.getPublicStores(province, pageable);
+
+        return ResponseEntity.ok(ApiResponse.success("Public stores retrieved successfully", stores));
+    }
+
+    @GetMapping("/top-stores")
+    @Operation(
+            summary = "Get stores with most purchases (Customer-facing, public access)",
+            description = "Returns top 5 stores based on number of DELIVERED orders. " +
+                    "Useful for homepage 'Popular Stores' section."
+    )
+    public ResponseEntity<ApiResponse<Page<StoreResponse>>> getTopStoresByPurchases(
+            @PageableDefault(size = 5, sort = "storeName", direction = Sort.Direction.ASC) Pageable pageable) {
+
+        log.info("GET /api/stores/top-stores - page: {}, size: {}",
+                pageable.getPageNumber(), pageable.getPageSize());
+
+        Page<StoreResponse> stores = storeService.getTopStoresByPurchases(pageable);
+
+        return ResponseEntity.ok(ApiResponse.success("Top stores by purchases retrieved successfully", stores));
+    }
 
     @GetMapping
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF')")

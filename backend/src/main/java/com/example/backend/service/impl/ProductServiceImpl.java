@@ -35,6 +35,7 @@ public class ProductServiceImpl implements ProductService {
     private final UserRepository userRepository;
     private final StoreRepository storeRepository;
     private final StoreProductRepository storeProductRepository;
+    private final OrderDetailRepository orderDetailRepository;
     private final ProductMapper productMapper;
     private final FileStorageService fileStorageService;
 
@@ -619,5 +620,109 @@ public class ProductServiceImpl implements ProductService {
                 .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND));
 
         return productMapper.toResponse(updatedProduct);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ProductResponse> getBestSellingProducts(Pageable pageable) {
+        log.info("Getting best-selling products with page: {}, size: {}", pageable.getPageNumber(), pageable.getPageSize());
+
+        // Get best-selling store product IDs
+        List<Object[]> bestSelling = orderDetailRepository.findBestSellingProducts(pageable);
+
+        if (bestSelling.isEmpty()) {
+            log.info("No best-selling products found");
+            return Page.empty(pageable);
+        }
+
+        // Extract store product IDs
+        List<String> storeProductIds = bestSelling.stream()
+                .map(row -> (String) row[0])
+                .toList();
+
+        // Fetch full store product details with relationships
+        List<StoreProduct> storeProducts = storeProductRepository.findByIdsWithDetails(storeProductIds);
+
+        // Convert to ProductResponse maintaining order
+        List<ProductResponse> productResponses = new ArrayList<>();
+        for (String spId : storeProductIds) {
+            storeProducts.stream()
+                    .filter(sp -> sp.getStoreProductId().equals(spId))
+                    .findFirst()
+                    .ifPresent(sp -> {
+                        Product product = sp.getVariant().getProduct();
+                        ProductResponse response = productMapper.toResponse(product);
+                        productResponses.add(response);
+                    });
+        }
+
+        // Create Page object
+        return new org.springframework.data.domain.PageImpl<>(
+                productResponses,
+                pageable,
+                bestSelling.size()
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ProductResponse> getCheapestProducts(Pageable pageable) {
+        log.info("Getting cheapest products (highest discount) with page: {}, size: {}",
+                pageable.getPageNumber(), pageable.getPageSize());
+
+        List<StoreProduct> storeProducts = storeProductRepository.findProductsWithHighestDiscount(pageable);
+
+        if (storeProducts.isEmpty()) {
+            log.info("No discounted products found");
+            return Page.empty(pageable);
+        }
+
+        // Convert to ProductResponse (deduplicate if same product appears multiple times)
+        Map<String, ProductResponse> productMap = new LinkedHashMap<>();
+        for (StoreProduct sp : storeProducts) {
+            Product product = sp.getVariant().getProduct();
+            if (!productMap.containsKey(product.getProductId())) {
+                productMap.put(product.getProductId(), productMapper.toResponse(product));
+            }
+        }
+
+        List<ProductResponse> productResponses = new ArrayList<>(productMap.values());
+
+        return new org.springframework.data.domain.PageImpl<>(
+                productResponses,
+                pageable,
+                productResponses.size()
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ProductResponse> getNewProductsOnSaleToday(Pageable pageable) {
+        log.info("Getting new products on sale today with page: {}, size: {}",
+                pageable.getPageNumber(), pageable.getPageSize());
+
+        List<StoreProduct> storeProducts = storeProductRepository.findNewProductsOnSaleToday(pageable);
+
+        if (storeProducts.isEmpty()) {
+            log.info("No new products on sale today");
+            return Page.empty(pageable);
+        }
+
+        // Convert to ProductResponse (deduplicate if same product appears multiple times)
+        Map<String, ProductResponse> productMap = new LinkedHashMap<>();
+        for (StoreProduct sp : storeProducts) {
+            Product product = sp.getVariant().getProduct();
+            if (!productMap.containsKey(product.getProductId())) {
+                productMap.put(product.getProductId(), productMapper.toResponse(product));
+            }
+        }
+
+        List<ProductResponse> productResponses = new ArrayList<>(productMap.values());
+
+        return new org.springframework.data.domain.PageImpl<>(
+                productResponses,
+                pageable,
+                productResponses.size()
+        );
     }
 }

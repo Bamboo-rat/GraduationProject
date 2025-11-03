@@ -67,4 +67,38 @@ public interface StoreProductRepository extends JpaRepository<StoreProduct, Stri
             "LEFT JOIN FETCH p.category " +
             "WHERE sp.storeProductId IN :ids")
     List<StoreProduct> findByIdsWithDetails(@Param("ids") List<String> ids);
+
+    /**
+     * Find products with highest discount percentage
+     * Only returns products from ACTIVE stores with positive stock
+     */
+    @Query("SELECT sp FROM StoreProduct sp " +
+           "JOIN FETCH sp.variant v " +
+           "JOIN FETCH v.product p " +
+           "LEFT JOIN FETCH p.category " +
+           "JOIN FETCH sp.store s " +
+           "WHERE s.status = 'ACTIVE' " +
+           "AND p.status = 'ACTIVE' " +
+           "AND sp.stockQuantity > 0 " +
+           "AND v.discountPrice IS NOT NULL " +
+           "AND v.originalPrice > v.discountPrice " +
+           "ORDER BY ((v.originalPrice - v.discountPrice) / v.originalPrice) DESC")
+    List<StoreProduct> findProductsWithHighestDiscount(Pageable pageable);
+
+    /**
+     * Find new products on sale today (created today with discount)
+     */
+    @Query("SELECT sp FROM StoreProduct sp " +
+           "JOIN FETCH sp.variant v " +
+           "JOIN FETCH v.product p " +
+           "LEFT JOIN FETCH p.category " +
+           "JOIN FETCH sp.store s " +
+           "WHERE s.status = 'ACTIVE' " +
+           "AND p.status = 'ACTIVE' " +
+           "AND sp.stockQuantity > 0 " +
+           "AND FUNCTION('DATE', p.createdAt) = CURRENT_DATE " +
+           "AND v.discountPrice IS NOT NULL " +
+           "AND v.originalPrice > v.discountPrice " +
+           "ORDER BY p.createdAt DESC")
+    List<StoreProduct> findNewProductsOnSaleToday(Pageable pageable);
 }

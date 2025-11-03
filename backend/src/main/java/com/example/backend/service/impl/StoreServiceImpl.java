@@ -45,6 +45,7 @@ public class StoreServiceImpl implements StoreService {
     private final StorePendingUpdateRepository pendingUpdateRepository;
     private final StoreProductRepository storeProductRepository;
     private final UserRepository userRepository;
+    private final com.example.backend.repository.OrderRepository orderRepository;
     private final StorePendingUpdateMapper updateMapper;
     private final StoreMapper storeMapper;
     private final ProductMapper productMapper;
@@ -877,5 +878,56 @@ public class StoreServiceImpl implements StoreService {
         dto.setPriceOverride(sp.getPriceOverride());
 
         return dto;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<StoreResponse> getPublicStores(String province, Pageable pageable) {
+        log.info("Getting public stores with province filter: {}, page: {}, size: {}",
+                province, pageable.getPageNumber(), pageable.getPageSize());
+
+        Page<Store> stores;
+
+        if (province != null && !province.trim().isEmpty()) {
+            stores = storeRepository.findActiveStoresByProvince(province, pageable);
+        } else {
+            stores = storeRepository.findByStatus(StoreStatus.ACTIVE, pageable);
+        }
+
+        return stores.map(storeMapper::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<StoreResponse> getTopStoresByPurchases(Pageable pageable) {
+        log.info("Getting top stores by purchase count with page: {}, size: {}",
+                pageable.getPageNumber(), pageable.getPageSize());
+
+        // Get top store IDs by order count
+        List<Object[]> topStores = orderRepository.findTopStoresByOrderCount(pageable);
+
+        if (topStores.isEmpty()) {
+            log.info("No stores with purchases found");
+            return Page.empty(pageable);
+        }
+
+        // Extract store IDs
+        List<String> storeIds = topStores.stream()
+                .map(row -> (String) row[0])
+                .toList();
+
+        // Fetch full store details
+        List<Store> stores = storeRepository.findByStoreIdIn(storeIds);
+
+        // Convert to StoreResponse maintaining order
+        List<StoreResponse> storeResponses = new ArrayList<>();
+        for (String storeId : storeIds) {
+            stores.stream()
+                    .filter(s -> s.getStoreId().equals(storeId))
+                    .findFirst()
+                    .ifPresent(s -> storeResponses.add(storeMapper.toResponse(s)));
+        }
+
+        return new PageImpl<>(storeResponses, pageable, topStores.size());
     }
 }

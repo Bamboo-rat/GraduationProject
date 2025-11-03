@@ -33,4 +33,15 @@ public interface OrderDetailRepository extends JpaRepository<OrderDetail, String
      */
     @Query("SELECT od FROM OrderDetail od WHERE od.order.orderId = :orderId AND od.review IS NULL")
     List<OrderDetail> findUnreviewedByOrderId(@Param("orderId") String orderId);
+
+    /**
+     * Find best-selling products (variants) based on total quantity sold
+     * Returns list of StoreProduct IDs ordered by total quantity sold
+     */
+    @Query("SELECT od.storeProduct.storeProductId, SUM(od.quantity) as totalSold " +
+           "FROM OrderDetail od " +
+           "WHERE od.order.status = 'DELIVERED' " +
+           "GROUP BY od.storeProduct.storeProductId " +
+           "ORDER BY totalSold DESC")
+    List<Object[]> findBestSellingProducts(Pageable pageable);
 }

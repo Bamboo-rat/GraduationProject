@@ -301,4 +301,57 @@ public class ProductController {
 
         return ResponseEntity.ok(ApiResponse.success("Stock updated successfully", product));
     }
+
+    @GetMapping("/best-selling")
+    @Operation(
+            summary = "Get best-selling products (Customer-facing, public access)",
+            description = "Returns top 10 products based on total quantity sold from DELIVERED orders. " +
+                    "Useful for homepage 'Best Sellers' section."
+    )
+    public ResponseEntity<ApiResponse<Page<ProductResponse>>> getBestSellingProducts(
+            @PageableDefault(size = 10, sort = "name", direction = Sort.Direction.ASC) Pageable pageable) {
+
+        log.info("GET /api/products/best-selling - page: {}, size: {}",
+                pageable.getPageNumber(), pageable.getPageSize());
+
+        Page<ProductResponse> products = productService.getBestSellingProducts(pageable);
+
+        return ResponseEntity.ok(ApiResponse.success("Best-selling products retrieved successfully", products));
+    }
+
+    @GetMapping("/cheapest")
+    @Operation(
+            summary = "Get products with highest discount (Customer-facing, public access)",
+            description = "Returns top 5 products with highest discount percentage. " +
+                    "Only returns ACTIVE products from ACTIVE stores with positive stock. " +
+                    "Useful for homepage 'Best Deals' section."
+    )
+    public ResponseEntity<ApiResponse<Page<ProductResponse>>> getCheapestProducts(
+            @PageableDefault(size = 5, sort = "name", direction = Sort.Direction.ASC) Pageable pageable) {
+
+        log.info("GET /api/products/cheapest - page: {}, size: {}",
+                pageable.getPageNumber(), pageable.getPageSize());
+
+        Page<ProductResponse> products = productService.getCheapestProducts(pageable);
+
+        return ResponseEntity.ok(ApiResponse.success("Cheapest products retrieved successfully", products));
+    }
+
+    @GetMapping("/new-on-sale")
+    @Operation(
+            summary = "Get new products on sale today (Customer-facing, public access)",
+            description = "Returns products created today that have discount. " +
+                    "Only returns ACTIVE products from ACTIVE stores with positive stock. " +
+                    "Useful for homepage 'New Today' section."
+    )
+    public ResponseEntity<ApiResponse<Page<ProductResponse>>> getNewProductsOnSaleToday(
+            @PageableDefault(size = 20, sort = "name", direction = Sort.Direction.ASC) Pageable pageable) {
+
+        log.info("GET /api/products/new-on-sale - page: {}, size: {}",
+                pageable.getPageNumber(), pageable.getPageSize());
+
+        Page<ProductResponse> products = productService.getNewProductsOnSaleToday(pageable);
+
+        return ResponseEntity.ok(ApiResponse.success("New products on sale retrieved successfully", products));
+    }
 }

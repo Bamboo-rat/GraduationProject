@@ -173,4 +173,20 @@ public interface StoreService {
      * @return Page of product variants with store-specific inventory
      */
     Page<StoreProductVariantResponse> getProductVariantsForStoreManagement(String storeId, String keycloakId, Pageable pageable);
+
+    /**
+     * Get all ACTIVE stores (customer-facing, public access)
+     * @param province Optional province filter
+     * @param pageable Pagination (default size: 20)
+     * @return Page of active stores
+     */
+    Page<StoreResponse> getPublicStores(String province, Pageable pageable);
+
+    /**
+     * Get stores with most purchases (customer-facing, public access)
+     * Returns top 5 stores based on number of DELIVERED orders
+     * @param pageable Pagination (default size: 5)
+     * @return Page of top stores
+     */
+    Page<StoreResponse> getTopStoresByPurchases(Pageable pageable);
 }

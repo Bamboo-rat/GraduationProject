@@ -91,4 +91,15 @@ public interface OrderRepository extends JpaRepository<Order, String> {
      */
     @Query("SELECT o FROM Order o WHERE o.customer.userId = :customerId AND o.createdAt >= :since ORDER BY o.createdAt DESC")
     List<Order> findRecentOrdersByCustomer(@Param("customerId") String customerId, @Param("since") LocalDateTime since);
+
+    /**
+     * Find stores with most purchases (completed orders)
+     * Returns list of Store IDs ordered by order count
+     */
+    @Query("SELECT o.store.storeId, COUNT(o) as orderCount " +
+           "FROM Order o " +
+           "WHERE o.status = 'DELIVERED' " +
+           "GROUP BY o.store.storeId " +
+           "ORDER BY orderCount DESC")
+    List<Object[]> findTopStoresByOrderCount(Pageable pageable);
 }

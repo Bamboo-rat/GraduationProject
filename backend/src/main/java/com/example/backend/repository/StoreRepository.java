@@ -98,4 +98,22 @@ public interface StoreRepository extends JpaRepository<Store, String> {
     Page<Store> findByStatusAndSearch(@Param("status") StoreStatus status,
                                         @Param("search") String search,
                                         Pageable pageable);
+
+    /**
+     * Find all ACTIVE stores (public access for customers)
+     */
+    Page<Store> findByStatus(StoreStatus status, Pageable pageable);
+
+    /**
+     * Find ACTIVE stores by province (public access for customers)
+     */
+    @Query("SELECT s FROM Store s WHERE s.status = 'ACTIVE' " +
+           "AND (:province IS NULL OR LOWER(s.province) = LOWER(:province))")
+    Page<Store> findActiveStoresByProvince(@Param("province") String province, Pageable pageable);
+
+    /**
+     * Find stores by IDs (for top stores query)
+     */
+    @Query("SELECT s FROM Store s WHERE s.storeId IN :storeIds")
+    List<Store> findByStoreIdIn(@Param("storeIds") List<String> storeIds);
 }

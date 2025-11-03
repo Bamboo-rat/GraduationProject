@@ -119,4 +119,30 @@ public interface ProductService {
      * @return Updated product with all variants
      */
     ProductResponse updateVariantStockAtStore(String productId, String variantId, String storeId, Integer newStockQuantity, String keycloakId);
+
+    /**
+     * Get best-selling products (customer-facing, public access)
+     * Returns top 10 products based on total quantity sold from DELIVERED orders
+     * @param pageable Pagination (default size: 10)
+     * @return Page of best-selling products
+     */
+    Page<ProductResponse> getBestSellingProducts(Pageable pageable);
+
+    /**
+     * Get cheapest products with highest discount percentage (customer-facing, public access)
+     * Returns top 5 products with highest (originalPrice - discountPrice) / originalPrice
+     * Only returns ACTIVE products from ACTIVE stores with positive stock
+     * @param pageable Pagination (default size: 5)
+     * @return Page of cheapest products
+     */
+    Page<ProductResponse> getCheapestProducts(Pageable pageable);
+
+    /**
+     * Get new products on sale today (customer-facing, public access)
+     * Returns products created today that have discount (discountPrice < originalPrice)
+     * Only returns ACTIVE products from ACTIVE stores with positive stock
+     * @param pageable Pagination (default size: 20)
+     * @return Page of new products on sale
+     */
+    Page<ProductResponse> getNewProductsOnSaleToday(Pageable pageable);
 }
