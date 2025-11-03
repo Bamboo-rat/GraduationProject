@@ -38,7 +38,6 @@
       "icon": "truck",
       "link": "/delivery/assign",
       "subMenu": [
-        { "title": "Gán đơn hàng", "link": "/delivery/assign" },
         { "title": "Theo dõi giao hàng", "link": "/delivery/tracking" }
       ]
     },

@@ -30,7 +30,6 @@
       "link": "/products/list-products",
       "subMenu": [
         { "title": "Tất cả Sản phẩm", "link": "/products/list-products", "icon": "package" },
-        { "title": "Sản phẩm cần duyệt", "link": "/products/review", "icon": "file-check" },
         { "title": "Quản lý Danh mục", "link": "/products/categories", "icon": "tags" },
         { "title": "Đề xuất danh mục", "link": "/products/category-suggestions", "icon": "folder-plus" }
       ]
@@ -102,7 +101,7 @@
       "link": "/settings/roles",
       "subMenu": [
         { "title": "Phân quyền & Vai trò", "link": "/settings/roles", "icon": "shield" },
-        { "title": "Cấu hình Thông báo", "link": "/settings/notifications", "icon": "bell" },
+        { "title": "Cấu hình hệ thống", "link": "/settings/system-settings", "icon": "bell" },
         { "title": "Nhật ký Hoạt động", "link": "/settings/audit", "icon": "file-text" }
       ]
     }

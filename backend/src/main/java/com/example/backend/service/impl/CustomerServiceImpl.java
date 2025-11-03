@@ -46,38 +46,43 @@ public class CustomerServiceImpl implements CustomerService {
     public PhoneAuthStep1Response phoneAuthStep1(PhoneAuthStep1Request request) {
         String phoneNumber = request.getPhoneNumber();
         log.info("Phone Auth Step 1: Processing phone number: {}", phoneNumber);
-        
+
         // Check if customer exists
         boolean isExistingCustomer = userRepository.existsByPhoneNumber(phoneNumber);
         String accountStatus;
-        
+        String generatedFullName = null;
+
         if (!isExistingCustomer) {
             // Auto-create new customer account (only in DB, Keycloak user created after OTP verification)
             log.info("Phone number not found, will create customer account after OTP verification");
-            
+
             // Generate random username: user_xxxxxxxx
             String randomUsername = "user_" + UUID.randomUUID().toString().substring(0, 8);
             while (userRepository.existsByUsername(randomUsername)) {
                 randomUsername = "user_" + UUID.randomUUID().toString().substring(0, 8);
             }
-            
+
+            // Generate random full name
+            generatedFullName = com.example.backend.utils.ValidationUtils.generateRandomFullName();
+
             // Create customer with PENDING_VERIFICATION status (no keycloakId yet)
             Customer customer = new Customer();
             customer.setUsername(randomUsername);
             customer.setPhoneNumber(phoneNumber);
+            customer.setFullName(generatedFullName);
             customer.setStatus(CustomerStatus.PENDING_VERIFICATION);
             customer.setActive(false);
             customer.setAvatarUrl("https://res.cloudinary.com/dk7coitah/image/upload/v1760668372/avatar_cflwdp.jpg");
-            
+
             customerRepository.save(customer);
-            log.info("New customer created in DB: userId={}, username={} (Keycloak user will be created after OTP)", 
-                    customer.getUserId(), customer.getUsername());
+            log.info("New customer created in DB: userId={}, username={}, fullName={} (Keycloak user will be created after OTP)",
+                    customer.getUserId(), customer.getUsername(), generatedFullName);
             accountStatus = "NEW";
         } else {
             log.info("Existing customer found for phone: {}", phoneNumber);
             accountStatus = "EXISTING";
         }
-        
+
         // Send OTP (both new and existing customers)
         try {
             otpService.sendOtp(phoneNumber);
@@ -86,12 +91,13 @@ public class CustomerServiceImpl implements CustomerService {
             log.error("Failed to send OTP to: {}", phoneNumber, e);
             throw new BadRequestException(ErrorCode.SMS_SEND_FAILED);
         }
-        
+
         return PhoneAuthStep1Response.builder()
                 .phoneNumber(phoneNumber)
                 .accountStatus(accountStatus)
                 .message("Mã OTP đã được gửi đến số điện thoại của bạn")
                 .expirySeconds(300) // 5 minutes
+                .fullName(generatedFullName) // Only set for NEW accounts
                 .build();
     }
     

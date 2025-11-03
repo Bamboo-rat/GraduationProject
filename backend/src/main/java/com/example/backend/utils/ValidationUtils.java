@@ -6,6 +6,7 @@ import lombok.experimental.UtilityClass;
 
 import java.time.LocalDate;
 import java.time.Period;
+import java.util.Random;
 import java.util.regex.Pattern;
 
 @UtilityClass
@@ -34,6 +35,17 @@ public class ValidationUtils {
 
     // Tax code pattern (Vietnam: 10 or 13 digits)
     private static final Pattern TAX_CODE_PATTERN = Pattern.compile("^[0-9]{10}$|^[0-9]{13}$");
+
+    // Random name generator data
+    private static final Random RANDOM = new Random();
+    private static final String[] LAST_NAMES = {
+            "Nguyễn", "Trần", "Lê", "Phạm", "Hoàng", "Huỳnh", "Phan", "Vũ", "Võ", "Đặng",
+            "Bùi", "Đỗ", "Hồ", "Ngô", "Dương", "Lý", "Đinh", "Trịnh", "Mai", "Đào"
+    };
+    private static final String[] MIDDLE_NAMES = {
+            "Văn", "Thị", "Minh", "Hoàng", "Đức", "Hữu", "Quốc", "Anh", "Thanh", "Tuấn",
+            "Kim", "Thúy", "Thu", "Hồng", "Lan", "Xuân", "Hà", "Ngọc", "Phương", "Mai"
+    };
 
     /**
      * Validate email format
@@ -174,15 +186,29 @@ public class ValidationUtils {
      */
     public static void validateTaxCode(String taxCode) {
         if (taxCode == null || taxCode.trim().isEmpty()) {
-            throw new BadRequestException(ErrorCode.INVALID_INPUT, 
+            throw new BadRequestException(ErrorCode.INVALID_INPUT,
                     "Tax code cannot be empty");
         }
 
         String cleanedTaxCode = taxCode.trim().replaceAll("\\s+", "");
 
         if (!TAX_CODE_PATTERN.matcher(cleanedTaxCode).matches()) {
-            throw new BadRequestException(ErrorCode.INVALID_INPUT, 
+            throw new BadRequestException(ErrorCode.INVALID_INPUT,
                     "Tax code must be 10 or 13 digits");
         }
+    }
+
+    /**
+     * Generate a random Vietnamese full name with format: LastName MiddleName FirstLetter
+     * Example: "Nguyễn Văn A", "Trần Thị B", "Lê Minh C"
+     *
+     * @return Random full name
+     */
+    public static String generateRandomFullName() {
+        String lastName = LAST_NAMES[RANDOM.nextInt(LAST_NAMES.length)];
+        String middleName = MIDDLE_NAMES[RANDOM.nextInt(MIDDLE_NAMES.length)];
+        char firstLetter = (char) ('A' + RANDOM.nextInt(26));
+
+        return lastName + " " + middleName + " " + firstLetter;
     }
 }

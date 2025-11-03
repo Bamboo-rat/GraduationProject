@@ -48,10 +48,9 @@ export default [
 
     // Settings
     route("settings/roles", "routes/settings/roles.tsx"),
-    route("settings/marketing", "routes/settings/marketing.tsx"),
-    route("settings/notifications", "routes/settings/notifications.tsx"),
-    route("settings/audit", "routes/settings/audit.tsx")
+    route("settings/system-settings", "routes/settings/system-settings.tsx"),
+    route("settings/audit", "routes/settings/audit.tsx"),
 
     // Employees - Admins
-    ,route("employees/admins", "routes/employees/admins.tsx")
+    route("employees/admins", "routes/employees/admins.tsx")
 ] satisfies RouteConfig;
