@@ -53,7 +53,7 @@ public interface OrderDetailRepository extends JpaRepository<OrderDetail, String
      */
     @Query("SELECT p.productId, p.name, c.name, s.businessName, " +
            "SUM(od.quantity) as totalSold, " +
-           "SUM(od.quantity * od.price) as revenue, " +
+           "SUM(od.quantity * od.amount) as revenue, " +
            "CASE WHEN SIZE(p.images) > 0 THEN (SELECT MIN(pi.imageUrl) FROM ProductImage pi WHERE pi.product = p) ELSE NULL END " +
            "FROM OrderDetail od " +
            "JOIN od.storeProduct sp " +
@@ -71,7 +71,7 @@ public interface OrderDetailRepository extends JpaRepository<OrderDetail, String
      * Returns: categoryId, categoryName, revenue, orderCount, productCount
      */
     @Query("SELECT c.categoryId, c.name, " +
-           "SUM(od.quantity * od.price) as revenue, " +
+           "SUM(od.quantity * od.amount) as revenue, " +
            "COUNT(DISTINCT od.order.orderId) as orderCount, " +
            "COUNT(DISTINCT p.productId) as productCount " +
            "FROM OrderDetail od " +
@@ -88,7 +88,7 @@ public interface OrderDetailRepository extends JpaRepository<OrderDetail, String
     /**
      * Calculate total revenue from delivered orders within date range
      */
-    @Query("SELECT SUM(od.quantity * od.price) " +
+    @Query("SELECT SUM(od.quantity * od.amount) " +
            "FROM OrderDetail od " +
            "WHERE od.order.status = 'DELIVERED' " +
            "AND od.order.createdAt BETWEEN :startDate AND :endDate")
