@@ -87,14 +87,16 @@ public class OrderController {
 
     @PostMapping("/{orderId}/cancel")
     @PreAuthorize("hasAnyRole('CUSTOMER', 'SUPPLIER')")
-    @Operation(summary = "Cancel order",
-               description = "Cancel order. Allowed for PENDING/CONFIRMED. Returns inventory, processes refund if applicable, records violation if customer fault")
+    @Operation(summary = "Cancel order directly (for PENDING/CONFIRMED orders)",
+               description = "DEPRECATED for PREPARING+ statuses. Use OrderCancelRequest workflow instead. " +
+                             "This endpoint only allows direct cancellation for orders in PENDING or CONFIRMED state. " +
+                             "Returns inventory, processes refund if applicable, records violation if customer fault.")
     public ResponseEntity<ApiResponse<OrderResponse>> cancelOrder(
             @PathVariable String orderId,
             @Valid @RequestBody CancelOrderRequest request,
             Authentication authentication) {
         String userId = extractUserId(authentication);
-        log.info("POST /api/orders/{}/cancel - Canceling order: userId={}", orderId, userId);
+        log.info("POST /api/orders/{}/cancel - Canceling order directly: userId={}", orderId, userId);
 
         OrderResponse response = orderService.cancelOrder(userId, orderId, request);
         return ResponseEntity.ok(ApiResponse.success("Đơn hàng đã được hủy", response));

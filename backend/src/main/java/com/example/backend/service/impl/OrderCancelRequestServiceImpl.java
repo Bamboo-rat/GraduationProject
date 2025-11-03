@@ -127,22 +127,32 @@ public class OrderCancelRequestServiceImpl implements OrderCancelRequestService 
                 // Use OrderService to cancel (with refund, inventory return, etc.)
                 CancelOrderRequest cancelOrderRequest = new CancelOrderRequest();
                 cancelOrderRequest.setReason("Đã được phê duyệt hủy bởi nhà cung cấp. Lý do khách hàng: " + cancelRequest.getReason());
-                cancelOrderRequest.setCustomerFault(false); // Supplier approved, not customer's fault
+                
+                boolean isCustomerFault = request.getCustomerFault() != null && request.getCustomerFault();
+                cancelOrderRequest.setCustomerFault(isCustomerFault);
                 
                 orderService.cancelOrder(order.getStore().getSupplier().getUserId(), order.getOrderId(), cancelOrderRequest);
 
                 // Notify customer: approved
+                String notificationMessage = String.format("Yêu cầu hủy đơn hàng #%s đã được phê duyệt. %s",
+                        order.getOrderCode(),
+                        order.getPayment() != null && order.getPayment().getStatus() == PaymentStatus.REFUNDED
+                                ? "Tiền đã được hoàn lại." : "");
+                
+                // Add warning if marked as customer fault
+                if (isCustomerFault) {
+                    notificationMessage += " Vi phạm hủy đơn đã được ghi nhận.";
+                }
+                
                 notificationService.createNotificationForUser(
                         order.getCustomer().getUserId(),
                         NotificationType.ORDER_STATUS_UPDATE,
-                        String.format("Yêu cầu hủy đơn hàng #%s đã được phê duyệt. %s",
-                                order.getOrderCode(),
-                                order.getPayment() != null && order.getPayment().getStatus() == PaymentStatus.REFUNDED
-                                        ? "Tiền đã được hoàn lại." : ""),
+                        notificationMessage,
                         "/orders/" + order.getOrderId()
                 );
 
-                log.info("Order canceled successfully after approval: orderId={}", order.getOrderId());
+                log.info("Order canceled successfully after approval: orderId={}, customerFault={}", 
+                        order.getOrderId(), isCustomerFault);
 
             } catch (Exception e) {
                 log.error("Failed to cancel order after approval: orderId={}", order.getOrderId(), e);

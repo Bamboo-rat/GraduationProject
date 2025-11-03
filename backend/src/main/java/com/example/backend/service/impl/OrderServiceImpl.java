@@ -362,18 +362,19 @@ public class OrderServiceImpl implements OrderService {
                     "Không thể hủy đơn hàng ở trạng thái hiện tại");
         }
 
-        // From PREPARING onwards, customer must create cancel REQUEST, not direct cancel
-        if (isCustomer && (order.getStatus() == OrderStatus.PREPARING ||
-                           order.getStatus() == OrderStatus.SHIPPING)) {
+        // CRITICAL FIX: This check ensures that customers cannot bypass the cancel request workflow.
+        // Only PENDING or CONFIRMED orders can be canceled directly by anyone.
+        // Suppliers can cancel at any stage up to SHIPPING, but customers cannot.
+        if (isCustomer && order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.CONFIRMED) {
             throw new BadRequestException(ErrorCode.OPERATION_NOT_ALLOWED,
-                    "Đơn hàng đang được xử lý. Vui lòng tạo 'Yêu cầu hủy đơn' để nhà cung cấp xét duyệt. " +
-                    "Không thể hủy trực tiếp từ trạng thái " + order.getStatus());
+                    "Bạn chỉ có thể hủy trực tiếp đơn hàng ở trạng thái 'Chờ xác nhận' hoặc 'Đã xác nhận'. " +
+                    "Đối với các trạng thái khác, vui lòng tạo 'Yêu cầu hủy đơn'.");
         }
 
-        // Only PENDING or CONFIRMED orders can be canceled directly
-        if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.CONFIRMED) {
-            throw new BadRequestException(ErrorCode.INVALID_ORDER_STATUS,
-                    "Chỉ có thể hủy trực tiếp đơn hàng ở trạng thái PENDING hoặc CONFIRMED");
+        // Suppliers can cancel up to the PREPARING stage. SHIPPING is handled by cancel request.
+        if (!isCustomer && order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.CONFIRMED && order.getStatus() != OrderStatus.PREPARING) {
+             throw new BadRequestException(ErrorCode.OPERATION_NOT_ALLOWED,
+                    "Nhà cung cấp chỉ có thể hủy trực tiếp đơn hàng ở trạng thái 'Chờ xác nhận', 'Đã xác nhận', hoặc 'Đang chuẩn bị'.");
         }
 
         // Return inventory
@@ -653,7 +654,7 @@ public class OrderServiceImpl implements OrderService {
 
     private void applyPromotions(Order order, List<String> promotionCodes) {
         for (String code : promotionCodes) {
-            Promotion promotion = promotionRepository.findByCode(code)
+            Promotion promotion = promotionRepository.findByCodeWithLock(code)
                     .orElse(null);
 
             if (promotion == null) {
@@ -674,10 +675,21 @@ public class OrderServiceImpl implements OrderService {
                 continue;
             }
 
-            // Check usage limits (use currentUsageCount from Promotion entity)
+            // Check usage limits (while holding lock)
             if (promotion.getTotalUsageLimit() != null &&
                 promotion.getCurrentUsageCount() >= promotion.getTotalUsageLimit()) {
                 log.warn("Promotion usage limit reached: code={}", code);
+                continue;
+            }
+
+            // CRITICAL FIX: Atomic increment with availability check
+            // This combines check and increment in a single database operation
+            // Returns 1 if successful, 0 if limit reached
+            int updated = promotionRepository.incrementUsageCountIfAvailable(promotion.getPromotionId());
+
+            if (updated == 0) {
+                // Another transaction won the race and took the last slot
+                log.warn("Promotion usage limit reached (race condition detected): code={}", code);
                 continue;
             }
 
@@ -691,7 +703,10 @@ public class OrderServiceImpl implements OrderService {
 
             order.getPromotionUsages().add(usage);
 
-            log.info("Promotion applied: code={}, orderId={}", code, order.getOrderId());
+            log.info("Promotion applied successfully: code={}, orderId={}, usageCount={}/{}",
+                    code, order.getOrderId(),
+                    promotion.getCurrentUsageCount() + 1,
+                    promotion.getTotalUsageLimit());
         }
     }
 
