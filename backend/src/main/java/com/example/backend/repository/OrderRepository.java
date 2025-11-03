@@ -102,4 +102,42 @@ public interface OrderRepository extends JpaRepository<Order, String> {
            "GROUP BY o.store.storeId " +
            "ORDER BY orderCount DESC")
     List<Object[]> findTopStoresByOrderCount(Pageable pageable);
+
+    /**
+     * Get sales trends (daily) within date range
+     * Returns: date, orderCount, revenue, avgOrderValue
+     */
+    @Query("SELECT FUNCTION('DATE', o.createdAt) as date, " +
+           "COUNT(o) as orderCount, " +
+           "SUM(o.totalAmount) as revenue, " +
+           "AVG(o.totalAmount) as avgOrderValue " +
+           "FROM Order o " +
+           "WHERE o.status = 'DELIVERED' " +
+           "AND o.createdAt BETWEEN :startDate AND :endDate " +
+           "GROUP BY FUNCTION('DATE', o.createdAt) " +
+           "ORDER BY date ASC")
+    List<Object[]> findSalesTrendsByDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    /**
+     * Calculate total revenue within date range
+     */
+    @Query("SELECT SUM(o.totalAmount) FROM Order o " +
+           "WHERE o.status = 'DELIVERED' " +
+           "AND o.createdAt BETWEEN :startDate AND :endDate")
+    Double calculateRevenueByDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    /**
+     * Count orders within date range
+     */
+    @Query("SELECT COUNT(o) FROM Order o " +
+           "WHERE o.createdAt BETWEEN :startDate AND :endDate")
+    Long countOrdersByDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    /**
+     * Count orders by status and date range
+     */
+    @Query("SELECT COUNT(o) FROM Order o " +
+           "WHERE o.status = :status " +
+           "AND o.createdAt BETWEEN :startDate AND :endDate")
+    Long countByStatusAndDateRange(@Param("status") OrderStatus status, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 }

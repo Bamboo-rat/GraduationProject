@@ -55,8 +55,14 @@ const NotificationDropdown: React.FC = () => {
       }
 
       if (notification.linkUrl) {
-        navigate(notification.linkUrl);
-        setIsOpen(false);
+        try {
+          navigate(notification.linkUrl);
+          setIsOpen(false);
+        } catch (navError) {
+          console.error('Navigation error:', navError);
+          // If navigation fails, just close the dropdown
+          setIsOpen(false);
+        }
       }
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
@@ -250,7 +256,7 @@ const NotificationDropdown: React.FC = () => {
             <div className="px-4 py-3 border-t border-default bg-surface-light rounded-b-lg text-center">
               <button
                 onClick={() => {
-                  navigate('/profile');
+                  navigate('/profile/notifications');
                   setIsOpen(false);
                 }}
                 className="text-sm text-[#2F855A] hover:text-[#8FB491] font-medium flex items-center justify-center gap-2 w-full py-2 rounded-md hover:bg-[#E8FFED] transition-colors"

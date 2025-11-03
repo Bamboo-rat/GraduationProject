@@ -10,6 +10,8 @@ export default [
 
     // Profile
     route("profile", "routes/profile.tsx"),
+    route("profile/notifications", "routes/profile/notifications.tsx"),
+    route("profile/settings", "routes/profile/settings.tsx"),
     route("profile/reset-password", "routes/profile/reset-password.tsx"),
     route("profile/forgot-password", "routes/profile/forgot-password.tsx"),
     
@@ -18,11 +20,13 @@ export default [
     route("partners/pending", "routes/partners/pending.tsx"),
     route("partners/store-approval", "routes/partners/store-approval.tsx"),
     route("partners/performance", "routes/partners/performance.tsx"),
+    route("partners/:userId", "routes/partners/$userId.tsx"),
 
     // Products Management
     route("products/list-products", "routes/products/list-products.tsx"),
     route("products/category-suggestions", "routes/products/category-suggestions.tsx"),
     route("products/categories", "routes/products/categories.tsx"),
+    route("products/:productId", "routes/products/$productId.tsx"),
 
     // Banner & Promotions
     route("marketing/banners", "routes/marketing/banners.tsx"),

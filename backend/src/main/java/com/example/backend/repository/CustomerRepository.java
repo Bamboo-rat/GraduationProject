@@ -59,4 +59,11 @@ public interface CustomerRepository extends JpaRepository<Customer, String> {
      * Count customers by tier
      */
     long countByTier(CustomerTier tier);
+
+    /**
+     * Count customers created within date range
+     */
+    @Query("SELECT COUNT(c) FROM Customer c " +
+           "WHERE c.createdAt BETWEEN :startDate AND :endDate")
+    Long countByCreatedAtBetween(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 }

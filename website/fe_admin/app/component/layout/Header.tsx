@@ -104,13 +104,13 @@ const Header: React.FC = () => {
                     Hồ sơ cá nhân
                   </button>
                   <button
-                    onClick={() => navigate('/settings/profile')}
+                    onClick={() => navigate('/profile/settings')}
                     className="w-full flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-[#D9FFDF] transition-all"
                   >
                     Cài đặt
                   </button>
                   <button
-                    onClick={() => navigate('/change-password')}
+                    onClick={() => navigate('/profile/reset-password')}
                     className="w-full flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-[#D9FFDF] transition-all"
                   >
                     Đổi mật khẩu

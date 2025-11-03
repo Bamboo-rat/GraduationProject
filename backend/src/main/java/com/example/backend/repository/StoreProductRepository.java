@@ -101,4 +101,34 @@ public interface StoreProductRepository extends JpaRepository<StoreProduct, Stri
            "AND v.originalPrice > v.discountPrice " +
            "ORDER BY p.createdAt DESC")
     List<StoreProduct> findNewProductsOnSaleToday(Pageable pageable);
+
+    /**
+     * Count low stock products (stock quantity < threshold)
+     */
+    @Query("SELECT COUNT(DISTINCT p.productId) FROM StoreProduct sp " +
+           "JOIN sp.variant v " +
+           "JOIN v.product p " +
+           "WHERE p.status = 'ACTIVE' " +
+           "AND sp.stockQuantity > 0 " +
+           "AND sp.stockQuantity < :threshold")
+    Long countLowStockProducts(@Param("threshold") int threshold);
+
+    /**
+     * Count out of stock products
+     */
+    @Query("SELECT COUNT(DISTINCT p.productId) FROM StoreProduct sp " +
+           "JOIN sp.variant v " +
+           "JOIN v.product p " +
+           "WHERE p.status = 'ACTIVE' " +
+           "AND sp.stockQuantity = 0")
+    Long countOutOfStockProducts();
+
+    /**
+     * Count active products
+     */
+    @Query("SELECT COUNT(DISTINCT p.productId) FROM StoreProduct sp " +
+           "JOIN sp.variant v " +
+           "JOIN v.product p " +
+           "WHERE p.status = 'ACTIVE'")
+    Long countActiveProducts();
 }
