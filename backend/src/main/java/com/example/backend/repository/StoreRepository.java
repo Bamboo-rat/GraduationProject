@@ -98,12 +98,7 @@ public interface StoreRepository extends JpaRepository<Store, String> {
     Page<Store> findByStatusAndSearch(@Param("status") StoreStatus status,
                                         @Param("search") String search,
                                         Pageable pageable);
-
-    /**
-     * Find all ACTIVE stores (public access for customers)
-     */
-    Page<Store> findByStatus(StoreStatus status, Pageable pageable);
-
+                                        
     /**
      * Find ACTIVE stores by province (public access for customers)
      */

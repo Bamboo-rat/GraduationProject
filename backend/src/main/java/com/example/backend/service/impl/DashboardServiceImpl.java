@@ -55,7 +55,7 @@ public class DashboardServiceImpl implements DashboardService {
         // Total counts
         Long totalOrders = orderRepository.count();
         Long totalCustomers = customerRepository.countByStatus(CustomerStatus.ACTIVE);
-        Long totalSuppliers = supplierRepository.findByStatus(SupplierStatus.APPROVED).stream().count();
+        Long totalSuppliers = supplierRepository.findByStatus(SupplierStatus.ACTIVE).stream().count();
         Long totalProducts = storeProductRepository.count();
         Long totalStores = storeRepository.count();
 
@@ -75,7 +75,7 @@ public class DashboardServiceImpl implements DashboardService {
         Long preparingOrders = orderRepository.countByStatus(OrderStatus.PREPARING);
         Long shippingOrders = orderRepository.countByStatus(OrderStatus.SHIPPING);
         Long deliveredOrders = orderRepository.countByStatus(OrderStatus.DELIVERED);
-        Long cancelledOrders = orderRepository.countByStatus(OrderStatus.CANCELLED);
+        Long cancelledOrders = orderRepository.countByStatus(OrderStatus.CANCELED);
 
         // Growth metrics (compared to previous month)
         Double prevMonthRevenueDouble = orderDetailRepository.calculateRevenueByDateRange(prevMonthStart, prevMonthEnd);
