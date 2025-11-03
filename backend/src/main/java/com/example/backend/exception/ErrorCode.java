@@ -36,6 +36,7 @@ public enum ErrorCode {
     TOKEN_EXPIRED("2017", "Token has expired", "Token đã hết hạn. Vui lòng yêu cầu token mới", HttpStatus.BAD_REQUEST),
     TOKEN_ALREADY_USED("2018", "Token has already been used", "Token này đã được sử dụng", HttpStatus.BAD_REQUEST),
     PASSWORD_MISMATCH("2019", "Passwords do not match", "Mật khẩu không khớp nhau", HttpStatus.BAD_REQUEST),
+    UNAUTHORIZED_ACCESS("2020", "Unauthorized access", "Bạn không có quyền truy cập tài nguyên này", HttpStatus.FORBIDDEN),
 
     // ===== 3xxx: User, Customer, Supplier Errors =====
     USER_NOT_FOUND("3001", "User not found", "Không tìm thấy người dùng", HttpStatus.NOT_FOUND),
@@ -64,6 +65,8 @@ public enum ErrorCode {
     STORE_NOT_FOUND("4008", "Store not found", "Không tìm thấy cửa hàng", HttpStatus.NOT_FOUND),
     STORE_NAME_ALREADY_EXISTS("4009", "Store name already exists", "Tên cửa hàng này đã tồn tại cho nhà cung cấp", HttpStatus.CONFLICT),
     BANNER_NOT_FOUND("4010", "Banner not found", "Không tìm thấy banner", HttpStatus.NOT_FOUND),
+    PRODUCT_NOT_AVAILABLE("4011", "Product not available", "Sản phẩm không khả dụng", HttpStatus.BAD_REQUEST),
+    INSUFFICIENT_STOCK("4012", "Insufficient stock", "Số lượng tồn kho không đủ", HttpStatus.BAD_REQUEST),
 
     // ===== 5xxx: Cart, Order, Payment, Promotion Errors =====
     ORDER_NOT_FOUND("5001", "Order not found", "Không tìm thấy đơn hàng", HttpStatus.NOT_FOUND),
@@ -76,6 +79,12 @@ public enum ErrorCode {
     PROMOTION_CODE_ALREADY_EXISTS("5008", "Promotion code already exists", "Mã khuyến mãi này đã tồn tại", HttpStatus.CONFLICT),
     INVALID_PROMOTION_DATES("5009", "Invalid promotion dates", "Ngày kết thúc phải sau ngày bắt đầu", HttpStatus.BAD_REQUEST),
     PROMOTION_ALREADY_STARTED("5010", "Promotion already started", "Không thể cập nhật mã khuyến mãi đã bắt đầu", HttpStatus.BAD_REQUEST),
+    CART_ITEM_NOT_FOUND("5011", "Cart item not found", "Không tìm thấy sản phẩm trong giỏ hàng", HttpStatus.NOT_FOUND),
+    CART_IS_EMPTY("5012", "Cart is empty", "Giỏ hàng trống", HttpStatus.BAD_REQUEST),
+    CART_HAS_INVALID_ITEMS("5013", "Cart has invalid items", "Giỏ hàng có sản phẩm không hợp lệ", HttpStatus.BAD_REQUEST),
+    INVALID_ORDER_STATUS("5014", "Invalid order status", "Trạng thái đơn hàng không hợp lệ", HttpStatus.BAD_REQUEST),
+    PAYMENT_NOT_FOUND("5015", "Payment not found", "Không tìm thấy thông tin thanh toán", HttpStatus.NOT_FOUND),
+    INVALID_PAYMENT_STATUS("5016", "Invalid payment status", "Trạng thái thanh toán không hợp lệ", HttpStatus.BAD_REQUEST),
 
     // ===== 6xxx: Wallet Errors =====
     WALLET_NOT_FOUND("6001", "Wallet not found", "Không tìm thấy ví tiền", HttpStatus.NOT_FOUND),
