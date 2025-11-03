@@ -17,6 +17,8 @@ import com.example.backend.utils.SkuGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -627,8 +629,13 @@ public class ProductServiceImpl implements ProductService {
     public Page<ProductResponse> getBestSellingProducts(Pageable pageable) {
         log.info("Getting best-selling products with page: {}, size: {}", pageable.getPageNumber(), pageable.getPageSize());
 
+        Pageable sanitizedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize()
+        );
+
         // Get best-selling store product IDs
-        List<Object[]> bestSelling = orderDetailRepository.findBestSellingProducts(pageable);
+        List<Object[]> bestSelling = orderDetailRepository.findBestSellingProducts(sanitizedPageable);
 
         if (bestSelling.isEmpty()) {
             log.info("No best-selling products found");
@@ -657,9 +664,9 @@ public class ProductServiceImpl implements ProductService {
         }
 
         // Create Page object
-        return new org.springframework.data.domain.PageImpl<>(
+        return new PageImpl<>(
                 productResponses,
-                pageable,
+                sanitizedPageable,
                 bestSelling.size()
         );
     }
@@ -688,7 +695,7 @@ public class ProductServiceImpl implements ProductService {
 
         List<ProductResponse> productResponses = new ArrayList<>(productMap.values());
 
-        return new org.springframework.data.domain.PageImpl<>(
+        return new PageImpl<>(
                 productResponses,
                 pageable,
                 productResponses.size()
@@ -719,7 +726,7 @@ public class ProductServiceImpl implements ProductService {
 
         List<ProductResponse> productResponses = new ArrayList<>(productMap.values());
 
-        return new org.springframework.data.domain.PageImpl<>(
+        return new PageImpl<>(
                 productResponses,
                 pageable,
                 productResponses.size()

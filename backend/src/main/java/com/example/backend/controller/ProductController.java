@@ -64,7 +64,8 @@ public class ProductController {
     @GetMapping
     @Operation(
             summary = "Get all products",
-            description = "Get all products with optional filters (status, category, supplier, search)"
+            description = "Get all products with optional filters (status, category, supplier, search). " +
+            "Defaults to ACTIVE products when no status/supplier filter is provided (customer view)."
     )
     public ResponseEntity<ApiResponse<Page<ProductResponse>>> getAllProducts(
             @RequestParam(required = false) ProductStatus status,
@@ -73,10 +74,15 @@ public class ProductController {
             @RequestParam(required = false) String search,
             @PageableDefault(size = 20, sort = "name", direction = Sort.Direction.ASC) Pageable pageable) {
 
-        log.info("GET /api/products - Filters: status={}, categoryId={}, supplierId={}, search={}",
-                status, categoryId, supplierId, search);
+        ProductStatus effectiveStatus = status;
+        if (effectiveStatus == null && supplierId == null) {
+            effectiveStatus = ProductStatus.ACTIVE;
+        }
 
-        Page<ProductResponse> products = productService.getAllProducts(status, categoryId, supplierId, search, pageable);
+        log.info("GET /api/products - Filters: status={}, categoryId={}, supplierId={}, search={}",
+                effectiveStatus, categoryId, supplierId, search);
+
+        Page<ProductResponse> products = productService.getAllProducts(effectiveStatus, categoryId, supplierId, search, pageable);
 
         return ResponseEntity.ok(ApiResponse.success("Products retrieved successfully", products));
     }
@@ -85,6 +91,7 @@ public class ProductController {
     @Operation(
             summary = "Advanced product search with filters",
             description = "Search products with comprehensive filters: keyword search, price range, expiry date, location/distance. " +
+                    "Defaults to ACTIVE products when no status/supplier filter is provided (customer view). " +
                     "Ideal for customer shopping experience."
     )
     public ResponseEntity<ApiResponse<Page<ProductResponse>>> searchProducts(
@@ -114,10 +121,14 @@ public class ProductController {
             @PageableDefault(size = 20, sort = "name", direction = Sort.Direction.ASC) Pageable pageable) {
 
         log.info("GET /api/products/search - Advanced search with filters");
+        ProductStatus effectiveStatus = status;
+        if (effectiveStatus == null && supplierId == null) {
+            effectiveStatus = ProductStatus.ACTIVE;
+        }
 
         // Build filter request
         ProductFilterRequest filter = ProductFilterRequest.builder()
-                .status(status)
+                .status(effectiveStatus)
                 .categoryId(categoryId)
                 .supplierId(supplierId)
                 .search(search)
