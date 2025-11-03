@@ -4,8 +4,10 @@ import com.example.backend.dto.request.AddToCartRequest;
 import com.example.backend.dto.request.UpdateCartItemRequest;
 import com.example.backend.dto.response.CartResponse;
 import com.example.backend.entity.*;
+import com.example.backend.entity.enums.CustomerTier;
 import com.example.backend.entity.enums.ProductStatus;
 import com.example.backend.entity.enums.PromotionStatus;
+import com.example.backend.entity.enums.PromotionTier;
 import com.example.backend.exception.ErrorCode;
 import com.example.backend.exception.custom.BadRequestException;
 import com.example.backend.exception.custom.NotFoundException;
@@ -17,7 +19,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -34,6 +35,8 @@ public class CartServiceImpl implements CartService {
     private final StoreProductRepository storeProductRepository;
     private final StoreRepository storeRepository;
     private final PromotionRepository promotionRepository;
+    private final PromotionUsageRepository promotionUsageRepository;
+    private final OrderRepository orderRepository;
 
     @Override
     @Transactional
@@ -471,8 +474,28 @@ public class CartServiceImpl implements CartService {
 
             // Check usage limits (global and per customer)
             if (promotion.getTotalUsageLimit() != null) {
-                // TODO: Check actual usage count from PromotionUsageRepository
-                // For now, we'll skip this check in cart validation
+                // Check actual usage count from PromotionUsageRepository
+                // This is more accurate than currentUsageCount field (which may have race condition issues)
+                long actualUsageCount = promotionUsageRepository.countByPromotionId(promotion.getPromotionId());
+                if (actualUsageCount >= promotion.getTotalUsageLimit()) {
+                    log.warn("Promotion usage limit reached: code={}, limit={}, actualUsage={}",
+                            promotion.getCode(), promotion.getTotalUsageLimit(), actualUsageCount);
+                    promotionsToRemove.add(cartPromotion);
+                    continue;
+                }
+            }
+
+            // Check per-customer usage limit
+            if (promotion.getUsagePerCustomerLimit() != null) {
+                long customerUsageCount = promotionUsageRepository.countByPromotionAndCustomer(
+                        promotion.getPromotionId(), cart.getCustomer().getUserId());
+                if (customerUsageCount >= promotion.getUsagePerCustomerLimit()) {
+                    log.warn("Customer reached per-customer usage limit: customerId={}, promotionCode={}, limit={}, usage={}",
+                            cart.getCustomer().getUserId(), promotion.getCode(),
+                            promotion.getUsagePerCustomerLimit(), customerUsageCount);
+                    promotionsToRemove.add(cartPromotion);
+                    continue;
+                }
             }
         }
 
@@ -509,11 +532,88 @@ public class CartServiceImpl implements CartService {
                             promotion.getMinimumOrderAmount(), cart.getTotal()));
         }
 
-        // TODO: Check customer tier requirement (Promotion entity needs 'requiredCustomerTier' field)
-        // Note: promotion.getTier() is PromotionTier (promotion's tier), not CustomerTier requirement
+        // Check customer tier requirement
+        // promotion.getTier() defines which customer tiers can use this promotion
+        if (!isCustomerEligibleForPromotionTier(cart.getCustomer(), promotion)) {
+            throw new BadRequestException(ErrorCode.PROMOTION_NOT_APPLICABLE,
+                    String.format("Mã khuyến mãi này dành cho %s. Cấp độ hiện tại của bạn: %s",
+                            promotion.getTier().getDisplayName(),
+                            cart.getCustomer().getTier().getDisplayName()));
+        }
 
-        // TODO: Check category-specific promotions
-        // TODO: Check per-customer usage limits
+        // Check per-customer usage limits
+        if (promotion.getUsagePerCustomerLimit() != null) {
+            long customerUsageCount = promotionUsageRepository.countByPromotionAndCustomer(
+                    promotion.getPromotionId(), cart.getCustomer().getUserId());
+            if (customerUsageCount >= promotion.getUsagePerCustomerLimit()) {
+                throw new BadRequestException(ErrorCode.PROMOTION_NOT_APPLICABLE,
+                        String.format("Bạn đã sử dụng hết số lần áp dụng mã này (%d/%d)",
+                                customerUsageCount, promotion.getUsagePerCustomerLimit()));
+            }
+        }
+
+        // Check global usage limit
+        if (promotion.getTotalUsageLimit() != null) {
+            long actualUsageCount = promotionUsageRepository.countByPromotionId(promotion.getPromotionId());
+            if (actualUsageCount >= promotion.getTotalUsageLimit()) {
+                throw new BadRequestException(ErrorCode.PROMOTION_NOT_APPLICABLE,
+                        "Mã khuyến mãi đã hết lượt sử dụng");
+            }
+        }
+
+    }
+
+    /**
+     * Check if customer's tier is eligible for the promotion tier requirement
+     * Promotion tiers define minimum customer tier requirements:
+     * - GENERAL: All customers
+     * - BRONZE_PLUS: Bronze and above (Bronze, Silver, Gold, Platinum, Diamond)
+     * - SILVER_PLUS: Silver and above
+     * - GOLD_PLUS: Gold and above
+     * - PLATINUM_PLUS: Platinum and above
+     * - DIAMOND_ONLY: Diamond only
+     * - BIRTHDAY: Special promotions (requires additional birthday check - not implemented here)
+     * - FIRST_TIME: Special promotions (requires check if customer has previous orders - not implemented here)
+     */
+    private boolean isCustomerEligibleForPromotionTier(Customer customer, Promotion promotion) {
+        PromotionTier promotionTier = promotion.getTier();
+        CustomerTier customerTier = customer.getTier();
+
+        return switch (promotionTier) {
+            case GENERAL -> true; // All customers eligible
+            case BRONZE_PLUS -> true; // All tiers are Bronze+ (Bronze, Silver, Gold, Platinum, Diamond)
+            case SILVER_PLUS -> customerTier != CustomerTier.BRONZE;
+            case GOLD_PLUS -> customerTier == CustomerTier.GOLD
+                    || customerTier == CustomerTier.PLATINUM
+                    || customerTier == CustomerTier.DIAMOND;
+            case PLATINUM_PLUS -> customerTier == CustomerTier.PLATINUM
+                    || customerTier == CustomerTier.DIAMOND;
+            case DIAMOND_ONLY -> customerTier == CustomerTier.DIAMOND;
+            case BIRTHDAY -> {
+                // Birthday promotion: check if customer's birthday is in current month
+                if (customer.getDateOfBirth() == null) {
+                    log.warn("Customer {} has no birthday set, cannot use BIRTHDAY promotion", customer.getUserId());
+                    yield false;
+                }
+                java.time.LocalDate now = java.time.LocalDate.now();
+                boolean isBirthdayMonth = customer.getDateOfBirth().getMonth() == now.getMonth();
+                if (!isBirthdayMonth) {
+                    log.info("Customer {} birthday is not in current month, cannot use BIRTHDAY promotion", 
+                            customer.getUserId());
+                }
+                yield isBirthdayMonth;
+            }
+            case FIRST_TIME -> {
+                // First-time promotion: check if customer has any previous orders
+                long orderCount = orderRepository.countByCustomer(customer);
+                boolean isFirstTime = orderCount == 0;
+                if (!isFirstTime) {
+                    log.info("Customer {} has {} previous orders, cannot use FIRST_TIME promotion", 
+                            customer.getUserId(), orderCount);
+                }
+                yield isFirstTime;
+            }
+        };
     }
 
     private CartResponse mapToCartResponse(Cart cart) {

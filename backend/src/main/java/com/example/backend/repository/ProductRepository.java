@@ -48,4 +48,22 @@ public interface ProductRepository extends JpaRepository<Product, String>, JpaSp
 
     // Count products by supplier and status
     long countBySupplierUserIdAndStatus(String supplierUserId, ProductStatus status);
+
+    // CRITICAL FIX: Query methods that filter by supplier status = ACTIVE
+    // These ensure products from paused/suspended suppliers are hidden from customers
+
+    @Query("SELECT p FROM Product p WHERE p.supplier.status = 'ACTIVE'")
+    Page<Product> findAllFromActiveSuppliers(Pageable pageable);
+
+    @Query("SELECT p FROM Product p WHERE p.status = :status AND p.supplier.status = 'ACTIVE'")
+    Page<Product> findByStatusFromActiveSuppliers(@Param("status") ProductStatus status, Pageable pageable);
+
+    @Query("SELECT p FROM Product p WHERE p.category.categoryId = :categoryId AND p.supplier.status = 'ACTIVE'")
+    Page<Product> findByCategoryFromActiveSuppliers(@Param("categoryId") String categoryId, Pageable pageable);
+
+    @Query("SELECT p FROM Product p WHERE p.status = :status AND p.category.categoryId = :categoryId AND p.supplier.status = 'ACTIVE'")
+    Page<Product> findByStatusAndCategoryFromActiveSuppliers(
+            @Param("status") ProductStatus status,
+            @Param("categoryId") String categoryId,
+            Pageable pageable);
 }

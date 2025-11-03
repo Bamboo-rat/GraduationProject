@@ -39,6 +39,14 @@ public interface PromotionUsageRepository extends JpaRepository<PromotionUsage, 
     );
 
     /**
+     * Count total usage for a specific promotion
+     * Used to check global usage limits in cart validation
+     */
+    @Query("SELECT COUNT(pu) FROM PromotionUsage pu " +
+           "WHERE pu.promotion.promotionId = :promotionId")
+    long countByPromotionId(@Param("promotionId") String promotionId);
+
+    /**
      * Find all usage records for a specific promotion
      */
     @Query("SELECT pu FROM PromotionUsage pu " +

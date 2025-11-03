@@ -40,6 +40,11 @@ public class ProductSpecification {
                 predicates.add(criteriaBuilder.equal(root.get("supplier").get("userId"), filter.getSupplierId()));
             }
 
+            // CRITICAL FIX: Only show products from ACTIVE suppliers
+            // This ensures that when supplier pauses/suspends, their products are hidden from customers
+            predicates.add(criteriaBuilder.equal(root.get("supplier").get("status"), 
+                    com.example.backend.entity.enums.SupplierStatus.ACTIVE));
+
             // 4. Search by keyword in product name or description
             if (filter.getSearch() != null && !filter.getSearch().trim().isEmpty()) {
                 String searchPattern = "%" + filter.getSearch().toLowerCase() + "%";

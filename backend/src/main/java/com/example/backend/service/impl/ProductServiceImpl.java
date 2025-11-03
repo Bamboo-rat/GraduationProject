@@ -241,16 +241,20 @@ public class ProductServiceImpl implements ProductService {
     public Page<ProductResponse> getAllProducts(ProductStatus status, String categoryId, String supplierId, String search, Pageable pageable) {
         Page<Product> products;
 
+        // CRITICAL FIX: Only show products from ACTIVE suppliers
+        // When supplier is paused/suspended, their products must be hidden from customers
         if (status != null && categoryId != null) {
-            products = productRepository.findByStatusAndCategoryCategoryId(status, categoryId, pageable);
+            products = productRepository.findByStatusAndCategoryFromActiveSuppliers(status, categoryId, pageable);
         } else if (status != null) {
-            products = productRepository.findByStatus(status, pageable);
+            products = productRepository.findByStatusFromActiveSuppliers(status, pageable);
         } else if (categoryId != null) {
-            products = productRepository.findByCategoryCategoryId(categoryId, pageable);
+            products = productRepository.findByCategoryFromActiveSuppliers(categoryId, pageable);
         } else if (supplierId != null) {
+            // When filtering by specific supplier, show their products regardless of status
+            // (used in admin/supplier panel)
             products = productRepository.findBySupplierUserId(supplierId, pageable);
         } else {
-            products = productRepository.findAll(pageable);
+            products = productRepository.findAllFromActiveSuppliers(pageable);
         }
 
         return products.map(productMapper::toResponse);
