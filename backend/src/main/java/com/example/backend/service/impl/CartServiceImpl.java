@@ -5,6 +5,7 @@ import com.example.backend.dto.request.UpdateCartItemRequest;
 import com.example.backend.dto.response.CartResponse;
 import com.example.backend.entity.*;
 import com.example.backend.entity.enums.ProductStatus;
+import com.example.backend.entity.enums.PromotionStatus;
 import com.example.backend.exception.ErrorCode;
 import com.example.backend.exception.custom.BadRequestException;
 import com.example.backend.exception.custom.NotFoundException;
@@ -28,9 +29,11 @@ public class CartServiceImpl implements CartService {
 
     private final CartRepository cartRepository;
     private final CartDetailRepository cartDetailRepository;
+    private final CartPromotionRepository cartPromotionRepository;
     private final CustomerRepository customerRepository;
     private final StoreProductRepository storeProductRepository;
     private final StoreRepository storeRepository;
+    private final PromotionRepository promotionRepository;
 
     @Override
     @Transactional
@@ -55,7 +58,7 @@ public class CartServiceImpl implements CartService {
                     "Sản phẩm không còn khả dụng");
         }
 
-        if (product.getExpiryDate() != null && product.getExpiryDate().isBefore(LocalDateTime.now())) {
+        if (variant.getExpiryDate() != null && variant.getExpiryDate().isBefore(java.time.LocalDate.now())) {
             throw new BadRequestException(ErrorCode.PRODUCT_NOT_AVAILABLE,
                     "Sản phẩm đã hết hạn");
         }
@@ -277,7 +280,7 @@ public class CartServiceImpl implements CartService {
                 continue;
             }
 
-            if (product.getExpiryDate() != null && product.getExpiryDate().isBefore(LocalDateTime.now())) {
+            if (variant.getExpiryDate() != null && variant.getExpiryDate().isBefore(java.time.LocalDate.now())) {
                 log.warn("Removing expired product from cart: productId={}", product.getProductId());
                 itemsToRemove.add(detail);
                 continue;
@@ -315,9 +318,90 @@ public class CartServiceImpl implements CartService {
         recalculateCartTotal(cart);
         cart = cartRepository.save(cart);
 
-        log.info("Cart validated and synced: itemsRemoved={}, itemsAdjusted={}",
-                itemsToRemove.size(), itemsToUpdate.size());
+        // Validate and remove promotions that no longer meet requirements
+        List<CartPromotion> promotionsToRemove = validatePromotions(cart);
+        if (!promotionsToRemove.isEmpty()) {
+            cart.getAppliedPromotions().removeAll(promotionsToRemove);
+            cartPromotionRepository.deleteAll(promotionsToRemove);
+            log.info("Removed {} promotions that no longer meet requirements", promotionsToRemove.size());
+        }
 
+        log.info("Cart validated and synced: itemsRemoved={}, itemsAdjusted={}, promotionsRemoved={}",
+                itemsToRemove.size(), itemsToUpdate.size(), promotionsToRemove.size());
+
+        return mapToCartResponse(cart);
+    }
+
+    @Override
+    @Transactional
+    public CartResponse applyPromotion(String customerId, String cartId, String promotionCode) {
+        log.info("Applying promotion to cart: customerId={}, cartId={}, promotionCode={}",
+                customerId, cartId, promotionCode);
+
+        // Get cart
+        Cart cart = cartRepository.findById(cartId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.CART_NOT_FOUND));
+
+        // Verify ownership
+        if (!cart.getCustomer().getUserId().equals(customerId)) {
+            throw new BadRequestException(ErrorCode.UNAUTHORIZED_ACCESS,
+                    "Bạn không có quyền truy cập giỏ hàng này");
+        }
+
+        // Find promotion
+        Promotion promotion = promotionRepository.findByCode(promotionCode)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.PROMOTION_NOT_FOUND));
+
+        // Check if promotion is already applied
+        if (cartPromotionRepository.existsByCartAndPromotion(cart, promotion)) {
+            throw new BadRequestException(ErrorCode.PROMOTION_NOT_APPLICABLE,
+                    "Mã khuyến mãi đã được áp dụng");
+        }
+
+        // Validate promotion
+        validatePromotionEligibility(cart, promotion);
+
+        // Apply promotion
+        CartPromotion cartPromotion = new CartPromotion();
+        cartPromotion.setCart(cart);
+        cartPromotion.setPromotion(promotion);
+        cartPromotionRepository.save(cartPromotion);
+
+        cart.getAppliedPromotions().add(cartPromotion);
+
+        log.info("Promotion applied successfully: promotionCode={}, cartId={}", promotionCode, cartId);
+        return mapToCartResponse(cart);
+    }
+
+    @Override
+    @Transactional
+    public CartResponse removePromotion(String customerId, String cartId, String promotionCode) {
+        log.info("Removing promotion from cart: customerId={}, cartId={}, promotionCode={}",
+                customerId, cartId, promotionCode);
+
+        // Get cart
+        Cart cart = cartRepository.findById(cartId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.CART_NOT_FOUND));
+
+        // Verify ownership
+        if (!cart.getCustomer().getUserId().equals(customerId)) {
+            throw new BadRequestException(ErrorCode.UNAUTHORIZED_ACCESS,
+                    "Bạn không có quyền truy cập giỏ hàng này");
+        }
+
+        // Find promotion
+        Promotion promotion = promotionRepository.findByCode(promotionCode)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.PROMOTION_NOT_FOUND));
+
+        // Find and remove cart promotion
+        CartPromotion cartPromotion = cartPromotionRepository.findByCartAndPromotion(cart, promotion)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.PROMOTION_NOT_FOUND,
+                        "Mã khuyến mãi không được áp dụng trong giỏ hàng này"));
+
+        cart.getAppliedPromotions().remove(cartPromotion);
+        cartPromotionRepository.delete(cartPromotion);
+
+        log.info("Promotion removed successfully: promotionCode={}, cartId={}", promotionCode, cartId);
         return mapToCartResponse(cart);
     }
 
@@ -335,7 +419,7 @@ public class CartServiceImpl implements CartService {
         ProductVariant variant = storeProduct.getVariant();
         BigDecimal price = storeProduct.getPriceOverride() != null
                 ? storeProduct.getPriceOverride()
-                : variant.getPrice();
+                : (variant.getDiscountPrice() != null ? variant.getDiscountPrice() : variant.getOriginalPrice());
         return price.multiply(BigDecimal.valueOf(quantity));
     }
 
@@ -346,9 +430,100 @@ public class CartServiceImpl implements CartService {
         cart.setTotal(total);
     }
 
+    /**
+     * Validate promotions and return list of promotions that no longer meet requirements
+     */
+    private List<CartPromotion> validatePromotions(Cart cart) {
+        List<CartPromotion> promotionsToRemove = new ArrayList<>();
+
+        for (CartPromotion cartPromotion : cart.getAppliedPromotions()) {
+            Promotion promotion = cartPromotion.getPromotion();
+
+            // Check if promotion is still active
+            if (promotion.getStatus() != PromotionStatus.ACTIVE) {
+                log.warn("Promotion is no longer active: promotionCode={}", promotion.getCode());
+                promotionsToRemove.add(cartPromotion);
+                continue;
+            }
+
+            // Check if promotion has expired
+            if (promotion.getEndDate() != null && promotion.getEndDate().isBefore(java.time.LocalDate.now())) {
+                log.warn("Promotion has expired: promotionCode={}", promotion.getCode());
+                promotionsToRemove.add(cartPromotion);
+                continue;
+            }
+
+            // Check if promotion hasn't started yet
+            if (promotion.getStartDate() != null && promotion.getStartDate().isAfter(java.time.LocalDate.now())) {
+                log.warn("Promotion hasn't started yet: promotionCode={}", promotion.getCode());
+                promotionsToRemove.add(cartPromotion);
+                continue;
+            }
+
+            // Check minimum order amount
+            if (promotion.getMinimumOrderAmount() != null &&
+                cart.getTotal().compareTo(promotion.getMinimumOrderAmount()) < 0) {
+                log.warn("Cart total does not meet minimum order amount: promotionCode={}, required={}, actual={}",
+                        promotion.getCode(), promotion.getMinimumOrderAmount(), cart.getTotal());
+                promotionsToRemove.add(cartPromotion);
+                continue;
+            }
+
+            // Check usage limits (global and per customer)
+            if (promotion.getTotalUsageLimit() != null) {
+                // TODO: Check actual usage count from PromotionUsageRepository
+                // For now, we'll skip this check in cart validation
+            }
+        }
+
+        return promotionsToRemove;
+    }
+
+    /**
+     * Validate if promotion can be applied to cart
+     */
+    private void validatePromotionEligibility(Cart cart, Promotion promotion) {
+        // Check if promotion is active
+        if (promotion.getStatus() != PromotionStatus.ACTIVE) {
+            throw new BadRequestException(ErrorCode.PROMOTION_EXPIRED_OR_INACTIVE,
+                    "Mã khuyến mãi không hoạt động");
+        }
+
+        // Check if promotion has expired
+        if (promotion.getEndDate() != null && promotion.getEndDate().isBefore(java.time.LocalDate.now())) {
+            throw new BadRequestException(ErrorCode.PROMOTION_EXPIRED_OR_INACTIVE,
+                    "Mã khuyến mãi đã hết hạn");
+        }
+
+        // Check if promotion hasn't started yet
+        if (promotion.getStartDate() != null && promotion.getStartDate().isAfter(java.time.LocalDate.now())) {
+            throw new BadRequestException(ErrorCode.PROMOTION_NOT_APPLICABLE,
+                    "Mã khuyến mãi chưa bắt đầu");
+        }
+
+        // Check minimum order amount
+        if (promotion.getMinimumOrderAmount() != null &&
+            cart.getTotal().compareTo(promotion.getMinimumOrderAmount()) < 0) {
+            throw new BadRequestException(ErrorCode.PROMOTION_NOT_APPLICABLE,
+                    String.format("Đơn hàng tối thiểu %s để áp dụng mã này. Hiện tại: %s",
+                            promotion.getMinimumOrderAmount(), cart.getTotal()));
+        }
+
+        // TODO: Check customer tier requirement (Promotion entity needs 'requiredCustomerTier' field)
+        // Note: promotion.getTier() is PromotionTier (promotion's tier), not CustomerTier requirement
+
+        // TODO: Check category-specific promotions
+        // TODO: Check per-customer usage limits
+    }
+
     private CartResponse mapToCartResponse(Cart cart) {
         List<CartResponse.CartItemResponse> items = cart.getCartDetails().stream()
                 .map(this::mapToCartItemResponse)
+                .collect(Collectors.toList());
+
+        // Get applied promotion codes
+        List<String> appliedPromotions = cart.getAppliedPromotions().stream()
+                .map(cp -> cp.getPromotion().getCode())
                 .collect(Collectors.toList());
 
         return CartResponse.builder()
@@ -359,7 +534,7 @@ public class CartServiceImpl implements CartService {
                 .total(cart.getTotal())
                 .items(items)
                 .itemCount(items.size())
-                .appliedPromotions(new ArrayList<>()) // TODO: Implement promotion application
+                .appliedPromotions(appliedPromotions)
                 .build();
     }
 
@@ -370,15 +545,15 @@ public class CartServiceImpl implements CartService {
 
         BigDecimal unitPrice = storeProduct.getPriceOverride() != null
                 ? storeProduct.getPriceOverride()
-                : variant.getPrice();
+                : (variant.getDiscountPrice() != null ? variant.getDiscountPrice() : variant.getOriginalPrice());
 
         boolean isAvailable = product.getStatus() == ProductStatus.ACTIVE
                 && storeProduct.getStockQuantity() > 0
-                && (product.getExpiryDate() == null || product.getExpiryDate().isAfter(LocalDateTime.now()));
+                && (variant.getExpiryDate() == null || variant.getExpiryDate().isAfter(java.time.LocalDate.now()));
 
-        String productImage = product.getProductImages().isEmpty()
+        String productImage = product.getImages().isEmpty()
                 ? null
-                : product.getProductImages().get(0).getImageUrl();
+                : product.getImages().get(0).getImageUrl();
 
         return CartResponse.CartItemResponse.builder()
                 .cartDetailId(detail.getCartDetailId())

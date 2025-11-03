@@ -58,6 +58,16 @@ public interface CartService {
     CartResponse validateAndSyncCart(String customerId, String cartId);
 
     /**
+     * Apply promotion to cart (validates eligibility and minimum order amount)
+     */
+    CartResponse applyPromotion(String customerId, String cartId, String promotionCode);
+
+    /**
+     * Remove promotion from cart
+     */
+    CartResponse removePromotion(String customerId, String cartId, String promotionCode);
+
+    /**
      * End of day reset - clear all carts (scheduled task)
      */
     void resetAllCarts();

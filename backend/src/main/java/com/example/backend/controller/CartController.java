@@ -143,6 +143,37 @@ public class CartController {
         return ResponseEntity.ok(ApiResponse.success("Đã xóa tất cả giỏ hàng"));
     }
 
+    @PostMapping("/{cartId}/promotions/{promotionCode}")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    @Operation(summary = "Apply promotion to cart",
+               description = "Apply promotion code to cart. Validates status, expiry, minimum order amount, and customer tier")
+    public ResponseEntity<ApiResponse<CartResponse>> applyPromotion(
+            @PathVariable String cartId,
+            @PathVariable String promotionCode,
+            Authentication authentication) {
+        String customerId = extractUserId(authentication);
+        log.info("POST /api/cart/{}/promotions/{} - Applying promotion: customerId={}",
+                cartId, promotionCode, customerId);
+
+        CartResponse response = cartService.applyPromotion(customerId, cartId, promotionCode);
+        return ResponseEntity.ok(ApiResponse.success("Áp dụng mã khuyến mãi thành công", response));
+    }
+
+    @DeleteMapping("/{cartId}/promotions/{promotionCode}")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    @Operation(summary = "Remove promotion from cart", description = "Remove applied promotion from cart")
+    public ResponseEntity<ApiResponse<CartResponse>> removePromotion(
+            @PathVariable String cartId,
+            @PathVariable String promotionCode,
+            Authentication authentication) {
+        String customerId = extractUserId(authentication);
+        log.info("DELETE /api/cart/{}/promotions/{} - Removing promotion: customerId={}",
+                cartId, promotionCode, customerId);
+
+        CartResponse response = cartService.removePromotion(customerId, cartId, promotionCode);
+        return ResponseEntity.ok(ApiResponse.success("Đã gỡ bỏ mã khuyến mãi", response));
+    }
+
     private String extractUserId(Authentication authentication) {
         Jwt jwt = (Jwt) authentication.getPrincipal();
         return jwt.getClaim("userId");

@@ -17,7 +17,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * Scheduler for cleanup tasks (old accounts, etc.)
+ * Scheduler for cleanup tasks (old accounts, carts, etc.)
  * Note: Email verification uses OTP (Redis) system, not database tokens
  * Note: Password reset tokens are cleaned up by PasswordResetTokenCleanupScheduler
  */
@@ -29,6 +29,7 @@ public class CleanupScheduler {
     private final CustomerRepository customerRepository;
     private final SupplierRepository supplierRepository;
     private final KeycloakService keycloakService;
+    private final com.example.backend.service.CartService cartService;
 
     /**
      * Cleanup old pending accounts that haven't verified within 7 days
@@ -91,6 +92,24 @@ public class CleanupScheduler {
 
         } catch (Exception e) {
             log.error("Error during cleanup of old pending accounts", e);
+        }
+    }
+
+    /**
+     * Reset all carts at end of day
+     * Runs daily at 00:00:00 (midnight)
+     * Clears all customer carts to ensure fresh start each day
+     */
+    @Scheduled(cron = "0 0 0 * * ?")
+    @Transactional
+    public void resetAllCartsEndOfDay() {
+        log.info("Starting end of day cart reset");
+
+        try {
+            cartService.resetAllCarts();
+            log.info("All carts reset successfully at end of day");
+        } catch (Exception e) {
+            log.error("Error during end of day cart reset", e);
         }
     }
 }

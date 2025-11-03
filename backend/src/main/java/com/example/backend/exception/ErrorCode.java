@@ -15,6 +15,8 @@ public enum ErrorCode {
     WEAK_PASSWORD("1006", "Password is too weak", "Mật khẩu quá yếu, cần ít nhất 8 ký tự, chữ hoa, chữ thường, số và ký tự đặc biệt", HttpStatus.BAD_REQUEST),
     INVALID_PHONE_NUMBER("1007", "Invalid phone number format", "Định dạng số điện thoại không hợp lệ", HttpStatus.BAD_REQUEST),
     INVALID_AGE("1008", "Age requirement not met", "Bạn phải đủ 18 tuổi để đăng ký", HttpStatus.BAD_REQUEST),
+    RESOURCE_ALREADY_EXISTS("1009", "Resource already exists", "Tài nguyên đã tồn tại", HttpStatus.CONFLICT),
+    OPERATION_NOT_ALLOWED("1010", "Operation not allowed", "Thao tác không được phép", HttpStatus.BAD_REQUEST),
 
     // ===== 2xxx: Authentication & Authorization Errors =====
     UNAUTHENTICATED("2001", "Unauthenticated", "Bạn chưa đăng nhập hoặc phiên làm việc đã hết hạn", HttpStatus.UNAUTHORIZED),

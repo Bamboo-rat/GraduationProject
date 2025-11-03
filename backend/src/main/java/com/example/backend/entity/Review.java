@@ -26,6 +26,9 @@ public class Review {
     @Column(nullable = true)
     private String comment;
 
+    @Column(nullable = true, length = 1000)
+    private String imageUrl;
+
     @Column(nullable = false)
     private boolean markedAsSpam = false;
 
