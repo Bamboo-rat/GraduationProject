@@ -63,8 +63,8 @@ public interface StoreRepository extends JpaRepository<Store, String> {
      * Search stores by supplier ID with store name filter
      */
     @Query("SELECT s FROM Store s WHERE s.supplier.userId = :userId " +
-           "AND (:search IS NULL OR LOWER(s.storeName) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(s.address) LIKE LOWER(CONCAT('%', :search, '%')))")
+            "AND (:search IS NULL OR (LOWER(s.storeName) LIKE LOWER(CONCAT('%', :search, '%')) " +
+            "OR LOWER(s.address) LIKE LOWER(CONCAT('%', :search, '%'))))")
     Page<Store> findBySupplierUserIdAndSearch(@Param("userId") String userId,
                                                 @Param("search") String search,
                                                 Pageable pageable);
@@ -74,8 +74,8 @@ public interface StoreRepository extends JpaRepository<Store, String> {
      */
     @Query("SELECT s FROM Store s WHERE s.supplier.userId = :userId " +
            "AND s.status = :status " +
-           "AND (:search IS NULL OR LOWER(s.storeName) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(s.address) LIKE LOWER(CONCAT('%', :search, '%')))")
+            "AND (:search IS NULL OR (LOWER(s.storeName) LIKE LOWER(CONCAT('%', :search, '%')) " +
+            "OR LOWER(s.address) LIKE LOWER(CONCAT('%', :search, '%'))))")
     Page<Store> findBySupplierUserIdAndStatusAndSearch(@Param("userId") String userId,
                                                          @Param("status") StoreStatus status,
                                                          @Param("search") String search,

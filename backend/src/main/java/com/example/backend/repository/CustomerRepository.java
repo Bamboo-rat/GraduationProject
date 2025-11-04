@@ -39,10 +39,10 @@ public interface CustomerRepository extends JpaRepository<Customer, String> {
     @Query("SELECT c FROM Customer c WHERE " +
            "(:status IS NULL OR c.status = :status) AND " +
            "(:tier IS NULL OR c.tier = :tier) AND " +
-           "(:search IS NULL OR " +
+            "(:search IS NULL OR (" +
            "LOWER(c.fullName) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
            "LOWER(c.email) LIKE LOWER(CONCAT('%', :search, '%')) OR " +
-           "LOWER(c.phoneNumber) LIKE LOWER(CONCAT('%', :search, '%')))")
+            "LOWER(c.phoneNumber) LIKE LOWER(CONCAT('%', :search, '%'))))")
     Page<Customer> findByStatusAndTierAndSearch(
             @Param("status") CustomerStatus status,
             @Param("tier") CustomerTier tier,
