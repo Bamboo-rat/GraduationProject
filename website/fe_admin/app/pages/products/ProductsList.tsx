@@ -4,7 +4,7 @@ import DashboardLayout from '~/component/layout/DashboardLayout';
 import type { PageResponse, PaginatedResponse } from '~/service/types';
 import { productService, type Product, type ProductListParams } from '~/service/productService';
 import Toast from '~/component/common/Toast';
-import { Package, Search, Filter, Eye, Ban, CheckCircle } from 'lucide-react';
+import { Package, Search, Filter, Eye, Ban, CheckCircle, RefreshCw } from 'lucide-react';
 
 const isPaginatedResponse = <T,>(
   data: PaginatedResponse<T> | PageResponse<T>
@@ -17,7 +17,6 @@ const isSpringPageResponse = <T,>(
 ): data is PageResponse<T> => {
   return typeof data === 'object' && data !== null && 'pageable' in data;
 };
-
 
 export default function ProductsList() {
   const navigate = useNavigate();
@@ -122,18 +121,18 @@ export default function ProductsList() {
 
   const getStatusBadge = (status: string) => {
     const statusMap: Record<string, { label: string; className: string }> = {
-      ACTIVE: { label: 'Đang bán', className: 'bg-green-100 text-green-800' },
-      INACTIVE: { label: 'Ngừng bán', className: 'bg-gray-100 text-gray-800' },
-      SOLD_OUT: { label: 'Hết hàng', className: 'bg-orange-100 text-orange-800' },
-      EXPIRED: { label: 'Hết hạn', className: 'bg-red-100 text-red-800' },
-      SUSPENDED: { label: 'Bị khóa', className: 'bg-red-100 text-red-800' },
-      DELETED: { label: 'Đã xóa', className: 'bg-gray-100 text-gray-500' }
+      ACTIVE: { label: 'Đang bán', className: 'badge-success' },
+      INACTIVE: { label: 'Ngừng bán', className: 'badge-neutral' },
+      SOLD_OUT: { label: 'Hết hàng', className: 'badge-warning' },
+      EXPIRED: { label: 'Hết hạn', className: 'badge-error' },
+      SUSPENDED: { label: 'Bị khóa', className: 'badge-error' },
+      DELETED: { label: 'Đã xóa', className: 'badge-neutral' }
     };
 
-    const config = statusMap[status] || { label: status, className: 'bg-gray-100 text-gray-800' };
+    const config = statusMap[status] || { label: status, className: 'badge-neutral' };
 
     return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.className}`}>
+      <span className={`px-3 py-1 rounded-full text-xs font-medium ${config.className}`}>
         {config.label}
       </span>
     );
@@ -210,7 +209,7 @@ export default function ProductsList() {
       <DashboardLayout>
         <div className="p-6">
           <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2F855A]"></div>
           </div>
         </div>
       </DashboardLayout>
@@ -221,33 +220,33 @@ export default function ProductsList() {
     <DashboardLayout>
       <div className="p-6">
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-800 mb-1 flex items-center">
-            <Package className="w-8 h-8 mr-2 text-blue-600" />
+        <div className="mb-8">
+          <h1 className="heading-primary mb-2 flex items-center">
+            <Package className="w-8 h-8 mr-3 text-[#2F855A]" />
             Tất cả Sản phẩm
           </h1>
-          <p className="text-gray-600">Tổng số: {totalElements.toLocaleString()} sản phẩm</p>
+          <p className="text-muted">Tổng số: {totalElements.toLocaleString()} sản phẩm</p>
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-lg shadow p-4 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="md:col-span-1">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Search className="w-4 h-4 inline mr-1" />
-                Tìm kiếm
+        <div className="card p-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-text mb-2 flex items-center">
+                <Search className="w-4 h-4 mr-2" />
+                Tìm kiếm sản phẩm
               </label>
               <input
                 type="text"
-                placeholder="Tên sản phẩm, SKU..."
+                placeholder="Tên sản phẩm, SKU, mô tả..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="input-field w-full"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                <Filter className="w-4 h-4 inline mr-1" />
+              <label className="block text-sm font-medium text-text mb-2 flex items-center">
+                <Filter className="w-4 h-4 mr-2" />
                 Trạng thái
               </label>
               <select
@@ -256,9 +255,9 @@ export default function ProductsList() {
                   setStatusFilter(e.target.value);
                   setPage(0);
                 }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="input-field w-full"
               >
-                <option value="">Tất cả</option>
+                <option value="">Tất cả trạng thái</option>
                 <option value="ACTIVE">Đang bán</option>
                 <option value="INACTIVE">Ngừng bán</option>
                 <option value="SOLD_OUT">Hết hàng</option>
@@ -266,14 +265,12 @@ export default function ProductsList() {
                 <option value="SUSPENDED">Bị khóa</option>
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Hành động
-              </label>
+            <div className="flex items-end">
               <button
                 onClick={fetchProducts}
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="btn-primary w-full flex items-center justify-center gap-2"
               >
+                <RefreshCw className="w-4 h-4" />
                 Làm mới
               </button>
             </div>
@@ -281,145 +278,159 @@ export default function ProductsList() {
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="card overflow-hidden">
           {loading ? (
-            <div className="text-center py-12">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <p className="mt-2 text-gray-600">Đang tải...</p>
+            <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2F855A] mb-3"></div>
+              <p className="text-light">Đang tải danh sách sản phẩm...</p>
             </div>
           ) : products.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              {debouncedSearch || statusFilter
-                ? 'Không tìm thấy sản phẩm nào phù hợp'
-                : 'Chưa có sản phẩm nào'}
+            <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
+              <Package className="w-16 h-16 text-light mb-4 opacity-50" />
+              <p className="text-light text-lg mb-2">
+                {debouncedSearch || statusFilter
+                  ? 'Không tìm thấy sản phẩm nào phù hợp'
+                  : 'Chưa có sản phẩm nào'}
+              </p>
+              <p className="text-muted text-sm">
+                {debouncedSearch || statusFilter
+                  ? 'Thử thay đổi điều kiện tìm kiếm'
+                  : 'Sản phẩm sẽ xuất hiện ở đây khi được tạo'}
+              </p>
             </div>
           ) : (
             <>
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Sản phẩm
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Danh mục
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Nhà cung cấp
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Giá
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Biến thể
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Trạng thái
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Thao tác
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {products.map((product) => {
-                    const primaryImage = product.images.find(img => img.isPrimary) || product.images[0];
-                    const firstVariant = product.variants[0];
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-[#B7E4C7]">
+                  <thead className="bg-surface-light">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-text uppercase tracking-wider">
+                        Sản phẩm
+                      </th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-text uppercase tracking-wider">
+                        Danh mục
+                      </th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-text uppercase tracking-wider">
+                        Nhà cung cấp
+                      </th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-text uppercase tracking-wider">
+                        Giá
+                      </th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-text uppercase tracking-wider">
+                        Biến thể
+                      </th>
+                      <th className="px-6 py-4 text-left text-sm font-semibold text-text uppercase tracking-wider">
+                        Trạng thái
+                      </th>
+                      <th className="px-6 py-4 text-right text-sm font-semibold text-text uppercase tracking-wider">
+                        Thao tác
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-surface divide-y divide-[#B7E4C7]">
+                    {products.map((product) => {
+                      const primaryImage = product.images.find(img => img.isPrimary) || product.images[0];
+                      const firstVariant = product.variants[0];
 
-                    return (
-                      <tr key={product.productId} className="hover:bg-gray-50">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center">
-                            {primaryImage && (
-                              <img
-                                className="h-12 w-12 rounded object-cover"
-                                src={primaryImage.imageUrl}
-                                alt={product.name}
-                              />
+                      return (
+                        <tr key={product.productId} className="hover:bg-surface-light transition-colors group">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center space-x-4">
+                              {primaryImage && (
+                                <img
+                                  className="h-14 w-14 rounded-lg object-cover border border-default"
+                                  src={primaryImage.imageUrl}
+                                  alt={product.name}
+                                />
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <div className="text-sm font-semibold text-text truncate">
+                                  {product.name}
+                                </div>
+                                <div className="text-xs text-muted line-clamp-2 mt-1">
+                                  {product.description}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-text">
+                            {product.categoryName}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-text">
+                            {product.supplierName}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-bold text-[#2F855A]">
+                              {firstVariant && formatCurrency(firstVariant.discountPrice || firstVariant.originalPrice)}
+                            </div>
+                            {firstVariant && firstVariant.discountPrice && (
+                              <div className="text-xs text-light line-through">
+                                {formatCurrency(firstVariant.originalPrice)}
+                              </div>
                             )}
-                            <div className="ml-3">
-                              <div className="text-sm font-medium text-gray-900">
-                                {product.name}
-                              </div>
-                              <div className="text-sm text-gray-500 line-clamp-1">
-                                {product.description}
-                              </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className="text-sm text-text font-medium">
+                              {product.variants.length} biến thể
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {getStatusBadge(product.status)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <div className="flex items-center justify-end space-x-2">
+                              <button
+                                onClick={() => handleViewDetail(product.productId)}
+                                className="text-[#2F855A] hover:text-[#8FB491] p-2 rounded-lg hover:bg-[#E8FFED] transition-colors"
+                                title="Xem chi tiết"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </button>
+                              {product.status === 'ACTIVE' && (
+                                <button
+                                  onClick={() => handleSuspendClick(product)}
+                                  className="text-[#E63946] hover:text-[#FF6B35] p-2 rounded-lg hover:bg-[#FFE8E8] transition-colors"
+                                  title="Đình chỉ sản phẩm"
+                                >
+                                  <Ban className="w-4 h-4" />
+                                </button>
+                              )}
+                              {product.status === 'SUSPENDED' && (
+                                <button
+                                  onClick={() => handleUnsuspendClick(product)}
+                                  className="text-[#2F855A] hover:text-[#8FB491] p-2 rounded-lg hover:bg-[#E8FFED] transition-colors"
+                                  title="Gỡ đình chỉ"
+                                >
+                                  <CheckCircle className="w-4 h-4" />
+                                </button>
+                              )}
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {product.categoryName}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {product.supplierName}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {firstVariant && formatCurrency(firstVariant.discountPrice || firstVariant.originalPrice)}
-                          </div>
-                          {firstVariant && firstVariant.discountPrice && (
-                            <div className="text-xs text-gray-500 line-through">
-                              {formatCurrency(firstVariant.originalPrice)}
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {product.variants.length} biến thể
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {getStatusBadge(product.status)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button
-                            onClick={() => handleViewDetail(product.productId)}
-                            className="text-blue-600 hover:text-blue-900 mr-3"
-                            title="Xem chi tiết"
-                          >
-                            <Eye className="w-4 h-4 inline" />
-                          </button>
-                          {product.status === 'ACTIVE' && (
-                            <button
-                              onClick={() => handleSuspendClick(product)}
-                              className="text-red-600 hover:text-red-900 mr-3"
-                              title="Đình chỉ"
-                            >
-                              <Ban className="w-4 h-4 inline" />
-                            </button>
-                          )}
-                          {product.status === 'SUSPENDED' && (
-                            <button
-                              onClick={() => handleUnsuspendClick(product)}
-                              className="text-green-600 hover:text-green-900 mr-3"
-                              title="Gỡ đình chỉ"
-                            >
-                              <CheckCircle className="w-4 h-4 inline" />
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200">
+                <div className="bg-surface-light px-6 py-4 flex items-center justify-between border-t border-default">
                   <div>
-                    <p className="text-sm text-gray-700">
-                      Hiển thị <span className="font-medium">{page * size + 1}</span> đến{' '}
-                      <span className="font-medium">{Math.min((page + 1) * size, totalElements)}</span> trong tổng số{' '}
-                      <span className="font-medium">{totalElements}</span> sản phẩm
+                    <p className="text-sm text-muted">
+                      Hiển thị <span className="font-medium text-text">{page * size + 1}</span> đến{' '}
+                      <span className="font-medium text-text">{Math.min((page + 1) * size, totalElements)}</span> trong tổng số{' '}
+                      <span className="font-medium text-text">{totalElements}</span> sản phẩm
                     </p>
                   </div>
                   <div>
-                    <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                    <nav className="relative z-0 inline-flex rounded-lg shadow-sm -space-x-px">
                       <button
                         onClick={() => setPage(Math.max(0, page - 1))}
                         disabled={page === 0}
-                        className="relative inline-flex items-center px-4 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="btn-secondary rounded-l-lg rounded-r-none disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Trước
+                        ← Trước
                       </button>
                       {[...Array(Math.min(totalPages, 5))].map((_, i) => {
                         let pageNumber = i;
@@ -432,10 +443,10 @@ export default function ProductsList() {
                           <button
                             key={pageNumber}
                             onClick={() => setPage(pageNumber)}
-                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-colors ${
                               pageNumber === page
-                                ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                                : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                                ? 'bg-[#2F855A] text-surface border-[#2F855A]'
+                                : 'bg-surface text-text border-default hover:bg-surface-light'
                             }`}
                           >
                             {pageNumber + 1}
@@ -445,9 +456,9 @@ export default function ProductsList() {
                       <button
                         onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
                         disabled={page >= totalPages - 1}
-                        className="relative inline-flex items-center px-4 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="btn-secondary rounded-r-lg rounded-l-none disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Sau
+                        Sau →
                       </button>
                     </nav>
                   </div>
@@ -460,22 +471,22 @@ export default function ProductsList() {
 
       {/* Suspend Modal */}
       {showSuspendModal && selectedProduct && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
+        <div className="fixed inset-0 z-50 overflow-y-auto animate-fadeIn">
           <div className="flex items-center justify-center min-h-screen px-4">
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={() => setShowSuspendModal(false)}></div>
-            <div className="relative bg-white rounded-lg max-w-lg w-full p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Đình chỉ sản phẩm</h3>
-              <p className="text-sm text-gray-500 mb-4">
-                Đình chỉ sản phẩm <strong>{selectedProduct.name}</strong>?
+            <div className="fixed inset-0 bg-[#2D2D2D] bg-opacity-50" onClick={() => setShowSuspendModal(false)}></div>
+            <div className="relative bg-surface rounded-lg max-w-lg w-full p-6 animate-scaleIn">
+              <h3 className="heading-secondary mb-4 text-[#E63946]">Đình chỉ sản phẩm</h3>
+              <p className="text-sm text-text mb-4">
+                Bạn sắp đình chỉ sản phẩm: <strong className="text-[#E63946]">"{selectedProduct.name}"</strong>
               </p>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Lý do đình chỉ *
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-text mb-2">
+                  Lý do đình chỉ <span className="text-[#E63946]">*</span>
                 </label>
                 <textarea
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  className="input-field w-full"
                   rows={4}
-                  placeholder="Nhập lý do đình chỉ..."
+                  placeholder="Nhập lý do đình chỉ sản phẩm..."
                   value={suspendReason}
                   onChange={(e) => setSuspendReason(e.target.value)}
                 />
@@ -483,14 +494,14 @@ export default function ProductsList() {
               <div className="flex justify-end space-x-3">
                 <button
                   onClick={() => setShowSuspendModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                  className="px-4 py-2 border border-default text-text rounded-lg hover:bg-surface-light transition-colors"
                 >
-                  Hủy
+                  Hủy bỏ
                 </button>
                 <button
                   onClick={handleSuspend}
                   disabled={!suspendReason.trim()}
-                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="btn-primary bg-[#E63946] hover:bg-[#FF6B35] disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Xác nhận đình chỉ
                 </button>
@@ -502,24 +513,24 @@ export default function ProductsList() {
 
       {/* Unsuspend Modal */}
       {showUnsuspendModal && selectedProduct && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
+        <div className="fixed inset-0 z-50 overflow-y-auto animate-fadeIn">
           <div className="flex items-center justify-center min-h-screen px-4">
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={() => setShowUnsuspendModal(false)}></div>
-            <div className="relative bg-white rounded-lg max-w-lg w-full p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Gỡ bỏ đình chỉ</h3>
-              <p className="text-sm text-gray-500 mb-4">
-                Gỡ bỏ đình chỉ cho sản phẩm <strong>{selectedProduct.name}</strong>?
+            <div className="fixed inset-0 bg-[#2D2D2D] bg-opacity-50" onClick={() => setShowUnsuspendModal(false)}></div>
+            <div className="relative bg-surface rounded-lg max-w-lg w-full p-6 animate-scaleIn">
+              <h3 className="heading-secondary mb-4 text-[#2F855A]">Gỡ bỏ đình chỉ</h3>
+              <p className="text-sm text-text mb-6">
+                Bạn sắp gỡ bỏ đình chỉ cho sản phẩm: <strong className="text-[#2F855A]">"{selectedProduct.name}"</strong>
               </p>
               <div className="flex justify-end space-x-3">
                 <button
                   onClick={() => setShowUnsuspendModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                  className="px-4 py-2 border border-default text-text rounded-lg hover:bg-surface-light transition-colors"
                 >
-                  Hủy
+                  Hủy bỏ
                 </button>
                 <button
                   onClick={handleUnsuspend}
-                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                  className="btn-primary bg-[#2F855A] hover:bg-[#8FB491]"
                 >
                   Xác nhận gỡ đình chỉ
                 </button>

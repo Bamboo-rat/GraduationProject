@@ -95,7 +95,7 @@ const Header: React.FC = () => {
                     Thông tin nhà cung cấp
                   </button>
                   <button
-                    onClick={() => navigate('/settings/notifications')}
+                    onClick={() => navigate('/settings')}
                     className="w-full flex items-center px-4 py-3 text-sm text-[#2D2D2D] hover:bg-[#F8FFF9] transition-all"
                   >
                     <svg className="w-4 h-4 mr-3 text-[#2F855A]" fill="none" stroke="currentColor" viewBox="0 0 24 24">

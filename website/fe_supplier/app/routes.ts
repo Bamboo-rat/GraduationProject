@@ -20,7 +20,6 @@ export default [
   route("products/create", "routes/products/create.tsx"),
   route("products/edit/:productId", "routes/products/edit/$productId.tsx"),
   route("products/categories", "routes/products/categories.tsx"),
-  route("products/review-status", "routes/products/review-status.tsx"),
 
   // Orders routes
   route("orders/list", "routes/orders/list.tsx"),
@@ -54,7 +53,6 @@ export default [
   route("feedback/support", "routes/feedback/support.tsx"),
 
   // Settings routes
-  route("settings/notifications", "routes/settings/notifications.tsx"),
-  route("settings/policies", "routes/settings/policies.tsx"),
+  route("settings", "routes/settings/settings.tsx")
 
 ] satisfies RouteConfig;
