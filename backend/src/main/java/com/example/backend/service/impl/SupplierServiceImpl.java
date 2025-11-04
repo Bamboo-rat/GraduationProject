@@ -471,6 +471,28 @@ public class SupplierServiceImpl implements SupplierService {
             sortDirection = "DESC";
         }
 
+        // Validate sortBy field to prevent SQL injection and invalid fields
+        // Map to valid entity fields (handle inheritance fields explicitly)
+        String validatedSortBy;
+        switch (sortBy) {
+            case "createdAt":
+            case "updatedAt":
+            case "fullName":
+            case "email":
+            case "username":
+            case "phoneNumber":
+                validatedSortBy = sortBy;
+                break;
+            case "businessName":
+            case "status":
+            case "taxCode":
+                validatedSortBy = sortBy;
+                break;
+            default:
+                log.warn("Invalid sortBy field: {}, using default createdAt", sortBy);
+                validatedSortBy = "createdAt";
+        }
+
         // Create pageable
         org.springframework.data.domain.Sort.Direction direction =
                 sortDirection.equalsIgnoreCase("ASC") ?
@@ -479,11 +501,18 @@ public class SupplierServiceImpl implements SupplierService {
 
         org.springframework.data.domain.Pageable pageable =
                 org.springframework.data.domain.PageRequest.of(page, size,
-                        org.springframework.data.domain.Sort.by(direction, sortBy));
+                        org.springframework.data.domain.Sort.by(direction, validatedSortBy));
 
         // Query with search and filter
         org.springframework.data.domain.Page<Supplier> suppliersPage =
                 supplierRepository.findByStatusAndSearch(status, search, pageable);
+
+        // Initialize lazy collections before mapping (within transaction)
+        suppliersPage.getContent().forEach(supplier -> {
+            // Force initialization of lazy collections
+            supplier.getStores().size();
+            supplier.getProducts().size();
+        });
 
         // Map to response
         return suppliersPage.map(supplierMapper::toResponse);

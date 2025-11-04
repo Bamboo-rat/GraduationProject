@@ -58,7 +58,7 @@ public class StoreController {
                     "Useful for homepage 'Popular Stores' section."
     )
     public ResponseEntity<ApiResponse<Page<StoreResponse>>> getTopStoresByPurchases(
-            @PageableDefault(size = 5, sort = "storeName", direction = Sort.Direction.ASC) Pageable pageable) {
+            @PageableDefault(size = 5) Pageable pageable) {
 
         log.info("GET /api/stores/top-stores - page: {}, size: {}",
                 pageable.getPageNumber(), pageable.getPageSize());

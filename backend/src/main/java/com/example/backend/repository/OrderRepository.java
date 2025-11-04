@@ -96,11 +96,11 @@ public interface OrderRepository extends JpaRepository<Order, String> {
      * Find stores with most purchases (completed orders)
      * Returns list of Store IDs ordered by order count
      */
-    @Query("SELECT o.store.storeId, COUNT(o) as orderCount " +
+    @Query("SELECT o.store.storeId, COUNT(o) as orderCount, o.store.storeName " +
            "FROM Order o " +
            "WHERE o.status = 'DELIVERED' " +
-           "GROUP BY o.store.storeId " +
-           "ORDER BY orderCount DESC")
+           "GROUP BY o.store.storeId, o.store.storeName " +
+           "ORDER BY orderCount DESC, o.store.storeName ASC")
     List<Object[]> findTopStoresByOrderCount(Pageable pageable);
 
     /**

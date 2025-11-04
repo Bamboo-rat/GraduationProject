@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import DashboardLayout from '~/component/layout/DashboardLayout';
-import dashboardService, {
+import dashboardService from '~/service/dashboardService';
+import type {
   DashboardOverview as DashboardOverviewType,
   SalesTrend,
   TopProduct,
