@@ -8,7 +8,10 @@ import com.example.backend.entity.enums.NotificationType;
 import com.example.backend.entity.enums.Role;
 import com.example.backend.exception.ErrorCode;
 import com.example.backend.exception.custom.NotFoundException;
+import com.example.backend.repository.AdminRepository;
+import com.example.backend.repository.CustomerRepository;
 import com.example.backend.repository.NotificationRepository;
+import com.example.backend.repository.SupplierRepository;
 import com.example.backend.repository.UserNotificationStatusRepository;
 import com.example.backend.repository.UserRepository;
 import com.example.backend.service.InAppNotificationService;
@@ -20,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -30,6 +34,9 @@ public class InAppNotificationServiceImpl implements InAppNotificationService {
     private final NotificationRepository notificationRepository;
     private final UserNotificationStatusRepository userNotificationStatusRepository;
     private final UserRepository userRepository;
+    private final AdminRepository adminRepository;
+    private final SupplierRepository supplierRepository;
+    private final CustomerRepository customerRepository;
 
     @Override
     @Transactional
@@ -72,8 +79,12 @@ public class InAppNotificationServiceImpl implements InAppNotificationService {
         notification.setBroadcast(true);
         notification = notificationRepository.save(notification);
 
-        // Find all users with specified roles
-        List<User> users = userRepository.findByRoleIn(List.of(roles));
+        // Find all users with specified roles (only admin roles are supported)
+        List<User> users = new ArrayList<>();
+        for (Role role : roles) {
+            List<User> admins = new ArrayList<>(adminRepository.findByRole(role));
+            users.addAll(admins);
+        }
         log.info("Found {} users with specified roles", users.size());
 
         // Create notification status for each user

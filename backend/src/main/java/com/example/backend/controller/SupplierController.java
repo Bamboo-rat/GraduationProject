@@ -5,6 +5,7 @@ import com.example.backend.dto.response.ApiResponse;
 import com.example.backend.dto.response.SupplierPendingUpdateResponse;
 import com.example.backend.dto.response.SupplierResponse;
 import com.example.backend.entity.enums.SuggestionStatus;
+import com.example.backend.entity.enums.SupplierStatus;
 import com.example.backend.service.SupplierService;
 import com.example.backend.utils.JwtUtils;
 import io.swagger.v3.oas.annotations.Operation;
@@ -86,17 +87,17 @@ public class SupplierController {
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF')")
     @Operation(summary = "Get all suppliers",
                description = "Get list of all suppliers with pagination, search, and filtering (admin only)")
-    public ResponseEntity<ApiResponse<org.springframework.data.domain.Page<SupplierResponse>>> getAllSuppliers(
+    public ResponseEntity<ApiResponse<Page<SupplierResponse>>> getAllSuppliers(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) com.example.backend.entity.enums.SupplierStatus status,
+            @RequestParam(required = false) SupplierStatus status,
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "DESC") String sortDirection) {
         log.info("GET /api/suppliers - Getting all suppliers (page: {}, size: {}, status: {}, search: {})",
                 page, size, status, search);
 
-        org.springframework.data.domain.Page<SupplierResponse> suppliers =
+        Page<SupplierResponse> suppliers =
                 supplierService.getAllSuppliers(page, size, status, search, sortBy, sortDirection);
 
         return ResponseEntity.ok(ApiResponse.success(suppliers));
@@ -134,7 +135,7 @@ public class SupplierController {
                description = "Update supplier status (admin/moderator only)")
     public ResponseEntity<ApiResponse<SupplierResponse>> updateSupplierStatus(
             @PathVariable String userId,
-            @RequestParam com.example.backend.entity.enums.SupplierStatus status) {
+            @RequestParam SupplierStatus status) {
         log.info("PATCH /api/suppliers/{}/status - Updating supplier status to: {}", userId, status);
 
         SupplierResponse response = supplierService.updateStatus(userId, status);
