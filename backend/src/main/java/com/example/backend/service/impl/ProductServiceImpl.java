@@ -677,11 +677,16 @@ public class ProductServiceImpl implements ProductService {
         log.info("Getting cheapest products (highest discount) with page: {}, size: {}",
                 pageable.getPageNumber(), pageable.getPageSize());
 
-        List<StoreProduct> storeProducts = storeProductRepository.findProductsWithHighestDiscount(pageable);
+        Pageable sanitizedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize()
+        );
+
+        List<StoreProduct> storeProducts = storeProductRepository.findProductsWithHighestDiscount(sanitizedPageable);
 
         if (storeProducts.isEmpty()) {
             log.info("No discounted products found");
-            return Page.empty(pageable);
+            return Page.empty(sanitizedPageable);
         }
 
         // Convert to ProductResponse (deduplicate if same product appears multiple times)
@@ -697,7 +702,7 @@ public class ProductServiceImpl implements ProductService {
 
         return new PageImpl<>(
                 productResponses,
-                pageable,
+                sanitizedPageable,
                 productResponses.size()
         );
     }
@@ -708,11 +713,16 @@ public class ProductServiceImpl implements ProductService {
         log.info("Getting new products on sale today with page: {}, size: {}",
                 pageable.getPageNumber(), pageable.getPageSize());
 
-        List<StoreProduct> storeProducts = storeProductRepository.findNewProductsOnSaleToday(pageable);
+        Pageable sanitizedPageable = PageRequest.of(
+                pageable.getPageNumber(),
+                pageable.getPageSize()
+        );
+
+        List<StoreProduct> storeProducts = storeProductRepository.findNewProductsOnSaleToday(sanitizedPageable);
 
         if (storeProducts.isEmpty()) {
             log.info("No new products on sale today");
-            return Page.empty(pageable);
+            return Page.empty(sanitizedPageable);
         }
 
         // Convert to ProductResponse (deduplicate if same product appears multiple times)
@@ -728,7 +738,7 @@ public class ProductServiceImpl implements ProductService {
 
         return new PageImpl<>(
                 productResponses,
-                pageable,
+                sanitizedPageable,
                 productResponses.size()
         );
     }

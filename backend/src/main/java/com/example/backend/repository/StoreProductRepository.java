@@ -82,7 +82,8 @@ public interface StoreProductRepository extends JpaRepository<StoreProduct, Stri
            "AND sp.stockQuantity > 0 " +
            "AND v.discountPrice IS NOT NULL " +
            "AND v.originalPrice > v.discountPrice " +
-           "ORDER BY ((v.originalPrice - v.discountPrice) / v.originalPrice) DESC")
+            "ORDER BY ((v.originalPrice - v.discountPrice) / v.originalPrice) DESC, " +
+            "p.name ASC")
     List<StoreProduct> findProductsWithHighestDiscount(Pageable pageable);
 
     /**
