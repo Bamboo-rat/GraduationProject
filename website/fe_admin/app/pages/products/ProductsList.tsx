@@ -1,9 +1,23 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import DashboardLayout from '~/component/layout/DashboardLayout';
+import type { PageResponse, PaginatedResponse } from '~/service/types';
 import { productService, type Product, type ProductListParams } from '~/service/productService';
 import Toast from '~/component/common/Toast';
 import { Package, Search, Filter, Eye, Ban, CheckCircle } from 'lucide-react';
+
+const isPaginatedResponse = <T,>(
+  data: PaginatedResponse<T> | PageResponse<T>
+): data is PaginatedResponse<T> => {
+  return typeof data === 'object' && data !== null && 'page' in data;
+};
+
+const isSpringPageResponse = <T,>(
+  data: PaginatedResponse<T> | PageResponse<T>
+): data is PageResponse<T> => {
+  return typeof data === 'object' && data !== null && 'pageable' in data;
+};
+
 
 export default function ProductsList() {
   const navigate = useNavigate();
@@ -58,11 +72,45 @@ export default function ProductsList() {
       if (debouncedSearch) params.search = debouncedSearch;
 
       const response = await productService.getAllProducts(params);
-      setProducts(response.data.content);
-      setTotalPages(response.data.page.totalPages);
-      setTotalElements(response.data.page.totalElements);
+      const pageData = response?.data;
+
+      if (!pageData) {
+        setProducts([]);
+        setTotalPages(0);
+        setTotalElements(0);
+        setToast({ message: 'Không nhận được dữ liệu từ máy chủ', type: 'error' });
+        return;
+      }
+
+      const content = Array.isArray(pageData.content) ? pageData.content : [];
+      setProducts(content);
+
+      if (isPaginatedResponse<Product>(pageData)) {
+        const pagination = pageData.page ?? { totalPages: 0, totalElements: 0 };
+        setTotalPages(pagination?.totalPages ?? 0);
+        setTotalElements(pagination?.totalElements ?? content.length);
+      } else if (isSpringPageResponse<Product>(pageData)) {
+        setTotalPages(pageData.totalPages ?? 0);
+        setTotalElements(pageData.totalElements ?? content.length);
+      } else {
+        const fallbackTotalPages =
+          typeof (pageData as { totalPages?: number }).totalPages === 'number'
+            ? (pageData as { totalPages: number }).totalPages
+            : 0;
+
+        const fallbackTotalElements =
+          typeof (pageData as { totalElements?: number }).totalElements === 'number'
+            ? (pageData as { totalElements: number }).totalElements
+            : content.length;
+
+        setTotalPages(fallbackTotalPages);
+        setTotalElements(fallbackTotalElements);
+      }
     } catch (error: any) {
       console.error('Error fetching products:', error);
+      setProducts([]);
+      setTotalPages(0);
+      setTotalElements(0);
       setToast({
         message: error.response?.data?.message || 'Không thể tải danh sách sản phẩm',
         type: 'error'

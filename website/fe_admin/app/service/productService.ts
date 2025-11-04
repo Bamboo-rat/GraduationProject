@@ -1,5 +1,5 @@
 import apiClient from '~/config/axios';
-import type { ApiResponse, PaginatedResponse } from './types';
+import type { ApiResponse, PaginatedResponse, PageResponse } from './types';
 
 export interface Product {
   productId: string;
@@ -48,9 +48,11 @@ export interface ProductListParams {
 }
 
 class ProductService {
-  private readonly BASE_URL = '/api/products';
+  private readonly BASE_URL = '/products';
 
-  async getAllProducts(params: ProductListParams = {}): Promise<ApiResponse<PaginatedResponse<Product>>> {
+  async getAllProducts(
+    params: ProductListParams = {}
+  ): Promise<ApiResponse<PaginatedResponse<Product> | PageResponse<Product>>> {
     const response = await apiClient.get(this.BASE_URL, { params });
     return response.data;
   }
