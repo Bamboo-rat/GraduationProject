@@ -56,8 +56,8 @@ public class SecurityConfig {
                         // File storage endpoints (authenticated users)
                         .requestMatchers("/api/files/**").authenticated()
 
-                        // Product endpoints (temporary permitAll for development, should be restricted later)
-                        .requestMatchers("/api/products/**", "/api/categories/**").permitAll()
+                        // Public customer-facing endpoints 
+                        .requestMatchers("/api/products/**", "/api/categories/**", "/api/stores/public", "/api/stores/top-stores", "/api/stores/*/products").permitAll()
 
                         // Partner/Promotion endpoints (temporary permitAll for development)
                         .requestMatchers("/api/partners/**", "/api/promotions/**").permitAll()
