@@ -8,7 +8,6 @@ import com.example.backend.entity.enums.SuggestionStatus;
 import com.example.backend.service.StoreService;
 import com.example.backend.utils.JwtUtils;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

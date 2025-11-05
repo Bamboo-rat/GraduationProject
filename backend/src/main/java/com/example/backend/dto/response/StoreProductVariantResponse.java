@@ -9,6 +9,10 @@ import java.util.List;
 
 @Data
 public class StoreProductVariantResponse {
+    // Từ StoreProduct (ID để add vào giỏ hàng)
+    private String storeProductId;
+    private String storeId;
+    
     // Từ Product
     private String productId;
     private String productName;

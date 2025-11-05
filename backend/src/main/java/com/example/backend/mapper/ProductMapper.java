@@ -51,6 +51,7 @@ public interface ProductMapper {
     default List<ProductVariantResponse.StoreStockInfo> mapStoreStocks(ProductVariant variant) {
         return variant.getStoreProducts().stream()
                 .map(sp -> ProductVariantResponse.StoreStockInfo.builder()
+                        .storeProductId(sp.getStoreProductId())
                         .storeId(sp.getStore().getStoreId())
                         .storeName(sp.getStore().getStoreName())
                         .stockQuantity(sp.getStockQuantity())

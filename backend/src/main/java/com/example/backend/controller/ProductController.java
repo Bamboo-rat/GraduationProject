@@ -2,7 +2,6 @@ package com.example.backend.controller;
 
 import com.example.backend.dto.request.ProductCreateRequest;
 import com.example.backend.dto.request.ProductFilterRequest;
-import com.example.backend.dto.request.ProductStatusUpdateRequest;
 import com.example.backend.dto.request.ProductUpdateRequest;
 import com.example.backend.dto.response.ApiResponse;
 import com.example.backend.dto.response.ProductResponse;

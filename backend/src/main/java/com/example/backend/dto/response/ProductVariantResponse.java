@@ -43,6 +43,7 @@ public class ProductVariantResponse {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class StoreStockInfo {
+        private String storeProductId;   
         private String storeId;
         private String storeName;
         private Integer stockQuantity;

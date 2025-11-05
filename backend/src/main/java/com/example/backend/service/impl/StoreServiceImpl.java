@@ -881,6 +881,10 @@ public class StoreServiceImpl implements StoreService {
 
         StoreProductVariantResponse dto = new StoreProductVariantResponse();
 
+        // Map StoreProduct information (for cart)
+        dto.setStoreProductId(sp.getStoreProductId());
+        dto.setStoreId(sp.getStore().getStoreId());
+
         // Map product information
         dto.setProductId(product.getProductId());
         dto.setProductName(product.getName());
