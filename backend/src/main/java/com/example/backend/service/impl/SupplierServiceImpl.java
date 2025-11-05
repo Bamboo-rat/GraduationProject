@@ -6,8 +6,9 @@ import com.example.backend.dto.response.SupplierPendingUpdateResponse;
 import com.example.backend.dto.response.SupplierResponse;
 import com.example.backend.entity.Admin;
 import com.example.backend.entity.Supplier;
-import com.example.backend.entity.SupplierPendingUpdate;
+import com.example.backend.entity.PendingUpdate;
 import com.example.backend.entity.Store;
+import com.example.backend.entity.enums.UpdateEntityType;
 import com.example.backend.entity.User;
 import com.example.backend.entity.enums.StoreStatus;
 import com.example.backend.entity.enums.SupplierStatus;
@@ -17,8 +18,8 @@ import com.example.backend.exception.custom.BadRequestException;
 import com.example.backend.exception.custom.ConflictException;
 import com.example.backend.exception.custom.NotFoundException;
 import com.example.backend.mapper.SupplierMapper;
-import com.example.backend.mapper.SupplierPendingUpdateMapper;
-import com.example.backend.repository.SupplierPendingUpdateRepository;
+import com.example.backend.mapper.PendingUpdateMapper;
+import com.example.backend.repository.PendingUpdateRepository;
 import com.example.backend.repository.SupplierRepository;
 import com.example.backend.repository.StoreRepository;
 import com.example.backend.repository.UserRepository;
@@ -52,11 +53,11 @@ public class SupplierServiceImpl implements SupplierService {
     private final SupplierRepository supplierRepository;
     private final UserRepository userRepository;
     private final StoreRepository storeRepository;
-    private final SupplierPendingUpdateRepository pendingUpdateRepository;
+    private final PendingUpdateRepository pendingUpdateRepository;
     private final KeycloakService keycloakService;
     private final OtpService otpService;
     private final SupplierMapper supplierMapper;
-    private final SupplierPendingUpdateMapper pendingUpdateMapper;
+    private final PendingUpdateMapper pendingUpdateMapper;
     private final NotificationService notificationService;
     private final InAppNotificationService inAppNotificationService;
     private final WalletService walletService;
@@ -991,8 +992,8 @@ public class SupplierServiceImpl implements SupplierService {
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
 
         // Check if there's already a pending update for this supplier
-        if (pendingUpdateRepository.existsBySupplierUserIdAndUpdateStatus(
-                supplier.getUserId(), SuggestionStatus.PENDING)) {
+        if (pendingUpdateRepository.existsByEntityTypeAndEntityIdAndUpdateStatus(
+                UpdateEntityType.SUPPLIER, supplier.getUserId(), SuggestionStatus.PENDING)) {
             throw new ConflictException(ErrorCode.INVALID_REQUEST,
                     "There is already a pending business info update request. Please wait for admin approval.");
         }
@@ -1013,7 +1014,9 @@ public class SupplierServiceImpl implements SupplierService {
         }
 
         // Create pending update
-        SupplierPendingUpdate pendingUpdate = new SupplierPendingUpdate();
+        PendingUpdate pendingUpdate = new PendingUpdate();
+        pendingUpdate.setEntityType(UpdateEntityType.SUPPLIER);
+        pendingUpdate.setEntityId(supplier.getUserId());
         pendingUpdate.setSupplier(supplier);
         pendingUpdate.setTaxCode(request.getTaxCode());
         pendingUpdate.setBusinessLicense(request.getBusinessLicense());
@@ -1034,7 +1037,7 @@ public class SupplierServiceImpl implements SupplierService {
                 "/partners/list-partners"
         );
 
-        return pendingUpdateMapper.toResponse(pendingUpdate);
+        return pendingUpdateMapper.toSupplierResponse(pendingUpdate);
     }
 
     @Override
@@ -1044,14 +1047,14 @@ public class SupplierServiceImpl implements SupplierService {
             Pageable pageable) {
         log.info("Getting all pending business updates with status: {}", status);
 
-        Page<SupplierPendingUpdate> updates;
+        Page<PendingUpdate> updates;
         if (status != null) {
-            updates = pendingUpdateRepository.findAllByUpdateStatus(status, pageable);
+            updates = pendingUpdateRepository.findByEntityTypeAndUpdateStatus(UpdateEntityType.SUPPLIER, status, pageable);
         } else {
-            updates = pendingUpdateRepository.findAll(pageable);
+            updates = pendingUpdateRepository.findByEntityType(UpdateEntityType.SUPPLIER, pageable);
         }
 
-        return updates.map(pendingUpdateMapper::toResponse);
+        return updates.map(pendingUpdateMapper::toSupplierResponse);
     }
 
     @Override
@@ -1066,16 +1069,16 @@ public class SupplierServiceImpl implements SupplierService {
         Supplier supplier = (Supplier) userRepository.findByKeycloakId(keycloakId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
 
-        Page<SupplierPendingUpdate> updates;
+        Page<PendingUpdate> updates;
         if (status != null) {
-            updates = pendingUpdateRepository.findBySupplierUserIdAndUpdateStatus(
+            updates = pendingUpdateRepository.findSupplierUpdatesBySupplierAndStatus(
                     supplier.getUserId(), status, pageable);
         } else {
-            updates = pendingUpdateRepository.findBySupplierUserId(
+            updates = pendingUpdateRepository.findSupplierUpdatesBySupplier(
                     supplier.getUserId(), pageable);
         }
 
-        return updates.map(pendingUpdateMapper::toResponse);
+        return updates.map(pendingUpdateMapper::toSupplierResponse);
     }
 
     @Override
@@ -1083,11 +1086,11 @@ public class SupplierServiceImpl implements SupplierService {
     public SupplierPendingUpdateResponse getPendingBusinessUpdateById(String updateId) {
         log.info("Getting pending business update: {}", updateId);
 
-        SupplierPendingUpdate update = pendingUpdateRepository.findById(updateId)
+        PendingUpdate update = pendingUpdateRepository.findById(updateId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.INVALID_REQUEST,
                         "Pending business update not found with ID: " + updateId));
 
-        return pendingUpdateMapper.toResponse(update);
+        return pendingUpdateMapper.toSupplierResponse(update);
     }
 
     @Override
@@ -1103,7 +1106,7 @@ public class SupplierServiceImpl implements SupplierService {
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
 
         // Find pending update
-        SupplierPendingUpdate pendingUpdate = pendingUpdateRepository.findById(updateId)
+        PendingUpdate pendingUpdate = pendingUpdateRepository.findById(updateId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.INVALID_REQUEST,
                         "Pending business update not found with ID: " + updateId));
 
@@ -1151,7 +1154,7 @@ public class SupplierServiceImpl implements SupplierService {
                 "/profile/my-profile"
         );
 
-        return pendingUpdateMapper.toResponse(pendingUpdate);
+        return pendingUpdateMapper.toSupplierResponse(pendingUpdate);
     }
 
     @Override
@@ -1167,7 +1170,7 @@ public class SupplierServiceImpl implements SupplierService {
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
 
         // Find pending update
-        SupplierPendingUpdate pendingUpdate = pendingUpdateRepository.findById(updateId)
+        PendingUpdate pendingUpdate = pendingUpdateRepository.findById(updateId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.INVALID_REQUEST,
                         "Pending business update not found with ID: " + updateId));
 
@@ -1199,6 +1202,6 @@ public class SupplierServiceImpl implements SupplierService {
                 "/profile/my-profile"
         );
 
-        return pendingUpdateMapper.toResponse(pendingUpdate);
+        return pendingUpdateMapper.toSupplierResponse(pendingUpdate);
     }
 }

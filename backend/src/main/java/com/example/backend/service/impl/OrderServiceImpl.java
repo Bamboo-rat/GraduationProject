@@ -317,6 +317,7 @@ public class OrderServiceImpl implements OrderService {
         }
 
         order.setStatus(OrderStatus.DELIVERED);
+        order.setDeliveredAt(LocalDateTime.now());
         order = orderRepository.save(order);
 
         // Update shipment status

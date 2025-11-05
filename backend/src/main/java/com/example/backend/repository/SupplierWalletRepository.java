@@ -2,6 +2,7 @@ package com.example.backend.repository;
 
 import com.example.backend.entity.SupplierWallet;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -13,7 +14,7 @@ import java.util.Optional;
  * Repository for SupplierWallet entity
  */
 @Repository
-public interface SupplierWalletRepository extends JpaRepository<SupplierWallet, String> {
+public interface SupplierWalletRepository extends JpaRepository<SupplierWallet, String>, JpaSpecificationExecutor<SupplierWallet> {
 
     /**
      * Find wallet by supplier ID

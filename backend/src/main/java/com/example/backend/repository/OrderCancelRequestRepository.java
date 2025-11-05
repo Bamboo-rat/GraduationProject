@@ -1,8 +1,11 @@
 package com.example.backend.repository;
 
+import com.example.backend.entity.Customer;
 import com.example.backend.entity.Order;
 import com.example.backend.entity.OrderCancelRequest;
+import com.example.backend.entity.Store;
 import com.example.backend.entity.enums.CancelRequestStatus;
+import com.example.backend.enums.OrderRequestType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -19,6 +22,11 @@ public interface OrderCancelRequestRepository extends JpaRepository<OrderCancelR
      * Find cancel request by order
      */
     Optional<OrderCancelRequest> findByOrder(Order order);
+
+    /**
+     * Find request by order and type (CANCEL or RETURN)
+     */
+    Optional<OrderCancelRequest> findByOrderAndRequestType(Order order, OrderRequestType requestType);
 
     /**
      * Check if order has pending cancel request
@@ -54,4 +62,33 @@ public interface OrderCancelRequestRepository extends JpaRepository<OrderCancelR
      * Find by status
      */
     Page<OrderCancelRequest> findByStatus(CancelRequestStatus status, Pageable pageable);
+
+    /**
+     * Find by customer and request type
+     */
+    Page<OrderCancelRequest> findByCustomerAndRequestType(Customer customer, OrderRequestType requestType, Pageable pageable);
+
+    /**
+     * Find by store and request type
+     */
+    @Query("SELECT r FROM OrderCancelRequest r WHERE r.order.store = :store AND r.requestType = :requestType ORDER BY r.requestedAt DESC")
+    Page<OrderCancelRequest> findByOrderStoreAndRequestType(
+            @Param("store") Store store, 
+            @Param("requestType") OrderRequestType requestType, 
+            Pageable pageable);
+
+    /**
+     * Find by store, request type and status
+     */
+    @Query("SELECT r FROM OrderCancelRequest r WHERE r.order.store = :store AND r.requestType = :requestType AND r.status = :status ORDER BY r.requestedAt DESC")
+    Page<OrderCancelRequest> findByOrderStoreAndRequestTypeAndStatus(
+            @Param("store") Store store, 
+            @Param("requestType") OrderRequestType requestType,
+            @Param("status") CancelRequestStatus status,
+            Pageable pageable);
+
+    /**
+     * Find by request type and status
+     */
+    Page<OrderCancelRequest> findByRequestTypeAndStatus(OrderRequestType requestType, CancelRequestStatus status, Pageable pageable);
 }

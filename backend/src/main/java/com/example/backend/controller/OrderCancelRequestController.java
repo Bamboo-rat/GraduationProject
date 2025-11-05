@@ -45,7 +45,7 @@ public class OrderCancelRequestController {
 
     @Operation(summary = "Review cancel request", description = "Supplier or Admin reviews (approves/rejects) a cancel request")
     @PostMapping("/{cancelRequestId}/review")
-    @PreAuthorize("hasAnyRole('SUPPLIER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPPLIER', 'SUPER_ADMIN', 'MODERATOR', 'STAFF')")
     public ResponseEntity<CancelRequestResponse> reviewCancelRequest(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable String cancelRequestId,
@@ -60,7 +60,7 @@ public class OrderCancelRequestController {
 
     @Operation(summary = "Get cancel request by ID", description = "Get details of a cancel request")
     @GetMapping("/{cancelRequestId}")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'SUPPLIER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'SUPPLIER', 'SUPER_ADMIN', 'MODERATOR', 'STAFF')")
     public ResponseEntity<CancelRequestResponse> getCancelRequestById(
             @PathVariable String cancelRequestId) {
         
@@ -72,7 +72,7 @@ public class OrderCancelRequestController {
 
     @Operation(summary = "Get cancel request by order ID", description = "Get cancel request for a specific order")
     @GetMapping("/order/{orderId}")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'SUPPLIER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'SUPPLIER', 'SUPER_ADMIN', 'MODERATOR', 'STAFF')")
     public ResponseEntity<CancelRequestResponse> getCancelRequestByOrderId(
             @PathVariable String orderId) {
         
@@ -99,7 +99,7 @@ public class OrderCancelRequestController {
 
     @Operation(summary = "Get store's cancel requests", description = "Supplier gets cancel requests for their store")
     @GetMapping("/store/{storeId}")
-    @PreAuthorize("hasAnyRole('SUPPLIER', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPPLIER', 'SUPER_ADMIN', 'MODERATOR', 'STAFF')")
     public ResponseEntity<Page<CancelRequestResponse>> getStoreCancelRequests(
             @PathVariable String storeId,
             @RequestParam(defaultValue = "false") boolean pending,
@@ -114,7 +114,7 @@ public class OrderCancelRequestController {
 
     @Operation(summary = "Get all pending cancel requests", description = "Admin gets all pending cancel requests")
     @GetMapping("/pending")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF')")
     public ResponseEntity<Page<CancelRequestResponse>> getAllPendingRequests(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {

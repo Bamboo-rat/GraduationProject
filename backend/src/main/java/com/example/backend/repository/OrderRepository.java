@@ -140,4 +140,12 @@ public interface OrderRepository extends JpaRepository<Order, String> {
            "WHERE o.status = :status " +
            "AND o.createdAt BETWEEN :startDate AND :endDate")
     Long countByStatusAndDateRange(@Param("status") OrderStatus status, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    /**
+     * Count orders by supplier ID and date range (for wallet summary)
+     */
+    @Query("SELECT COUNT(o) FROM Order o " +
+           "WHERE o.store.supplier.userId = :supplierId " +
+           "AND o.createdAt BETWEEN :startDate AND :endDate")
+    Long countBySupplierIdAndCreatedAtBetween(@Param("supplierId") String supplierId, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 }

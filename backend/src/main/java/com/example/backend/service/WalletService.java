@@ -1,10 +1,16 @@
 package com.example.backend.service;
 
+import com.example.backend.dto.request.ManualTransactionRequest;
+import com.example.backend.dto.request.WithdrawalRequest;
+import com.example.backend.dto.response.*;
 import com.example.backend.entity.Order;
 import com.example.backend.entity.SupplierWallet;
 import com.example.backend.entity.Supplier;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 /**
  * Service for managing supplier wallets
@@ -17,10 +23,6 @@ public interface WalletService {
      */
     SupplierWallet createWallet(Supplier supplier);
 
-    /**
-     * Get wallet by supplier ID
-     */
-    SupplierWallet getWalletBySupplierId(String supplierId);
 
     /**
      * Add pending balance when order is completed
@@ -41,4 +43,79 @@ public interface WalletService {
      * End of month job: Auto-withdraw available balance and reset monthly earnings
      */
     void endOfMonthWithdrawal();
+
+    // ==================== NEW METHODS FOR CONTROLLER ====================
+
+    /**
+     * Get current supplier's wallet
+     */
+    WalletResponse getMyWallet();
+
+    /**
+     * Get wallet summary for current supplier
+     */
+    WalletSummaryResponse getWalletSummary();
+
+    /**
+     * Get transactions for current supplier
+     */
+    Page<TransactionResponse> getMyTransactions(
+            String transactionType,
+            LocalDate startDate,
+            LocalDate endDate,
+            Pageable pageable
+    );
+
+    /**
+     * Get wallet statistics
+     */
+    WalletStatsResponse getWalletStats(Integer year, Integer month);
+
+    /**
+     * Request withdrawal
+     */
+    WithdrawalResponse requestWithdrawal(WithdrawalRequest request);
+
+    // ==================== ADMIN METHODS ====================
+
+    /**
+     * Get wallet by supplier ID (DTO)
+     */
+    WalletResponse getWalletBySupplierId(String supplierId);
+
+    /**
+     * Get transactions for specific supplier (admin)
+     */
+    Page<TransactionResponse> getSupplierTransactions(
+            String supplierId,
+            String transactionType,
+            LocalDate startDate,
+            LocalDate endDate,
+            Pageable pageable
+    );
+
+    /**
+     * Get all wallets (admin)
+     */
+    Page<WalletResponse> getAllWallets(String status, Pageable pageable);
+
+    /**
+     * Get system wallet summary (admin)
+     */
+    SystemWalletSummaryResponse getSystemWalletSummary();
+
+    /**
+     * Get reconciliation report (admin)
+     */
+    ReconciliationResponse getReconciliationReport(LocalDate startDate, LocalDate endDate);
+
+    /**
+     * Update wallet status (admin)
+     */
+    WalletResponse updateWalletStatus(String walletId, String status);
+
+    /**
+     * Create manual transaction (admin)
+     */
+    TransactionResponse createManualTransaction(ManualTransactionRequest request);
 }

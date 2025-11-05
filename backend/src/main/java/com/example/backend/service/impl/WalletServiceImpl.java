@@ -1,29 +1,36 @@
 package com.example.backend.service.impl;
 
-import com.example.backend.entity.Order;
-import com.example.backend.entity.Supplier;
-import com.example.backend.entity.SupplierWallet;
-import com.example.backend.entity.WalletTransaction;
+import com.example.backend.dto.request.ManualTransactionRequest;
+import com.example.backend.dto.request.WithdrawalRequest;
+import com.example.backend.dto.response.*;
+import com.example.backend.entity.*;
 import com.example.backend.entity.enums.TransactionType;
 import com.example.backend.entity.enums.WalletStatus;
 import com.example.backend.exception.ErrorCode;
+import com.example.backend.exception.custom.BadRequestException;
 import com.example.backend.exception.custom.NotFoundException;
-import com.example.backend.repository.SupplierWalletRepository;
-import com.example.backend.repository.WalletTransactionRepository;
+import com.example.backend.repository.*;
 import com.example.backend.service.WalletService;
+import com.example.backend.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.text.NumberFormat;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
- * Service implementation for wallet management
+ * Service implementation for wallet management - COMPLETE VERSION
  */
 @Slf4j
 @Service
@@ -32,16 +39,24 @@ public class WalletServiceImpl implements WalletService {
 
     private final SupplierWalletRepository walletRepository;
     private final WalletTransactionRepository transactionRepository;
+    private final SupplierRepository supplierRepository;
+    private final OrderRepository orderRepository;
+    private final UserRepository userRepository;
+
+    private static final BigDecimal MINIMUM_WITHDRAWAL = new BigDecimal("50000");
+    private static final NumberFormat VND_FORMAT = NumberFormat.getCurrencyInstance(Locale.of("vi", "VN"));
+
+    // ==================== CORE WALLET METHODS ====================
 
     @Override
     @Transactional
     public SupplierWallet createWallet(Supplier supplier) {
         log.info("Creating wallet for supplier ID: {}", supplier.getUserId());
 
-        // Check if wallet already exists
-        if (walletRepository.findBySupplierId(supplier.getUserId()).isPresent()) {
+        Optional<SupplierWallet> existingWallet = walletRepository.findBySupplierId(supplier.getUserId());
+        if (existingWallet.isPresent()) {
             log.warn("Wallet already exists for supplier ID: {}", supplier.getUserId());
-            return walletRepository.findBySupplierId(supplier.getUserId()).get();
+            return existingWallet.get();
         }
 
         SupplierWallet wallet = new SupplierWallet();
@@ -62,40 +77,27 @@ public class WalletServiceImpl implements WalletService {
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public SupplierWallet getWalletBySupplierId(String supplierId) {
-        return walletRepository.findBySupplierId(supplierId)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.WALLET_NOT_FOUND));
-    }
-
-    @Override
     @Transactional
     public void addPendingBalance(String supplierId, Order order, BigDecimal amount, String description) {
-        log.info("Adding pending balance for supplier ID: {}, order ID: {}, amount: {}", supplierId, order.getOrderId(), amount);
+        log.info("Adding pending balance for supplier ID: {}, order ID: {}, amount: {}", 
+                supplierId, order.getOrderId(), amount);
 
-        SupplierWallet wallet = getWalletBySupplierId(supplierId);
+        SupplierWallet wallet = getWalletEntityBySupplierId(supplierId);
         Supplier supplier = wallet.getSupplier();
 
-        // Calculate commission fee
         BigDecimal commissionRate = supplier.getCommissionRate() != null ?
                                     BigDecimal.valueOf(supplier.getCommissionRate() / 100.0) :
                                     BigDecimal.ZERO;
-        BigDecimal commissionAmount = amount.multiply(commissionRate).setScale(2, BigDecimal.ROUND_HALF_UP);
-        BigDecimal netAmount = amount.subtract(commissionAmount); // Số tiền nhà cung cấp thực nhận
+        BigDecimal commissionAmount = amount.multiply(commissionRate).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal netAmount = amount.subtract(commissionAmount);
 
         log.info("Order amount: {}, Commission rate: {}%, Commission: {}, Net amount: {}",
                  amount, supplier.getCommissionRate(), commissionAmount, netAmount);
 
-        // Add net amount to pending balance (đã trừ phí hoa hồng)
         wallet.addPendingBalance(netAmount);
-
-        // Add net amount to earnings (thu nhập thực tế)
         wallet.addEarnings(netAmount);
-
-        // Save wallet
         wallet = walletRepository.save(wallet);
 
-        // Create transaction record for order income
         WalletTransaction orderTransaction = new WalletTransaction();
         orderTransaction.setWallet(wallet);
         orderTransaction.setTransactionType(TransactionType.ORDER_COMPLETED);
@@ -105,16 +107,15 @@ public class WalletServiceImpl implements WalletService {
         orderTransaction.setOrder(order);
         orderTransaction.setDescription(description != null ? description :
                 "Thu nhập từ đơn hàng #" + order.getOrderCode() +
-                " (Tổng: " + amount + " VND, Phí: " + commissionAmount + " VND)");
+                " (Tổng: " + formatMoney(amount) + ", Phí: " + formatMoney(commissionAmount) + ")");
 
         transactionRepository.save(orderTransaction);
 
-        // Create transaction record for commission fee (if applicable)
         if (commissionAmount.compareTo(BigDecimal.ZERO) > 0) {
             WalletTransaction commissionTransaction = new WalletTransaction();
             commissionTransaction.setWallet(wallet);
             commissionTransaction.setTransactionType(TransactionType.COMMISSION_FEE);
-            commissionTransaction.setAmount(commissionAmount.negate()); // Negative for deduction
+            commissionTransaction.setAmount(commissionAmount.negate());
             commissionTransaction.setBalanceAfter(wallet.getAvailableBalance());
             commissionTransaction.setPendingBalanceAfter(wallet.getPendingBalance());
             commissionTransaction.setOrder(order);
@@ -134,47 +135,41 @@ public class WalletServiceImpl implements WalletService {
         log.info("Refunding order for supplier ID: {}, order ID: {}, amount: {}, isPending: {}",
                  supplierId, order.getOrderId(), amount, isPending);
 
-        SupplierWallet wallet = getWalletBySupplierId(supplierId);
+        SupplierWallet wallet = getWalletEntityBySupplierId(supplierId);
         Supplier supplier = wallet.getSupplier();
 
-        // Calculate original commission (to know the net amount that was added)
         BigDecimal commissionRate = supplier.getCommissionRate() != null ?
                                     BigDecimal.valueOf(supplier.getCommissionRate() / 100.0) :
                                     BigDecimal.ZERO;
-        BigDecimal commissionAmount = amount.multiply(commissionRate).setScale(2, BigDecimal.ROUND_HALF_UP);
-        BigDecimal netAmount = amount.subtract(commissionAmount); // Số tiền đã cộng vào wallet
+        BigDecimal commissionAmount = amount.multiply(commissionRate).setScale(2, RoundingMode.HALF_UP);
+        BigDecimal netAmount = amount.subtract(commissionAmount);
 
         log.info("Refunding - Original amount: {}, Commission: {}, Net amount to refund: {}",
                  amount, commissionAmount, netAmount);
 
-        // Refund net amount (trừ từ pending hoặc available)
         wallet.refund(netAmount, isPending);
-
-        // Subtract from earnings (QUAN TRỌNG - tránh earnings bị sai)
         wallet.subtractEarnings(netAmount);
-
-        // Save wallet
         wallet = walletRepository.save(wallet);
 
-        // Create transaction record
         WalletTransaction transaction = new WalletTransaction();
         transaction.setWallet(wallet);
         transaction.setTransactionType(TransactionType.ORDER_REFUND);
-        transaction.setAmount(netAmount.negate()); // Negative amount for refund
+        transaction.setAmount(netAmount.negate());
         transaction.setBalanceAfter(wallet.getAvailableBalance());
         transaction.setPendingBalanceAfter(wallet.getPendingBalance());
         transaction.setOrder(order);
         transaction.setDescription("Hoàn tiền đơn hàng #" + order.getOrderCode() +
                 (isPending ? " (hủy trước khi giao)" : " (trả hàng)") +
-                " - Tổng: " + amount + " VND, Hoàn: " + netAmount + " VND");
+                " - Tổng: " + formatMoney(amount) + ", Hoàn: " + formatMoney(netAmount));
 
         transactionRepository.save(transaction);
 
-        log.info("Order refunded successfully. Wallet ID: {}, Net refunded: {}", wallet.getWalletId(), netAmount);
+        log.info("Order refunded successfully. Wallet ID: {}, Net refunded: {}", 
+                wallet.getWalletId(), netAmount);
     }
 
     @Override
-    @Scheduled(cron = "0 0 0 * * *") // Run at 00:00 every day
+    @Scheduled(cron = "0 0 0 * * *")
     @Transactional
     public void endOfDayRelease() {
         LocalDate today = LocalDate.now();
@@ -188,11 +183,9 @@ public class WalletServiceImpl implements WalletService {
                 BigDecimal pendingAmount = wallet.getPendingBalance();
 
                 if (pendingAmount.compareTo(BigDecimal.ZERO) > 0) {
-                    // Release pending → available
                     wallet.releasePendingBalance(pendingAmount);
                     wallet = walletRepository.save(wallet);
 
-                    // Create transaction record
                     WalletTransaction transaction = new WalletTransaction();
                     transaction.setWallet(wallet);
                     transaction.setTransactionType(TransactionType.END_OF_DAY_RELEASE);
@@ -204,11 +197,10 @@ public class WalletServiceImpl implements WalletService {
                     transactionRepository.save(transaction);
 
                     processedCount++;
-                    log.info("Released {} VND for wallet ID: {}", pendingAmount, wallet.getWalletId());
+                    log.info("Released {} for wallet ID: {}", formatMoney(pendingAmount), wallet.getWalletId());
                 }
             } catch (Exception e) {
                 log.error("Error processing end-of-day release for wallet ID: {}", wallet.getWalletId(), e);
-                // Continue with next wallet
             }
         }
 
@@ -216,7 +208,7 @@ public class WalletServiceImpl implements WalletService {
     }
 
     @Override
-    @Scheduled(cron = "0 0 0 1 * *") // Run at 00:00 on the 1st day of every month
+    @Scheduled(cron = "0 0 0 1 * *")
     @Transactional
     public void endOfMonthWithdrawal() {
         YearMonth lastMonth = YearMonth.now().minusMonths(1);
@@ -231,10 +223,8 @@ public class WalletServiceImpl implements WalletService {
                 BigDecimal availableAmount = wallet.getAvailableBalance();
 
                 if (availableAmount.compareTo(BigDecimal.ZERO) > 0) {
-                    // Auto-withdraw available → withdrawn
                     wallet.autoWithdrawMonthly();
 
-                    // Create transaction record
                     WalletTransaction transaction = new WalletTransaction();
                     transaction.setWallet(wallet);
                     transaction.setTransactionType(TransactionType.END_OF_MONTH_WITHDRAWAL);
@@ -246,20 +236,698 @@ public class WalletServiceImpl implements WalletService {
                     transactionRepository.save(transaction);
 
                     processedCount++;
-                    log.info("Withdrew {} VND for wallet ID: {}", availableAmount, wallet.getWalletId());
+                    log.info("Withdrew {} for wallet ID: {}", formatMoney(availableAmount), wallet.getWalletId());
                 }
 
-                // Reset monthly earnings for new month
                 wallet.resetMonthlyEarnings();
                 wallet.setCurrentMonth(currentMonth.toString());
                 walletRepository.save(wallet);
 
             } catch (Exception e) {
-                log.error("Error processing end-of-month withdrawal for wallet ID: {}", wallet.getWalletId(), e);
-                // Continue with next wallet
+                log.error("Error processing end-of-month withdrawal for wallet ID: {}", 
+                        wallet.getWalletId(), e);
             }
         }
 
         log.info("End-of-Month Withdrawal completed. Total wallets processed: {}", processedCount);
+    }
+
+    // ==================== SUPPLIER METHODS ====================
+
+    @Override
+    @Transactional(readOnly = true)
+    public WalletResponse getMyWallet() {
+        String currentUserId = SecurityUtil.getCurrentUserId();
+        SupplierWallet wallet = getWalletEntityBySupplierId(currentUserId);
+        return mapToWalletResponse(wallet);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public WalletSummaryResponse getWalletSummary() {
+        String currentUserId = SecurityUtil.getCurrentUserId();
+        SupplierWallet wallet = getWalletEntityBySupplierId(currentUserId);
+        Supplier supplier = wallet.getSupplier();
+
+        YearMonth currentMonth = YearMonth.now();
+        LocalDateTime startOfMonth = currentMonth.atDay(1).atStartOfDay();
+        LocalDateTime endOfMonth = currentMonth.atEndOfMonth().atTime(23, 59, 59);
+
+        Long orderCount = orderRepository.countBySupplierIdAndCreatedAtBetween(
+                currentUserId, startOfMonth, endOfMonth
+        );
+
+        BigDecimal totalBalance = wallet.getAvailableBalance().add(wallet.getPendingBalance());
+        Double commissionRate = supplier.getCommissionRate() != null ? supplier.getCommissionRate() : 0.0;
+        BigDecimal estimatedCommission = wallet.getMonthlyEarnings()
+                .multiply(BigDecimal.valueOf(commissionRate / 100.0))
+                .setScale(2, RoundingMode.HALF_UP);
+
+        return WalletSummaryResponse.builder()
+                .availableBalance(wallet.getAvailableBalance())
+                .pendingBalance(wallet.getPendingBalance())
+                .totalBalance(totalBalance)
+                .monthlyEarnings(wallet.getMonthlyEarnings())
+                .monthlyOrders(wallet.getMonthlyEarnings())
+                .totalOrdersThisMonth(orderCount.intValue())
+                .totalEarnings(wallet.getTotalEarnings())
+                .totalWithdrawn(wallet.getTotalWithdrawn())
+                .totalRefunded(wallet.getTotalRefunded())
+                .commissionRate(commissionRate)
+                .estimatedCommissionThisMonth(estimatedCommission)
+                .status(wallet.getStatus().name())
+                .canWithdraw(wallet.getAvailableBalance().compareTo(MINIMUM_WITHDRAWAL) >= 0 
+                        && wallet.getStatus() == WalletStatus.ACTIVE)
+                .minimumWithdrawal(MINIMUM_WITHDRAWAL)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<TransactionResponse> getMyTransactions(
+            String transactionType,
+            LocalDate startDate,
+            LocalDate endDate,
+            org.springframework.data.domain.Pageable pageable
+    ) {
+        String currentUserId = SecurityUtil.getCurrentUserId();
+        SupplierWallet wallet = getWalletEntityBySupplierId(currentUserId);
+
+        return getTransactionsByWallet(wallet.getWalletId(), transactionType, startDate, endDate, pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public WalletStatsResponse getWalletStats(Integer year, Integer month) {
+        String currentUserId = SecurityUtil.getCurrentUserId();
+        SupplierWallet wallet = getWalletEntityBySupplierId(currentUserId);
+
+        if (year == null) year = LocalDate.now().getYear();
+        
+        LocalDateTime startDate;
+        LocalDateTime endDate;
+        String period;
+
+        if (month != null) {
+            YearMonth yearMonth = YearMonth.of(year, month);
+            startDate = yearMonth.atDay(1).atStartOfDay();
+            endDate = yearMonth.atEndOfMonth().atTime(23, 59, 59);
+            period = String.format("%04d-%02d", year, month);
+        } else {
+            startDate = LocalDate.of(year, 1, 1).atStartOfDay();
+            endDate = LocalDate.of(year, 12, 31).atTime(23, 59, 59);
+            period = String.valueOf(year);
+        }
+
+        List<WalletTransaction> transactions = transactionRepository.findByWalletAndCreatedAtBetween(
+                wallet, startDate, endDate
+        );
+
+        return buildStatsResponse(transactions, year, month, period);
+    }
+
+    @Override
+    @Transactional
+    public WithdrawalResponse requestWithdrawal(WithdrawalRequest request) {
+        String currentUserId = SecurityUtil.getCurrentUserId();
+        SupplierWallet wallet = getWalletEntityBySupplierId(currentUserId);
+
+        if (wallet.getStatus() != WalletStatus.ACTIVE) {
+            throw new BadRequestException(ErrorCode.WALLET_NOT_FOUND, "Ví đang bị khóa, không thể rút tiền");
+        }
+
+        if (request.getAmount().compareTo(MINIMUM_WITHDRAWAL) < 0) {
+            throw new BadRequestException(ErrorCode.WALLET_NOT_FOUND, "Số tiền rút tối thiểu là " + formatMoney(MINIMUM_WITHDRAWAL));
+        }
+
+        if (request.getAmount().compareTo(wallet.getAvailableBalance()) > 0) {
+            throw new BadRequestException(ErrorCode.WALLET_NOT_FOUND, "Số dư không đủ để rút tiền");
+        }
+
+        wallet.setAvailableBalance(wallet.getAvailableBalance().subtract(request.getAmount()));
+        wallet.setTotalWithdrawn(wallet.getTotalWithdrawn().add(request.getAmount()));
+        wallet.setLastWithdrawalDate(LocalDateTime.now());
+        wallet = walletRepository.save(wallet);
+
+        WalletTransaction transaction = new WalletTransaction();
+        transaction.setWallet(wallet);
+        transaction.setTransactionType(TransactionType.END_OF_MONTH_WITHDRAWAL);
+        transaction.setAmount(request.getAmount());
+        transaction.setBalanceAfter(wallet.getAvailableBalance());
+        transaction.setPendingBalanceAfter(wallet.getPendingBalance());
+        transaction.setDescription("Rút tiền về tài khoản " + request.getBankName() + 
+                " - " + request.getBankAccountNumber());
+        transaction.setExternalReference("WITHDRAWAL_" + System.currentTimeMillis());
+
+        transaction = transactionRepository.save(transaction);
+
+        return WithdrawalResponse.builder()
+                .transactionId(transaction.getTransactionId())
+                .amount(request.getAmount())
+                .balanceAfter(wallet.getAvailableBalance())
+                .status("COMPLETED")
+                .message("Yêu cầu rút tiền thành công. Tiền sẽ được chuyển trong vòng 1-3 ngày làm việc.")
+                .requestedAt(transaction.getCreatedAt())
+                .processedAt(transaction.getCreatedAt())
+                .bankName(request.getBankName())
+                .bankAccountNumber(maskBankAccount(request.getBankAccountNumber()))
+                .bankAccountName(request.getBankAccountName())
+                .build();
+    }
+
+    // ==================== ADMIN METHODS ====================
+
+    @Override
+    @Transactional(readOnly = true)
+    public WalletResponse getWalletBySupplierId(String supplierId) {
+        SupplierWallet wallet = getWalletEntityBySupplierId(supplierId);
+        return mapToWalletResponse(wallet);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<TransactionResponse> getSupplierTransactions(
+            String supplierId,
+            String transactionType,
+            LocalDate startDate,
+            LocalDate endDate,
+            org.springframework.data.domain.Pageable pageable
+    ) {
+        SupplierWallet wallet = getWalletEntityBySupplierId(supplierId);
+        return getTransactionsByWallet(wallet.getWalletId(), transactionType, startDate, endDate, pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<WalletResponse> getAllWallets(String status, org.springframework.data.domain.Pageable pageable) {
+        Page<SupplierWallet> wallets;
+        
+        if (status != null && !status.equalsIgnoreCase("ALL")) {
+            WalletStatus walletStatus = WalletStatus.valueOf(status);
+            Specification<SupplierWallet> spec = (root, query, cb) -> 
+                    cb.equal(root.get("status"), walletStatus);
+            wallets = walletRepository.findAll(spec, pageable);
+        } else {
+            wallets = walletRepository.findAll(pageable);
+        }
+
+        return wallets.map(this::mapToWalletResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public SystemWalletSummaryResponse getSystemWalletSummary() {
+        String currentMonth = YearMonth.now().toString();
+
+        BigDecimal totalAvailable = walletRepository.getTotalAvailableBalance();
+        BigDecimal totalPending = walletRepository.getTotalPendingBalance();
+        BigDecimal monthlyEarnings = walletRepository.getTotalMonthlyEarnings(currentMonth);
+
+        List<SupplierWallet> allWallets = walletRepository.findAll();
+        
+        long activeCount = allWallets.stream()
+                .filter(w -> w.getStatus() == WalletStatus.ACTIVE)
+                .count();
+        
+        long suspendedCount = allWallets.stream()
+                .filter(w -> w.getStatus() == WalletStatus.SUSPENDED)
+                .count();
+
+        BigDecimal totalEarnings = allWallets.stream()
+                .map(SupplierWallet::getTotalEarnings)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalWithdrawn = allWallets.stream()
+                .map(SupplierWallet::getTotalWithdrawn)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalRefunded = allWallets.stream()
+                .map(SupplierWallet::getTotalRefunded)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalCommission = calculateTotalCommission();
+        BigDecimal monthlyCommission = calculateMonthlyCommission();
+
+        BigDecimal avgBalance = allWallets.isEmpty() ? BigDecimal.ZERO :
+                totalAvailable.add(totalPending).divide(
+                        BigDecimal.valueOf(allWallets.size()), 2, RoundingMode.HALF_UP
+                );
+
+        BigDecimal avgMonthly = allWallets.isEmpty() ? BigDecimal.ZERO :
+                monthlyEarnings.divide(
+                        BigDecimal.valueOf(allWallets.size()), 2, RoundingMode.HALF_UP
+                );
+
+        return SystemWalletSummaryResponse.builder()
+                .totalAvailableBalance(totalAvailable)
+                .totalPendingBalance(totalPending)
+                .totalBalance(totalAvailable.add(totalPending))
+                .totalEarnings(totalEarnings)
+                .monthlyEarnings(monthlyEarnings)
+                .totalWithdrawn(totalWithdrawn)
+                .totalRefunded(totalRefunded)
+                .totalCommissionEarned(totalCommission)
+                .monthlyCommissionEarned(monthlyCommission)
+                .totalActiveWallets((int) activeCount)
+                .totalSuspendedWallets((int) suspendedCount)
+                .totalWallets(allWallets.size())
+                .averageWalletBalance(avgBalance)
+                .averageMonthlyEarnings(avgMonthly)
+                .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ReconciliationResponse getReconciliationReport(LocalDate startDate, LocalDate endDate) {
+        if (startDate == null) startDate = LocalDate.now().withDayOfMonth(1);
+        if (endDate == null) endDate = LocalDate.now();
+
+        LocalDateTime start = startDate.atStartOfDay();
+        LocalDateTime end = endDate.atTime(23, 59, 59);
+
+        List<Order> orders = orderRepository.findByCreatedAtBetween(start, end);
+
+        BigDecimal totalOrderValue = orders.stream()
+                .map(Order::getTotalAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        List<WalletTransaction> transactions = transactionRepository.findByCreatedAtBetween(start, end);
+
+        BigDecimal totalCommission = transactions.stream()
+                .filter(t -> t.getTransactionType() == TransactionType.COMMISSION_FEE)
+                .map(WalletTransaction::getAmount)
+                .map(BigDecimal::abs)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalSupplierEarnings = transactions.stream()
+                .filter(t -> t.getTransactionType() == TransactionType.ORDER_COMPLETED)
+                .map(WalletTransaction::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalRefunded = transactions.stream()
+                .filter(t -> t.getTransactionType() == TransactionType.ORDER_REFUND)
+                .map(WalletTransaction::getAmount)
+                .map(BigDecimal::abs)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        long refundCount = transactions.stream()
+                .filter(t -> t.getTransactionType() == TransactionType.ORDER_REFUND)
+                .count();
+
+        BigDecimal totalPaid = transactions.stream()
+                .filter(t -> t.getTransactionType() == TransactionType.END_OF_MONTH_WITHDRAWAL ||
+                            t.getTransactionType() == TransactionType.END_OF_DAY_RELEASE)
+                .map(WalletTransaction::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal pendingPayments = walletRepository.getTotalPendingBalance()
+                .add(walletRepository.getTotalAvailableBalance());
+
+        Map<String, List<WalletTransaction>> groupedBySupplier = transactions.stream()
+                .collect(Collectors.groupingBy(t -> t.getWallet().getSupplier().getUserId()));
+
+        List<ReconciliationResponse.SupplierReconciliation> supplierBreakdown = 
+                groupedBySupplier.entrySet().stream()
+                .map(entry -> buildSupplierReconciliation(entry.getKey(), entry.getValue()))
+                .filter(Objects::nonNull)
+                .sorted(Comparator.comparing(
+                        ReconciliationResponse.SupplierReconciliation::getTotalEarnings).reversed())
+                .collect(Collectors.toList());
+
+        return ReconciliationResponse.builder()
+                .startDate(startDate)
+                .endDate(endDate)
+                .period(startDate.equals(endDate) ? startDate.toString() : startDate + " → " + endDate)
+                .totalOrderValue(totalOrderValue)
+                .totalOrders(orders.size())
+                .totalCommission(totalCommission)
+                .totalSupplierEarnings(totalSupplierEarnings)
+                .totalPaidToSuppliers(totalPaid)
+                .pendingPayments(pendingPayments)
+                .totalRefunded(totalRefunded)
+                .refundCount((int) refundCount)
+                .platformRevenue(totalCommission)
+                .platformExpenses(totalRefunded)
+                .netPlatformRevenue(totalCommission.subtract(totalRefunded))
+                .supplierBreakdown(supplierBreakdown)
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public WalletResponse updateWalletStatus(String walletId, String status) {
+        SupplierWallet wallet = walletRepository.findById(walletId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.WALLET_NOT_FOUND));
+
+        WalletStatus newStatus = WalletStatus.valueOf(status);
+        wallet.setStatus(newStatus);
+        wallet = walletRepository.save(wallet);
+
+        log.info("Wallet status updated: walletId={}, newStatus={}", walletId, status);
+        return mapToWalletResponse(wallet);
+    }
+
+    @Override
+    @Transactional
+    public TransactionResponse createManualTransaction(ManualTransactionRequest request) {
+        String adminId = SecurityUtil.getCurrentUserId();
+        SupplierWallet wallet = getWalletEntityBySupplierId(request.getSupplierId());
+
+        TransactionType txnType = TransactionType.valueOf(request.getTransactionType());
+        BigDecimal amount = request.getAmount();
+
+        switch (txnType) {
+            case ADMIN_DEPOSIT:
+                wallet.setAvailableBalance(wallet.getAvailableBalance().add(amount));
+                wallet.setTotalEarnings(wallet.getTotalEarnings().add(amount));
+                wallet.setMonthlyEarnings(wallet.getMonthlyEarnings().add(amount));
+                break;
+
+            case ADMIN_DEDUCTION:
+            case PENALTY_FEE:
+                wallet.setAvailableBalance(wallet.getAvailableBalance().subtract(amount));
+                break;
+
+            case ADJUSTMENT:
+                wallet.setAvailableBalance(wallet.getAvailableBalance().add(amount));
+                break;
+
+            default:
+                throw new BadRequestException(ErrorCode.WALLET_NOT_FOUND, "Invalid transaction type for manual transaction");
+        }
+
+        wallet = walletRepository.save(wallet);
+
+        User admin = userRepository.findById(adminId).orElse(null);
+
+        WalletTransaction transaction = new WalletTransaction();
+        transaction.setWallet(wallet);
+        transaction.setTransactionType(txnType);
+        transaction.setAmount(amount);
+        transaction.setBalanceAfter(wallet.getAvailableBalance());
+        transaction.setPendingBalanceAfter(wallet.getPendingBalance());
+        transaction.setDescription(request.getDescription());
+        transaction.setAdminId(adminId);
+        transaction.setAdminNote(request.getAdminNote());
+        transaction.setExternalReference(request.getExternalReference());
+
+        transaction = transactionRepository.save(transaction);
+
+        log.info("Manual transaction created: txnId={}, type={}, amount={}, supplierId={}",
+                transaction.getTransactionId(), txnType, amount, request.getSupplierId());
+
+        return mapToTransactionResponse(transaction, admin != null ? admin.getFullName() : null);
+    }
+
+    // ==================== HELPER METHODS ====================
+
+    private SupplierWallet getWalletEntityBySupplierId(String supplierId) {
+        return walletRepository.findBySupplierId(supplierId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.WALLET_NOT_FOUND));
+    }
+
+    private Page<TransactionResponse> getTransactionsByWallet(
+            String walletId,
+            String transactionType,
+            LocalDate startDate,
+            LocalDate endDate,
+            org.springframework.data.domain.Pageable pageable
+    ) {
+        LocalDateTime start = startDate != null ? startDate.atStartOfDay() : null;
+        LocalDateTime end = endDate != null ? endDate.atTime(23, 59, 59) : null;
+
+        Specification<WalletTransaction> spec = (root, query, cb) -> {
+            List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
+
+            predicates.add(cb.equal(root.get("wallet").get("walletId"), walletId));
+
+            if (transactionType != null && !transactionType.equalsIgnoreCase("ALL")) {
+                predicates.add(cb.equal(root.get("transactionType"), 
+                        TransactionType.valueOf(transactionType)));
+            }
+
+            if (start != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), start));
+            }
+
+            if (end != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), end));
+            }
+
+            return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        };
+
+        Page<WalletTransaction> transactions = transactionRepository.findAll(spec, pageable);
+        return transactions.map(t -> mapToTransactionResponse(t, null));
+    }
+
+    private WalletResponse mapToWalletResponse(SupplierWallet wallet) {
+        Supplier supplier = wallet.getSupplier();
+        List<Store> stores = supplier.getStores();
+        Store store = stores != null && !stores.isEmpty() ? stores.get(0) : null;
+
+        return WalletResponse.builder()
+                .walletId(wallet.getWalletId())
+                .supplierId(supplier.getUserId())
+                .supplierName(supplier.getFullName())
+                .storeName(store != null ? store.getStoreName() : "N/A")
+                .availableBalance(wallet.getAvailableBalance())
+                .pendingBalance(wallet.getPendingBalance())
+                .totalBalance(wallet.getAvailableBalance().add(wallet.getPendingBalance()))
+                .totalEarnings(wallet.getTotalEarnings())
+                .monthlyEarnings(wallet.getMonthlyEarnings())
+                .totalWithdrawn(wallet.getTotalWithdrawn())
+                .totalRefunded(wallet.getTotalRefunded())
+                .status(wallet.getStatus().name())
+                .currentMonth(wallet.getCurrentMonth())
+                .lastWithdrawalDate(wallet.getLastWithdrawalDate())
+                .createdAt(wallet.getCreatedAt())
+                .updatedAt(wallet.getUpdatedAt())
+                .commissionRate(supplier.getCommissionRate())
+                .build();
+    }
+
+    private TransactionResponse mapToTransactionResponse(WalletTransaction txn, String adminName) {
+        TransactionType type = txn.getTransactionType();
+        boolean isIncome = isIncomeTransaction(type);
+        BigDecimal displayAmt = isIncome ? txn.getAmount() : txn.getAmount().abs().negate();
+
+        return TransactionResponse.builder()
+                .transactionId(txn.getTransactionId())
+                .walletId(txn.getWallet().getWalletId())
+                .transactionType(type.name())
+                .transactionTypeLabel(getTransactionTypeLabel(type))
+                .amount(txn.getAmount())
+                .description(txn.getDescription())
+                .balanceAfter(txn.getBalanceAfter())
+                .pendingBalanceAfter(txn.getPendingBalanceAfter())
+                .orderId(txn.getOrder() != null ? txn.getOrder().getOrderId() : null)
+                .orderCode(txn.getOrder() != null ? txn.getOrder().getOrderCode() : null)
+                .externalReference(txn.getExternalReference())
+                .adminId(txn.getAdminId())
+                .adminName(adminName)
+                .adminNote(txn.getAdminNote())
+                .createdAt(txn.getCreatedAt())
+                .isIncome(isIncome)
+                .displayAmount((isIncome ? "+" : "") + formatMoney(displayAmt.abs()))
+                .build();
+    }
+
+    private WalletStatsResponse buildStatsResponse(
+            List<WalletTransaction> transactions,
+            Integer year,
+            Integer month,
+            String period
+    ) {
+        BigDecimal totalIncome = BigDecimal.ZERO;
+        BigDecimal totalExpense = BigDecimal.ZERO;
+
+        Map<TransactionType, Integer> typeCount = new HashMap<>();
+        Map<TransactionType, BigDecimal> typeAmount = new HashMap<>();
+
+        for (WalletTransaction txn : transactions) {
+            TransactionType type = txn.getTransactionType();
+            BigDecimal amount = txn.getAmount().abs();
+
+            typeCount.merge(type, 1, Integer::sum);
+            typeAmount.merge(type, amount, BigDecimal::add);
+
+            if (isIncomeTransaction(type)) {
+                totalIncome = totalIncome.add(amount);
+            } else {
+                totalExpense = totalExpense.add(amount);
+            }
+        }
+
+        List<WalletStatsResponse.TransactionTypeStats> typeBreakdown = typeAmount.entrySet().stream()
+                .map(e -> WalletStatsResponse.TransactionTypeStats.builder()
+                        .transactionType(e.getKey().name())
+                        .label(getTransactionTypeLabel(e.getKey()))
+                        .amount(e.getValue())
+                        .count(typeCount.get(e.getKey()))
+                        .isIncome(isIncomeTransaction(e.getKey()))
+                        .build())
+                .sorted(Comparator.comparing(WalletStatsResponse.TransactionTypeStats::getAmount).reversed())
+                .collect(Collectors.toList());
+
+        Map<String, Integer> typeCountMap = typeCount.entrySet().stream()
+                .collect(Collectors.toMap(
+                        e -> e.getKey().name(),
+                        Map.Entry::getValue
+                ));
+
+        List<WalletStatsResponse.MonthlyStats> monthlyBreakdown = null;
+        if (month == null) {
+            monthlyBreakdown = buildMonthlyBreakdown(transactions, year);
+        }
+
+        return WalletStatsResponse.builder()
+                .year(year)
+                .month(month)
+                .period(period)
+                .totalIncome(totalIncome)
+                .totalExpense(totalExpense)
+                .netAmount(totalIncome.subtract(totalExpense))
+                .totalTransactions(transactions.size())
+                .transactionTypeCount(typeCountMap)
+                .monthlyBreakdown(monthlyBreakdown)
+                .transactionTypeBreakdown(typeBreakdown)
+                .build();
+    }
+
+    private List<WalletStatsResponse.MonthlyStats> buildMonthlyBreakdown(
+            List<WalletTransaction> transactions,
+            int year
+    ) {
+        Map<Integer, List<WalletTransaction>> byMonth = transactions.stream()
+                .collect(Collectors.groupingBy(t -> t.getCreatedAt().getMonthValue()));
+
+        return java.util.stream.IntStream.rangeClosed(1, 12)
+                .mapToObj(m -> {
+                    List<WalletTransaction> monthTxns = byMonth.getOrDefault(m, Collections.emptyList());
+
+                    BigDecimal income = monthTxns.stream()
+                            .filter(t -> isIncomeTransaction(t.getTransactionType()))
+                            .map(t -> t.getAmount().abs())
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                    BigDecimal expense = monthTxns.stream()
+                            .filter(t -> !isIncomeTransaction(t.getTransactionType()))
+                            .map(t -> t.getAmount().abs())
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                    return WalletStatsResponse.MonthlyStats.builder()
+                            .month(m)
+                            .monthName(String.format("Tháng %d", m))
+                            .income(income)
+                            .expense(expense)
+                            .net(income.subtract(expense))
+                            .transactionCount(monthTxns.size())
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
+
+    private ReconciliationResponse.SupplierReconciliation buildSupplierReconciliation(
+            String supplierId,
+            List<WalletTransaction> supplierTxns
+    ) {
+        Optional<SupplierWallet> walletOpt = walletRepository.findBySupplierId(supplierId);
+        if (!walletOpt.isPresent()) return null;
+
+        SupplierWallet wallet = walletOpt.get();
+
+        BigDecimal earnings = supplierTxns.stream()
+                .filter(t -> t.getTransactionType() == TransactionType.ORDER_COMPLETED)
+                .map(WalletTransaction::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal commission = supplierTxns.stream()
+                .filter(t -> t.getTransactionType() == TransactionType.COMMISSION_FEE)
+                .map(WalletTransaction::getAmount)
+                .map(BigDecimal::abs)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal refunded = supplierTxns.stream()
+                .filter(t -> t.getTransactionType() == TransactionType.ORDER_REFUND)
+                .map(WalletTransaction::getAmount)
+                .map(BigDecimal::abs)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        int orderCount = (int) supplierTxns.stream()
+                .filter(t -> t.getTransactionType() == TransactionType.ORDER_COMPLETED)
+                .count();
+
+        Supplier supplier = wallet.getSupplier();
+        List<Store> stores = supplier.getStores();
+        Store store = stores != null && !stores.isEmpty() ? stores.get(0) : null;
+
+        return ReconciliationResponse.SupplierReconciliation.builder()
+                .supplierId(supplierId)
+                .supplierName(supplier.getFullName())
+                .storeName(store != null ? store.getStoreName() : "N/A")
+                .totalEarnings(earnings)
+                .commission(commission)
+                .netEarnings(earnings.subtract(commission))
+                .orderCount(orderCount)
+                .refunded(refunded)
+                .build();
+    }
+
+    private boolean isIncomeTransaction(TransactionType type) {
+        return type == TransactionType.ORDER_COMPLETED ||
+               type == TransactionType.END_OF_DAY_RELEASE ||
+               type == TransactionType.ADMIN_DEPOSIT ||
+               type == TransactionType.ADJUSTMENT;
+    }
+
+    private String getTransactionTypeLabel(TransactionType type) {
+        switch (type) {
+            case ORDER_COMPLETED: return "Thu nhập đơn hàng";
+            case END_OF_DAY_RELEASE: return "Chuyển số dư khả dụng";
+            case END_OF_MONTH_WITHDRAWAL: return "Rút tiền cuối tháng";
+            case ADMIN_DEPOSIT: return "Admin nạp tiền";
+            case ADMIN_DEDUCTION: return "Admin trừ tiền";
+            case ORDER_REFUND: return "Hoàn tiền đơn hàng";
+            case COMMISSION_FEE: return "Phí hoa hồng";
+            case PENALTY_FEE: return "Phí phạt";
+            case ADJUSTMENT: return "Điều chỉnh số dư";
+            default: return type.name();
+        }
+    }
+
+    private String formatMoney(BigDecimal amount) {
+        return VND_FORMAT.format(amount);
+    }
+
+    private String maskBankAccount(String accountNumber) {
+        if (accountNumber == null || accountNumber.length() < 4) return accountNumber;
+        int visibleDigits = 4;
+        String masked = "*".repeat(accountNumber.length() - visibleDigits);
+        return masked + accountNumber.substring(accountNumber.length() - visibleDigits);
+    }
+
+    private BigDecimal calculateTotalCommission() {
+        List<WalletTransaction> commissionTxns = transactionRepository.findByTransactionType(
+                TransactionType.COMMISSION_FEE
+        );
+        return commissionTxns.stream()
+                .map(WalletTransaction::getAmount)
+                .map(BigDecimal::abs)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private BigDecimal calculateMonthlyCommission() {
+        YearMonth currentMonth = YearMonth.now();
+        LocalDateTime start = currentMonth.atDay(1).atStartOfDay();
+        LocalDateTime end = currentMonth.atEndOfMonth().atTime(23, 59, 59);
+
+        List<WalletTransaction> commissionTxns = transactionRepository
+                .findByTransactionTypeAndCreatedAtBetween(TransactionType.COMMISSION_FEE, start, end);
+
+        return commissionTxns.stream()
+                .map(WalletTransaction::getAmount)
+                .map(BigDecimal::abs)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 }

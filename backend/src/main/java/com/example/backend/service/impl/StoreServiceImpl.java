@@ -13,8 +13,10 @@ import com.example.backend.exception.custom.ConflictException;
 import com.example.backend.exception.custom.NotFoundException;
 import com.example.backend.mapper.ProductMapper;
 import com.example.backend.mapper.StoreMapper;
-import com.example.backend.mapper.StorePendingUpdateMapper;
-import com.example.backend.repository.StorePendingUpdateRepository;
+import com.example.backend.mapper.PendingUpdateMapper;
+import com.example.backend.repository.PendingUpdateRepository;
+import com.example.backend.entity.PendingUpdate;
+import com.example.backend.entity.enums.UpdateEntityType;
 import com.example.backend.repository.StoreProductRepository;
 import com.example.backend.repository.StoreRepository;
 import com.example.backend.repository.UserRepository;
@@ -42,11 +44,11 @@ import java.util.stream.Collectors;
 public class StoreServiceImpl implements StoreService {
 
     private final StoreRepository storeRepository;
-    private final StorePendingUpdateRepository pendingUpdateRepository;
+    private final PendingUpdateRepository pendingUpdateRepository;
     private final StoreProductRepository storeProductRepository;
     private final UserRepository userRepository;
     private final com.example.backend.repository.OrderRepository orderRepository;
-    private final StorePendingUpdateMapper updateMapper;
+    private final PendingUpdateMapper updateMapper;
     private final StoreMapper storeMapper;
     private final ProductMapper productMapper;
     private final InAppNotificationService inAppNotificationService;
@@ -411,13 +413,16 @@ public class StoreServiceImpl implements StoreService {
             log.info("Store update contains major changes. Creating pending update for admin approval.");
 
             // Check if there's already a pending update for this store
-            if (pendingUpdateRepository.hasStorePendingUpdate(storeId)) {
+            if (pendingUpdateRepository.existsByEntityTypeAndEntityIdAndUpdateStatus(
+                    UpdateEntityType.STORE, storeId, SuggestionStatus.PENDING)) {
                 throw new ConflictException(ErrorCode.INVALID_REQUEST,
                         "There is already a pending update for this store. Please wait for admin approval.");
             }
 
             // Create pending update
-            StorePendingUpdate pendingUpdate = new StorePendingUpdate();
+            PendingUpdate pendingUpdate = new PendingUpdate();
+            pendingUpdate.setEntityType(UpdateEntityType.STORE);
+            pendingUpdate.setEntityId(storeId);
             pendingUpdate.setStore(store);
             pendingUpdate.setStoreName(request.getStoreName());
             pendingUpdate.setAddress(request.getAddress());
@@ -450,7 +455,7 @@ public class StoreServiceImpl implements StoreService {
 
             return StoreUpdateResponse.builder()
                     .updateType(StoreUpdateResponse.UpdateType.PENDING)
-                    .pendingUpdate(updateMapper.toResponse(pendingUpdate))
+                    .pendingUpdate(updateMapper.toStoreResponse(pendingUpdate))
                     .message("Store update submitted successfully. Major changes (name, address, location) require admin approval.")
                     .build();
 
@@ -550,15 +555,15 @@ public class StoreServiceImpl implements StoreService {
     @Override
     @Transactional(readOnly = true)
     public Page<StorePendingUpdateResponse> getAllPendingUpdates(SuggestionStatus status, Pageable pageable) {
-        Page<StorePendingUpdate> updates;
+        Page<PendingUpdate> updates;
 
         if (status != null) {
-            updates = pendingUpdateRepository.findByUpdateStatus(status, pageable);
+            updates = pendingUpdateRepository.findByEntityTypeAndUpdateStatus(UpdateEntityType.STORE, status, pageable);
         } else {
-            updates = pendingUpdateRepository.findAll(pageable);
+            updates = pendingUpdateRepository.findStorePendingUpdates(SuggestionStatus.PENDING, pageable);
         }
 
-        return updates.map(updateMapper::toResponse);
+        return updates.map(updateMapper::toStoreResponse);
     }
 
     @Override
@@ -570,34 +575,34 @@ public class StoreServiceImpl implements StoreService {
         Supplier supplier = (Supplier) userRepository.findByKeycloakId(keycloakId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
 
-        Page<StorePendingUpdate> updates;
+        Page<PendingUpdate> updates;
 
         if (status != null) {
-            updates = pendingUpdateRepository.findByStore_Supplier_UserIdAndUpdateStatus(
+            updates = pendingUpdateRepository.findStoreUpdatesBySupplierAndStatus(
                     supplier.getUserId(), status, pageable);
         } else {
-            updates = pendingUpdateRepository.findByStore_Supplier_UserId(
+            updates = pendingUpdateRepository.findStoreUpdatesBySupplier(
                     supplier.getUserId(), pageable);
         }
 
         log.info("Found {} pending updates for supplier: {}", updates.getTotalElements(), keycloakId);
-        return updates.map(updateMapper::toResponse);
+        return updates.map(updateMapper::toStoreResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
     public StorePendingUpdateResponse getPendingUpdateById(String updateId) {
-        StorePendingUpdate update = pendingUpdateRepository.findById(updateId)
+        PendingUpdate update = pendingUpdateRepository.findById(updateId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND));
 
-        return updateMapper.toResponse(update);
+        return updateMapper.toStoreResponse(update);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Page<StorePendingUpdateResponse> getPendingUpdatesByStore(String storeId, Pageable pageable) {
-        Page<StorePendingUpdate> updates = pendingUpdateRepository.findByStoreStoreId(storeId, pageable);
-        return updates.map(updateMapper::toResponse);
+        Page<PendingUpdate> updates = pendingUpdateRepository.findByStoreId(storeId, pageable);
+        return updates.map(updateMapper::toStoreResponse);
     }
 
     @Override
@@ -610,7 +615,7 @@ public class StoreServiceImpl implements StoreService {
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
 
         // Find pending update
-        StorePendingUpdate pendingUpdate = pendingUpdateRepository.findById(updateId)
+        PendingUpdate pendingUpdate = pendingUpdateRepository.findById(updateId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND));
 
         // Validate status
@@ -675,7 +680,7 @@ public class StoreServiceImpl implements StoreService {
         pendingUpdate = pendingUpdateRepository.save(pendingUpdate);
         log.info("Store update approved and applied: {}", updateId);
 
-        return updateMapper.toResponse(pendingUpdate);
+        return updateMapper.toStoreResponse(pendingUpdate);
     }
 
     @Override
@@ -688,7 +693,7 @@ public class StoreServiceImpl implements StoreService {
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
 
         // Find pending update
-        StorePendingUpdate pendingUpdate = pendingUpdateRepository.findById(updateId)
+        PendingUpdate pendingUpdate = pendingUpdateRepository.findById(updateId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND));
 
         // Validate status
@@ -706,7 +711,7 @@ public class StoreServiceImpl implements StoreService {
         pendingUpdate = pendingUpdateRepository.save(pendingUpdate);
         log.info("Store update rejected: {}", updateId);
 
-        return updateMapper.toResponse(pendingUpdate);
+        return updateMapper.toStoreResponse(pendingUpdate);
     }
 
     @Override

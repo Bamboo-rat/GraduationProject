@@ -1,10 +1,12 @@
 package com.example.backend.repository;
 
+import com.example.backend.entity.SupplierWallet;
 import com.example.backend.entity.WalletTransaction;
 import com.example.backend.entity.enums.TransactionType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -16,7 +18,8 @@ import java.util.List;
  * Repository for WalletTransaction entity
  */
 @Repository
-public interface WalletTransactionRepository extends JpaRepository<WalletTransaction, String> {
+public interface WalletTransactionRepository extends JpaRepository<WalletTransaction, String>, 
+        JpaSpecificationExecutor<WalletTransaction> {
 
     /**
      * Find all transactions for a wallet
@@ -53,4 +56,24 @@ public interface WalletTransactionRepository extends JpaRepository<WalletTransac
      */
     @Query("SELECT COUNT(t) FROM WalletTransaction t WHERE t.transactionType = :type AND t.createdAt BETWEEN :startDate AND :endDate")
     Long countByTypeAndDateRange(TransactionType type, LocalDateTime startDate, LocalDateTime endDate);
+
+    /**
+     * Find transactions by wallet and date range
+     */
+    List<WalletTransaction> findByWalletAndCreatedAtBetween(SupplierWallet wallet, LocalDateTime start, LocalDateTime end);
+
+    /**
+     * Find transactions by date range
+     */
+    List<WalletTransaction> findByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+
+    /**
+     * Find transactions by type
+     */
+    List<WalletTransaction> findByTransactionType(TransactionType type);
+
+    /**
+     * Find transactions by type and date range
+     */
+    List<WalletTransaction> findByTransactionTypeAndCreatedAtBetween(TransactionType type, LocalDateTime start, LocalDateTime end);
 }

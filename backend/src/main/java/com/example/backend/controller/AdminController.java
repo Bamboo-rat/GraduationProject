@@ -39,7 +39,7 @@ public class AdminController {
     // ===== REGISTRATION ENDPOINT (Super Admin only) =====
 
     @PostMapping("/register")
-//    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     @Operation(summary = "Register new admin/staff",
                description = "Register a new admin or staff member (Super Admin only). The account will be immediately active.")
     public ResponseEntity<ApiResponse<RegisterResponse>> registerAdmin(@Valid @RequestBody AdminRegisterRequest request) {
