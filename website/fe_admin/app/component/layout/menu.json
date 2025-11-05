@@ -7,7 +7,6 @@
       "link": "/dashboard/overview",
       "subMenu": [
         { "title": "Tổng quan", "link": "/dashboard/overview", "icon": "home" },
-        { "title": "Giám sát hệ thống", "link": "/dashboard/monitor", "icon": "activity" },
         { "title": "Giám sát Email", "link": "/dashboard/notification-monitor", "icon": "mail" }
       ]
     },
@@ -55,18 +54,8 @@
       ]
     },
     {
-      "id": 6,
-      "title": "Quản lý Vận hành",
-      "icon": "truck",
-      "link": "/orders/list-orders",
-      "subMenu": [
-        { "title": "Quản lý Đơn hàng", "link": "/orders/list-orders", "icon": "shopping-cart" },
-        { "title": "Quản lý Giao nhận", "link": "/delivery/management", "icon": "package-check" }
-      ]
-    },
-    {
       "id": 7,
-      "title": "Tài chính",
+      "title": "Quản lý tài chính",
       "icon": "wallet",
       "link": "/finance/reconciliation",
       "subMenu": [
@@ -101,8 +90,7 @@
       "link": "/settings/roles",
       "subMenu": [
         { "title": "Phân quyền & Vai trò", "link": "/settings/roles", "icon": "shield" },
-        { "title": "Cấu hình hệ thống", "link": "/settings/system-settings", "icon": "bell" },
-        { "title": "Nhật ký Hoạt động", "link": "/settings/audit", "icon": "file-text" }
+        { "title": "Cấu hình hệ thống", "link": "/settings/system-settings", "icon": "bell" }
       ]
     }
   ]

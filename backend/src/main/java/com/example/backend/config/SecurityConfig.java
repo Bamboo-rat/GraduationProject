@@ -58,7 +58,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/files/**").authenticated()
 
                         // Public customer-facing endpoints 
-                        .requestMatchers("/api/products/**", "/api/categories/**", "/api/stores/public", "/api/stores/top-stores", "/api/stores/*/products").permitAll()
+                        .requestMatchers("/api/products/**", "/api/categories/**", "/api/stores/public", "/api/stores/top-stores", "/api/stores/*/products","/api/stores/nearby").permitAll()
 
                         // Partner/Promotion endpoints (temporary permitAll for development)
                         .requestMatchers("/api/partners/**", "/api/promotions/**").permitAll()

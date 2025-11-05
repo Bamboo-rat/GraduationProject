@@ -14,8 +14,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
+
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @Slf4j
@@ -32,11 +32,11 @@ public class ReturnRequestController {
     @PostMapping
     @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<ReturnRequestResponse> createReturnRequest(
-            @AuthenticationPrincipal Jwt jwt,
+            Authentication authentication,
             @RequestParam String orderId,
             @Valid @RequestBody CreateReturnRequestRequest request) {
         
-        String customerId = jwt.getSubject();
+        String customerId = authentication.getName();
         log.info("Creating return request: customerId={}, orderId={}", customerId, orderId);
         
         ReturnRequestResponse response = returnRequestService.createReturnRequest(customerId, orderId, request);
@@ -47,11 +47,11 @@ public class ReturnRequestController {
     @PostMapping("/{returnRequestId}/approve")
     @PreAuthorize("hasAnyRole('SUPPLIER', 'SUPER_ADMIN', 'MODERATOR', 'STAFF')")
     public ResponseEntity<ReturnRequestResponse> approveReturnRequest(
-            @AuthenticationPrincipal Jwt jwt,
+            Authentication authentication,
             @PathVariable String returnRequestId,
             @Valid @RequestBody ReviewReturnRequestRequest request) {
         
-        String reviewerId = jwt.getSubject();
+        String reviewerId = authentication.getName();
         log.info("Approving return request: returnRequestId={}, reviewerId={}", returnRequestId, reviewerId);
         
         ReturnRequestResponse response = returnRequestService.approveReturnRequest(returnRequestId, reviewerId, request);
@@ -62,11 +62,11 @@ public class ReturnRequestController {
     @PostMapping("/{returnRequestId}/reject")
     @PreAuthorize("hasAnyRole('SUPPLIER', 'SUPER_ADMIN', 'MODERATOR', 'STAFF')")
     public ResponseEntity<ReturnRequestResponse> rejectReturnRequest(
-            @AuthenticationPrincipal Jwt jwt,
+            Authentication authentication,
             @PathVariable String returnRequestId,
             @Valid @RequestBody ReviewReturnRequestRequest request) {
         
-        String reviewerId = jwt.getSubject();
+        String reviewerId = authentication.getName();
         log.info("Rejecting return request: returnRequestId={}, reviewerId={}", returnRequestId, reviewerId);
         
         ReturnRequestResponse response = returnRequestService.rejectReturnRequest(returnRequestId, reviewerId, request);
@@ -100,12 +100,11 @@ public class ReturnRequestController {
     @Operation(summary = "Get customer's return requests", description = "Customer gets their own return requests")
     @GetMapping("/my-requests")
     @PreAuthorize("hasRole('CUSTOMER')")
-    public ResponseEntity<Page<ReturnRequestResponse>> getMyRequests(
-            @AuthenticationPrincipal Jwt jwt,
+    public ResponseEntity<Page<ReturnRequestResponse>> getMyRequests(Authentication authentication,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         
-        String customerId = jwt.getSubject();
+        String customerId = authentication.getName();
         log.info("Getting customer's return requests: customerId={}", customerId);
         
         Page<ReturnRequestResponse> responses = returnRequestService.getCustomerReturnRequests(customerId, page, size);
