@@ -86,7 +86,7 @@ public class WalletServiceImpl implements WalletService {
         Supplier supplier = wallet.getSupplier();
 
         BigDecimal commissionRate = supplier.getCommissionRate() != null ?
-                                    BigDecimal.valueOf(supplier.getCommissionRate() / 100.0) :
+                                    BigDecimal.valueOf(supplier.getCommissionRate()) :
                                     BigDecimal.ZERO;
         BigDecimal commissionAmount = amount.multiply(commissionRate).setScale(2, RoundingMode.HALF_UP);
         BigDecimal netAmount = amount.subtract(commissionAmount);
@@ -139,7 +139,7 @@ public class WalletServiceImpl implements WalletService {
         Supplier supplier = wallet.getSupplier();
 
         BigDecimal commissionRate = supplier.getCommissionRate() != null ?
-                                    BigDecimal.valueOf(supplier.getCommissionRate() / 100.0) :
+                                    BigDecimal.valueOf(supplier.getCommissionRate()) :
                                     BigDecimal.ZERO;
         BigDecimal commissionAmount = amount.multiply(commissionRate).setScale(2, RoundingMode.HALF_UP);
         BigDecimal netAmount = amount.subtract(commissionAmount);
@@ -280,7 +280,7 @@ public class WalletServiceImpl implements WalletService {
         BigDecimal totalBalance = wallet.getAvailableBalance().add(wallet.getPendingBalance());
         Double commissionRate = supplier.getCommissionRate() != null ? supplier.getCommissionRate() : 0.0;
         BigDecimal estimatedCommission = wallet.getMonthlyEarnings()
-                .multiply(BigDecimal.valueOf(commissionRate / 100.0))
+                .multiply(BigDecimal.valueOf(commissionRate))
                 .setScale(2, RoundingMode.HALF_UP);
 
         return WalletSummaryResponse.builder()
@@ -288,7 +288,7 @@ public class WalletServiceImpl implements WalletService {
                 .pendingBalance(wallet.getPendingBalance())
                 .totalBalance(totalBalance)
                 .monthlyEarnings(wallet.getMonthlyEarnings())
-                .monthlyOrders(wallet.getMonthlyEarnings())
+                .monthlyOrders(BigDecimal.valueOf(orderCount))
                 .totalOrdersThisMonth(orderCount.intValue())
                 .totalEarnings(wallet.getTotalEarnings())
                 .totalWithdrawn(wallet.getTotalWithdrawn())
@@ -353,15 +353,15 @@ public class WalletServiceImpl implements WalletService {
         SupplierWallet wallet = getWalletEntityBySupplierId(currentUserId);
 
         if (wallet.getStatus() != WalletStatus.ACTIVE) {
-            throw new BadRequestException(ErrorCode.WALLET_NOT_FOUND, "Ví đang bị khóa, không thể rút tiền");
+            throw new BadRequestException(ErrorCode.WALLET_LOCKED, "Ví đang bị khóa, không thể rút tiền");
         }
 
         if (request.getAmount().compareTo(MINIMUM_WITHDRAWAL) < 0) {
-            throw new BadRequestException(ErrorCode.WALLET_NOT_FOUND, "Số tiền rút tối thiểu là " + formatMoney(MINIMUM_WITHDRAWAL));
+            throw new BadRequestException(ErrorCode.MINIMUM_WITHDRAWAL_NOT_MET, "Số tiền rút tối thiểu là " + formatMoney(MINIMUM_WITHDRAWAL));
         }
 
         if (request.getAmount().compareTo(wallet.getAvailableBalance()) > 0) {
-            throw new BadRequestException(ErrorCode.WALLET_NOT_FOUND, "Số dư không đủ để rút tiền");
+            throw new BadRequestException(ErrorCode.INSUFFICIENT_BALANCE, "Số dư không đủ để rút tiền");
         }
 
         wallet.setAvailableBalance(wallet.getAvailableBalance().subtract(request.getAmount()));
@@ -605,7 +605,13 @@ public class WalletServiceImpl implements WalletService {
 
             case ADMIN_DEDUCTION:
             case PENALTY_FEE:
-                wallet.setAvailableBalance(wallet.getAvailableBalance().subtract(amount));
+                BigDecimal newBalance = wallet.getAvailableBalance().subtract(amount);
+                if (newBalance.compareTo(BigDecimal.ZERO) < 0) {
+                    throw new BadRequestException(ErrorCode.NEGATIVE_BALANCE_NOT_ALLOWED,
+                        "Không thể trừ " + formatMoney(amount) + ". Số dư hiện tại: " +
+                        formatMoney(wallet.getAvailableBalance()));
+                }
+                wallet.setAvailableBalance(newBalance);
                 break;
 
             case ADJUSTMENT:
@@ -613,7 +619,7 @@ public class WalletServiceImpl implements WalletService {
                 break;
 
             default:
-                throw new BadRequestException(ErrorCode.WALLET_NOT_FOUND, "Invalid transaction type for manual transaction");
+                throw new BadRequestException(ErrorCode.INVALID_MANUAL_TRANSACTION_TYPE, "Invalid transaction type for manual transaction");
         }
 
         wallet = walletRepository.save(wallet);

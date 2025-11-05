@@ -311,36 +311,31 @@ public class OrderServiceImpl implements OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.ORDER_NOT_FOUND));
 
-        if (order.getStatus() != OrderStatus.SHIPPING) {
-            throw new BadRequestException(ErrorCode.INVALID_ORDER_STATUS,
-                    "Chỉ có thể hoàn thành đơn hàng từ trạng thái SHIPPING");
-        }
-
-        order.setStatus(OrderStatus.DELIVERED);
-        order.setDeliveredAt(LocalDateTime.now());
-        order = orderRepository.save(order);
-
-        // Update shipment status
-        if (order.getShipment() != null) {
-            Shipment shipment = order.getShipment();
-            shipment.setStatus(ShipmentStatus.DELIVERED);
-            shipmentRepository.save(shipment);
-        }
-
-        // Handle delivery completion (points, wallet, etc.)
-        handleDeliveryCompletion(order);
-
-        // Calculate awarded points for notification
-        BigDecimal pointsAwarded = order.getTotalAmount()
-                .multiply(getPointsPercentage())
-                .setScale(0, RoundingMode.HALF_UP);
-
-        sendOrderNotification(order,
-                String.format("Đơn hàng #%s đã được giao thành công! Bạn nhận được %s điểm thưởng. Đánh giá sản phẩm để nhận thêm điểm",
-                        order.getOrderCode(), pointsAwarded));
+        Shipment shipment = order.getShipment();
+        OrderResponse response = completeDelivery(order, shipment);
 
         log.info("Order marked as delivered: orderId={}", orderId);
-        return mapToOrderResponse(order);
+        return response;
+    }
+
+    @Override
+    @Transactional
+    public OrderResponse markAsDeliveredByTrackingNumber(String trackingNumber) {
+        log.info("Marking order as delivered via tracking number: trackingNumber={}", trackingNumber);
+
+        Shipment shipment = shipmentRepository.findByTrackingNumber(trackingNumber)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.SHIPMENT_NOT_FOUND));
+
+        Order order = shipment.getOrder();
+        if (order == null) {
+            throw new NotFoundException(ErrorCode.ORDER_NOT_FOUND);
+        }
+
+        String orderId = order.getOrderId();
+        OrderResponse response = completeDelivery(order, shipment);
+
+        log.info("Order marked as delivered via tracking number: orderId={}, trackingNumber={}", orderId, trackingNumber);
+        return response;
     }
 
     @Override
@@ -788,6 +783,40 @@ public class OrderServiceImpl implements OrderService {
             case RETURNED -> String.format("Đơn hàng #%s đã được trả lại", order.getOrderCode());
             default -> String.format("Trạng thái đơn hàng #%s đã được cập nhật", order.getOrderCode());
         };
+    }
+
+    private OrderResponse completeDelivery(Order order, Shipment shipment) {
+        if (order.getStatus() != OrderStatus.SHIPPING) {
+            throw new BadRequestException(ErrorCode.INVALID_ORDER_STATUS,
+                    "Chỉ có thể hoàn thành đơn hàng từ trạng thái SHIPPING");
+        }
+
+        order.setStatus(OrderStatus.DELIVERED);
+        order.setDeliveredAt(LocalDateTime.now());
+        order = orderRepository.save(order);
+
+        Shipment resolvedShipment = shipment;
+        if (resolvedShipment == null) {
+            resolvedShipment = order.getShipment();
+        }
+
+        if (resolvedShipment != null) {
+            resolvedShipment.setStatus(ShipmentStatus.DELIVERED);
+            shipmentRepository.save(resolvedShipment);
+            order.setShipment(resolvedShipment);
+        }
+
+        handleDeliveryCompletion(order);
+
+        BigDecimal pointsAwarded = order.getTotalAmount()
+                .multiply(getPointsPercentage())
+                .setScale(0, RoundingMode.HALF_UP);
+
+        sendOrderNotification(order,
+                String.format("Đơn hàng #%s đã được giao thành công! Bạn nhận được %s điểm thưởng. Đánh giá sản phẩm để nhận thêm điểm",
+                        order.getOrderCode(), pointsAwarded));
+
+        return mapToOrderResponse(order);
     }
 
     private OrderResponse mapToOrderResponse(Order order) {

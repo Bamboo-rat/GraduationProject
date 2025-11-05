@@ -96,11 +96,18 @@ public enum ErrorCode {
     CANCEL_REQUEST_NOT_FOUND("5022", "Cancel request not found", "Không tìm thấy yêu cầu hủy đơn", HttpStatus.NOT_FOUND),
     CANCEL_REQUEST_ALREADY_EXISTS("5023", "Cancel request already exists for this order", "Đơn hàng này đã có yêu cầu hủy", HttpStatus.CONFLICT),
 
+
+    SHIPMENT_NOT_FOUND("5024", "Shipment not found", "Không tìm thấy thông tin vận chuyển", HttpStatus.NOT_FOUND),
+
     // ===== 6xxx: Wallet Errors =====
     WALLET_NOT_FOUND("6001", "Wallet not found", "Không tìm thấy ví tiền", HttpStatus.NOT_FOUND),
     INSUFFICIENT_BALANCE("6002", "Insufficient balance", "Số dư không đủ", HttpStatus.BAD_REQUEST),
     WALLET_SUSPENDED("6003", "Wallet is suspended", "Ví đã bị tạm khóa", HttpStatus.FORBIDDEN),
     WALLET_FROZEN("6004", "Wallet is frozen", "Ví đã bị đóng băng", HttpStatus.FORBIDDEN),
+    WALLET_LOCKED("6005", "Wallet is locked", "Ví đang bị khóa, không thể thực hiện giao dịch", HttpStatus.FORBIDDEN),
+    MINIMUM_WITHDRAWAL_NOT_MET("6006", "Minimum withdrawal amount not met", "Số tiền rút tối thiểu không đạt yêu cầu", HttpStatus.BAD_REQUEST),
+    INVALID_MANUAL_TRANSACTION_TYPE("6007", "Invalid transaction type for manual transaction", "Loại giao dịch không hợp lệ cho giao dịch thủ công", HttpStatus.BAD_REQUEST),
+    NEGATIVE_BALANCE_NOT_ALLOWED("6008", "Operation would result in negative balance", "Thao tác sẽ làm số dư âm, không được phép", HttpStatus.BAD_REQUEST),
 
     // ===== 9xxx: Internal/Server Errors =====
     OPTIMISTIC_LOCK_ERROR("9001", "Data has been modified by another user", "Dữ liệu đã được thay đổi bởi người dùng khác. Vui lòng thử lại", HttpStatus.CONFLICT),

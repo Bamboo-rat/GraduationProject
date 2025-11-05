@@ -680,6 +680,25 @@ public class StoreServiceImpl implements StoreService {
         pendingUpdate = pendingUpdateRepository.save(pendingUpdate);
         log.info("Store update approved and applied: {}", updateId);
 
+        // Send notification to supplier
+        try {
+            String notificationContent = String.format(
+                    "Yêu cầu cập nhật thông tin cửa hàng '%s' của bạn đã được phê duyệt. %s",
+                    store.getStoreName(),
+                    adminNotes != null && !adminNotes.isBlank() ? "Ghi chú: " + adminNotes : ""
+            );
+            String linkUrl = "/store/list";
+            inAppNotificationService.createNotificationForUser(
+                    store.getSupplier().getUserId(),
+                    NotificationType.STORE_UPDATE_APPROVED,
+                    notificationContent,
+                    linkUrl
+            );
+            log.info("Notification sent to supplier {} about store update approval", store.getSupplier().getUserId());
+        } catch (Exception e) {
+            log.error("Failed to send notification to supplier {} about store update approval", store.getSupplier().getUserId(), e);
+        }
+
         return updateMapper.toStoreResponse(pendingUpdate);
     }
 
@@ -710,6 +729,27 @@ public class StoreServiceImpl implements StoreService {
 
         pendingUpdate = pendingUpdateRepository.save(pendingUpdate);
         log.info("Store update rejected: {}", updateId);
+
+        // Send notification to supplier
+        try {
+            Store store = pendingUpdate.getStore();
+            String notificationContent = String.format(
+                    "Yêu cầu cập nhật thông tin cửa hàng '%s' của bạn đã bị từ chối. %s",
+                    store.getStoreName(),
+                    adminNotes != null && !adminNotes.isBlank() ? "Lý do: " + adminNotes : ""
+            );
+            String linkUrl = "/store/list";
+            inAppNotificationService.createNotificationForUser(
+                    store.getSupplier().getUserId(),
+                    NotificationType.STORE_UPDATE_REJECTED,
+                    notificationContent,
+                    linkUrl
+            );
+            log.info("Notification sent to supplier {} about store update rejection", store.getSupplier().getUserId());
+        } catch (Exception e) {
+            Store store = pendingUpdate.getStore();
+            log.error("Failed to send notification to supplier {} about store update rejection", store.getSupplier().getUserId(), e);
+        }
 
         return updateMapper.toStoreResponse(pendingUpdate);
     }

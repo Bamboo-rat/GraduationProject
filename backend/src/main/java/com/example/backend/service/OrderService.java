@@ -63,6 +63,13 @@ public interface OrderService {
     OrderResponse markAsDelivered(String orderId);
 
     /**
+     * Mark order as delivered using tracking number (for third-party shipping partner demo)
+     * - Looks up shipment by tracking number
+     * - Applies the same delivery completion logic as supplier-triggered flow
+     */
+    OrderResponse markAsDeliveredByTrackingNumber(String trackingNumber);
+
+    /**
      * Cancel order
      * - Allowed when status is PENDING or CONFIRMED
      * - From PREPARING onwards, requires cancellation request approval

@@ -1147,12 +1147,16 @@ public class SupplierServiceImpl implements SupplierService {
         log.info("Business info update approved and applied: {}", updateId);
 
         // Send notification to supplier
-        inAppNotificationService.createNotificationForUser(
-                supplier.getUserId(),
-                NotificationType.SUPPLIER_UPDATE_APPROVED,
-                "Your business information update request has been approved by admin. The changes are now live.",
-                "/profile/my-profile"
-        );
+        try {
+            inAppNotificationService.createNotificationForUser(
+                    supplier.getUserId(),
+                    NotificationType.SUPPLIER_UPDATE_APPROVED,
+                    "Your business information update request has been approved by admin. The changes are now live.",
+                    "/profile/my-profile"
+            );
+        } catch (Exception e) {
+            log.error("Failed to send notification to supplier {} about update approval", supplier.getUserId(), e);
+        }
 
         return pendingUpdateMapper.toSupplierResponse(pendingUpdate);
     }
@@ -1190,17 +1194,22 @@ public class SupplierServiceImpl implements SupplierService {
         log.info("Business info update rejected: {}", updateId);
 
         // Send notification to supplier
-        String notificationMessage = "Your business information update request has been rejected.";
-        if (adminNotes != null && !adminNotes.isBlank()) {
-            notificationMessage += " Reason: " + adminNotes;
-        }
+        try {
+            String notificationMessage = "Your business information update request has been rejected.";
+            if (adminNotes != null && !adminNotes.isBlank()) {
+                notificationMessage += " Reason: " + adminNotes;
+            }
 
-        inAppNotificationService.createNotificationForUser(
-                pendingUpdate.getSupplier().getUserId(),
-                NotificationType.SUPPLIER_UPDATE_REJECTED,
-                notificationMessage,
-                "/profile/my-profile"
-        );
+            inAppNotificationService.createNotificationForUser(
+                    pendingUpdate.getSupplier().getUserId(),
+                    NotificationType.SUPPLIER_UPDATE_REJECTED,
+                    notificationMessage,
+                    "/profile/my-profile"
+            );
+        } catch (Exception e) {
+            log.error("Failed to send notification to supplier {} about update rejection", 
+                    pendingUpdate.getSupplier().getUserId(), e);
+        }
 
         return pendingUpdateMapper.toSupplierResponse(pendingUpdate);
     }
