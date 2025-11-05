@@ -194,7 +194,7 @@ export default function PartnersList() {
               >
                 <option value="all">Tất cả</option>
                 <option value="ACTIVE">Đang hoạt động</option>
-                <option value="INACTIVE">Ngừng hoạt động</option>
+                <option value="PAUSE">Ngừng hoạt động</option>
                 <option value="SUSPENDED">Bị tạm khóa</option>
                 <option value="PENDING_APPROVAL">Chờ duyệt</option>
                 <option value="REJECTED">Bị từ chối</option>

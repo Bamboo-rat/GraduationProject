@@ -41,7 +41,7 @@ export default [
   route("reports/reviews-analysis", "routes/reports/reviews-analysis.tsx"),
 
   // Store routes
-  route("store/list", "routes/store/listStore.tsx"),
+  route("store/list", "routes/store/list.tsx"),
   route("store/profile", "routes/store/profile.tsx"),
   route("store/create", "routes/store/create.tsx"),
   route("store/edit/:storeId", "routes/store/edit/$storeId.tsx"),

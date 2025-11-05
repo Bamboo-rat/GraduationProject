@@ -18,12 +18,14 @@ public interface CustomerMapper {
 
     /**
      * Convert Customer entity to CustomerResponse DTO
+     * Note: totalOrders, totalReviews, and addressCount are set to null to avoid lazy loading issues
+     * These statistics should be loaded separately if needed
      */
     @Mapping(target = "status", source = "status", qualifiedByName = "customerStatusToString")
     @Mapping(target = "tier", source = "tier", qualifiedByName = "customerTierToString")
-    @Mapping(target = "totalOrders", expression = "java(customer.getOrders() != null ? customer.getOrders().size() : 0)")
-    @Mapping(target = "totalReviews", expression = "java(customer.getReviews() != null ? customer.getReviews().size() : 0)")
-    @Mapping(target = "addressCount", expression = "java(customer.getAddresses() != null ? customer.getAddresses().size() : 0)")
+    @Mapping(target = "totalOrders", constant = "0")
+    @Mapping(target = "totalReviews", constant = "0")
+    @Mapping(target = "addressCount", constant = "0")
     CustomerResponse toResponse(Customer customer);
 
     /**

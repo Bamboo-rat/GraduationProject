@@ -1,4 +1,4 @@
-import type { Route } from './+types/listStore';
+import type { Route } from './+types/list';
 import StoreManagement from '~/pages/store/StoreManagement';
 import DashboardLayout from '~/component/layout/DashboardLayout';
 import ProtectedRoute from '~/component/common/ProtectedRoute';

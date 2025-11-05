@@ -52,4 +52,29 @@ public interface SystemConfigService {
      * Delete config by key
      */
     void deleteConfig(String key);
+
+    /**
+     * Update partner commission rate and sync to all suppliers
+     */
+    SystemConfigResponse updatePartnerCommissionRate(BigDecimal commissionRate, String updatedBy);
+
+    /**
+     * Update points percentage per customer order
+     */
+    SystemConfigResponse updatePointsPercentage(BigDecimal pointsPercentage, String updatedBy);
+
+    /**
+     * Get partner commission rate
+     */
+    BigDecimal getPartnerCommissionRate();
+
+    /**
+     * Get points percentage per order
+     */
+    BigDecimal getPointsPercentage();
+
+    /**
+     * Initialize default system configs if they don't exist
+     */
+    void initializeDefaultConfigs();
 }

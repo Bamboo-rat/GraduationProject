@@ -92,7 +92,7 @@ export default function StoreProducts() {
       {/* Header */}
       <div className="mb-6">
         <button
-          onClick={() => navigate('/store/listStore')}
+          onClick={() => navigate('/store/list')}
           className="btn-secondary mb-4 flex items-center gap-2"
         >
           <ArrowLeft size={18} />

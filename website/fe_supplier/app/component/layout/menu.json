@@ -27,7 +27,7 @@
       "icon": "shopping-cart",
       "link": "/orders/list",
       "subMenu": [
-        { "title": "Tất cả đơn hàng", "link": "/orders/list" },
+        { "title": "Quản lý đơn hàng", "link": "/orders/list" },
         { "title": "Đơn hàng trả lại", "link": "/orders/returns" }
       ]
     },

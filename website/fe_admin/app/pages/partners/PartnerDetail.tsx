@@ -42,7 +42,7 @@ export default function PartnerDetail() {
     try {
       setLoading(true);
       const response = await supplierService.getSupplierById(userId);
-      setSupplier(response.data);
+      setSupplier(response);
     } catch (error: any) {
       console.error('Error fetching supplier details:', error);
       setToast({
@@ -249,13 +249,13 @@ export default function PartnerDetail() {
             </div>
 
             {/* Address Information */}
-            {supplier.address && (
+            {supplier.businessAddress && (
               <div className="bg-white rounded-lg shadow p-6">
                 <h2 className="text-lg font-semibold mb-4 flex items-center">
                   <MapPin className="w-5 h-5 mr-2 text-blue-600" />
                   Địa chỉ
                 </h2>
-                <p className="text-gray-900">{supplier.address}</p>
+                <p className="text-gray-900">{supplier.businessAddress}</p>
               </div>
             )}
 

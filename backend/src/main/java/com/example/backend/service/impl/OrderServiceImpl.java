@@ -720,8 +720,8 @@ public class OrderServiceImpl implements OrderService {
 
     private void sendOrderNotification(Order order, String message) {
         try {
-            // Create link to order details
-            String linkUrl = "/orders/" + order.getOrderId();
+            // Customer notifications link to orders page (mobile app handles this)
+            String linkUrl = null; // Mobile app will handle navigation
 
             // Send to customer
             inAppNotificationService.createNotificationForUser(
@@ -742,8 +742,8 @@ public class OrderServiceImpl implements OrderService {
 
     private void sendOrderNotificationToSupplier(Order order, String message) {
         try {
-            // Create link to order details
-            String linkUrl = "/orders/" + order.getOrderId();
+            // Link to supplier's order list page
+            String linkUrl = "/orders/list";
 
             // Send to supplier
             inAppNotificationService.createNotificationForUser(

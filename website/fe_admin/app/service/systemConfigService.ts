@@ -116,6 +116,80 @@ class SystemConfigService {
       throw error;
     }
   }
+
+  // Specialized methods for key system configurations
+
+  /**
+   * Update partner commission rate and sync to all suppliers
+   */
+  async updateCommissionRate(commissionRate: number): Promise<SystemConfigResponse> {
+    try {
+      const { data } = await axiosInstance.put<ApiResponse<SystemConfigResponse>>(
+        `${this.BASE_URL}/commission-rate`,
+        null,
+        { params: { commissionRate } }
+      );
+      return data.data;
+    } catch (error) {
+      console.error('Error updating commission rate:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get current partner commission rate
+   */
+  async getCommissionRate(): Promise<number> {
+    try {
+      const { data } = await axiosInstance.get<ApiResponse<number>>(`${this.BASE_URL}/commission-rate`);
+      return data.data;
+    } catch (error) {
+      console.error('Error fetching commission rate:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update points percentage per customer order
+   */
+  async updatePointsPercentage(pointsPercentage: number): Promise<SystemConfigResponse> {
+    try {
+      const { data } = await axiosInstance.put<ApiResponse<SystemConfigResponse>>(
+        `${this.BASE_URL}/points-percentage`,
+        null,
+        { params: { pointsPercentage } }
+      );
+      return data.data;
+    } catch (error) {
+      console.error('Error updating points percentage:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get current points percentage
+   */
+  async getPointsPercentage(): Promise<number> {
+    try {
+      const { data } = await axiosInstance.get<ApiResponse<number>>(`${this.BASE_URL}/points-percentage`);
+      return data.data;
+    } catch (error) {
+      console.error('Error fetching points percentage:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Initialize default system configs
+   */
+  async initializeDefaultConfigs(): Promise<void> {
+    try {
+      await axiosInstance.post(`${this.BASE_URL}/initialize`);
+    } catch (error) {
+      console.error('Error initializing default configs:', error);
+      throw error;
+    }
+  }
 }
 
 export const systemConfigService = new SystemConfigService();

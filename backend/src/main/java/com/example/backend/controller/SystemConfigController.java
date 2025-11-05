@@ -101,6 +101,75 @@ public class SystemConfigController {
     public ResponseEntity<ApiResponse<String>> deleteConfig(@PathVariable String key) {
         log.info("Request to delete config: key={}", key);
         systemConfigService.deleteConfig(key);
-        return ResponseEntity.ok(ApiResponse.success(null, "Xóa cấu hình thành công"));
+        return ResponseEntity.ok(ApiResponse.success("Xóa cấu hình thành công", null));
+    }
+
+    // Specialized endpoints for key system configurations
+
+    @PutMapping("/commission-rate")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @Operation(summary = "Update partner commission rate",
+               description = "Update partner commission rate and sync to all suppliers (SUPER_ADMIN only)")
+    public ResponseEntity<ApiResponse<SystemConfigResponse>> updateCommissionRate(
+            @RequestParam java.math.BigDecimal commissionRate,
+            Authentication authentication) {
+        log.info("Request to update partner commission rate: {}%", commissionRate);
+
+        String updatedBy = authentication.getName();
+        SystemConfigResponse response = systemConfigService.updatePartnerCommissionRate(
+                commissionRate,
+                updatedBy
+        );
+
+        return ResponseEntity.ok(ApiResponse.success(
+                "Cập nhật tỷ lệ hoa hồng thành công và đã đồng bộ đến tất cả nhà cung cấp",
+                response));
+    }
+
+    @GetMapping("/commission-rate")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF')")
+    @Operation(summary = "Get current commission rate",
+               description = "Get current partner commission rate percentage (Admin only)")
+    public ResponseEntity<ApiResponse<java.math.BigDecimal>> getCommissionRate() {
+        log.info("Request to get current commission rate");
+        java.math.BigDecimal rate = systemConfigService.getPartnerCommissionRate();
+        return ResponseEntity.ok(ApiResponse.success(rate));
+    }
+
+    @PutMapping("/points-percentage")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @Operation(summary = "Update points percentage",
+               description = "Update points percentage per customer order (SUPER_ADMIN only)")
+    public ResponseEntity<ApiResponse<SystemConfigResponse>> updatePointsPercentage(
+            @RequestParam java.math.BigDecimal pointsPercentage,
+            Authentication authentication) {
+        log.info("Request to update points percentage: {}%", pointsPercentage);
+
+        String updatedBy = authentication.getName();
+        SystemConfigResponse response = systemConfigService.updatePointsPercentage(
+                pointsPercentage,
+                updatedBy
+        );
+
+        return ResponseEntity.ok(ApiResponse.success("Cập nhật tỷ lệ tích điểm thành công", response));
+    }
+
+    @GetMapping("/points-percentage")
+    @Operation(summary = "Get current points percentage",
+               description = "Get current points percentage per order (Public)")
+    public ResponseEntity<ApiResponse<java.math.BigDecimal>> getPointsPercentage() {
+        log.info("Request to get current points percentage");
+        java.math.BigDecimal percentage = systemConfigService.getPointsPercentage();
+        return ResponseEntity.ok(ApiResponse.success(percentage));
+    }
+
+    @PostMapping("/initialize")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    @Operation(summary = "Initialize default configs",
+               description = "Initialize default system configurations (SUPER_ADMIN only)")
+    public ResponseEntity<ApiResponse<String>> initializeDefaultConfigs() {
+        log.info("Request to initialize default configs");
+        systemConfigService.initializeDefaultConfigs();
+        return ResponseEntity.ok(ApiResponse.success("Khởi tạo cấu hình mặc định thành công", null));
     }
 }
