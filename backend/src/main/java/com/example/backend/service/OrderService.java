@@ -118,4 +118,18 @@ public interface OrderService {
      * Process refund (for canceled orders with online payment)
      */
     void processRefund(String orderId);
+
+    // ===== SHIPPING PARTNER DEMO ENDPOINTS =====
+
+    /**
+     * Get orders by shipping provider (for web demo)
+     * Returns all SHIPPING orders assigned to a specific provider
+     */
+    Page<OrderResponse> getOrdersByShippingProvider(String shippingProvider, int page, int size);
+
+    /**
+     * Get order by tracking number (for web demo)
+     * Allows looking up order using tracking number
+     */
+    OrderResponse getOrderByTrackingNumber(String trackingNumber);
 }

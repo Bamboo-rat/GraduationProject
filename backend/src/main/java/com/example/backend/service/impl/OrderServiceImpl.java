@@ -53,7 +53,6 @@ public class OrderServiceImpl implements OrderService {
     private final SystemConfigService systemConfigService;
     private final PointTransactionRepository pointTransactionRepository;
     private final FavoriteStoreRepository favoriteStoreRepository;
-    private final OrderCancelRequestRepository cancelRequestRepository;
 
     private static final String CONFIG_KEY_POINTS_PERCENTAGE = "points.reward.percentage";
     private static final BigDecimal DEFAULT_POINTS_PERCENTAGE = new BigDecimal("0.05"); // 5% default
@@ -791,20 +790,27 @@ public class OrderServiceImpl implements OrderService {
                     "Chỉ có thể hoàn thành đơn hàng từ trạng thái SHIPPING");
         }
 
-        order.setStatus(OrderStatus.DELIVERED);
-        order.setDeliveredAt(LocalDateTime.now());
-        order = orderRepository.save(order);
-
-        Shipment resolvedShipment = shipment;
-        if (resolvedShipment == null) {
-            resolvedShipment = order.getShipment();
-        }
-
+        // Validate shipment status
+        Shipment resolvedShipment = shipment != null ? shipment : order.getShipment();
+        
         if (resolvedShipment != null) {
+            if (resolvedShipment.getStatus() != ShipmentStatus.SHIPPING) {
+                throw new BadRequestException(ErrorCode.INVALID_ORDER_STATUS,
+                        String.format("Không thể xác nhận giao hàng. Vận đơn đang ở trạng thái %s, cần ở trạng thái SHIPPING",
+                                resolvedShipment.getStatus().getDisplayName()));
+            }
+            
+            // Update shipment status
             resolvedShipment.setStatus(ShipmentStatus.DELIVERED);
             shipmentRepository.save(resolvedShipment);
             order.setShipment(resolvedShipment);
         }
+
+        // Update order status
+        order.setStatus(OrderStatus.DELIVERED);
+        order.setDeliveredAt(LocalDateTime.now());
+        order.setBalanceReleased(false); // Will be released after 7-day hold period
+        order = orderRepository.save(order);
 
         handleDeliveryCompletion(order);
 
@@ -875,5 +881,42 @@ public class OrderServiceImpl implements OrderService {
                 .canReview(detail.getOrder().getStatus() == OrderStatus.DELIVERED)
                 .hasReviewed(detail.getReview() != null)
                 .build();
+    }
+
+    // ===== SHIPPING PARTNER DEMO METHODS =====
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<OrderResponse> getOrdersByShippingProvider(String shippingProvider, int page, int size) {
+        log.info("Getting orders for shipping provider: provider={}, page={}, size={}", 
+                shippingProvider, page, size);
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        
+        // Find orders in SHIPPING status with matching shipping provider
+        Page<Order> orders = orderRepository.findByStatusAndShipment_ShippingProvider(
+            OrderStatus.SHIPPING, 
+            shippingProvider, 
+            pageable
+        );
+
+        log.info("Found {} orders for shipping provider: {}", orders.getTotalElements(), shippingProvider);
+        
+        return orders.map(this::mapToOrderResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public OrderResponse getOrderByTrackingNumber(String trackingNumber) {
+        log.info("Getting order by tracking number: {}", trackingNumber);
+
+        Shipment shipment = shipmentRepository.findByTrackingNumber(trackingNumber)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.ORDER_NOT_FOUND, 
+                        "Không tìm thấy vận đơn với mã: " + trackingNumber));
+
+        Order order = shipment.getOrder();
+        log.info("Found order {} for tracking number: {}", order.getOrderCode(), trackingNumber);
+
+        return mapToOrderResponse(order);
     }
 }

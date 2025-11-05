@@ -5,10 +5,8 @@ import com.example.backend.dto.response.PromotionResponse;
 import com.example.backend.entity.Customer;
 import com.example.backend.entity.Promotion;
 import com.example.backend.entity.PromotionUsage;
-import com.example.backend.entity.PromotionValidationLog;
 import com.example.backend.entity.enums.PromotionStatus;
 import com.example.backend.entity.enums.PromotionTier;
-import com.example.backend.entity.enums.PromotionValidationStatus;
 import com.example.backend.exception.ErrorCode;
 import com.example.backend.exception.custom.BadRequestException;
 import com.example.backend.exception.custom.ConflictException;
@@ -17,7 +15,6 @@ import com.example.backend.mapper.PromotionMapper;
 import com.example.backend.repository.CustomerRepository;
 import com.example.backend.repository.PromotionRepository;
 import com.example.backend.repository.PromotionUsageRepository;
-import com.example.backend.repository.PromotionValidationLogRepository;
 import com.example.backend.service.PromotionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,8 +27,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.List;
 
 @Slf4j
 @Service
@@ -40,7 +35,6 @@ public class PromotionServiceImpl implements PromotionService {
 
     private final PromotionRepository promotionRepository;
     private final PromotionMapper promotionMapper;
-    private final PromotionValidationLogRepository validationLogRepository;
     private final PromotionUsageRepository promotionUsageRepository;
     private final CustomerRepository customerRepository;
 
@@ -208,92 +202,58 @@ public class PromotionServiceImpl implements PromotionService {
         log.info("Validating promotion code: {} for customer: {} with order amount: {}",
                 code, customerId, orderAmount);
 
-        Customer customer = null;
-        PromotionValidationStatus validationStatus = PromotionValidationStatus.ERROR; // Initialize with default
-        String errorMessage = null;
-        Promotion promotion = null;
-        BigDecimal discountAmount = null;
+        customerRepository.findById(customerId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
 
-        try {
-            // Get customer first
-            customer = customerRepository.findById(customerId)
-                    .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+        // Find promotion by code
+        Promotion promotion = promotionRepository.findByCode(code)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.PROMOTION_NOT_FOUND));
 
-            // Find promotion by code
-            promotion = promotionRepository.findByCode(code)
-                    .orElseThrow(() -> new NotFoundException(ErrorCode.PROMOTION_NOT_FOUND));
-
-            // Check if promotion is active
-            if (promotion.getStatus() != PromotionStatus.ACTIVE) {
-                validationStatus = PromotionValidationStatus.EXPIRED;
-                errorMessage = "Promotion is not active";
-                throw new BadRequestException(ErrorCode.PROMOTION_EXPIRED_OR_INACTIVE);
-            }
-
-            // Check date validity
-            LocalDate today = LocalDate.now();
-            if (promotion.getStartDate() != null && promotion.getStartDate().isAfter(today)) {
-                validationStatus = PromotionValidationStatus.EXPIRED;
-                errorMessage = "Promotion has not started yet";
-                throw new BadRequestException(ErrorCode.PROMOTION_EXPIRED_OR_INACTIVE, errorMessage);
-            }
-            if (promotion.getEndDate() != null && promotion.getEndDate().isBefore(today)) {
-                validationStatus = PromotionValidationStatus.EXPIRED;
-                errorMessage = "Promotion has expired";
-                throw new BadRequestException(ErrorCode.PROMOTION_EXPIRED_OR_INACTIVE, errorMessage);
-            }
-
-            // Check minimum order amount
-            if (promotion.getMinimumOrderAmount() != null &&
-                orderAmount.compareTo(promotion.getMinimumOrderAmount()) < 0) {
-                validationStatus = PromotionValidationStatus.MINIMUM_NOT_MET;
-                errorMessage = String.format("Minimum order amount is %s", promotion.getMinimumOrderAmount());
-                throw new BadRequestException(ErrorCode.PROMOTION_NOT_APPLICABLE, errorMessage);
-            }
-
-            // Check total usage limit
-            if (promotion.getTotalUsageLimit() != null &&
-                promotion.getCurrentUsageCount() >= promotion.getTotalUsageLimit()) {
-                validationStatus = PromotionValidationStatus.LIMIT_REACHED;
-                errorMessage = "Promotion usage limit has been reached";
-                throw new BadRequestException(ErrorCode.PROMOTION_NOT_APPLICABLE, errorMessage);
-            }
-
-            // Check per-customer usage limit
-            if (promotion.getUsagePerCustomerLimit() != null) {
-                long customerUsageCount = promotionUsageRepository.countByPromotionAndCustomer(
-                        promotion.getPromotionId(), customerId);
-
-                if (customerUsageCount >= promotion.getUsagePerCustomerLimit()) {
-                    validationStatus = PromotionValidationStatus.ALREADY_USED;
-                    errorMessage = String.format("You have already used this promotion %d times (limit: %d)",
-                            customerUsageCount, promotion.getUsagePerCustomerLimit());
-                    throw new BadRequestException(ErrorCode.PROMOTION_NOT_APPLICABLE, errorMessage);
-                }
-            }
-
-            // Validation succeeded - calculate discount amount
-            validationStatus = PromotionValidationStatus.VALID;
-            discountAmount = calculateDiscountAmount(promotion, orderAmount);
-
-            log.info("Promotion code validated successfully: {}", code);
-            return promotionMapper.toResponse(promotion);
-
-        } catch (NotFoundException e) {
-            validationStatus = PromotionValidationStatus.NOT_FOUND;
-            errorMessage = e.getMessage();
-            throw e;
-        } catch (BadRequestException e) {
-            // Status already set in validation checks
-            throw e;
-        } catch (Exception e) {
-            validationStatus = PromotionValidationStatus.ERROR;
-            errorMessage = e.getMessage();
-            throw e;
-        } finally {
-            // Log validation attempt regardless of success/failure
-            logValidationAttempt(promotion, customer, validationStatus, orderAmount, discountAmount, errorMessage);
+        // Check if promotion is active
+        if (promotion.getStatus() != PromotionStatus.ACTIVE) {
+            throw new BadRequestException(ErrorCode.PROMOTION_EXPIRED_OR_INACTIVE);
         }
+
+        // Check date validity
+        LocalDate today = LocalDate.now();
+        if (promotion.getStartDate() != null && promotion.getStartDate().isAfter(today)) {
+            throw new BadRequestException(ErrorCode.PROMOTION_EXPIRED_OR_INACTIVE,
+                    "Promotion has not started yet");
+        }
+        if (promotion.getEndDate() != null && promotion.getEndDate().isBefore(today)) {
+            throw new BadRequestException(ErrorCode.PROMOTION_EXPIRED_OR_INACTIVE,
+                    "Promotion has expired");
+        }
+
+        // Check minimum order amount
+        if (promotion.getMinimumOrderAmount() != null &&
+            orderAmount.compareTo(promotion.getMinimumOrderAmount()) < 0) {
+            throw new BadRequestException(ErrorCode.PROMOTION_NOT_APPLICABLE,
+                    String.format("Minimum order amount is %s", promotion.getMinimumOrderAmount()));
+        }
+
+        // Check total usage limit
+        if (promotion.getTotalUsageLimit() != null &&
+            promotion.getCurrentUsageCount() >= promotion.getTotalUsageLimit()) {
+            throw new BadRequestException(ErrorCode.PROMOTION_NOT_APPLICABLE,
+                    "Promotion usage limit has been reached");
+        }
+
+        // Check per-customer usage limit
+        if (promotion.getUsagePerCustomerLimit() != null) {
+            long customerUsageCount = promotionUsageRepository.countByPromotionAndCustomer(
+                    promotion.getPromotionId(), customerId);
+
+            if (customerUsageCount >= promotion.getUsagePerCustomerLimit()) {
+                throw new BadRequestException(ErrorCode.PROMOTION_NOT_APPLICABLE,
+                        String.format("You have already used this promotion %d times (limit: %d)",
+                                customerUsageCount, promotion.getUsagePerCustomerLimit()));
+            }
+        }
+
+        // Validation succeeded
+        log.info("Promotion code validated successfully: {}", code);
+        return promotionMapper.toResponse(promotion);
     }
 
     @Override
@@ -378,9 +338,6 @@ public class PromotionServiceImpl implements PromotionService {
         // usage.setOrder(order);
 
         usage = promotionUsageRepository.save(usage);
-
-        // Step 9: Update validation log to mark as applied (link validation to usage)
-        updateValidationLogAsApplied(promotion, customer, usage.getUsageId());
 
         log.info("Promotion applied successfully: {} (usage: {}/{}), discount: {}",
                 code, promotion.getCurrentUsageCount(), promotion.getTotalUsageLimit(), discountAmount);
@@ -467,75 +424,5 @@ public class PromotionServiceImpl implements PromotionService {
         }
 
         return discount;
-    }
-
-    /**
-     * Log validation attempt to database for tracking
-     */
-    private void logValidationAttempt(
-            Promotion promotion,
-            Customer customer,
-            PromotionValidationStatus status,
-            BigDecimal orderAmount,
-            BigDecimal discountAmount,
-            String errorMessage
-    ) {
-        if (promotion == null || customer == null) {
-            return; // Can't log if promotion or customer not found
-        }
-
-        try {
-            PromotionValidationLog validationLog = new PromotionValidationLog();
-            validationLog.setPromotion(promotion);
-            validationLog.setCustomer(customer);
-            validationLog.setStatus(status);
-            validationLog.setOrderAmount(orderAmount);
-            validationLog.setDiscountAmount(discountAmount);
-            validationLog.setErrorMessage(errorMessage);
-            validationLog.setApplied(false); // Will be updated when actually applied
-
-            validationLogRepository.save(validationLog);
-
-            log.info("Logged validation attempt: promotion={}, customer={}, status={}",
-                    promotion.getCode(), customer.getUserId(), status);
-        } catch (Exception e) {
-            // Don't fail the main operation if logging fails
-            log.error("Failed to log validation attempt", e);
-        }
-    }
-
-    /**
-     * Update validation log to mark as applied
-     * Links the validation log to the actual usage
-     */
-    private void updateValidationLogAsApplied(Promotion promotion, Customer customer, String usageId) {
-        try {
-            // Find the most recent VALID validation log for this promotion and customer
-            // that hasn't been applied yet (within last 1 hour)
-            LocalDateTime oneHourAgo = LocalDateTime.now().minusHours(1);
-            List<PromotionValidationLog> recentValidations = validationLogRepository.findRecentValidations(
-                    promotion.getPromotionId(),
-                    customer.getUserId(),
-                    oneHourAgo
-            );
-
-            // Find the first validation that hasn't been applied yet
-            recentValidations.stream()
-                    .filter(validationLog -> validationLog.getStatus() == PromotionValidationStatus.VALID)
-                    .filter(validationLog -> !validationLog.isApplied())
-                    .findFirst()
-                    .ifPresent(validationLog -> {
-                        validationLog.setApplied(true);
-                        validationLog.setAppliedAt(LocalDateTime.now());
-                        validationLog.setOrderId(usageId); // Store usage ID in orderId field for now
-                        validationLogRepository.save(validationLog);
-
-                        log.info("Updated validation log {} as applied for promotion {}",
-                                validationLog.getLogId(), promotion.getCode());
-                    });
-        } catch (Exception e) {
-            // Don't fail the main operation if updating log fails
-            log.error("Failed to update validation log as applied", e);
-        }
     }
 }

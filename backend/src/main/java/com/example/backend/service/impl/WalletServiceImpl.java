@@ -39,7 +39,6 @@ public class WalletServiceImpl implements WalletService {
 
     private final SupplierWalletRepository walletRepository;
     private final WalletTransactionRepository transactionRepository;
-    private final SupplierRepository supplierRepository;
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
 
@@ -144,10 +143,21 @@ public class WalletServiceImpl implements WalletService {
         BigDecimal commissionAmount = amount.multiply(commissionRate).setScale(2, RoundingMode.HALF_UP);
         BigDecimal netAmount = amount.subtract(commissionAmount);
 
-        log.info("Refunding - Original amount: {}, Commission: {}, Net amount to refund: {}",
-                 amount, commissionAmount, netAmount);
+        // Determine if money is still in pending or already released to available
+        // Money is in pending if:
+        // 1. Order was never delivered (cancelled during processing), OR
+        // 2. Order was delivered but balance not yet released (within 7-day hold period)
+        boolean isStillPending = !order.isBalanceReleased();
+        
+        if (isPending != isStillPending) {
+            log.warn("Refund isPending flag ({}) differs from actual balance state ({}). Using actual state.",
+                    isPending, isStillPending);
+        }
 
-        wallet.refund(netAmount, isPending);
+        log.info("Refunding - Original amount: {}, Commission: {}, Net amount to refund: {}, From: {}",
+                 amount, commissionAmount, netAmount, isStillPending ? "Pending" : "Available");
+
+        wallet.refund(netAmount, isStillPending);
         wallet.subtractEarnings(netAmount);
         wallet = walletRepository.save(wallet);
 
@@ -159,52 +169,79 @@ public class WalletServiceImpl implements WalletService {
         transaction.setPendingBalanceAfter(wallet.getPendingBalance());
         transaction.setOrder(order);
         transaction.setDescription("Hoàn tiền đơn hàng #" + order.getOrderCode() +
-                (isPending ? " (hủy trước khi giao)" : " (trả hàng)") +
+                (isStillPending ? " (từ số dư chờ xử lý)" : " (từ số dư khả dụng)") +
                 " - Tổng: " + formatMoney(amount) + ", Hoàn: " + formatMoney(netAmount));
 
         transactionRepository.save(transaction);
 
-        log.info("Order refunded successfully. Wallet ID: {}, Net refunded: {}", 
-                wallet.getWalletId(), netAmount);
+        log.info("Order refunded successfully. Wallet ID: {}, Net refunded: {}, From: {}", 
+                wallet.getWalletId(), netAmount, isStillPending ? "Pending" : "Available");
     }
 
     @Override
     @Scheduled(cron = "0 0 0 * * *")
     @Transactional
     public void endOfDayRelease() {
-        LocalDate today = LocalDate.now();
-        log.info("Starting End-of-Day Release for date: {}", today.minusDays(1));
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime holdPeriodEnd = now.minusDays(7); // 7-day hold period
+        
+        log.info("Starting End-of-Day Balance Release. Processing orders delivered before: {}", holdPeriodEnd);
 
-        List<SupplierWallet> wallets = walletRepository.findAllWithPendingBalance();
-        int processedCount = 0;
+        // Find orders that are eligible for balance release (delivered > 7 days ago)
+        List<Order> eligibleOrders = orderRepository.findDeliveredOrdersEligibleForRelease(holdPeriodEnd);
+        
+        int processedOrderCount = 0;
+        BigDecimal totalReleased = BigDecimal.ZERO;
 
-        for (SupplierWallet wallet : wallets) {
+        for (Order order : eligibleOrders) {
             try {
-                BigDecimal pendingAmount = wallet.getPendingBalance();
+                Supplier supplier = order.getStore().getSupplier();
+                SupplierWallet wallet = getWalletEntityBySupplierId(supplier.getUserId());
 
-                if (pendingAmount.compareTo(BigDecimal.ZERO) > 0) {
-                    wallet.releasePendingBalance(pendingAmount);
-                    wallet = walletRepository.save(wallet);
+                // Calculate net amount after commission
+                BigDecimal commissionRate = supplier.getCommissionRate() != null ?
+                                            BigDecimal.valueOf(supplier.getCommissionRate()) :
+                                            BigDecimal.ZERO;
+                BigDecimal orderAmount = order.getTotalAmount();
+                BigDecimal commissionAmount = orderAmount.multiply(commissionRate).setScale(2, RoundingMode.HALF_UP);
+                BigDecimal netAmount = orderAmount.subtract(commissionAmount);
 
-                    WalletTransaction transaction = new WalletTransaction();
-                    transaction.setWallet(wallet);
-                    transaction.setTransactionType(TransactionType.END_OF_DAY_RELEASE);
-                    transaction.setAmount(pendingAmount);
-                    transaction.setBalanceAfter(wallet.getAvailableBalance());
-                    transaction.setPendingBalanceAfter(BigDecimal.ZERO);
-                    transaction.setDescription("Chuyển số dư khả dụng cuối ngày " + today.minusDays(1));
+                // Release from pending to available
+                wallet.releasePendingBalance(netAmount);
+                walletRepository.save(wallet);
 
-                    transactionRepository.save(transaction);
+                // Mark order as balance released
+                order.setBalanceReleased(true);
+                orderRepository.save(order);
 
-                    processedCount++;
-                    log.info("Released {} for wallet ID: {}", formatMoney(pendingAmount), wallet.getWalletId());
-                }
+                // Create transaction record
+                WalletTransaction transaction = new WalletTransaction();
+                transaction.setWallet(wallet);
+                transaction.setTransactionType(TransactionType.END_OF_DAY_RELEASE);
+                transaction.setAmount(netAmount);
+                transaction.setBalanceAfter(wallet.getAvailableBalance());
+                transaction.setPendingBalanceAfter(wallet.getPendingBalance());
+                transaction.setOrder(order);
+                transaction.setDescription(String.format(
+                    "Giải phóng số dư đơn hàng #%s (Giao: %s, Giữ 7 ngày hoàn tất)",
+                    order.getOrderCode(),
+                    order.getDeliveredAt().toLocalDate()
+                ));
+                transactionRepository.save(transaction);
+
+                processedOrderCount++;
+                totalReleased = totalReleased.add(netAmount);
+                
+                log.info("Released {} for order {} to wallet {}", 
+                    formatMoney(netAmount), order.getOrderCode(), wallet.getWalletId());
+
             } catch (Exception e) {
-                log.error("Error processing end-of-day release for wallet ID: {}", wallet.getWalletId(), e);
+                log.error("Error releasing balance for order {}", order.getOrderCode(), e);
             }
         }
 
-        log.info("End-of-Day Release completed. Total wallets processed: {}", processedCount);
+        log.info("End-of-Day Balance Release completed. Orders processed: {}, Total released: {}", 
+            processedOrderCount, formatMoney(totalReleased));
     }
 
     @Override

@@ -59,6 +59,13 @@ public class Order {
 
     private LocalDateTime deliveredAt;
 
+    /**
+     * Flag to track if balance has been released from pending to available
+     * True = balance released, False = still in pending (within 7-day hold period)
+     */
+    @Column(nullable = false)
+    private boolean balanceReleased = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "customer_id", nullable = false)
     private Customer customer;

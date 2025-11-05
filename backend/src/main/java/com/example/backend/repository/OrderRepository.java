@@ -148,4 +148,22 @@ public interface OrderRepository extends JpaRepository<Order, String> {
            "WHERE o.store.supplier.userId = :supplierId " +
            "AND o.createdAt BETWEEN :startDate AND :endDate")
     Long countBySupplierIdAndCreatedAtBetween(@Param("supplierId") String supplierId, @Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    /**
+     * Find delivered orders that are eligible for balance release (delivered more than 7 days ago)
+     * and have not been released yet
+     */
+    @Query("SELECT o FROM Order o " +
+           "WHERE o.status = 'DELIVERED' " +
+           "AND o.deliveredAt IS NOT NULL " +
+           "AND o.deliveredAt <= :beforeDate " +
+           "AND o.balanceReleased = false " +
+           "ORDER BY o.deliveredAt ASC")
+    List<Order> findDeliveredOrdersEligibleForRelease(@Param("beforeDate") LocalDateTime beforeDate);
+
+    /**
+     * Find orders by status and shipping provider (for shipping partner demo)
+     * Returns orders in SHIPPING status assigned to specific provider
+     */
+    Page<Order> findByStatusAndShipment_ShippingProvider(OrderStatus status, String shippingProvider, Pageable pageable);
 }

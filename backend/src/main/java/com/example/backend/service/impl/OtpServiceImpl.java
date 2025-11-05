@@ -29,7 +29,6 @@ public class OtpServiceImpl implements OtpService {
     private final RedisTemplate<String, String> redisTemplate;
     private final EmailService emailService;
 
-    private static final int OTP_LENGTH = 6;
     private static final int OTP_EXPIRY_MINUTES = 3;
     private static final int PASSWORD_RESET_OTP_EXPIRY_MINUTES = 10;
     private static final int MAX_OTP_REQUESTS_PER_HOUR = 3;
