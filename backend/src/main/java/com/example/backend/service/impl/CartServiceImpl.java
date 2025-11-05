@@ -661,11 +661,15 @@ public class CartServiceImpl implements CartService {
                 ? null
                 : product.getImages().get(0).getImageUrl();
 
-        return CartResponse.CartItemResponse.builder()
+    return CartResponse.CartItemResponse.builder()
                 .cartDetailId(detail.getCartDetailId())
                 .storeProductId(storeProduct.getStoreProductId())
+        .storeId(storeProduct.getStore().getStoreId())
+        .productId(product.getProductId())
+        .variantId(variant.getVariantId())
+        .sku(variant.getSku())
                 .productName(product.getName())
-                .variantName(variant.getSku())
+        .variantName(variant.getName())
                 .productImage(productImage)
                 .quantity(detail.getQuantity())
                 .unitPrice(unitPrice)

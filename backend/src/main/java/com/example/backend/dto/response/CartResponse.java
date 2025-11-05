@@ -30,6 +30,10 @@ public class CartResponse {
     public static class CartItemResponse {
         private String cartDetailId;
         private String storeProductId;
+        private String storeId;
+        private String productId;
+        private String variantId;
+        private String sku;
         private String productName;
         private String variantName;
         private String productImage;
