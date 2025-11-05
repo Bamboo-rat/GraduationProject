@@ -11,10 +11,10 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Request to update cart item quantity")
+@Schema(description = "Request to update cart item quantity. Set quantity to 0 or null to remove item from cart.")
 public class UpdateCartItemRequest {
 
-    @Min(value = 1, message = "Quantity must be at least 1")
-    @Schema(description = "Số lượng mới", example = "5")
+    @Min(value = 0, message = "Quantity must be greater than or equal to 0")
+    @Schema(description = "Số lượng mới. Đặt 0 để xóa sản phẩm khỏi giỏ hàng", example = "5")
     private Integer quantity;
 }

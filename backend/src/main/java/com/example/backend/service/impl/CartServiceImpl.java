@@ -133,6 +133,12 @@ public class CartServiceImpl implements CartService {
                     "Bạn không có quyền truy cập giỏ hàng này");
         }
 
+        // If quantity is 0 or null, remove the item from cart
+        if (request.getQuantity() == null || request.getQuantity() == 0) {
+            log.info("Quantity is 0 or null, removing cart item: cartDetailId={}", cartDetailId);
+            return removeCartItem(customerId, cartDetailId);
+        }
+
         StoreProduct storeProduct = cartDetail.getStoreProduct();
 
         // Validate stock

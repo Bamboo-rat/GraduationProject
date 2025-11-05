@@ -89,8 +89,10 @@ public class OrderServiceImpl implements OrderService {
                     "Giỏ hàng trống");
         }
 
-        // Validate inventory and prices
+        // Validate inventory and recalculate prices with current prices
         List<CartDetail> itemsToRemove = new ArrayList<>();
+        BigDecimal orderTotal = BigDecimal.ZERO;
+        
         for (CartDetail detail : cart.getCartDetails()) {
             StoreProduct storeProduct = detail.getStoreProduct();
             ProductVariant variant = storeProduct.getVariant();
@@ -114,6 +116,13 @@ public class OrderServiceImpl implements OrderService {
                         String.format("Sản phẩm '%s' không đủ số lượng. Còn lại: %d",
                                 product.getName(), storeProduct.getStockQuantity()));
             }
+            
+            // Recalculate amount with current price (not cart's old price)
+            BigDecimal currentUnitPrice = storeProduct.getPriceOverride() != null
+                    ? storeProduct.getPriceOverride()
+                    : (variant.getDiscountPrice() != null ? variant.getDiscountPrice() : variant.getOriginalPrice());
+            BigDecimal itemAmount = currentUnitPrice.multiply(BigDecimal.valueOf(detail.getQuantity()));
+            orderTotal = orderTotal.add(itemAmount);
         }
 
         if (!itemsToRemove.isEmpty()) {
@@ -121,43 +130,52 @@ public class OrderServiceImpl implements OrderService {
                     "Giỏ hàng có sản phẩm không hợp lệ. Vui lòng kiểm tra lại");
         }
 
-        // Create order
+        // Create order with recalculated total
         Order order = new Order();
         order.setOrderCode(generateOrderCode());
         order.setCustomer(cart.getCustomer());
         order.setStore(cart.getStore());
-        order.setTotalAmount(cart.getTotal());
+        order.setTotalAmount(orderTotal); // Use recalculated total, not cart.getTotal()
         order.setStatus(OrderStatus.PENDING);
         order.setPaymentStatus(PaymentStatus.PENDING);
         order.setShippingAddress(request.getShippingAddress());
         order = orderRepository.save(order);
 
-        // Copy cart details to order details
+        // Copy cart details to order details with current prices
         for (CartDetail cartDetail : cart.getCartDetails()) {
+            StoreProduct storeProduct = cartDetail.getStoreProduct();
+            ProductVariant variant = storeProduct.getVariant();
+            
+            // Calculate current unit price and amount
+            BigDecimal currentUnitPrice = storeProduct.getPriceOverride() != null
+                    ? storeProduct.getPriceOverride()
+                    : (variant.getDiscountPrice() != null ? variant.getDiscountPrice() : variant.getOriginalPrice());
+            BigDecimal itemAmount = currentUnitPrice.multiply(BigDecimal.valueOf(cartDetail.getQuantity()));
+            
             OrderDetail orderDetail = new OrderDetail();
             orderDetail.setOrder(order);
             orderDetail.setStoreProduct(cartDetail.getStoreProduct());
             orderDetail.setQuantity(cartDetail.getQuantity());
-            orderDetail.setAmount(cartDetail.getAmount());
+            orderDetail.setAmount(itemAmount); // Use current price, not cartDetail.getAmount()
             order.getOrderDetails().add(orderDetail);
             orderDetailRepository.save(orderDetail);
 
             // Deduct stock
-            StoreProduct storeProduct = cartDetail.getStoreProduct();
             storeProduct.setStockQuantity(storeProduct.getStockQuantity() - cartDetail.getQuantity());
             storeProductRepository.save(storeProduct);
         }
 
-        // Apply promotions if provided
+        // Apply promotions if provided (this will update order.totalAmount)
+        BigDecimal totalDiscount = BigDecimal.ZERO;
         if (request.getPromotionCodes() != null && !request.getPromotionCodes().isEmpty()) {
-            applyPromotions(order, request.getPromotionCodes());
+            totalDiscount = applyPromotions(order, request.getPromotionCodes());
         }
 
-        // Create payment record
+        // Create payment record with final amount after discount
         Payment payment = new Payment();
         payment.setOrder(order);
         payment.setMethod(request.getPaymentMethod());
-        payment.setAmount(order.getTotalAmount());
+        payment.setAmount(order.getTotalAmount()); // Amount after discount
         payment.setStatus(PaymentStatus.PENDING);
 
         if (request.getPaymentMethod() == PaymentMethod.E_WALLET) {
@@ -647,7 +665,10 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
-    private void applyPromotions(Order order, List<String> promotionCodes) {
+    private BigDecimal applyPromotions(Order order, List<String> promotionCodes) {
+        BigDecimal totalDiscount = BigDecimal.ZERO;
+        BigDecimal originalAmount = order.getTotalAmount();
+        
         for (String code : promotionCodes) {
             Promotion promotion = promotionRepository.findByCodeWithLock(code)
                     .orElse(null);
@@ -664,9 +685,9 @@ public class OrderServiceImpl implements OrderService {
             }
 
             if (promotion.getMinimumOrderAmount() != null &&
-                order.getTotalAmount().compareTo(promotion.getMinimumOrderAmount()) < 0) {
+                originalAmount.compareTo(promotion.getMinimumOrderAmount()) < 0) {
                 log.warn("Order does not meet minimum amount: code={}, required={}, actual={}",
-                        code, promotion.getMinimumOrderAmount(), order.getTotalAmount());
+                        code, promotion.getMinimumOrderAmount(), originalAmount);
                 continue;
             }
 
@@ -688,21 +709,75 @@ public class OrderServiceImpl implements OrderService {
                 continue;
             }
 
-            // Create promotion usage record
+            // Calculate discount amount based on promotion type
+            BigDecimal discountAmount = calculateDiscountAmount(promotion, originalAmount);
+            totalDiscount = totalDiscount.add(discountAmount);
+
+            // Create promotion usage record with order amount and discount
             PromotionUsage usage = new PromotionUsage();
             usage.setPromotion(promotion);
             usage.setCustomer(order.getCustomer());
             usage.setOrder(order);
+            usage.setOrderAmount(originalAmount); // Original order amount before discount
+            usage.setDiscountAmount(discountAmount); // Actual discount applied
             usage.setUsedAt(LocalDateTime.now());
             promotionUsageRepository.save(usage);
 
             order.getPromotionUsages().add(usage);
 
-            log.info("Promotion applied successfully: code={}, orderId={}, usageCount={}/{}",
-                    code, order.getOrderId(),
+            log.info("Promotion applied successfully: code={}, orderId={}, discount={}, usageCount={}/{}",
+                    code, order.getOrderId(), discountAmount,
                     promotion.getCurrentUsageCount() + 1,
                     promotion.getTotalUsageLimit());
         }
+        
+        // Update order total amount after applying all discounts
+        if (totalDiscount.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal finalAmount = originalAmount.subtract(totalDiscount);
+            // Ensure final amount is not negative
+            if (finalAmount.compareTo(BigDecimal.ZERO) < 0) {
+                finalAmount = BigDecimal.ZERO;
+            }
+            order.setTotalAmount(finalAmount);
+            orderRepository.save(order);
+            
+            log.info("Order total updated after promotions: orderId={}, original={}, discount={}, final={}",
+                    order.getOrderId(), originalAmount, totalDiscount, finalAmount);
+        }
+        
+        return totalDiscount;
+    }
+    
+    /**
+     * Calculate discount amount based on promotion type
+     */
+    private BigDecimal calculateDiscountAmount(Promotion promotion, BigDecimal orderAmount) {
+        BigDecimal discount;
+
+        if (promotion.getType() == com.example.backend.entity.enums.PromotionType.PERCENTAGE) {
+            // Percentage discount: orderAmount * (discountValue / 100)
+            discount = orderAmount.multiply(promotion.getDiscountValue())
+                    .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+
+            // Apply max discount limit if set
+            if (promotion.getMaxDiscountAmount() != null &&
+                discount.compareTo(promotion.getMaxDiscountAmount()) > 0) {
+                discount = promotion.getMaxDiscountAmount();
+            }
+        } else if (promotion.getType() == com.example.backend.entity.enums.PromotionType.FIXED_AMOUNT) {
+            // Fixed amount discount
+            discount = promotion.getDiscountValue();
+
+            // Discount cannot exceed order amount
+            if (discount.compareTo(orderAmount) > 0) {
+                discount = orderAmount;
+            }
+        } else {
+            // FREE_SHIPPING or other types - no monetary discount
+            discount = BigDecimal.ZERO;
+        }
+
+        return discount;
     }
 
     private String generateOrderCode() {
