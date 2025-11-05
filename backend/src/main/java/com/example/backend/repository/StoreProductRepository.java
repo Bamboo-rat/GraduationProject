@@ -132,4 +132,36 @@ public interface StoreProductRepository extends JpaRepository<StoreProduct, Stri
            "JOIN v.product p " +
            "WHERE p.status = 'ACTIVE'")
     Long countActiveProducts();
+
+       /**
+        * Find StoreProduct IDs for a store filtered by category and availability (for mobile customers)
+        * Availability rules:
+        *  - Store is ACTIVE
+        *  - Product is ACTIVE
+        *  - Stock quantity > 0 at this store
+        *  - Variant not expired (expiry is null or >= today)
+        */
+       @Query(value = "SELECT sp.storeProductId FROM StoreProduct sp " +
+                     "JOIN sp.variant v " +
+                     "JOIN v.product p " +
+                     "JOIN sp.store s " +
+                     "WHERE s.storeId = :storeId " +
+                     "AND s.status = 'ACTIVE' " +
+                     "AND p.status = 'ACTIVE' " +
+                     "AND p.category.categoryId = :categoryId " +
+                     "AND sp.stockQuantity > 0 " +
+                     "AND (v.expiryDate IS NULL OR v.expiryDate >= CURRENT_DATE)",
+                     countQuery = "SELECT COUNT(sp) FROM StoreProduct sp " +
+                                   "JOIN sp.variant v " +
+                                   "JOIN v.product p " +
+                                   "JOIN sp.store s " +
+                                   "WHERE s.storeId = :storeId " +
+                                   "AND s.status = 'ACTIVE' " +
+                                   "AND p.status = 'ACTIVE' " +
+                                   "AND p.category.categoryId = :categoryId " +
+                                   "AND sp.stockQuantity > 0 " +
+                                   "AND (v.expiryDate IS NULL OR v.expiryDate >= CURRENT_DATE)")
+       Page<String> findAvailableIdsByStoreIdAndCategoryId(@Param("storeId") String storeId,
+                                                                                                  @Param("categoryId") String categoryId,
+                                                                                                  Pageable pageable);
 }

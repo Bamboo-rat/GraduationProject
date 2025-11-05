@@ -8,6 +8,8 @@ import com.example.backend.entity.enums.SuggestionStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import java.util.List;
+
 public interface StoreService {
 
     /**
@@ -189,4 +191,18 @@ public interface StoreService {
      * @return Page of top stores
      */
     Page<StoreResponse> getTopStoresByPurchases(Pageable pageable);
+
+    /**
+     * Mobile: Get available categories for a specific active store (public)
+     * Returns categories that currently have at least one available product variant in this store
+     */
+    List<CategoryResponse> getAvailableCategoriesForStore(String storeId);
+
+    /**
+     * Mobile: Get available product variants for a store filtered by category (public)
+     * Only returns variants that are currently purchasable (stock > 0, not expired) from ACTIVE stores
+     */
+    Page<StoreProductVariantResponse> getAvailableProductVariantsForStoreByCategory(String storeId,
+                                                                                     String categoryId,
+                                                                                     Pageable pageable);
 }

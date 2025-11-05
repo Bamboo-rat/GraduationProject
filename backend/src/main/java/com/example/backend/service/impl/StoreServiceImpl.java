@@ -11,15 +11,13 @@ import com.example.backend.exception.ErrorCode;
 import com.example.backend.exception.custom.BadRequestException;
 import com.example.backend.exception.custom.ConflictException;
 import com.example.backend.exception.custom.NotFoundException;
+import com.example.backend.mapper.CategoryMapper;
 import com.example.backend.mapper.ProductMapper;
 import com.example.backend.mapper.StoreMapper;
 import com.example.backend.mapper.PendingUpdateMapper;
-import com.example.backend.repository.PendingUpdateRepository;
+import com.example.backend.repository.*;
 import com.example.backend.entity.PendingUpdate;
 import com.example.backend.entity.enums.UpdateEntityType;
-import com.example.backend.repository.StoreProductRepository;
-import com.example.backend.repository.StoreRepository;
-import com.example.backend.repository.UserRepository;
 import com.example.backend.service.InAppNotificationService;
 import com.example.backend.service.StoreService;
 import com.example.backend.entity.enums.NotificationType;
@@ -46,6 +44,8 @@ public class StoreServiceImpl implements StoreService {
     private final StoreRepository storeRepository;
     private final PendingUpdateRepository pendingUpdateRepository;
     private final StoreProductRepository storeProductRepository;
+    private final CategoryRepository categoryRepository;
+    private final CategoryMapper categoryMapper;
     private final UserRepository userRepository;
     private final com.example.backend.repository.OrderRepository orderRepository;
     private final PendingUpdateMapper updateMapper;
@@ -87,7 +87,6 @@ public class StoreServiceImpl implements StoreService {
     @Transactional(readOnly = true)
     public Page<StoreResponse> getMyStores(String keycloakId, StoreStatus status, String search, Pageable pageable) {
         log.info("Getting stores for supplier: {}, status: {}, search: {}", keycloakId, status, search);
-
         // Find supplier
         Supplier supplier = (Supplier) userRepository.findByKeycloakId(keycloakId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
@@ -974,5 +973,75 @@ public class StoreServiceImpl implements StoreService {
         }
 
         return new PageImpl<>(storeResponses, pageable, topStores.size());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.List<CategoryResponse> getAvailableCategoriesForStore(String storeId) {
+    log.info("Getting available categories for mobile - store: {}", storeId);
+
+    // Validate store exists and is ACTIVE
+    Store store = storeRepository.findById(storeId)
+        .orElseThrow(() -> new NotFoundException(ErrorCode.STORE_NOT_FOUND,
+            "Store not found with ID: " + storeId));
+
+    if (store.getStatus() != StoreStatus.ACTIVE) {
+        throw new BadRequestException(ErrorCode.INVALID_REQUEST,
+            "Cannot view categories for non-active store. Current status: " + store.getStatus());
+    }
+
+    // Query distinct categories that have available variants at this store
+    java.util.List<Category> categories = categoryRepository.findAvailableCategoriesByStoreId(storeId);
+
+    return categoryMapper.toResponseList(categories);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<StoreProductVariantResponse> getAvailableProductVariantsForStoreByCategory(String storeId,
+                                               String categoryId,
+                                               Pageable pageable) {
+    log.info("Getting available product variants for mobile - store: {}, category: {}", storeId, categoryId);
+
+    // Validate store exists and is ACTIVE
+    Store store = storeRepository.findById(storeId)
+        .orElseThrow(() -> new NotFoundException(ErrorCode.STORE_NOT_FOUND,
+            "Store not found with ID: " + storeId));
+
+    if (store.getStatus() != StoreStatus.ACTIVE) {
+        throw new BadRequestException(ErrorCode.INVALID_REQUEST,
+            "Cannot view products for non-active store. Current status: " + store.getStatus());
+    }
+
+    // First query: fetch pageable IDs filtered by availability and category
+    Page<String> idsPage = storeProductRepository.findAvailableIdsByStoreIdAndCategoryId(storeId, categoryId, pageable);
+
+    if (idsPage.isEmpty()) {
+        return new PageImpl<>(new java.util.ArrayList<>(), pageable, 0);
+    }
+
+    // Fetch full entities with relationships
+    java.util.List<String> orderedIds = idsPage.getContent();
+    java.util.List<StoreProduct> storeProducts = storeProductRepository.findByIdsWithDetails(orderedIds);
+
+    // Initialize images to avoid LazyInitializationException
+    storeProducts.forEach(sp -> {
+        Hibernate.initialize(sp.getVariant().getVariantImages());
+        Hibernate.initialize(sp.getVariant().getProduct().getImages());
+    });
+
+    // Preserve ordering from the first query
+    java.util.List<StoreProduct> sorted = orderedIds.stream()
+        .map(id -> storeProducts.stream().filter(sp -> sp.getStoreProductId().equals(id)).findFirst().orElse(null))
+        .filter(java.util.Objects::nonNull)
+        .toList();
+
+    // Map to DTOs and ensure availability flag is correct (should be true by filter)
+    java.util.List<StoreProductVariantResponse> dtos = sorted.stream()
+        .map(this::mapToStoreProductVariantResponse)
+        .peek(dto -> dto.setAvailable(true))
+        .toList();
+
+    return new PageImpl<>(dtos, pageable, idsPage.getTotalElements());
     }
 }

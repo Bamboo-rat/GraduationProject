@@ -36,4 +36,24 @@ public interface CategoryRepository extends JpaRepository<Category, String> {
             @Param("search") String search,
             Pageable pageable
     );
+
+    /**
+     * Find distinct categories that have at least one AVAILABLE variant at a specific ACTIVE store
+     * A variant is considered available when:
+     * - The parent product is ACTIVE
+     * - The store product stockQuantity > 0
+     * - The variant is not expired (expiryDate is null or >= today)
+     */
+    @Query("SELECT DISTINCT p.category FROM StoreProduct sp " +
+           "JOIN sp.variant v " +
+           "JOIN v.product p " +
+           "JOIN sp.store s " +
+           "WHERE s.storeId = :storeId " +
+           "AND s.status = 'ACTIVE' " +
+           "AND p.status = 'ACTIVE' " +
+           "AND sp.stockQuantity > 0 " +
+           "AND (v.expiryDate IS NULL OR v.expiryDate >= CURRENT_DATE) " +
+           "AND p.category IS NOT NULL " +
+           "ORDER BY p.category.name ASC")
+    java.util.List<Category> findAvailableCategoriesByStoreId(@Param("storeId") String storeId);
 }
