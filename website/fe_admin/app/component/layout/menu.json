@@ -19,6 +19,7 @@
         { "title": "Danh sách Đối tác", "link": "/partners/list-partners", "icon": "list" },
         { "title": "Duyệt Đối tác", "link": "/partners/pending", "icon": "clock" },
         { "title": "Duyệt Cửa hàng mới", "link": "/partners/store-approval", "icon": "store" },
+        { "title": "Duyệt thông tin cập nhật đối tác", "link": "/partners/business-updates", "icon": "file-text" },
         { "title": "Báo cáo Hiệu suất", "link": "/partners/performance", "icon": "trending-up" }
       ]
     },

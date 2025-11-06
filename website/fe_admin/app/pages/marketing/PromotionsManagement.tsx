@@ -398,13 +398,13 @@ export default function PromotionsManagement() {
                             >
                               {promotion.status === 'ACTIVE' ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
                             </button>
-                            <button
+                            {/* <button
                               onClick={() => openDeleteModal(promotion)}
                               className="text-text hover:text-accent-red transition-colors p-1"
                               title="Xóa"
                             >
                               <Trash2 size={18} />
-                            </button>
+                            </button> */}
                           </div>
                         </td>
                       </tr>
@@ -874,7 +874,7 @@ export default function PromotionsManagement() {
           </div>
         )}
 
-        {/* Delete Confirmation Modal */}
+        {/* Delete Confirmation Modal
         {showDeleteModal && promotionToDelete && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fade-in">
             <div className="bg-surface rounded-lg p-6 w-96 mx-4 card-hover">
@@ -916,7 +916,7 @@ export default function PromotionsManagement() {
               </div>
             </div>
           </div>
-        )}
+        )} */}
       </div>
     </DashboardLayout>
   );

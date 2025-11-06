@@ -220,10 +220,12 @@ class AuthService {
    * Handle API errors
    */
   private handleError(error: any): Error {
-    if (error.response?.data?.message) {
-      return new Error(error.response.data.message);
-    }
-    return new Error(error.message || 'An unexpected error occurred');
+    // Prefer vietnameseMessage from backend when available, then message, then fallback
+    const vietnamese = error.response?.data?.vietnameseMessage || error.response?.data?.vietnamese_message;
+    const msg = error.response?.data?.message || error.response?.data?.error || error.message;
+    if (vietnamese) return new Error(vietnamese);
+    if (msg) return new Error(msg);
+    return new Error('An unexpected error occurred');
   }
 }
 

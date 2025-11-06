@@ -69,6 +69,51 @@ export interface ApproveRejectRequest {
   reason?: string;
 }
 
+export type UpdateStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface SupplierPendingUpdate {
+  updateId: string;
+  
+  // Supplier info
+  supplierId: string;
+  supplierName: string;
+  currentBusinessName: string;
+  
+  // Current values
+  currentTaxCode?: string;
+  currentBusinessLicense?: string;
+  currentFoodSafetyCertificate?: string;
+  
+  // Pending update fields
+  taxCode?: string;
+  businessLicense?: string;
+  businessLicenseUrl?: string;
+  foodSafetyCertificate?: string;
+  foodSafetyCertificateUrl?: string;
+  
+  // Update metadata
+  updateStatus: UpdateStatus;
+  supplierNotes?: string;
+  adminNotes?: string;
+  createdAt: string;
+  processedAt?: string;
+  
+  // Admin info
+  adminId?: string;
+  adminName?: string;
+}
+
+export interface PendingUpdatePageResponse {
+  content: SupplierPendingUpdate[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+  first: boolean;
+  last: boolean;
+  empty: boolean;
+}
+
 // ============= SERVICE CLASS =============
 
 class SupplierService {
@@ -274,6 +319,112 @@ class SupplierService {
       ACTIVE: 'bg-green-100 text-green-800',
       PAUSE: 'bg-yellow-100 text-yellow-800',
       SUSPENDED: 'bg-red-100 text-red-800',
+      REJECTED: 'bg-red-100 text-red-800',
+    };
+    return colors[status] || 'bg-gray-100 text-gray-800';
+  }
+
+  // ============= BUSINESS INFO UPDATE REQUESTS =============
+
+  /**
+   * Get all business info update requests (Admin)
+   */
+  async getAllBusinessInfoUpdates(
+    page: number = 0,
+    size: number = 20,
+    status?: UpdateStatus,
+    sortBy: string = 'createdAt',
+    sortDirection: 'ASC' | 'DESC' = 'DESC'
+  ): Promise<PendingUpdatePageResponse> {
+    try {
+      const params = new URLSearchParams({
+        page: page.toString(),
+        size: size.toString(),
+        sortBy,
+        sortDirection,
+      });
+
+      if (status) {
+        params.append('status', status);
+      }
+
+      const response = await axiosInstance.get<ApiResponse<PendingUpdatePageResponse>>(
+        `${this.baseUrl}/business-info-updates?${params.toString()}`
+      );
+
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Error fetching business info updates:', error);
+      throw new Error(error.response?.data?.message || 'Không thể tải danh sách yêu cầu cập nhật');
+    }
+  }
+
+  /**
+   * Get business info update by ID
+   */
+  async getBusinessInfoUpdateById(updateId: string): Promise<SupplierPendingUpdate> {
+    try {
+      const response = await axiosInstance.get<ApiResponse<SupplierPendingUpdate>>(
+        `${this.baseUrl}/business-info-updates/${updateId}`
+      );
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Error fetching business info update:', error);
+      throw new Error(error.response?.data?.message || 'Không thể tải thông tin yêu cầu');
+    }
+  }
+
+  /**
+   * Approve business info update (Admin)
+   */
+  async approveBusinessInfoUpdate(updateId: string, adminNotes?: string): Promise<SupplierPendingUpdate> {
+    try {
+      const params = adminNotes ? `?adminNotes=${encodeURIComponent(adminNotes)}` : '';
+      const response = await axiosInstance.patch<ApiResponse<SupplierPendingUpdate>>(
+        `${this.baseUrl}/business-info-updates/${updateId}/approve${params}`
+      );
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Error approving business info update:', error);
+      throw new Error(error.response?.data?.vietnameseMessage || error.response?.data?.message || 'Không thể phê duyệt yêu cầu');
+    }
+  }
+
+  /**
+   * Reject business info update (Admin)
+   */
+  async rejectBusinessInfoUpdate(updateId: string, adminNotes?: string): Promise<SupplierPendingUpdate> {
+    try {
+      const params = adminNotes ? `?adminNotes=${encodeURIComponent(adminNotes)}` : '';
+      const response = await axiosInstance.patch<ApiResponse<SupplierPendingUpdate>>(
+        `${this.baseUrl}/business-info-updates/${updateId}/reject${params}`
+      );
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Error rejecting business info update:', error);
+      throw new Error(error.response?.data?.vietnameseMessage || error.response?.data?.message || 'Không thể từ chối yêu cầu');
+    }
+  }
+
+  /**
+   * Get update status label in Vietnamese
+   */
+  getUpdateStatusLabel(status: UpdateStatus): string {
+    const labels: Record<UpdateStatus, string> = {
+      PENDING: 'Chờ duyệt',
+      APPROVED: 'Đã duyệt',
+      REJECTED: 'Đã từ chối',
+    };
+    return labels[status] || status;
+  }
+
+  /**
+   * Get update status color class
+   */
+  getUpdateStatusColorClass(status: UpdateStatus): string {
+    const colors: Record<UpdateStatus, string> = {
+      PENDING: 'bg-orange-100 text-orange-800',
+      APPROVED: 'bg-green-100 text-green-800',
       REJECTED: 'bg-red-100 text-red-800',
     };
     return colors[status] || 'bg-gray-100 text-gray-800';

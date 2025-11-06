@@ -19,6 +19,7 @@ export default [
     route("partners/list-partners", "routes/partners/list-partners.tsx"),
     route("partners/pending", "routes/partners/pending.tsx"),
     route("partners/store-approval", "routes/partners/store-approval.tsx"),
+    route("partners/business-updates", "routes/partners/business-updates.tsx"),
     route("partners/performance", "routes/partners/performance.tsx"),
     route("partners/:userId", "routes/partners/$userId.tsx"),
 

@@ -70,8 +70,6 @@ export default function SystemSettings() {
       showToast('Tỷ lệ hoa hồng phải từ 0-100%', 'error');
       return;
     }
-
-    // Show warning modal for confirmation
     setShowCommissionWarning(true);
   };
 
@@ -83,8 +81,8 @@ export default function SystemSettings() {
       await systemConfigService.updateCommissionRate(value);
       setCommissionRate(value);
       setEditingCommission(false);
-      showToast('Cập nhật tỷ lệ hoa hồng thành công và đã đồng bộ đến tất cả nhà cung cấp', 'success');
-      loadConfigs(); // Reload to show updated timestamp
+      showToast('Cập nhật tỷ lệ hoa hồng thành công', 'success');
+      loadConfigs();
     } catch (error: any) {
       console.error('Error updating commission:', error);
       showToast(error.response?.data?.message || 'Không thể cập nhật tỷ lệ hoa hồng', 'error');
@@ -202,12 +200,10 @@ export default function SystemSettings() {
       return config.configValue === 'true' ? 'Bật' : 'Tắt';
     }
     if (config.valueType === 'NUMBER') {
-      // For percentage values (0.05 = 5%)
       if (config.configKey.includes('percentage') || config.configKey.includes('rate')) {
         const percentage = parseFloat(config.configValue) * 100;
         return `${percentage}%`;
       }
-      // For currency values
       if (config.configKey.includes('amount') || config.configKey.includes('withdrawal')) {
         return new Intl.NumberFormat('vi-VN').format(parseFloat(config.configValue)) + ' VNĐ';
       }
@@ -220,7 +216,7 @@ export default function SystemSettings() {
       <DashboardLayout>
         <div className="p-6">
           <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2F855A]"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#A4C3A2]"></div>
           </div>
         </div>
       </DashboardLayout>
@@ -229,12 +225,12 @@ export default function SystemSettings() {
 
   return (
     <DashboardLayout>
-      <div className="p-6">
+      <div className="p-6 max-w-7xl mx-auto">
         {/* Toast Notification */}
         {toast && (
           <div
             className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg flex items-center space-x-2 ${
-              toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+              toast.type === 'success' ? 'bg-[#A4C3A2]' : 'bg-red-500'
             } text-white animate-slide-in`}
           >
             {toast.type === 'success' ? (
@@ -248,7 +244,7 @@ export default function SystemSettings() {
 
         {/* Confirmation Modal for Commission Rate */}
         {showCommissionWarning && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center w-full h-full z-50 p-4 animate-fadeIn">
             <div className="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full mx-4">
               <div className="flex items-center space-x-3 mb-4">
                 <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
@@ -267,8 +263,7 @@ export default function SystemSettings() {
                   <span className="font-bold text-yellow-700">{tempCommission}%</span>
                 </p>
                 <p className="text-sm text-gray-600">
-                  ⚠️ Thay đổi này sẽ được đồng bộ <strong>tự động</strong> đến tất cả nhà cung cấp trong hệ
-                  thống.
+                  Thay đổi này sẽ được đồng bộ tự động đến tất cả nhà cung cấp trong hệ thống.
                 </p>
               </div>
 
@@ -283,7 +278,7 @@ export default function SystemSettings() {
                 <button
                   onClick={confirmUpdateCommission}
                   disabled={saving}
-                  className="flex-1 px-4 py-2 bg-[#2F855A] text-white rounded-lg hover:bg-[#27693F] disabled:opacity-50 flex items-center justify-center"
+                  className="flex-1 px-4 py-2 bg-[#A4C3A2] text-white rounded-lg hover:bg-[#8FB491] disabled:opacity-50 flex items-center justify-center"
                 >
                   {saving ? (
                     <>
@@ -300,31 +295,22 @@ export default function SystemSettings() {
         )}
 
         {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center space-x-4">
-            <div className="w-12 h-12 bg-gradient-to-br from-[#A4C3A2] to-[#2F855A] rounded-xl flex items-center justify-center">
-              <Icons.Settings className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-800">Cấu hình Hệ thống</h1>
-              <p className="text-sm text-gray-600">Quản lý các thông số cấu hình quan trọng của hệ thống</p>
-            </div>
-          </div>
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">Cấu hình Hệ thống</h1>
+          <p className="text-gray-600">Quản lý các thông số cấu hình quan trọng của hệ thống</p>
         </div>
 
         {/* Key Settings Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           {/* Commission Rate Card */}
-          <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl shadow-md p-6 border border-purple-200">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
-                  <Icons.Percent className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-gray-800">Hoa hồng Đối tác</h3>
-                  <p className="text-xs text-gray-600">Tỷ lệ hoa hồng cho nhà cung cấp</p>
-                </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-10 h-10 bg-[#A4C3A2] rounded-lg flex items-center justify-center">
+                <Icons.Percent className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800">Hoa hồng Đối tác</h3>
+                <p className="text-sm text-gray-600">Tỷ lệ hoa hồng cho nhà cung cấp</p>
               </div>
             </div>
 
@@ -338,10 +324,10 @@ export default function SystemSettings() {
                     min="0"
                     max="100"
                     step="0.1"
-                    className="w-full px-4 py-3 text-2xl font-bold border-2 border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="w-full px-4 py-3 text-xl font-semibold border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A4C3A2] focus:border-transparent"
                     placeholder="0.0"
                   />
-                  <span className="absolute right-4 top-1/2 transform -translate-y-1/2 text-2xl font-bold text-gray-400">
+                  <span className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400">
                     %
                   </span>
                 </div>
@@ -349,33 +335,27 @@ export default function SystemSettings() {
                   <button
                     onClick={handleUpdateCommission}
                     disabled={saving}
-                    className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 font-medium flex items-center justify-center"
+                    className="flex-1 px-4 py-2 bg-[#A4C3A2] text-white rounded-lg hover:bg-[#8FB491] disabled:opacity-50 font-medium"
                   >
-                    {saving ? <Icons.Loader2 className="w-4 h-4 animate-spin" /> : 'Lưu thay đổi'}
+                    {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
                   </button>
                   <button
                     onClick={() => {
                       setEditingCommission(false);
                       setTempCommission(commissionRate.toString());
                     }}
-                    className="px-4 py-2 bg-white text-gray-700 rounded-lg hover:bg-gray-100 font-medium border border-gray-300"
+                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
                   >
                     Hủy
                   </button>
                 </div>
-                <div className="bg-white bg-opacity-80 rounded-lg p-3">
-                  <p className="text-xs text-gray-600 flex items-start">
-                    <Icons.Info className="w-4 h-4 mr-1 flex-shrink-0 text-purple-500" />
-                    Thay đổi tỷ lệ hoa hồng sẽ được đồng bộ đến tất cả nhà cung cấp trong hệ thống.
-                  </p>
-                </div>
               </div>
             ) : (
-              <div>
-                <div className="text-5xl font-bold text-purple-700 mb-2">{commissionRate}%</div>
+              <div className="text-center">
+                <div className="text-4xl font-bold text-gray-800 mb-4">{commissionRate}%</div>
                 <button
                   onClick={() => setEditingCommission(true)}
-                  className="w-full px-4 py-2 bg-white text-purple-600 rounded-lg hover:bg-purple-50 font-medium border border-purple-300 flex items-center justify-center"
+                  className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium flex items-center justify-center"
                 >
                   <Icons.Edit2 className="w-4 h-4 mr-2" />
                   Thay đổi tỷ lệ
@@ -385,16 +365,14 @@ export default function SystemSettings() {
           </div>
 
           {/* Points Percentage Card */}
-          <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl shadow-md p-6 border border-green-200">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
-                  <Icons.Gift className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-gray-800">Tích điểm Khách hàng</h3>
-                  <p className="text-xs text-gray-600">Tỷ lệ tích điểm cho mỗi đơn hàng</p>
-                </div>
+          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-10 h-10 bg-[#A4C3A2] rounded-lg flex items-center justify-center">
+                <Icons.Gift className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-800">Tích điểm Khách hàng</h3>
+                <p className="text-sm text-gray-600">Tỷ lệ tích điểm cho mỗi đơn hàng</p>
               </div>
             </div>
 
@@ -408,10 +386,10 @@ export default function SystemSettings() {
                     min="0"
                     max="100"
                     step="0.1"
-                    className="w-full px-4 py-3 text-2xl font-bold border-2 border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="w-full px-4 py-3 text-xl font-semibold border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A4C3A2] focus:border-transparent"
                     placeholder="0.0"
                   />
-                  <span className="absolute right-4 top-1/2 transform -translate-y-1/2 text-2xl font-bold text-gray-400">
+                  <span className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400">
                     %
                   </span>
                 </div>
@@ -419,33 +397,27 @@ export default function SystemSettings() {
                   <button
                     onClick={handleUpdatePoints}
                     disabled={saving}
-                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 font-medium flex items-center justify-center"
+                    className="flex-1 px-4 py-2 bg-[#A4C3A2] text-white rounded-lg hover:bg-[#8FB491] disabled:opacity-50 font-medium"
                   >
-                    {saving ? <Icons.Loader2 className="w-4 h-4 animate-spin" /> : 'Lưu thay đổi'}
+                    {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
                   </button>
                   <button
                     onClick={() => {
                       setEditingPoints(false);
                       setTempPoints(pointsPercentage.toString());
                     }}
-                    className="px-4 py-2 bg-white text-gray-700 rounded-lg hover:bg-gray-100 font-medium border border-gray-300"
+                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
                   >
                     Hủy
                   </button>
                 </div>
-                <div className="bg-white bg-opacity-80 rounded-lg p-3">
-                  <p className="text-xs text-gray-600 flex items-start">
-                    <Icons.Info className="w-4 h-4 mr-1 flex-shrink-0 text-green-500" />
-                    Khách hàng sẽ nhận điểm dựa trên % giá trị đơn hàng (VD: 100.000đ × 5% = 5.000 điểm)
-                  </p>
-                </div>
               </div>
             ) : (
-              <div>
-                <div className="text-5xl font-bold text-green-700 mb-2">{pointsPercentage}%</div>
+              <div className="text-center">
+                <div className="text-4xl font-bold text-gray-800 mb-4">{pointsPercentage}%</div>
                 <button
                   onClick={() => setEditingPoints(true)}
-                  className="w-full px-4 py-2 bg-white text-green-600 rounded-lg hover:bg-green-50 font-medium border border-green-300 flex items-center justify-center"
+                  className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium flex items-center justify-center"
                 >
                   <Icons.Edit2 className="w-4 h-4 mr-2" />
                   Thay đổi tỷ lệ
@@ -460,79 +432,77 @@ export default function SystemSettings() {
           {groupedConfigs
             .filter((group) => group.configs.length > 0)
             .map((group) => (
-              <div key={group.title} className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-                <div className="flex items-center space-x-2 mb-4">
-                  <Icons.Settings className="w-5 h-5 text-[#A4C3A2]" />
+              <div key={group.title} className="bg-white rounded-lg border border-gray-200 p-6">
+                <div className="flex items-center space-x-3 mb-6">
+                  <div className="w-8 h-8 bg-[#A4C3A2] rounded-lg flex items-center justify-center">
+                    <Icons.Settings className="w-4 h-4 text-white" />
+                  </div>
                   <h2 className="text-lg font-semibold text-gray-800">{group.title}</h2>
                   <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
-                    {group.configs.length} cấu hình
+                    {group.configs.length}
                   </span>
                 </div>
 
-                <div className="space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {group.configs.map((config) => (
                     <div
                       key={config.configKey}
-                      className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                      className="border border-gray-200 rounded-lg p-4 hover:border-[#A4C3A2] transition-colors"
                     >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-1">
-                            <code className="text-sm font-mono text-gray-700 bg-gray-100 px-2 py-1 rounded">
-                              {config.configKey}
-                            </code>
-                            {config.isPublic && (
-                              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded flex items-center">
-                                <Icons.Eye className="w-3 h-3 mr-1" />
-                                Public
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-sm text-gray-600 mb-2">{config.description}</p>
-
-                          {editingKey === config.configKey ? (
-                            <div className="flex items-center space-x-2">
-                              <input
-                                type="text"
-                                value={editValue}
-                                onChange={(e) => setEditValue(e.target.value)}
-                                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A4C3A2]"
-                              />
-                              <button
-                                onClick={() => handleSave(config.configKey)}
-                                disabled={saving}
-                                className="px-4 py-2 bg-[#A4C3A2] text-white rounded-lg hover:bg-[#8FB491] disabled:opacity-50"
-                              >
-                                {saving ? 'Đang lưu...' : 'Lưu'}
-                              </button>
-                              <button
-                                onClick={handleCancel}
-                                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-                              >
-                                Hủy
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-between">
-                              <span className="text-base font-semibold text-gray-900">
-                                {formatValue(config)}
-                              </span>
-                              <button
-                                onClick={() => handleEdit(config)}
-                                className="text-[#A4C3A2] hover:text-[#2F855A] text-sm font-medium flex items-center"
-                              >
-                                <Icons.Edit2 className="w-4 h-4 mr-1" />
-                                Chỉnh sửa
-                              </button>
-                            </div>
-                          )}
-                        </div>
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="text-sm font-medium text-gray-700">{config.description}</span>
+                        {config.isPublic && (
+                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                            Public
+                          </span>
+                        )}
                       </div>
 
-                      <div className="mt-2 text-xs text-gray-500 flex items-center">
-                        <Icons.Clock className="w-3 h-3 mr-1" />
-                        Cập nhật: {new Date(config.updatedAt).toLocaleString('vi-VN')}
-                        {config.updatedBy && ` bởi ${config.updatedBy}`}
+                      <code className="text-xs text-gray-500 bg-gray-50 px-2 py-1 rounded block mb-3">
+                        {config.configKey}
+                      </code>
+
+                      {editingKey === config.configKey ? (
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#A4C3A2] text-sm"
+                          />
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => handleSave(config.configKey)}
+                              disabled={saving}
+                              className="flex-1 px-3 py-1 bg-[#A4C3A2] text-white rounded text-sm hover:bg-[#8FB491] disabled:opacity-50"
+                            >
+                              Lưu
+                            </button>
+                            <button
+                              onClick={handleCancel}
+                              className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm hover:bg-gray-200"
+                            >
+                              Hủy
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex justify-between items-center">
+                          <span className="font-semibold text-gray-900">
+                            {formatValue(config)}
+                          </span>
+                          <button
+                            onClick={() => handleEdit(config)}
+                            className="text-[#A4C3A2] hover:text-[#8FB491] p-1 rounded"
+                          >
+                            <Icons.Edit2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+
+                      <div className="mt-2 text-xs text-gray-500">
+                        {new Date(config.updatedAt).toLocaleString('vi-VN')}
+                        {config.updatedBy && ` • ${config.updatedBy}`}
                       </div>
                     </div>
                   ))}

@@ -26,6 +26,7 @@ public class Notification {
     private String content;
 
     @Enumerated(EnumType.STRING)
+    @Column(length = 50)
     private NotificationType type;
 
     private String linkUrl;

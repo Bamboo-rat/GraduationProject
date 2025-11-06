@@ -28,15 +28,21 @@ public class FileStorageServiceImpl implements FileStorageService {
 
     @Override
     public String uploadFile(MultipartFile multipartFile, StorageBucket bucket) {
-        log.info("Uploading file to folder: {}", bucket.getFolderName());
+        String originalFilename = multipartFile.getOriginalFilename();
+        long fileSize = multipartFile.getSize();
+        String contentType = multipartFile.getContentType();
+
+        log.info("=== Starting file upload ===");
+        log.info("File: {} | Size: {} bytes | Content-Type: {} | Bucket: {}",
+                originalFilename, fileSize, contentType, bucket.getFolderName());
 
         try {
             // Generate unique public ID
             String publicId = UUID.randomUUID().toString() + "_" + System.currentTimeMillis();
 
             // Determine resource type based on file extension and bucket type
-            String resourceType = determineResourceType(multipartFile.getOriginalFilename(), bucket);
-            log.info("Detected resource type: {} for file: {}", resourceType, multipartFile.getOriginalFilename());
+            String resourceType = determineResourceType(originalFilename, bucket);
+            log.info("✓ Resource type determined: '{}' for file: '{}'", resourceType, originalFilename);
 
             // Upload to Cloudinary with PUBLIC access (unsigned mode)
             @SuppressWarnings("unchecked")
@@ -48,59 +54,80 @@ public class FileStorageServiceImpl implements FileStorageService {
                     "invalidate", true
             );
 
+            log.info("Uploading to Cloudinary with params: folder={}, resource_type={}",
+                    bucket.getFolderName(), resourceType);
+
             @SuppressWarnings("unchecked")
             Map<String, Object> uploadResult = cloudinary.uploader().upload(multipartFile.getBytes(), uploadParams);
 
             // Get secure URL (HTTPS) - publicly accessible
             String secureUrl = (String) uploadResult.get("secure_url");
-            log.info("File uploaded successfully: {}", secureUrl);
+            String resultResourceType = (String) uploadResult.get("resource_type");
+            String resultFormat = (String) uploadResult.get("format");
+
+            log.info("✓ File uploaded successfully!");
+            log.info("  - URL: {}", secureUrl);
+            log.info("  - Resource Type: {}", resultResourceType);
+            log.info("  - Format: {}", resultFormat);
+            log.info("=== Upload complete ===");
+
+            // Verify the URL contains the correct resource type
+            if (!secureUrl.contains("/" + resourceType + "/upload/")) {
+                log.error("⚠ WARNING: Uploaded URL does not match expected resource type!");
+                log.error("  - Expected: /{}/upload/", resourceType);
+                log.error("  - Got URL: {}", secureUrl);
+            }
 
             return secureUrl;
 
         } catch (IOException e) {
-            log.error("Failed to upload file to folder: {}", bucket.getFolderName(), e);
+            log.error("✗ Failed to upload file to folder: {}", bucket.getFolderName(), e);
+            log.error("  - File: {}", originalFilename);
+            log.error("  - Error: {}", e.getMessage());
             throw new RuntimeException("Failed to upload file: " + e.getMessage(), e);
         }
     }
 
     /**
      * Determine Cloudinary resource type based on file extension and bucket
-     * - "raw" for documents (PDF, DOC, DOCX, etc.)
-     * - "image" for images (JPG, PNG, GIF, etc.)
+     * - "raw" for documents (PDF, DOC, DOCX, etc.) and ALL files in document buckets
+     * - "image" for images (JPG, PNG, GIF, etc.) in image buckets only
      * - "auto" for unknown types
      */
     private String determineResourceType(String filename, StorageBucket bucket) {
         if (filename == null) {
-            return "auto";
+            log.warn("Filename is null, defaulting to 'raw' resource type");
+            return "raw";
         }
 
         // Get file extension
-        String extension = getFileExtension(filename).toLowerCase();
+        String extension = getFileExtension(filename).toLowerCase().trim();
+        log.debug("File: {} | Extension: {} | Bucket: {}", filename, extension, bucket.getFolderName());
 
-        // Document buckets should always use "raw" type
+        // Document buckets should ALWAYS use "raw" type (for both documents and images)
+        // This ensures documents are stored with proper access and not processed as images
         if (bucket == StorageBucket.BUSINESS_LICENSES ||
             bucket == StorageBucket.FOOD_SAFETY_CERTIFICATES) {
 
-            // Common document formats
-            if (extension.matches("pdf|doc|docx|xls|xlsx|txt|csv")) {
-                return "raw";
-            }
-            // If image is uploaded to document bucket, still treat as raw to preserve format
-            if (extension.matches("jpg|jpeg|png|gif|webp|bmp|tiff")) {
-                return "raw";
-            }
-            return "raw"; // Default to raw for document buckets
+            log.info("Document bucket detected - forcing resource type to 'raw' for file: {}", filename);
+            return "raw"; // ALWAYS return raw for document buckets, regardless of file type
         }
 
-        // Image buckets should use "image" type for images, "raw" for documents
-        if (extension.matches("pdf|doc|docx|xls|xlsx|txt|csv")) {
+        // For non-document buckets, determine type based on extension
+        // Document formats always use "raw"
+        if (extension.matches("pdf|doc|docx|xls|xlsx|txt|csv|zip|rar")) {
+            log.debug("Document extension detected: {} - using 'raw' resource type", extension);
             return "raw";
         }
-        if (extension.matches("jpg|jpeg|png|gif|webp|bmp|svg|tiff")) {
+
+        // Image formats use "image" for image buckets
+        if (extension.matches("jpg|jpeg|png|gif|webp|bmp|svg|tiff|ico")) {
+            log.debug("Image extension detected: {} - using 'image' resource type", extension);
             return "image";
         }
 
-        // Default to auto-detect
+        // Default to auto-detect for unknown types
+        log.warn("Unknown extension: {} - using 'auto' resource type", extension);
         return "auto";
     }
 

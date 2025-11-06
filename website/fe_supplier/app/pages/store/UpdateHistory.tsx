@@ -4,7 +4,7 @@ import storeService from '~/service/storeService';
 import supplierService from '~/service/supplierService';
 import type { StorePendingUpdate, StoreUpdateListParams } from '~/service/storeService';
 import type { SupplierPendingUpdateResponse } from '~/service/supplierService';
-import { Store, Building2, Search, Filter, Eye, Calendar, FileText, User, MapPin, Phone, Info } from 'lucide-react';
+import { Store, Building2, Eye, Calendar, FileText, User, ChevronDown } from 'lucide-react';
 
 type UpdateType = 'store' | 'business';
 
@@ -21,6 +21,7 @@ export default function UpdateHistory() {
   const [selectedStoreUpdate, setSelectedStoreUpdate] = useState<StorePendingUpdate | null>(null);
   const [selectedBusinessUpdate, setSelectedBusinessUpdate] = useState<SupplierPendingUpdateResponse | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
 
   const fetchStoreUpdates = async () => {
     try {
@@ -78,6 +79,16 @@ export default function UpdateHistory() {
     return <span className={`px-3 py-1 rounded-full text-sm font-medium ${config.class}`}>{config.label}</span>;
   };
 
+  const getStatusLabel = (status: string) => {
+    const labels = {
+      '': 'Tất cả trạng thái',
+      PENDING: 'Chờ duyệt',
+      APPROVED: 'Đã duyệt',
+      REJECTED: 'Bị từ chối',
+    };
+    return labels[status as keyof typeof labels] || status;
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('vi-VN', {
       year: 'numeric',
@@ -98,73 +109,91 @@ export default function UpdateHistory() {
   }
 
   return (
-    <div className="p-6 animate-fade-in">
+    <div className="p-6 animate-fade-in max-w-6xl mx-auto">
       {/* Header */}
-      <div className="mb-6">
+      <div className="mb-8 text-center">
         <h1 className="heading-primary mb-2">Lịch sử yêu cầu cập nhật</h1>
         <p className="text-muted">Theo dõi trạng thái các yêu cầu cập nhật của bạn</p>
       </div>
 
-      {/* Tab Switch */}
-      <div className="flex gap-3 mb-6">
-        <button
-          onClick={() => setUpdateType('store')}
-          className={`px-6 py-3 rounded-lg font-medium flex items-center gap-3 transition-colors ${
-            updateType === 'store'
-              ? 'btn-primary'
-              : 'btn-secondary'
-          }`}
-        >
-          <Store size={20} />
-          Cửa hàng ({updateType === 'store' ? totalElements : '...'})
-        </button>
-        <button
-          onClick={() => setUpdateType('business')}
-          className={`px-6 py-3 rounded-lg font-medium flex items-center gap-3 transition-colors ${
-            updateType === 'business'
-              ? 'btn-primary'
-              : 'btn-secondary'
-          }`}
-        >
-          <Building2 size={20} />
-          Thông tin doanh nghiệp ({updateType === 'business' ? totalElements : '...'})
-        </button>
-      </div>
+      {/* Tab Switch & Filter */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setUpdateType('store')}
+            className={`px-6 py-3 rounded-lg font-medium flex items-center gap-3 transition-colors ${
+              updateType === 'store'
+                ? 'bg-[#A4C3A2] text-[#2D2D2D]'
+                : 'bg-[#F8FFF9] text-[#2D2D2D] hover:bg-[#E8FFED]'
+            }`}
+          >
+            <Store size={20} />
+            Cửa hàng ({updateType === 'store' ? totalElements : '...'})
+          </button>
+          <button
+            onClick={() => setUpdateType('business')}
+            className={`px-6 py-3 rounded-lg font-medium flex items-center gap-3 transition-colors ${
+              updateType === 'business'
+                ? 'bg-[#A4C3A2] text-[#2D2D2D]'
+                : 'bg-[#F8FFF9] text-[#2D2D2D] hover:bg-[#E8FFED]'
+            }`}
+          >
+            <Building2 size={20} />
+            Doanh nghiệp ({updateType === 'business' ? totalElements : '...'})
+          </button>
+        </div>
 
-      {/* Status Filter */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        <button
-          onClick={() => setStatusFilter('')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            !statusFilter ? 'btn-primary' : 'btn-secondary'
-          }`}
-        >
-          Tất cả
-        </button>
-        <button
-          onClick={() => setStatusFilter('PENDING')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            statusFilter === 'PENDING' ? 'btn-primary' : 'btn-secondary'
-          }`}
-        >
-          Chờ duyệt
-        </button>
-        <button
-          onClick={() => setStatusFilter('APPROVED')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            statusFilter === 'APPROVED' ? 'btn-primary' : 'btn-secondary'
-          }`}
-        >
-          Đã duyệt
-        </button>
-        <button
-          onClick={() => setStatusFilter('REJECTED')}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-            statusFilter === 'REJECTED' ? 'btn-primary' : 'btn-secondary'
-          }`}
-        >
-          Bị từ chối
-        </button>
+        {/* Status Filter Dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setShowStatusDropdown(!showStatusDropdown)}
+            className="bg-[#FFFEFA] border border-[#B7E4C7] rounded-lg px-4 py-2 text-[#2D2D2D] flex items-center gap-2 hover:bg-[#F8FFF9] transition-colors min-w-[180px] justify-between"
+          >
+            {getStatusLabel(statusFilter)}
+            <ChevronDown size={16} className={`transition-transform ${showStatusDropdown ? 'rotate-180' : ''}`} />
+          </button>
+          
+          {showStatusDropdown && (
+            <div className="absolute top-full right-0 mt-1 bg-[#FFFEFA] border border-[#B7E4C7] rounded-lg shadow-lg z-10 min-w-[180px]">
+              <button
+                onClick={() => {
+                  setStatusFilter('');
+                  setShowStatusDropdown(false);
+                }}
+                className="w-full text-left px-4 py-2 hover:bg-[#F8FFF9] transition-colors first:rounded-t-lg last:rounded-b-lg"
+              >
+                Tất cả trạng thái
+              </button>
+              <button
+                onClick={() => {
+                  setStatusFilter('PENDING');
+                  setShowStatusDropdown(false);
+                }}
+                className="w-full text-left px-4 py-2 hover:bg-[#F8FFF9] transition-colors"
+              >
+                Chờ duyệt
+              </button>
+              <button
+                onClick={() => {
+                  setStatusFilter('APPROVED');
+                  setShowStatusDropdown(false);
+                }}
+                className="w-full text-left px-4 py-2 hover:bg-[#F8FFF9] transition-colors"
+              >
+                Đã duyệt
+              </button>
+              <button
+                onClick={() => {
+                  setStatusFilter('REJECTED');
+                  setShowStatusDropdown(false);
+                }}
+                className="w-full text-left px-4 py-2 hover:bg-[#F8FFF9] transition-colors"
+              >
+                Bị từ chối
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Content */}
@@ -179,57 +208,38 @@ export default function UpdateHistory() {
             </div>
           ) : (
             storeUpdates.map((update) => (
-              <div key={update.updateId} className="card p-6 card-hover">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex-1">
+              <div key={update.updateId} className="card p-4 card-hover">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-semibold text-text">
-                        Cửa hàng: {(update as any).currentStoreName || 'N/A'}
+                      <h3 className="text-lg font-semibold text-text truncate">
+                        {(update as any).currentStoreName || 'N/A'}
                       </h3>
                       {getStatusBadge((update as any).updateStatus)}
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-muted">
+                    <div className="flex flex-wrap items-center gap-4 text-sm text-muted">
                       <span className="flex items-center gap-1">
                         <Calendar size={14} />
-                        Gửi: {formatDate((update as any).createdAt)}
+                        {formatDate((update as any).createdAt)}
                       </span>
-                      {(update as any).processedAt && (
-                        <span className="flex items-center gap-1">
-                          <Calendar size={14} />
-                          Xử lý: {formatDate((update as any).processedAt)}
-                        </span>
-                      )}
+                      <span className="flex items-center gap-1">
+                        <FileText size={14} />
+                        Thay đổi: {(update as any).storeName && 'Tên, '}
+                        {(update as any).address && 'Địa chỉ, '}
+                        {(update as any).phoneNumber && 'SĐT, '}
+                        {(update as any).description && 'Mô tả'}
+                      </span>
                     </div>
-                  </div>
-                </div>
-
-                {(update as any).adminNotes && (
-                  <div className="bg-surface-light border border-default rounded-lg p-4 mb-4">
-                    <p className="text-sm font-medium text-text mb-1 flex items-center gap-2">
-                      <User size={14} />
-                      Phản hồi từ Admin:
-                    </p>
-                    <p className="text-sm text-muted">{(update as any).adminNotes}</p>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between">
-                  <div className="text-sm text-muted flex items-center gap-2">
-                    <FileText size={14} />
-                    Thay đổi: {(update as any).storeName && 'Tên, '}
-                    {(update as any).address && 'Địa chỉ, '}
-                    {(update as any).phoneNumber && 'SĐT, '}
-                    {(update as any).description && 'Mô tả'}
                   </div>
                   <button
                     onClick={() => {
                       setSelectedStoreUpdate(update);
                       setShowDetailModal(true);
                     }}
-                    className="btn-secondary flex items-center gap-2 text-sm"
+                    className="bg-[#A4C3A2] text-[#2D2D2D] hover:bg-[#8FB491] px-4 py-2 rounded-lg transition-colors font-medium flex items-center gap-2 text-sm"
                   >
                     <Eye size={16} />
-                    Xem chi tiết
+                    Chi tiết
                   </button>
                 </div>
               </div>
@@ -246,66 +256,44 @@ export default function UpdateHistory() {
               <p className="text-light mb-4">Các yêu cầu cập nhật thông tin doanh nghiệp sẽ xuất hiện ở đây</p>
               <button
                 onClick={() => navigate('/my-profile')}
-                className="btn-primary"
+                className="bg-[#2F855A] text-[#FFFEFA] hover:bg-[#8FB491] px-4 py-2 rounded-lg transition-colors font-medium"
               >
-                Quay lại Profile để tạo yêu cầu
+                Quay lại Profile
               </button>
             </div>
           ) : (
             businessUpdates.map((update) => (
-              <div key={update.updateId} className="card p-6 card-hover">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex-1">
+              <div key={update.updateId} className="card p-4 card-hover">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="text-lg font-semibold text-text">
                         Yêu cầu #{update.updateId.substring(0, 8)}
                       </h3>
                       {getStatusBadge(update.updateStatus)}
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-muted">
+                    <div className="flex flex-wrap items-center gap-4 text-sm text-muted">
                       <span className="flex items-center gap-1">
                         <Calendar size={14} />
-                        Gửi: {formatDate(update.createdAt)}
+                        {formatDate(update.createdAt)}
                       </span>
-                      {update.processedAt && (
-                        <span className="flex items-center gap-1">
-                          <Calendar size={14} />
-                          Xử lý: {formatDate(update.processedAt)}
-                        </span>
-                      )}
+                      <span className="flex items-center gap-1">
+                        <FileText size={14} />
+                        Thay đổi: {update.taxCode && 'MST, '}
+                        {update.businessLicense && 'GPKD, '}
+                        {update.foodSafetyCertificate && 'CCATTP'}
+                      </span>
                     </div>
-                  </div>
-                </div>
-
-                {update.adminNotes && (
-                  <div className="bg-surface-light border border-default rounded-lg p-4 mb-4">
-                    <p className="text-sm font-medium text-text mb-1 flex items-center gap-2">
-                      <User size={14} />
-                      Phản hồi từ Admin:
-                    </p>
-                    <p className="text-sm text-muted">{update.adminNotes}</p>
-                    {update.admin && (
-                      <p className="text-xs text-light mt-1">Xử lý bởi: {update.admin.fullName}</p>
-                    )}
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between">
-                  <div className="text-sm text-muted flex items-center gap-2">
-                    <FileText size={14} />
-                    Thay đổi: {update.taxCode && 'MST, '}
-                    {update.businessLicense && 'GPKD, '}
-                    {update.foodSafetyCertificate && 'CCATTP'}
                   </div>
                   <button
                     onClick={() => {
                       setSelectedBusinessUpdate(update);
                       setShowDetailModal(true);
                     }}
-                    className="btn-secondary flex items-center gap-2 text-sm"
+                    className="bg-[#A4C3A2] text-[#2D2D2D] hover:bg-[#8FB491] px-4 py-2 rounded-lg transition-colors font-medium flex items-center gap-2 text-sm"
                   >
                     <Eye size={16} />
-                    Xem chi tiết
+                    Chi tiết
                   </button>
                 </div>
               </div>
@@ -317,11 +305,11 @@ export default function UpdateHistory() {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="mt-6 flex justify-center">
-          <nav className="relative z-0 inline-flex rounded-lg shadow-sm -space-x-px">
+          <nav className="flex gap-2">
             <button
               onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
               disabled={currentPage === 0}
-              className="btn-secondary rounded-l-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-[#A4C3A2] text-[#2D2D2D] hover:bg-[#8FB491] px-4 py-2 rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               ← Trước
             </button>
@@ -336,11 +324,11 @@ export default function UpdateHistory() {
                 <button
                   key={pageNumber}
                   onClick={() => setCurrentPage(pageNumber)}
-                  className={`px-4 py-2 border text-sm font-medium transition-colors ${
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                     pageNumber === currentPage
-                      ? 'bg-primary text-surface border-primary-dark z-10'
-                      : 'bg-surface border-default text-text hover:bg-surface-light'
-                  } ${i === 0 ? 'rounded-l-lg' : ''} ${i === Math.min(totalPages, 5) - 1 ? 'rounded-r-lg' : ''}`}
+                      ? 'bg-[#2F855A] text-[#FFFEFA]'
+                      : 'bg-[#A4C3A2] text-[#2D2D2D] hover:bg-[#8FB491]'
+                  }`}
                 >
                   {pageNumber + 1}
                 </button>
@@ -349,7 +337,7 @@ export default function UpdateHistory() {
             <button
               onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
               disabled={currentPage >= totalPages - 1}
-              className="btn-secondary rounded-r-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-[#A4C3A2] text-[#2D2D2D] hover:bg-[#8FB491] px-4 py-2 rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Sau →
             </button>
@@ -360,17 +348,17 @@ export default function UpdateHistory() {
       {/* Detail Modal */}
       {showDetailModal && (selectedStoreUpdate || selectedBusinessUpdate) && (
         <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center w-full h-full z-50 p-4 animate-fadeIn">
-          <div className="bg-surface rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto card-hover">
+          <div className="bg-[#FFFEFA] rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex justify-between items-start mb-6">
-                <h2 className="heading-secondary">Chi tiết yêu cầu cập nhật</h2>
+                <h2 className="text-xl font-semibold text-[#2D2D2D]">Chi tiết yêu cầu</h2>
                 <button
                   onClick={() => {
                     setShowDetailModal(false);
                     setSelectedStoreUpdate(null);
                     setSelectedBusinessUpdate(null);
                   }}
-                  className="text-light hover:text-text text-2xl transition-colors"
+                  className="text-[#8B8B8B] hover:text-[#2D2D2D] text-2xl transition-colors"
                 >
                   ×
                 </button>
@@ -378,197 +366,81 @@ export default function UpdateHistory() {
 
               {selectedStoreUpdate ? (
                 // Store Update Details
-                <div className="space-y-6">
+                <div className="space-y-4">
                   <div className="flex items-center gap-3">
-                    <span className="font-medium text-text">Trạng thái:</span>
+                    <span className="font-medium text-[#2D2D2D]">Trạng thái:</span>
                     {getStatusBadge((selectedStoreUpdate as any).updateStatus)}
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="flex items-center gap-2">
-                      <Store size={16} className="text-muted" />
+                  <div className="space-y-3">
+                    {(selectedStoreUpdate as any).storeName && (
                       <div>
-                        <span className="text-sm text-muted">Cửa hàng</span>
-                        <p className="font-medium text-text">{(selectedStoreUpdate as any).currentStoreName}</p>
+                        <span className="text-sm text-[#6B6B6B]">Tên cửa hàng mới</span>
+                        <p className="font-medium text-[#2D2D2D]">{(selectedStoreUpdate as any).storeName}</p>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Calendar size={16} className="text-muted" />
+                    )}
+                    {(selectedStoreUpdate as any).address && (
                       <div>
-                        <span className="text-sm text-muted">Ngày gửi</span>
-                        <p className="font-medium text-text">{formatDate((selectedStoreUpdate as any).createdAt)}</p>
+                        <span className="text-sm text-[#6B6B6B]">Địa chỉ mới</span>
+                        <p className="font-medium text-[#2D2D2D]">{(selectedStoreUpdate as any).address}</p>
                       </div>
-                    </div>
-                  </div>
-
-                  <div className="border-t border-default pt-4">
-                    <h3 className="heading-secondary mb-4 flex items-center gap-2">
-                      <Info size={18} />
-                      Thông tin thay đổi
-                    </h3>
-                    <div className="space-y-3">
-                      {(selectedStoreUpdate as any).storeName && (
-                        <div className="flex items-center gap-3 p-3 bg-surface-light rounded-lg">
-                          <Store size={16} className="text-primary flex-shrink-0" />
-                          <div>
-                            <span className="text-sm text-muted">Tên cửa hàng</span>
-                            <p className="font-medium text-text">{(selectedStoreUpdate as any).storeName}</p>
-                          </div>
-                        </div>
-                      )}
-                      {(selectedStoreUpdate as any).address && (
-                        <div className="flex items-center gap-3 p-3 bg-surface-light rounded-lg">
-                          <MapPin size={16} className="text-primary flex-shrink-0" />
-                          <div>
-                            <span className="text-sm text-muted">Địa chỉ</span>
-                            <p className="font-medium text-text">{(selectedStoreUpdate as any).address}</p>
-                          </div>
-                        </div>
-                      )}
-                      {(selectedStoreUpdate as any).phoneNumber && (
-                        <div className="flex items-center gap-3 p-3 bg-surface-light rounded-lg">
-                          <Phone size={16} className="text-primary flex-shrink-0" />
-                          <div>
-                            <span className="text-sm text-muted">Số điện thoại</span>
-                            <p className="font-medium text-text">{(selectedStoreUpdate as any).phoneNumber}</p>
-                          </div>
-                        </div>
-                      )}
-                      {(selectedStoreUpdate as any).description && (
-                        <div className="flex items-start gap-3 p-3 bg-surface-light rounded-lg">
-                          <FileText size={16} className="text-primary mt-0.5 flex-shrink-0" />
-                          <div>
-                            <span className="text-sm text-muted">Mô tả</span>
-                            <p className="font-medium text-text">{(selectedStoreUpdate as any).description}</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                    )}
+                    {(selectedStoreUpdate as any).phoneNumber && (
+                      <div>
+                        <span className="text-sm text-[#6B6B6B]">Số điện thoại mới</span>
+                        <p className="font-medium text-[#2D2D2D]">{(selectedStoreUpdate as any).phoneNumber}</p>
+                      </div>
+                    )}
+                    {(selectedStoreUpdate as any).description && (
+                      <div>
+                        <span className="text-sm text-[#6B6B6B]">Mô tả mới</span>
+                        <p className="font-medium text-[#2D2D2D]">{(selectedStoreUpdate as any).description}</p>
+                      </div>
+                    )}
                   </div>
 
                   {(selectedStoreUpdate as any).adminNotes && (
-                    <div className="bg-surface-light border border-default rounded-lg p-4">
-                      <p className="text-sm font-medium text-text mb-2 flex items-center gap-2">
-                        <User size={14} />
-                        Phản hồi từ Admin
-                      </p>
-                      <p className="text-muted">{(selectedStoreUpdate as any).adminNotes}</p>
+                    <div className="bg-[#F8FFF9] border border-[#B7E4C7] rounded-lg p-4">
+                      <p className="text-sm font-medium text-[#2D2D2D] mb-1">Phản hồi từ Admin:</p>
+                      <p className="text-[#6B6B6B]">{(selectedStoreUpdate as any).adminNotes}</p>
                     </div>
                   )}
                 </div>
               ) : selectedBusinessUpdate ? (
                 // Business Update Details
-                <div className="space-y-6">
+                <div className="space-y-4">
                   <div className="flex items-center gap-3">
-                    <span className="font-medium text-text">Trạng thái:</span>
+                    <span className="font-medium text-[#2D2D2D]">Trạng thái:</span>
                     {getStatusBadge(selectedBusinessUpdate.updateStatus)}
                   </div>
                   
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="flex items-center gap-2">
-                      <Calendar size={16} className="text-muted" />
+                  <div className="space-y-3">
+                    {selectedBusinessUpdate.taxCode && (
                       <div>
-                        <span className="text-sm text-muted">Ngày gửi</span>
-                        <p className="font-medium text-text">{formatDate(selectedBusinessUpdate.createdAt)}</p>
+                        <span className="text-sm text-[#6B6B6B]">Mã số thuế</span>
+                        <p className="font-medium text-[#2D2D2D]">{selectedBusinessUpdate.taxCode}</p>
                       </div>
-                    </div>
-                    {selectedBusinessUpdate.processedAt && (
-                      <div className="flex items-center gap-2">
-                        <Calendar size={16} className="text-muted" />
-                        <div>
-                          <span className="text-sm text-muted">Ngày xử lý</span>
-                          <p className="font-medium text-text">{formatDate(selectedBusinessUpdate.processedAt)}</p>
-                        </div>
+                    )}
+                    {selectedBusinessUpdate.businessLicense && (
+                      <div>
+                        <span className="text-sm text-[#6B6B6B]">Giấy phép kinh doanh</span>
+                        <p className="font-medium text-[#2D2D2D]">{selectedBusinessUpdate.businessLicense}</p>
+                      </div>
+                    )}
+                    {selectedBusinessUpdate.foodSafetyCertificate && (
+                      <div>
+                        <span className="text-sm text-[#6B6B6B]">Chứng nhận ATTP</span>
+                        <p className="font-medium text-[#2D2D2D]">{selectedBusinessUpdate.foodSafetyCertificate}</p>
                       </div>
                     )}
                   </div>
 
-                  <div className="border-t border-default pt-4">
-                    <h3 className="heading-secondary mb-4 flex items-center gap-2">
-                      <Building2 size={18} />
-                      Thông tin thay đổi
-                    </h3>
-                    <div className="space-y-3">
-                      {selectedBusinessUpdate.taxCode && (
-                        <div className="flex items-center gap-3 p-3 bg-surface-light rounded-lg">
-                          <FileText size={16} className="text-secondary flex-shrink-0" />
-                          <div>
-                            <span className="text-sm text-muted">Mã số thuế</span>
-                            <p className="font-medium text-text">{selectedBusinessUpdate.taxCode}</p>
-                          </div>
-                        </div>
-                      )}
-                      {selectedBusinessUpdate.businessLicense && (
-                        <div className="flex items-center gap-3 p-3 bg-surface-light rounded-lg">
-                          <FileText size={16} className="text-secondary flex-shrink-0" />
-                          <div>
-                            <span className="text-sm text-muted">Giấy phép kinh doanh</span>
-                            <p className="font-medium text-text">{selectedBusinessUpdate.businessLicense}</p>
-                          </div>
-                        </div>
-                      )}
-                      {selectedBusinessUpdate.businessLicenseUrl && (
-                        <div className="flex items-center gap-3 p-3 bg-surface-light rounded-lg">
-                          <FileText size={16} className="text-secondary flex-shrink-0" />
-                          <div>
-                            <span className="text-sm text-muted">Tài liệu GPKD</span>
-                            <a 
-                              href={selectedBusinessUpdate.businessLicenseUrl} 
-                              target="_blank" 
-                              rel="noopener noreferrer" 
-                              className="font-medium text-secondary hover:underline flex items-center gap-1"
-                            >
-                              Xem tài liệu
-                            </a>
-                          </div>
-                        </div>
-                      )}
-                      {selectedBusinessUpdate.foodSafetyCertificate && (
-                        <div className="flex items-center gap-3 p-3 bg-surface-light rounded-lg">
-                          <FileText size={16} className="text-secondary flex-shrink-0" />
-                          <div>
-                            <span className="text-sm text-muted">Chứng nhận ATTP</span>
-                            <p className="font-medium text-text">{selectedBusinessUpdate.foodSafetyCertificate}</p>
-                          </div>
-                        </div>
-                      )}
-                      {selectedBusinessUpdate.foodSafetyCertificateUrl && (
-                        <div className="flex items-center gap-3 p-3 bg-surface-light rounded-lg">
-                          <FileText size={16} className="text-secondary flex-shrink-0" />
-                          <div>
-                            <span className="text-sm text-muted">Tài liệu ATTP</span>
-                            <a 
-                              href={selectedBusinessUpdate.foodSafetyCertificateUrl} 
-                              target="_blank" 
-                              rel="noopener noreferrer" 
-                              className="font-medium text-secondary hover:underline flex items-center gap-1"
-                            >
-                              Xem tài liệu
-                            </a>
-                          </div>
-                        </div>
-                      )}
-                      {selectedBusinessUpdate.supplierNotes && (
-                        <div className="flex items-start gap-3 p-3 bg-surface-light rounded-lg">
-                          <FileText size={16} className="text-secondary mt-0.5 flex-shrink-0" />
-                          <div>
-                            <span className="text-sm text-muted">Ghi chú của bạn</span>
-                            <p className="font-medium text-text">{selectedBusinessUpdate.supplierNotes}</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
                   {selectedBusinessUpdate.adminNotes && (
-                    <div className="bg-surface-light border border-default rounded-lg p-4">
-                      <p className="text-sm font-medium text-text mb-2 flex items-center gap-2">
-                        <User size={14} />
-                        Phản hồi từ Admin
-                      </p>
-                      <p className="text-muted mb-2">{selectedBusinessUpdate.adminNotes}</p>
+                    <div className="bg-[#F8FFF9] border border-[#B7E4C7] rounded-lg p-4">
+                      <p className="text-sm font-medium text-[#2D2D2D] mb-1">Phản hồi từ Admin:</p>
+                      <p className="text-[#6B6B6B] mb-2">{selectedBusinessUpdate.adminNotes}</p>
                       {selectedBusinessUpdate.admin && (
-                        <p className="text-xs text-light">Xử lý bởi: {selectedBusinessUpdate.admin.fullName}</p>
+                        <p className="text-xs text-[#8B8B8B]">Xử lý bởi: {selectedBusinessUpdate.admin.fullName}</p>
                       )}
                     </div>
                   )}

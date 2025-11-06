@@ -174,7 +174,7 @@ export default function Auth() {
                   <input type="checkbox" className="w-4 h-4 text-[#2F855A] rounded focus:ring-[#2F855A] border-[#B7E4C7] transition-colors" checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} />
                   <span className="text-sm text-[#6B6B6B] group-hover:text-[#2D2D2D] transition-colors">Ghi nhớ đăng nhập</span>
                 </label>
-                <button type="button" onClick={() => navigate('/forgot-password')} className="text-sm text-[#2F855A] hover:text-[#8FB491] font-semibold transition-colors">Quên mật khẩu?</button>
+                <button type="button" onClick={() => navigate('/profile/forgot-password')} className="text-sm text-[#2F855A] hover:text-[#8FB491] font-semibold transition-colors">Quên mật khẩu?</button>
               </div>
 
               <button type="submit" disabled={isSubmitting} className="w-full px-6 py-3.5 bg-gradient-to-r from-[#A4C3A2] to-[#2F855A] text-white rounded-xl hover:from-[#8FB491] hover:to-[#2F855A] font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">

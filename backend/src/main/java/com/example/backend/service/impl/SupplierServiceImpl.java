@@ -1032,9 +1032,9 @@ public class SupplierServiceImpl implements SupplierService {
         // Send notification to admins
         inAppNotificationService.createNotificationForAllAdmins(
                 NotificationType.SUPPLIER_UPDATE_PENDING,
-                String.format("Supplier '%s' has requested to update their business information. Please review and approve/reject.",
+                String.format("Nhà cung cấp '%s' đã yêu cầu cập nhật thông tin doanh nghiệp. Vui lòng xem xét và phê duyệt/từ chối.",
                         supplier.getFullName()),
-                "/partners/list-partners"
+                "/partners/business-updates"
         );
 
         return pendingUpdateMapper.toSupplierResponse(pendingUpdate);
@@ -1151,8 +1151,8 @@ public class SupplierServiceImpl implements SupplierService {
             inAppNotificationService.createNotificationForUser(
                     supplier.getUserId(),
                     NotificationType.SUPPLIER_UPDATE_APPROVED,
-                    "Your business information update request has been approved by admin. The changes are now live.",
-                    "/profile/my-profile"
+                    "Yêu cầu cập nhật thông tin doanh nghiệp của bạn đã được admin phê duyệt. Các thay đổi đã có hiệu lực.",
+                    "/my-profile"
             );
         } catch (Exception e) {
             log.error("Failed to send notification to supplier {} about update approval", supplier.getUserId(), e);
@@ -1195,16 +1195,16 @@ public class SupplierServiceImpl implements SupplierService {
 
         // Send notification to supplier
         try {
-            String notificationMessage = "Your business information update request has been rejected.";
+            String notificationMessage = "Yêu cầu cập nhật thông tin doanh nghiệp của bạn đã bị từ chối.";
             if (adminNotes != null && !adminNotes.isBlank()) {
-                notificationMessage += " Reason: " + adminNotes;
+                notificationMessage += " Lý do: " + adminNotes;
             }
 
             inAppNotificationService.createNotificationForUser(
                     pendingUpdate.getSupplier().getUserId(),
                     NotificationType.SUPPLIER_UPDATE_REJECTED,
                     notificationMessage,
-                    "/profile/my-profile"
+                    "/my-profile"
             );
         } catch (Exception e) {
             log.error("Failed to send notification to supplier {} about update rejection", 

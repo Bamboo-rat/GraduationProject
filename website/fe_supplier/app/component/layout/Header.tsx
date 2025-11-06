@@ -31,25 +31,8 @@ const Header: React.FC = () => {
 
   return (
     <header className="bg-white border-b border-[#B7E4C7] h-16 fixed top-0 right-0 left-64 z-10 shadow-sm">
-      <div className="h-full px-6 flex items-center justify-between">
-        {/* Search bar */}
-        <div className="flex-1 max-w-xl">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Tìm kiếm sản phẩm, đơn hàng..."
-              className="w-full pl-10 pr-4 py-2.5 border border-[#B7E4C7] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#A4C3A2] focus:border-[#2F855A] bg-[#F8FFF9] text-[#2D2D2D] placeholder-[#8B8B8B] transition-all"
-            />
-            <svg
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#2F855A]"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-        </div>
+      <div className="h-full px-6 flex items-center justify-end">
+        
 
         {/* Right section */}
         <div className="flex items-center space-x-3 ml-4">

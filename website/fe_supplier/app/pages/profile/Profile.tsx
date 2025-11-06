@@ -268,12 +268,7 @@ export default function Profile() {
               </div>
             </div>
           </div>
-          <div className="mt-4 bg-surface-light border border-default rounded-lg p-3">
-            <p className="text-xs text-muted flex items-center gap-2">
-              <span className="text-primary">💡</span>
-              Thông tin cá nhân có thể cập nhật trực tiếp và có hiệu lực ngay lập tức
-            </p>
-          </div>
+         
         </div>
 
         {/* Business Information Card */}
@@ -342,12 +337,6 @@ export default function Profile() {
               </p>
             </div>
           </div>
-          <div className="mt-4 bg-surface-light border border-default rounded-lg p-3">
-            <p className="text-xs text-muted flex items-center gap-2">
-              <span className="text-secondary">🔒</span>
-              Thông tin doanh nghiệp cần được admin phê duyệt trước khi có hiệu lực
-            </p>
-          </div>
         </div>
       </div>
 
@@ -410,7 +399,7 @@ export default function Profile() {
       {/* Quick Actions */}
       <div className="card p-6 bg-surface-light border border-default">
         <h2 className="heading-secondary mb-4">Thao tác nhanh</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <button
             onClick={() => navigate('/products/list')}
             className="bg-surface hover:bg-surface-light rounded-lg p-4 flex flex-col items-center gap-2 transition-all border border-default card-hover"
@@ -431,13 +420,6 @@ export default function Profile() {
           >
             <TrendingUp size={24} className="text-secondary" />
             <span className="text-sm font-medium text-text">Doanh thu</span>
-          </button>
-          <button
-            onClick={() => navigate('/settings/payment')}
-            className="bg-surface hover:bg-surface-light rounded-lg p-4 flex flex-col items-center gap-2 transition-all border border-default card-hover"
-          >
-            <CreditCard size={24} className="text-secondary" />
-            <span className="text-sm font-medium text-text">Thanh toán</span>
           </button>
         </div>
       </div>
