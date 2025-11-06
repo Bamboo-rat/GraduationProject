@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import DashboardLayout from '~/component/layout/DashboardLayout';
-import supplierService, { type Supplier } from '~/service/supplierService';
+import supplierService, { type Supplier, type SupplierStatus } from '~/service/supplierService';
 import Toast from '~/component/common/Toast';
+import { getDownloadableCloudinaryUrl } from '~/utils/fileUtils';
 import {
   User,
   Building2,
@@ -96,7 +97,7 @@ export default function PartnerDetail() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: SupplierStatus) => {
     return (
       <span className={`px-3 py-1 rounded-full text-sm font-medium ${supplierService.getStatusColorClass(status)}`}>
         {supplierService.getStatusLabel(status)}
@@ -235,7 +236,7 @@ export default function PartnerDetail() {
                   <div className="md:col-span-2">
                     <label className="text-sm font-medium text-gray-500">File giấy phép</label>
                     <a
-                      href={supplier.businessLicenseUrl}
+                       href={getDownloadableCloudinaryUrl(supplier.businessLicenseUrl)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="mt-1 text-blue-600 hover:text-blue-800 flex items-center"
@@ -275,7 +276,7 @@ export default function PartnerDetail() {
                     <div>
                       <label className="text-sm font-medium text-gray-500">File chứng nhận</label>
                       <a
-                        href={supplier.foodSafetyCertificateUrl}
+                        href={getDownloadableCloudinaryUrl(supplier.foodSafetyCertificateUrl)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="mt-1 text-blue-600 hover:text-blue-800 flex items-center"

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import DashboardLayout from '~/component/layout/DashboardLayout';
 import supplierService from '~/service/supplierService';
+import { downloadFile } from '~/utils/fileUtils';
 import type { SupplierPendingUpdate, UpdateStatus } from '~/service/supplierService';
 import { FileText, Calendar, User, Building2, Eye, CheckCircle, XCircle, ChevronDown, Download } from 'lucide-react';
 
@@ -112,8 +113,12 @@ export default function BusinessUpdateRequests() {
   };
 
   const handleDownloadFile = (url: string) => {
-    // Open in new tab - browser will handle download
-    window.open(url, '_blank');
+    try {
+      downloadFile(url);
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      alert('Không thể tải file. Vui lòng thử lại hoặc kiểm tra popup blocker.');
+    }
   };
 
   return (

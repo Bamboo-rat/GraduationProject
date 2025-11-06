@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Supplier } from '~/service/supplierService';
+import { getDownloadableCloudinaryUrl } from '~/utils/fileUtils';
 
 interface SupplierPendingDetailProps {
   show: boolean;
@@ -25,28 +26,31 @@ export default function SupplierPendingDetail({
     return url.endsWith('.pdf') || url.includes('/raw/upload/') || url.includes('/pdf') || url.includes('_pdf');
   };
 
-  // Get document file URL
+  // Get document file URL with download flag
   const getFileUrl = (fileUrl: string | null | undefined): string | null => {
     if (!fileUrl) return null;
-
     try {
+      let processedUrl: string;
       if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) {
         // Nếu là PDF Cloudinary nhưng sai resource type, sửa lại cho đúng
         if (fileUrl.includes('res.cloudinary.com')) {
           if (isPdfFile(fileUrl) && fileUrl.includes('/image/upload/')) {
-            return fileUrl.replace('/image/upload/', '/raw/upload/');
+            processedUrl = fileUrl.replace('/image/upload/', '/raw/upload/');
+          } else {
+            processedUrl = fileUrl;
           }
+        } else {
+          processedUrl = fileUrl;
         }
-        return fileUrl;
+      } else {
+        const cloudName = 'dk7coitah';
+        let publicId = fileUrl.replace(/^cloudinary:\/\//, '');
+        const isPdf = publicId.toLowerCase().includes('.pdf') || publicId.toLowerCase().includes('pdf');
+        const resourceType = isPdf ? 'raw' : 'image';
+        const cleanPublicId = publicId.replace(/\.(jpg|jpeg|png|gif|pdf|webp)$/i, '');
+        processedUrl = `https://res.cloudinary.com/${cloudName}/${resourceType}/upload/${cleanPublicId}`;
       }
-
-      const cloudName = 'dk7coitah';
-      let publicId = fileUrl.replace(/^cloudinary:\/\//, '');
-      const isPdf = publicId.toLowerCase().includes('.pdf') || publicId.toLowerCase().includes('pdf');
-      const resourceType = isPdf ? 'raw' : 'image';
-      const cleanPublicId = publicId.replace(/\.(jpg|jpeg|png|gif|pdf|webp)$/i, '');
-
-      return `https://res.cloudinary.com/${cloudName}/${resourceType}/upload/${cleanPublicId}`;
+      return getDownloadableCloudinaryUrl(processedUrl);
     } catch (error) {
       console.error('Error processing file URL:', error, 'Original URL:', fileUrl);
       return null;
