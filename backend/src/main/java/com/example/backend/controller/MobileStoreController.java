@@ -32,6 +32,25 @@ public class MobileStoreController {
         return ResponseEntity.ok(ApiResponse.success("Store retrieved successfully", store));
     }
 
+    @GetMapping("/{storeId}/full")
+    @Operation(summary = "Mobile - Get store with categories and products", 
+               description = "Get store with nested structure: Store -> Categories -> Products. " +
+                           "Each category includes limited products (default 10, max 50). " +
+                           "Only shows available products from ACTIVE stores.")
+    public ResponseEntity<ApiResponse<StoreWithCategoriesResponse>> getStoreWithCategoriesAndProducts(
+            @PathVariable String storeId,
+            @RequestParam(required = false, defaultValue = "10") Integer productsPerCategory) {
+        log.info("GET /api/mobile/stores/{}/full?productsPerCategory={}", storeId, productsPerCategory);
+        
+        // Limit max products per category to prevent huge responses
+        if (productsPerCategory > 50) {
+            productsPerCategory = 50;
+        }
+        
+        StoreWithCategoriesResponse response = storeService.getStoreWithCategoriesAndProducts(storeId, productsPerCategory);
+        return ResponseEntity.ok(ApiResponse.success("Store with categories and products retrieved successfully", response));
+    }
+
     @GetMapping("/{storeId}/categories")
     @Operation(summary = "Mobile - Get categories available at store", description = "List categories that currently have purchasable products at this store")
     public ResponseEntity<ApiResponse<List<CategoryResponse>>> getStoreCategories(@PathVariable String storeId) {

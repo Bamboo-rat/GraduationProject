@@ -1048,4 +1048,96 @@ public class StoreServiceImpl implements StoreService {
 
     return new PageImpl<>(dtos, pageable, idsPage.getTotalElements());
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public StoreWithCategoriesResponse getStoreWithCategoriesAndProducts(String storeId, Integer productsPerCategory) {
+        log.info("Getting store with nested categories and products - store: {}, productsPerCategory: {}", 
+                storeId, productsPerCategory);
+
+        // Default products per category if not specified
+        if (productsPerCategory == null || productsPerCategory <= 0) {
+            productsPerCategory = 10;
+        }
+
+        // Validate store exists and is ACTIVE
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.STORE_NOT_FOUND,
+                        "Store not found with ID: " + storeId));
+
+        if (store.getStatus() != StoreStatus.ACTIVE) {
+            throw new BadRequestException(ErrorCode.INVALID_REQUEST,
+                    "Cannot view products for non-active store. Current status: " + store.getStatus());
+        }
+
+        // Get all available categories for this store
+        java.util.List<Category> categories = categoryRepository.findAvailableCategoriesByStoreId(storeId);
+
+        // For each category, fetch top N available products
+        java.util.List<StoreWithCategoriesResponse.CategoryWithProductsResponse> categoryResponses = 
+                new java.util.ArrayList<>();
+
+        for (Category category : categories) {
+            // Get available product IDs for this category (limited)
+            org.springframework.data.domain.PageRequest pageRequest = 
+                    org.springframework.data.domain.PageRequest.of(0, productsPerCategory, 
+                            org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
+            
+            Page<String> idsPage = storeProductRepository.findAvailableIdsByStoreIdAndCategoryId(
+                    storeId, category.getCategoryId(), pageRequest);
+
+            java.util.List<StoreProductVariantResponse> products = new java.util.ArrayList<>();
+            
+            if (!idsPage.isEmpty()) {
+                // Fetch full entities with relationships
+                java.util.List<String> orderedIds = idsPage.getContent();
+                java.util.List<StoreProduct> storeProducts = storeProductRepository.findByIdsWithDetails(orderedIds);
+
+                // Initialize images
+                storeProducts.forEach(sp -> {
+                    Hibernate.initialize(sp.getVariant().getVariantImages());
+                    Hibernate.initialize(sp.getVariant().getProduct().getImages());
+                });
+
+                // Preserve ordering and map to DTOs
+                products = orderedIds.stream()
+                        .map(id -> storeProducts.stream()
+                                .filter(sp -> sp.getStoreProductId().equals(id))
+                                .findFirst()
+                                .orElse(null))
+                        .filter(java.util.Objects::nonNull)
+                        .map(this::mapToStoreProductVariantResponse)
+                        .peek(dto -> dto.setAvailable(true))
+                        .toList();
+            }
+
+            // Count total available products in this category
+            Long totalCount = categoryRepository.countAvailableProductsByCategoryAndStore(
+                    category.getCategoryId(), storeId);
+
+            // Build category response with products
+            StoreWithCategoriesResponse.CategoryWithProductsResponse categoryResponse = 
+                    StoreWithCategoriesResponse.CategoryWithProductsResponse.builder()
+                            .categoryId(category.getCategoryId())
+                            .categoryName(category.getName())
+                            .categoryDescription(category.getDescription())
+                            .categoryImageUrl(category.getImageUrl())
+                            .availableProductCount(totalCount.intValue())
+                            .products(products)
+                            .build();
+
+            categoryResponses.add(categoryResponse);
+        }
+
+        // Build final response
+        return StoreWithCategoriesResponse.builder()
+                .storeId(store.getStoreId())
+                .storeName(store.getStoreName())
+                .description(store.getDescription())
+                .phoneNumber(store.getPhoneNumber())
+                .status(store.getStatus().name())
+                .imageUrl(store.getImageUrl())
+                .categories(categoryResponses)
+                .build();
+    }
 }

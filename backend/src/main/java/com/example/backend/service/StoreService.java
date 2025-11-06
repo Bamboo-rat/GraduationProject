@@ -205,4 +205,14 @@ public interface StoreService {
     Page<StoreProductVariantResponse> getAvailableProductVariantsForStoreByCategory(String storeId,
                                                                                      String categoryId,
                                                                                      Pageable pageable);
+
+    /**
+     * Mobile: Get store with nested categories and products (public)
+     * Returns hierarchical structure: Store -> Categories -> Products
+     * Only includes available products (stock > 0, not expired) from ACTIVE stores
+     * @param storeId Store ID
+     * @param productsPerCategory Max products per category (default: 10)
+     * @return Store with nested categories and their products
+     */
+    StoreWithCategoriesResponse getStoreWithCategoriesAndProducts(String storeId, Integer productsPerCategory);
 }

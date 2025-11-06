@@ -56,4 +56,20 @@ public interface CategoryRepository extends JpaRepository<Category, String> {
            "AND p.category IS NOT NULL " +
            "ORDER BY p.category.name ASC")
     java.util.List<Category> findAvailableCategoriesByStoreId(@Param("storeId") String storeId);
+
+    /**
+     * Count available products for a specific category at a specific store
+     * Used in nested store/category/products response
+     */
+    @Query("SELECT COUNT(DISTINCT sp.storeProductId) FROM StoreProduct sp " +
+           "JOIN sp.variant v " +
+           "JOIN v.product p " +
+           "JOIN sp.store s " +
+           "WHERE s.storeId = :storeId " +
+           "AND p.category.categoryId = :categoryId " +
+           "AND s.status = 'ACTIVE' " +
+           "AND p.status = 'ACTIVE' " +
+           "AND sp.stockQuantity > 0 " +
+           "AND (v.expiryDate IS NULL OR v.expiryDate >= CURRENT_DATE)")
+    Long countAvailableProductsByCategoryAndStore(@Param("categoryId") String categoryId, @Param("storeId") String storeId);
 }
