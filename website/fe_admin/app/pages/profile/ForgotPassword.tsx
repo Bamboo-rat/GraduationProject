@@ -17,12 +17,12 @@ const ForgotPassword = () => {
     setSuccess(false);
 
     try {
-      const response = await axiosInstance.post('/api/auth/forgot-password', {
+      const response = await axiosInstance.post('/auth/forgot-password', {
         email,
         userType: 'ADMIN'
       });
 
-      if (response.data.code === '200') {
+      if (response.data.success || response.data.code === 200) {
         setSuccess(true);
       }
     } catch (err: any) {

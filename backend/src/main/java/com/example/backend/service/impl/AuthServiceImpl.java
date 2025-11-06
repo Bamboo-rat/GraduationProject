@@ -52,57 +52,92 @@ public class AuthServiceImpl implements AuthService {
         try {
             // ===== STEP 1: Find user in database FIRST (to prevent race condition) =====
             User user = userRepository.findByUsername(request.getUsername())
-                    .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+                    .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND, 
+                            "Tên đăng nhập không tồn tại. Vui lòng kiểm tra lại hoặc đăng ký tài khoản mới."));
 
             // ===== STEP 2: Check if user is active =====
             if (!user.isActive()) {
                 log.warn("Login attempt for inactive user: {}", request.getUsername());
-                throw new UnauthorizedException(ErrorCode.ACCOUNT_INACTIVE);
+                throw new UnauthorizedException(ErrorCode.ACCOUNT_INACTIVE, 
+                        "Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ bộ phận hỗ trợ.");
             }
 
             // ===== STEP 3: Check account status based on user type =====
             if (user instanceof Customer customer) {
                 if (customer.getStatus() == CustomerStatus.PENDING_VERIFICATION) {
                     log.warn("Login attempt for unverified customer: {}", request.getUsername());
-                    throw new UnauthorizedException(ErrorCode.ACCOUNT_NOT_VERIFIED);
+                    throw new UnauthorizedException(ErrorCode.ACCOUNT_NOT_VERIFIED,
+                            "Tài khoản chưa được xác thực. Vui lòng xác thực OTP để kích hoạt tài khoản.");
+                }
+                if (customer.getStatus() == CustomerStatus.SUSPENDED) {
+                    throw new UnauthorizedException(ErrorCode.ACCOUNT_LOCKED,
+                            "Tài khoản đã bị tạm khóa do vi phạm chính sách. Vui lòng liên hệ bộ phận hỗ trợ.");
+                }
+                if (customer.getStatus() == CustomerStatus.BANNED) {
+                    throw new UnauthorizedException(ErrorCode.ACCOUNT_LOCKED,
+                            "Tài khoản đã bị khóa vĩnh viễn. Vui lòng liên hệ bộ phận hỗ trợ.");
                 }
                 if (customer.getStatus() != CustomerStatus.ACTIVE) {
                     log.warn("Login attempt for customer with status {}: {}", customer.getStatus(), request.getUsername());
-                    throw new UnauthorizedException(ErrorCode.ACCOUNT_INACTIVE);
+                    throw new UnauthorizedException(ErrorCode.ACCOUNT_INACTIVE,
+                            "Tài khoản chưa được kích hoạt hoặc đã bị vô hiệu hóa.");
                 }
             } else if (user instanceof Supplier supplier) {
-                if (supplier.getStatus() == SupplierStatus.PENDING_VERIFICATION ||
-                        supplier.getStatus() == SupplierStatus.PENDING_DOCUMENTS ||
-                        supplier.getStatus() == SupplierStatus.PENDING_STORE_INFO ||
-                        supplier.getStatus() == SupplierStatus.PENDING_APPROVAL) {
-                    log.warn("Login attempt for pending supplier ({}): {}", supplier.getStatus(), request.getUsername());
-                    throw new UnauthorizedException(ErrorCode.ACCOUNT_PENDING_APPROVAL);
+                if (supplier.getStatus() == SupplierStatus.PENDING_VERIFICATION) {
+                    throw new UnauthorizedException(ErrorCode.ACCOUNT_PENDING_APPROVAL,
+                            "Tài khoản đang chờ xác thực email. Vui lòng kiểm tra email và xác thực OTP.");
+                }
+                if (supplier.getStatus() == SupplierStatus.PENDING_DOCUMENTS) {
+                    throw new UnauthorizedException(ErrorCode.ACCOUNT_PENDING_APPROVAL,
+                            "Tài khoản đang chờ tải lên giấy tờ kinh doanh. Vui lòng hoàn tất bước 3 trong quy trình đăng ký.");
+                }
+                if (supplier.getStatus() == SupplierStatus.PENDING_STORE_INFO) {
+                    throw new UnauthorizedException(ErrorCode.ACCOUNT_PENDING_APPROVAL,
+                            "Tài khoản đang chờ thông tin cửa hàng. Vui lòng hoàn tất bước 4 trong quy trình đăng ký.");
+                }
+                if (supplier.getStatus() == SupplierStatus.PENDING_APPROVAL) {
+                    throw new UnauthorizedException(ErrorCode.ACCOUNT_PENDING_APPROVAL,
+                            "Tài khoản đang chờ admin phê duyệt. Chúng tôi sẽ xem xét trong vòng 24-48 giờ.");
                 }
                 if (supplier.getStatus() == SupplierStatus.SUSPENDED) {
-                    log.warn("Login attempt for suspended supplier: {}", request.getUsername());
-                    throw new UnauthorizedException(ErrorCode.ACCOUNT_LOCKED);
+                    throw new UnauthorizedException(ErrorCode.ACCOUNT_LOCKED,
+                            "Tài khoản đã bị tạm khóa bởi admin. Vui lòng liên hệ bộ phận hỗ trợ để biết thêm chi tiết.");
                 }
                 if (supplier.getStatus() == SupplierStatus.REJECTED) {
-                    log.warn("Login attempt for rejected supplier: {}", request.getUsername());
-                    throw new UnauthorizedException(ErrorCode.ACCOUNT_REJECTED);
+                    throw new UnauthorizedException(ErrorCode.ACCOUNT_REJECTED,
+                            "Tài khoản đã bị từ chối bởi admin. Vui lòng liên hệ bộ phận hỗ trợ để biết lý do.");
                 }
                 if (supplier.getStatus() != SupplierStatus.ACTIVE && supplier.getStatus() != SupplierStatus.PAUSE) {
                     log.warn("Login attempt for supplier with status {}: {}", supplier.getStatus(), request.getUsername());
-                    throw new UnauthorizedException(ErrorCode.ACCOUNT_INACTIVE);
+                    throw new UnauthorizedException(ErrorCode.ACCOUNT_INACTIVE,
+                            "Tài khoản chưa được kích hoạt hoặc đã bị vô hiệu hóa.");
                 }
             } else if (user instanceof Admin admin) {
                 if (admin.getStatus() == AdminStatus.PENDING_APPROVAL) {
-                    log.warn("Login attempt for pending admin: {}", request.getUsername());
-                    throw new UnauthorizedException(ErrorCode.ACCOUNT_PENDING_APPROVAL);
+                    throw new UnauthorizedException(ErrorCode.ACCOUNT_PENDING_APPROVAL,
+                            "Tài khoản admin đang chờ phê duyệt từ super admin.");
+                }
+                if (admin.getStatus() == AdminStatus.INACTIVE) {
+                    throw new UnauthorizedException(ErrorCode.ACCOUNT_INACTIVE,
+                            "Tài khoản admin đã bị vô hiệu hóa. Vui lòng liên hệ super admin.");
                 }
                 if (admin.getStatus() != AdminStatus.ACTIVE) {
                     log.warn("Login attempt for admin with status {}: {}", admin.getStatus(), request.getUsername());
-                    throw new UnauthorizedException(ErrorCode.ACCOUNT_INACTIVE);
+                    throw new UnauthorizedException(ErrorCode.ACCOUNT_INACTIVE,
+                            "Tài khoản admin chưa được kích hoạt hoặc đã bị vô hiệu hóa.");
                 }
             }
 
             // ===== STEP 4: Authenticate with Keycloak (only after all checks pass) =====
-            Map<String, Object> tokenResponse = keycloakService.authenticateUser(request);
+            Map<String, Object> tokenResponse;
+            try {
+                tokenResponse = keycloakService.authenticateUser(request);
+            } catch (Exception e) {
+                // If Keycloak authentication fails, it means wrong password (since username already verified above)
+                log.warn("Keycloak authentication failed for user: {} - Wrong password", request.getUsername());
+                throw new UnauthorizedException(ErrorCode.KEYCLOAK_AUTHENTICATION_FAILED,
+                        "Mật khẩu không chính xác. Vui lòng kiểm tra lại hoặc sử dụng chức năng 'Quên mật khẩu'.");
+            }
 
             // ===== STEP 5: Decode access token to get JWT =====
             String accessToken = (String) tokenResponse.get("access_token");

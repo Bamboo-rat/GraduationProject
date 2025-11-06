@@ -12,11 +12,30 @@ const axiosInstance = axios.create({
 // Request interceptor - Add token to requests
 axiosInstance.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('access_token');
-    console.log('Token:', token ? `${token.substring(0, 20)}...` : 'NO TOKEN');
-    console.log('Request:', config.method?.toUpperCase(), config.url);
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Skip adding token for public endpoints
+    const publicEndpoints = [
+      '/auth/login',
+      '/auth/register',
+      '/auth/forgot-password',
+      '/auth/verify-reset-otp',
+      '/auth/reset-password',
+      '/auth/refresh',
+      '/locations'
+    ];
+    
+    const isPublicEndpoint = publicEndpoints.some(endpoint => 
+      config.url?.includes(endpoint)
+    );
+    
+    if (!isPublicEndpoint) {
+      const token = localStorage.getItem('access_token');
+      console.log('Token:', token ? `${token.substring(0, 20)}...` : 'NO TOKEN');
+      console.log('Request:', config.method?.toUpperCase(), config.url);
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+    } else {
+      console.log('Public Request:', config.method?.toUpperCase(), config.url, '(No token needed)');
     }
     return config;
   },

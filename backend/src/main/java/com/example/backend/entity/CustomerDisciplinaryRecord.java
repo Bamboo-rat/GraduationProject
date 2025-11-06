@@ -20,13 +20,13 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "customer_disciplinary_records", indexes = {
     @Index(name = "idx_disciplinary_customer", columnList = "customer_id"),
-    @Index(name = "idx_disciplinary_type", columnList = "violationType"),
+    @Index(name = "idx_disciplinary_type", columnList = "violation_type"),
     @Index(name = "idx_disciplinary_severity", columnList = "severity"),
-    @Index(name = "idx_disciplinary_action", columnList = "actionTaken"),
-    @Index(name = "idx_disciplinary_resolved", columnList = "resolved"),
-    @Index(name = "idx_disciplinary_created", columnList = "createdAt"),
-    @Index(name = "idx_disciplinary_suspension", columnList = "suspendedUntil"),
-    @Index(name = "idx_disciplinary_customer_resolved", columnList = "customer_id, resolved")
+    @Index(name = "idx_disciplinary_action", columnList = "action_taken"),
+    @Index(name = "idx_disciplinary_resolved", columnList = "is_resolved"),
+    @Index(name = "idx_disciplinary_created", columnList = "created_at"),
+    @Index(name = "idx_disciplinary_suspension", columnList = "suspended_until"),
+    @Index(name = "idx_disciplinary_customer_resolved", columnList = "customer_id, is_resolved")
 })
 @Data
 @NoArgsConstructor
