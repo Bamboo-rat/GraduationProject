@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Supplier } from '~/service/supplierService';
-import { getDownloadableCloudinaryUrl } from '~/utils/fileUtils';
+import { getDownloadableCloudinaryUrl, downloadFile } from '~/utils/fileUtils';
 
 interface SupplierPendingDetailProps {
   show: boolean;
@@ -26,8 +26,8 @@ export default function SupplierPendingDetail({
     return url.endsWith('.pdf') || url.includes('/raw/upload/') || url.includes('/pdf') || url.includes('_pdf');
   };
 
-  // Get document file URL with download flag
-  const getFileUrl = (fileUrl: string | null | undefined): string | null => {
+  // Get document file URL WITHOUT download flag (for viewing)
+  const getFileUrl = (fileUrl: string | null | undefined, forDownload: boolean = false): string | null => {
     if (!fileUrl) return null;
     try {
       let processedUrl: string;
@@ -50,10 +50,22 @@ export default function SupplierPendingDetail({
         const cleanPublicId = publicId.replace(/\.(jpg|jpeg|png|gif|pdf|webp)$/i, '');
         processedUrl = `https://res.cloudinary.com/${cloudName}/${resourceType}/upload/${cleanPublicId}`;
       }
-      return getDownloadableCloudinaryUrl(processedUrl);
+      // Only add download flag if requested
+      return forDownload ? getDownloadableCloudinaryUrl(processedUrl) : processedUrl;
     } catch (error) {
       console.error('Error processing file URL:', error, 'Original URL:', fileUrl);
       return null;
+    }
+  };
+
+
+
+  // Handle file download
+  const handleDownload = (fileUrl: string | null | undefined) => {
+    if (!fileUrl) return;
+    const downloadUrl = getFileUrl(fileUrl, true);
+    if (downloadUrl) {
+      downloadFile(downloadUrl);
     }
   };
 
@@ -116,7 +128,7 @@ export default function SupplierPendingDetail({
                     </div>
                     <h2 className="heading-secondary">Thông tin doanh nghiệp</h2>
                   </div>
-                  
+
                   <div className="space-y-4">
                     <div className="bg-surface-light rounded-xl p-4 border-l-4 border-primary">
                       <p className="text-xs text-text-muted font-medium mb-2 uppercase tracking-wide">Địa chỉ kinh doanh</p>
@@ -162,7 +174,7 @@ export default function SupplierPendingDetail({
                         <p className="text-sm font-semibold text-text truncate">{supplier.fullName}</p>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-4 bg-surface-light rounded-xl p-4 border-l-4 border-primary">
                       <div className="w-10 h-10 bg-primary-lighter rounded-lg flex items-center justify-center flex-shrink-0">
                         <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -174,7 +186,7 @@ export default function SupplierPendingDetail({
                         <p className="text-sm font-semibold text-text truncate">{supplier.email}</p>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center gap-4 bg-surface-light rounded-xl p-4 border-l-4 border-primary">
                       <div className="w-10 h-10 bg-primary-lighter rounded-lg flex items-center justify-center flex-shrink-0">
                         <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -260,20 +272,31 @@ export default function SupplierPendingDetail({
                               </div>
                             ) : (
                               <div className="space-y-3">
-                                <a
-                                  href={fileUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center justify-center gap-3 btn-primary py-3 px-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-200"
-                                >
-                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                  </svg>
-                                  Xem file PDF
-                                </a>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <a
+                                    href={fileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center justify-center gap-2 btn-primary py-3 px-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 text-sm"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                    Xem file
+                                  </a>
+                                  <button
+                                    onClick={() => handleDownload(supplier.businessLicenseUrl)}
+                                    className="flex items-center justify-center gap-2 bg-primary-dark text-surface py-3 px-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 text-sm hover:bg-primary-darker"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                    Tải về
+                                  </button>
+                                </div>
                                 <p className="text-xs text-center text-text-light">
-                                  File PDF sẽ mở trong tab mới
+                                  Xem trực tiếp hoặc tải file PDF về máy
                                 </p>
                               </div>
                             )}
@@ -337,20 +360,31 @@ export default function SupplierPendingDetail({
                               </div>
                             ) : (
                               <div className="space-y-3">
-                                <a
-                                  href={fileUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center justify-center gap-3 btn-primary py-3 px-6 rounded-xl shadow-sm hover:shadow-md transition-all duration-200"
-                                >
-                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                  </svg>
-                                  Xem file PDF
-                                </a>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <a
+                                    href={fileUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center justify-center gap-2 btn-primary py-3 px-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 text-sm"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                    </svg>
+                                    Xem file
+                                  </a>
+                                  <button
+                                    onClick={() => handleDownload(supplier.foodSafetyCertificateUrl)}
+                                    className="flex items-center justify-center gap-2 bg-primary-dark text-surface py-3 px-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 text-sm hover:bg-primary-darker"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                    Tải về
+                                  </button>
+                                </div>
                                 <p className="text-xs text-center text-text-light">
-                                  File PDF sẽ mở trong tab mới
+                                  Xem trực tiếp hoặc tải file PDF về máy
                                 </p>
                               </div>
                             )}
