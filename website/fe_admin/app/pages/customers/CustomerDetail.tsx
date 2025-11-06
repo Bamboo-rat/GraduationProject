@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import DashboardLayout from '~/component/layout/DashboardLayout';
-import customerService, { CustomerResponse } from '~/service/customerService';
+import customerService, { type CustomerResponse } from '~/service/customerService';
+import Toast, { type ToastType } from '~/component/common/Toast';
 
 export default function CustomerDetail() {
   const navigate = useNavigate();
@@ -9,6 +10,8 @@ export default function CustomerDetail() {
   const [customer, setCustomer] = useState<CustomerResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   useEffect(() => {
     if (userId) {
@@ -34,15 +37,20 @@ export default function CustomerDetail() {
   const handleToggleActive = async () => {
     if (!customer) return;
 
-    if (!confirm(`Bạn có chắc muốn ${customer.active ? 'tạm khóa' : 'kích hoạt'} khách hàng này?`)) {
-      return;
-    }
-
     try {
       const updated = await customerService.setActiveStatus(customer.userId, !customer.active);
       setCustomer(updated);
+      setToast({
+        message: `Đã ${updated.active ? 'kích hoạt' : 'tạm khóa'} tài khoản khách hàng thành công`,
+        type: 'success'
+      });
+      setShowConfirmModal(false);
     } catch (err: any) {
-      alert(err.message || 'Không thể cập nhật trạng thái');
+      setToast({
+        message: err.message || 'Không thể cập nhật trạng thái',
+        type: 'error'
+      });
+      setShowConfirmModal(false);
     }
   };
 
@@ -116,7 +124,7 @@ export default function CustomerDetail() {
               {error || 'Không tìm thấy khách hàng'}
             </div>
             <button
-              onClick={() => navigate('/customers/list')}
+              onClick={() => navigate('/customers/list-customers')}
               className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
             >
               Quay lại
@@ -134,7 +142,7 @@ export default function CustomerDetail() {
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center">
             <button
-              onClick={() => navigate('/customers/list')}
+              onClick={() => navigate('/customers/list-customers')}
               className="mr-4 text-gray-600 hover:text-gray-900"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -147,7 +155,7 @@ export default function CustomerDetail() {
             </div>
           </div>
           <button
-            onClick={handleToggleActive}
+            onClick={() => setShowConfirmModal(true)}
             className={`px-4 py-2 rounded-lg font-medium ${
               customer.active
                 ? 'bg-red-600 hover:bg-red-700 text-white'
@@ -292,6 +300,47 @@ export default function CustomerDetail() {
           </div>
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      {showConfirmModal && customer && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center w-full h-full z-50 p-4 animate-fadeIn">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Xác nhận {customer.active ? 'tạm khóa' : 'kích hoạt'}
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Bạn có chắc muốn {customer.active ? 'tạm khóa' : 'kích hoạt'} khách hàng này?
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowConfirmModal(false)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleToggleActive}
+                className={`px-4 py-2 text-white rounded-lg font-medium transition-colors ${
+                  customer.active
+                    ? 'bg-red-600 hover:bg-red-700'
+                    : 'bg-green-600 hover:bg-green-700'
+                }`}
+              >
+                {customer.active ? 'Tạm khóa' : 'Kích hoạt'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </DashboardLayout>
   );
 }

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router';
 import DashboardLayout from '~/component/layout/DashboardLayout';
 import supplierService, { type Supplier, type SupplierStatus } from '~/service/supplierService';
 import Toast from '~/component/common/Toast';
-import { getDownloadableCloudinaryUrl } from '~/utils/fileUtils';
+import { getDownloadableCloudinaryUrl, downloadFile, viewFile } from '~/utils/fileUtils';
 import {
   User,
   Building2,
@@ -16,7 +16,9 @@ import {
   Package,
   ArrowLeft,
   Ban,
-  CheckCircle
+  CheckCircle,
+  Download,
+  Eye
 } from 'lucide-react';
 
 export default function PartnerDetail() {
@@ -36,6 +38,25 @@ export default function PartnerDetail() {
       fetchSupplierDetail();
     }
   }, [userId]);
+
+  // Helper function to detect PDF files
+  const isPdfFile = (fileUrl: string | null | undefined): boolean => {
+    if (!fileUrl) return false;
+    const url = fileUrl.toLowerCase();
+    return url.endsWith('.pdf') || url.includes('/raw/upload/') || url.includes('/pdf') || url.includes('_pdf');
+  };
+
+  // Handle file download
+  const handleDownload = async (fileUrl: string | null | undefined, filename?: string) => {
+    if (!fileUrl) return;
+    try {
+      await downloadFile(fileUrl, filename);
+      setToast({ message: 'Đang tải file...', type: 'success' });
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      setToast({ message: 'Không thể tải file', type: 'error' });
+    }
+  };
 
   const fetchSupplierDetail = async () => {
     if (!userId) return;
@@ -234,16 +255,23 @@ export default function PartnerDetail() {
                 </div>
                 {supplier.businessLicenseUrl && (
                   <div className="md:col-span-2">
-                    <label className="text-sm font-medium text-gray-500">File giấy phép</label>
-                    <a
-                       href={getDownloadableCloudinaryUrl(supplier.businessLicenseUrl)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-1 text-blue-600 hover:text-blue-800 flex items-center"
-                    >
-                      <FileText className="w-4 h-4 mr-2" />
-                      Xem giấy phép
-                    </a>
+                    <label className="text-sm font-medium text-gray-500 block mb-2">File giấy phép</label>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => viewFile(supplier.businessLicenseUrl!)}
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        <Eye className="w-4 h-4" />
+                        Xem file
+                      </button>
+                      <button
+                        onClick={() => handleDownload(supplier.businessLicenseUrl, 'giay-phep-kinh-doanh.pdf')}
+                        className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                      >
+                        <Download className="w-4 h-4" />
+                        Tải về
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -273,17 +301,24 @@ export default function PartnerDetail() {
                     <p className="mt-1 text-gray-900">{supplier.foodSafetyCertificate}</p>
                   </div>
                   {supplier.foodSafetyCertificateUrl && (
-                    <div>
-                      <label className="text-sm font-medium text-gray-500">File chứng nhận</label>
-                      <a
-                        href={getDownloadableCloudinaryUrl(supplier.foodSafetyCertificateUrl)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="mt-1 text-blue-600 hover:text-blue-800 flex items-center"
-                      >
-                        <FileText className="w-4 h-4 mr-2" />
-                        Xem chứng nhận
-                      </a>
+                    <div className="md:col-span-2">
+                      <label className="text-sm font-medium text-gray-500 block mb-2">File chứng nhận</label>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => viewFile(supplier.foodSafetyCertificateUrl!)}
+                          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                          <Eye className="w-4 h-4" />
+                          Xem file
+                        </button>
+                        <button
+                          onClick={() => handleDownload(supplier.foodSafetyCertificateUrl, 'chung-nhan-attp.pdf')}
+                          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                        >
+                          <Download className="w-4 h-4" />
+                          Tải về
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>

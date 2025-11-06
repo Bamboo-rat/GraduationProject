@@ -26,46 +26,21 @@ export default function SupplierPendingDetail({
     return url.endsWith('.pdf') || url.includes('/raw/upload/') || url.includes('/pdf') || url.includes('_pdf');
   };
 
-  // Get document file URL WITHOUT download flag (for viewing)
   const getFileUrl = (fileUrl: string | null | undefined, forDownload: boolean = false): string | null => {
     if (!fileUrl) return null;
-    try {
-      let processedUrl: string;
-      if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) {
-        // Nếu là PDF Cloudinary nhưng sai resource type, sửa lại cho đúng
-        if (fileUrl.includes('res.cloudinary.com')) {
-          if (isPdfFile(fileUrl) && fileUrl.includes('/image/upload/')) {
-            processedUrl = fileUrl.replace('/image/upload/', '/raw/upload/');
-          } else {
-            processedUrl = fileUrl;
-          }
-        } else {
-          processedUrl = fileUrl;
-        }
-      } else {
-        const cloudName = 'dk7coitah';
-        let publicId = fileUrl.replace(/^cloudinary:\/\//, '');
-        const isPdf = publicId.toLowerCase().includes('.pdf') || publicId.toLowerCase().includes('pdf');
-        const resourceType = isPdf ? 'raw' : 'image';
-        const cleanPublicId = publicId.replace(/\.(jpg|jpeg|png|gif|pdf|webp)$/i, '');
-        processedUrl = `https://res.cloudinary.com/${cloudName}/${resourceType}/upload/${cleanPublicId}`;
-      }
-      // Only add download flag if requested
-      return forDownload ? getDownloadableCloudinaryUrl(processedUrl) : processedUrl;
-    } catch (error) {
-      console.error('Error processing file URL:', error, 'Original URL:', fileUrl);
-      return null;
-    }
+    
+    return forDownload ? getDownloadableCloudinaryUrl(fileUrl) : fileUrl;
   };
 
 
 
   // Handle file download
-  const handleDownload = (fileUrl: string | null | undefined) => {
+  const handleDownload = async (fileUrl: string | null | undefined, filename?: string) => {
     if (!fileUrl) return;
-    const downloadUrl = getFileUrl(fileUrl, true);
-    if (downloadUrl) {
-      downloadFile(downloadUrl);
+    try {
+      await downloadFile(fileUrl, filename);
+    } catch (error) {
+      console.error('Error downloading file:', error);
     }
   };
 
@@ -286,7 +261,7 @@ export default function SupplierPendingDetail({
                                     Xem file
                                   </a>
                                   <button
-                                    onClick={() => handleDownload(supplier.businessLicenseUrl)}
+                                    onClick={() => handleDownload(supplier.businessLicenseUrl, 'giay-phep-kinh-doanh.pdf')}
                                     className="flex items-center justify-center gap-2 bg-primary-dark text-surface py-3 px-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 text-sm hover:bg-primary-darker"
                                   >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -374,7 +349,7 @@ export default function SupplierPendingDetail({
                                     Xem file
                                   </a>
                                   <button
-                                    onClick={() => handleDownload(supplier.foodSafetyCertificateUrl)}
+                                    onClick={() => handleDownload(supplier.foodSafetyCertificateUrl, 'chung-nhan-attp.pdf')}
                                     className="flex items-center justify-center gap-2 bg-primary-dark text-surface py-3 px-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 text-sm hover:bg-primary-darker"
                                   >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

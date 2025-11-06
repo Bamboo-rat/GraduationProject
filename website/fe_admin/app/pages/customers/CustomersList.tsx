@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import DashboardLayout from '~/component/layout/DashboardLayout';
 import customerService, { type CustomerResponse } from '~/service/customerService';
+import Toast, { type ToastType } from '~/component/common/Toast';
 
 export default function CustomersList() {
   const navigate = useNavigate();
@@ -20,6 +21,8 @@ export default function CustomersList() {
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const [tierFilter, setTierFilter] = useState<string | undefined>(undefined);
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{ userId: string; currentActive: boolean } | null>(null);
 
   // Debounce search
   useEffect(() => {
@@ -93,15 +96,20 @@ export default function CustomersList() {
   };
 
   const handleToggleActive = async (userId: string, currentActive: boolean) => {
-    if (!confirm(`Bạn có chắc muốn ${currentActive ? 'tạm khóa' : 'kích hoạt'} khách hàng này?`)) {
-      return;
-    }
-
     try {
       await customerService.setActiveStatus(userId, !currentActive);
+      setToast({
+        message: `Đã ${!currentActive ? 'kích hoạt' : 'tạm khóa'} tài khoản khách hàng thành công`,
+        type: 'success'
+      });
+      setConfirmModal(null);
       fetchCustomers(); // Refresh list
     } catch (err: any) {
-      alert(err.message || 'Không thể cập nhật trạng thái');
+      setToast({
+        message: err.message || 'Không thể cập nhật trạng thái',
+        type: 'error'
+      });
+      setConfirmModal(null);
     }
   };
 
@@ -292,7 +300,7 @@ export default function CustomersList() {
                           Chi tiết
                         </button>
                         <button
-                          onClick={() => handleToggleActive(customer.userId, customer.active)}
+                          onClick={() => setConfirmModal({ userId: customer.userId, currentActive: customer.active })}
                           className={`${
                             customer.active
                               ? 'text-red-600 hover:text-red-900'
@@ -382,6 +390,40 @@ export default function CustomersList() {
           )}
         </div>
       </div>
+      
+      {/* Confirmation Modal */}
+      {confirmModal && (
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center w-full h-full z-50 p-4 animate-fadeIn">
+          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Xác nhận {confirmModal.currentActive ? 'tạm khóa' : 'kích hoạt'}
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Bạn có chắc muốn {confirmModal.currentActive ? 'tạm khóa' : 'kích hoạt'} khách hàng này?
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setConfirmModal(null)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={() => handleToggleActive(confirmModal.userId, confirmModal.currentActive)}
+                className={`px-4 py-2 text-white rounded-lg font-medium transition-colors ${
+                  confirmModal.currentActive
+                    ? 'bg-red-600 hover:bg-red-700'
+                    : 'bg-green-600 hover:bg-green-700'
+                }`}
+              >
+                {confirmModal.currentActive ? 'Tạm khóa' : 'Kích hoạt'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </DashboardLayout>
   );
 }
