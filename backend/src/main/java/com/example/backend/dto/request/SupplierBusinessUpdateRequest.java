@@ -1,13 +1,14 @@
 package com.example.backend.dto.request;
 
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.validator.constraints.Length;
 
 /**
  * DTO for supplier to request business information update
+ * All fields are optional - at least one must be provided (validated in service layer)
  */
 @Data
 @Builder
@@ -15,21 +16,22 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class SupplierBusinessUpdateRequest {
 
-    @Size(min = 10, max = 13, message = "Tax code must be between 10 and 13 characters")
+    // @Size validates only if value is not null
+    @Length(min = 10, max = 13, message = "Mã số thuế phải có độ dài từ 10 đến 13 ký tự")
     private String taxCode;
 
-    @Size(max = 50, message = "Business license number must not exceed 50 characters")
+    @Length(max = 50, message = "Số giấy phép kinh doanh không được vượt quá 50 ký tự")
     private String businessLicense;
 
-    @Size(max = 255, message = "Business license URL must not exceed 255 characters")
+    @Length(max = 255, message = "URL giấy phép kinh doanh không được vượt quá 255 ký tự")
     private String businessLicenseUrl;
 
-    @Size(max = 50, message = "Food safety certificate number must not exceed 50 characters")
+    @Length(max = 50, message = "Số giấy chứng nhận an toàn thực phẩm không được vượt quá 50 ký tự")
     private String foodSafetyCertificate;
 
-    @Size(max = 255, message = "Food safety certificate URL must not exceed 255 characters")
+    @Length(max = 255, message = "URL giấy chứng nhận an toàn thực phẩm không được vượt quá 255 ký tự")
     private String foodSafetyCertificateUrl;
 
-    @Size(max = 500, message = "Notes must not exceed 500 characters")
+    @Length(max = 500, message = "Ghi chú không được vượt quá 500 ký tự")
     private String supplierNotes; // Reason for update request
 }

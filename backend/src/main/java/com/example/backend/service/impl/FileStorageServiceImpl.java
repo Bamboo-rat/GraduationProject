@@ -17,13 +17,14 @@ import java.util.UUID;
 
 /**
  * Implementation of FileStorageService for Cloudinary Storage
- * Files are uploaded as PUBLIC (unsigned mode) for direct access without authentication
+ * Files are uploaded as PUBLIC (unsigned mode) for direct access without
+ * authentication
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class FileStorageServiceImpl implements FileStorageService {
-    
+
     private final Cloudinary cloudinary;
 
     @Override
@@ -39,6 +40,10 @@ public class FileStorageServiceImpl implements FileStorageService {
         try {
             // Generate unique public ID
             String publicId = UUID.randomUUID().toString() + "_" + System.currentTimeMillis();
+            String extension = getFileExtension(originalFilename);
+            if (!extension.isEmpty()) {
+                publicId = publicId + "." + extension; // Thêm extension
+            }
 
             // Determine resource type based on file extension and bucket type
             String resourceType = determineResourceType(originalFilename, bucket);
@@ -51,8 +56,7 @@ public class FileStorageServiceImpl implements FileStorageService {
                     "public_id", publicId,
                     "resource_type", resourceType, // Explicitly set resource type based on file
                     "overwrite", false,
-                    "invalidate", true
-            );
+                    "invalidate", true);
 
             log.info("Uploading to Cloudinary with params: folder={}, resource_type={}",
                     bucket.getFolderName(), resourceType);
@@ -90,7 +94,8 @@ public class FileStorageServiceImpl implements FileStorageService {
 
     /**
      * Determine Cloudinary resource type based on file extension and bucket
-     * - "raw" for documents (PDF, DOC, DOCX, etc.) and ALL files in document buckets
+     * - "raw" for documents (PDF, DOC, DOCX, etc.) and ALL files in document
+     * buckets
      * - "image" for images (JPG, PNG, GIF, etc.) in image buckets only
      * - "auto" for unknown types
      */
@@ -105,9 +110,10 @@ public class FileStorageServiceImpl implements FileStorageService {
         log.debug("File: {} | Extension: {} | Bucket: {}", filename, extension, bucket.getFolderName());
 
         // Document buckets should ALWAYS use "raw" type (for both documents and images)
-        // This ensures documents are stored with proper access and not processed as images
+        // This ensures documents are stored with proper access and not processed as
+        // images
         if (bucket == StorageBucket.BUSINESS_LICENSES ||
-            bucket == StorageBucket.FOOD_SAFETY_CERTIFICATES) {
+                bucket == StorageBucket.FOOD_SAFETY_CERTIFICATES) {
 
             log.info("Document bucket detected - forcing resource type to 'raw' for file: {}", filename);
             return "raw"; // ALWAYS return raw for document buckets, regardless of file type
@@ -144,7 +150,7 @@ public class FileStorageServiceImpl implements FileStorageService {
     @Override
     public List<String> uploadFiles(List<MultipartFile> files, StorageBucket bucket) {
         log.info("Uploading {} files to folder: {}", files.size(), bucket.getFolderName());
-        
+
         List<String> urls = new ArrayList<>();
         for (MultipartFile file : files) {
             try {
@@ -155,7 +161,7 @@ public class FileStorageServiceImpl implements FileStorageService {
                 // Continue with other files
             }
         }
-        
+
         log.info("Uploaded {}/{} files successfully", urls.size(), files.size());
         return urls;
     }
@@ -181,8 +187,7 @@ public class FileStorageServiceImpl implements FileStorageService {
             @SuppressWarnings("unchecked")
             Map<String, Object> deleteParams = ObjectUtils.asMap(
                     "resource_type", resourceType,
-                    "invalidate", true
-            );
+                    "invalidate", true);
 
             @SuppressWarnings("unchecked")
             Map<String, Object> result = cloudinary.uploader().destroy(publicId, deleteParams);
@@ -220,7 +225,8 @@ public class FileStorageServiceImpl implements FileStorageService {
 
     /**
      * Extract resource type from Cloudinary URL
-     * Example URL: https://res.cloudinary.com/{cloud_name}/image/upload/... → "image"
+     * Example URL: https://res.cloudinary.com/{cloud_name}/image/upload/... →
+     * "image"
      * Example URL: https://res.cloudinary.com/{cloud_name}/raw/upload/... → "raw"
      * Returns: "image", "raw", or "image" (default)
      */
@@ -243,9 +249,11 @@ public class FileStorageServiceImpl implements FileStorageService {
 
     /**
      * Extract public_id from Cloudinary URL
-     * Example URL: https://res.cloudinary.com/{cloud_name}/image/upload/v1234567890/products/abc123.jpg
+     * Example URL:
+     * https://res.cloudinary.com/{cloud_name}/image/upload/v1234567890/products/abc123.jpg
      * Returns: products/abc123
-     * Example URL: https://res.cloudinary.com/{cloud_name}/raw/upload/v1234567890/business-licenses/xyz789.pdf
+     * Example URL:
+     * https://res.cloudinary.com/{cloud_name}/raw/upload/v1234567890/business-licenses/xyz789.pdf
      * Returns: business-licenses/xyz789
      */
     private String extractPublicIdFromUrl(String url) {

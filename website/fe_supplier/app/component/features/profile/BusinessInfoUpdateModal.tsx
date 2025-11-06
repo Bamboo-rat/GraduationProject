@@ -156,7 +156,30 @@ export default function BusinessInfoUpdateModal({ isOpen, onClose, onSuccess }: 
 
     try {
       setLoading(true);
-      await supplierService.requestBusinessInfoUpdate(formData);
+      
+      // Only include fields with values (remove empty strings)
+      const requestData: SupplierBusinessUpdateRequest = {};
+      
+      if (formData.taxCode?.trim()) {
+        requestData.taxCode = formData.taxCode.trim();
+      }
+      if (formData.businessLicense?.trim()) {
+        requestData.businessLicense = formData.businessLicense.trim();
+      }
+      if (formData.businessLicenseUrl?.trim()) {
+        requestData.businessLicenseUrl = formData.businessLicenseUrl.trim();
+      }
+      if (formData.foodSafetyCertificate?.trim()) {
+        requestData.foodSafetyCertificate = formData.foodSafetyCertificate.trim();
+      }
+      if (formData.foodSafetyCertificateUrl?.trim()) {
+        requestData.foodSafetyCertificateUrl = formData.foodSafetyCertificateUrl.trim();
+      }
+      if (formData.supplierNotes?.trim()) {
+        requestData.supplierNotes = formData.supplierNotes.trim();
+      }
+      
+      await supplierService.requestBusinessInfoUpdate(requestData);
       setToast({ type: 'success', message: 'Yêu cầu cập nhật thông tin doanh nghiệp đã được gửi! Vui lòng chờ admin phê duyệt.' });
       onSuccess();
       onClose();

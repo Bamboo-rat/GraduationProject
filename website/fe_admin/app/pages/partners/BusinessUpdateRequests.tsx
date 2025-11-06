@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import DashboardLayout from '~/component/layout/DashboardLayout';
 import supplierService from '~/service/supplierService';
 import type { SupplierPendingUpdate, UpdateStatus } from '~/service/supplierService';
-import { FileText, Calendar, User, Building2, Eye, CheckCircle, XCircle, ChevronDown } from 'lucide-react';
+import { FileText, Calendar, User, Building2, Eye, CheckCircle, XCircle, ChevronDown, Download } from 'lucide-react';
 
 export default function BusinessUpdateRequests() {
   const [updates, setUpdates] = useState<SupplierPendingUpdate[]>([]);
@@ -109,6 +109,11 @@ export default function BusinessUpdateRequests() {
       hour: '2-digit',
       minute: '2-digit',
     });
+  };
+
+  const handleDownloadFile = (url: string) => {
+    // Open in new tab - browser will handle download
+    window.open(url, '_blank');
   };
 
   return (
@@ -384,14 +389,13 @@ export default function BusinessUpdateRequests() {
                       <span className="text-sm text-[#6B6B6B]">Giấy phép kinh doanh mới</span>
                       <p className="font-bold text-[#2D2D2D] text-lg">{selectedUpdate.businessLicense}</p>
                       {selectedUpdate.businessLicenseUrl && (
-                        <a 
-                          href={selectedUpdate.businessLicenseUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-[#2F855A] hover:underline text-sm"
+                        <button
+                          onClick={() => handleDownloadFile(selectedUpdate.businessLicenseUrl!)}
+                          className="flex items-center gap-2 text-[#2F855A] hover:text-[#276749] font-medium text-sm mt-2 transition-colors"
                         >
-                          Xem file đính kèm →
-                        </a>
+                          <Download size={16} />
+                          Tải xuống file đính kèm
+                        </button>
                       )}
                     </div>
                   )}
@@ -400,14 +404,13 @@ export default function BusinessUpdateRequests() {
                       <span className="text-sm text-[#6B6B6B]">Chứng nhận ATTP mới</span>
                       <p className="font-bold text-[#2D2D2D] text-lg">{selectedUpdate.foodSafetyCertificate}</p>
                       {selectedUpdate.foodSafetyCertificateUrl && (
-                        <a 
-                          href={selectedUpdate.foodSafetyCertificateUrl} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-[#2F855A] hover:underline text-sm"
+                        <button
+                          onClick={() => handleDownloadFile(selectedUpdate.foodSafetyCertificateUrl!)}
+                          className="flex items-center gap-2 text-[#2F855A] hover:text-[#276749] font-medium text-sm mt-2 transition-colors"
                         >
-                          Xem file đính kèm →
-                        </a>
+                          <Download size={16} />
+                          Tải xuống file đính kèm
+                        </button>
                       )}
                     </div>
                   )}
