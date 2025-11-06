@@ -253,7 +253,16 @@ public class AuthServiceImpl implements AuthService {
             // Customer exists but is not active (suspended, etc.) or account is disabled
             log.warn("Login attempt for inactive customer: username={}, status={}, active={}",
                     customer.getUsername(), customer.getStatus(), customer.isActive());
-            throw new UnauthorizedException(ErrorCode.ACCOUNT_INACTIVE);
+            
+            // Provide specific error message based on customer status
+            String errorMessage = switch (customer.getStatus()) {
+                case SUSPENDED -> "Tài khoản của bạn đã bị tạm khóa do vi phạm chính sách. Vui lòng liên hệ bộ phận hỗ trợ để biết thêm chi tiết.";
+                case BANNED -> "Tài khoản của bạn đã bị khóa vĩnh viễn. Vui lòng liên hệ bộ phận hỗ trợ.";
+                case PENDING_VERIFICATION -> "Tài khoản của bạn chưa được xác thực. Vui lòng hoàn tất xác thực OTP.";
+                default -> "Tài khoản của bạn chưa được kích hoạt hoặc đã bị vô hiệu hóa.";
+            };
+            
+            throw new UnauthorizedException(ErrorCode.ACCOUNT_INACTIVE, errorMessage);
         }
 
         // Generate custom JWT tokens (no Keycloak needed for customers)

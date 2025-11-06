@@ -1,5 +1,7 @@
 package com.example.backend.exception;
 
+import com.example.backend.exception.custom.BadRequestException;
+import com.example.backend.exception.custom.UnauthorizedException;
 import jakarta.persistence.OptimisticLockException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +24,26 @@ public class GlobalExceptionHandler {
         log.error("Base Exception: {}", e.getMessage());
         ErrorCode errorCode = e.getErrorCode();
         ErrorResponse response = new ErrorResponse(errorCode.getCode(), errorCode.getMessage(), errorCode.getVietnameseMessage());
+        return ResponseEntity.status(errorCode.getHttpStatus()).body(response);
+    }
+
+    // Xử lý UnauthorizedException (account inactive, suspended, etc.)
+    @ExceptionHandler(value =  UnauthorizedException.class)
+    public ResponseEntity<ErrorResponse> handleUnauthorizedException(UnauthorizedException e) {
+        log.warn("Unauthorized Exception: {}", e.getMessage());
+        ErrorCode errorCode = e.getErrorCode();
+        String message = e.getCustomMessage() != null ? e.getCustomMessage() : errorCode.getVietnameseMessage();
+        ErrorResponse response = new ErrorResponse(errorCode.getCode(), errorCode.getMessage(), message);
+        return ResponseEntity.status(errorCode.getHttpStatus()).body(response);
+    }
+
+    // Xử lý BadRequestException
+    @ExceptionHandler(value = BadRequestException.class)
+    public ResponseEntity<ErrorResponse> handleBadRequestException(BadRequestException e) {
+        log.warn("Bad Request Exception: {}", e.getMessage());
+        ErrorCode errorCode = e.getErrorCode();
+        String message = e.getCustomMessage() != null ? e.getCustomMessage() : errorCode.getVietnameseMessage();
+        ErrorResponse response = new ErrorResponse(errorCode.getCode(), errorCode.getMessage(), message);
         return ResponseEntity.status(errorCode.getHttpStatus()).body(response);
     }
 

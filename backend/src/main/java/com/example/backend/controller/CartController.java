@@ -176,6 +176,6 @@ public class CartController {
 
     private String extractUserId(Authentication authentication) {
         Jwt jwt = (Jwt) authentication.getPrincipal();
-        return jwt.getClaim("userId");
+        return jwt.getSubject();
     }
 }
