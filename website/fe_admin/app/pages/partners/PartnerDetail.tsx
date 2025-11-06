@@ -47,10 +47,10 @@ export default function PartnerDetail() {
   };
 
   // Handle file download
-  const handleDownload = async (fileUrl: string | null | undefined, filename?: string) => {
+  const handleDownload = (fileUrl: string | null | undefined, filename?: string) => {
     if (!fileUrl) return;
     try {
-      await downloadFile(fileUrl, filename);
+      downloadFile(fileUrl, filename);
       setToast({ message: 'Đang tải file...', type: 'success' });
     } catch (error) {
       console.error('Error downloading file:', error);

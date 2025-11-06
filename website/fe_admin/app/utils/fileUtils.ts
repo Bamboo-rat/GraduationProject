@@ -43,51 +43,47 @@ export function getDownloadableCloudinaryUrl(url: string): string {
 }
 
 /**
- * Downloads a file from the given URL by fetching it and creating a blob
- * This ensures the file is actually downloaded instead of opened in browser
+ * Downloads a file by creating a hidden anchor element with the download URL
+ * Uses Cloudinary's fl_attachment flag which sets Content-Disposition header
+ * This must be synchronous to avoid popup blockers
  *
  * @param url - The file URL to download
  * @param filename - Optional custom filename for the download
  */
-
-export async function downloadFile(url: string, filename?: string): Promise<void> {
+export function downloadFile(url: string, filename?: string): void {
   if (!url) {
     console.error('No URL provided for download');
     return;
   }
-  try {
-    const downloadUrl = getDownloadableCloudinaryUrl(url);
- // Fetch the file
-    const response = await fetch(downloadUrl);
-    if (!response.ok) {
-      throw new Error(`Failed to download file: ${response.statusText}`);
-    }
-    // Convert to blob
-    const blob = await response.blob();
-    // Extract filename from URL if not provided
-    if (!filename) {
-      const urlParts = url.split('/');
-      filename = urlParts[urlParts.length - 1] || 'download';
-    }
-    // Create download link
-    const blobUrl = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = blobUrl;
-    link.download = filename;
 
-    // Trigger download
+  try {
+    // Add fl_attachment to force download via Content-Disposition header
+    const downloadUrl = getDownloadableCloudinaryUrl(url);
+
+    console.log('Initiating download from:', downloadUrl);
+
+    // Create a hidden anchor element
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.style.display = 'none';
+
+    // Set download attribute if filename provided
+    if (filename) {
+      link.download = filename;
+    }
+
+    // Append to body, click, and remove
     document.body.appendChild(link);
     link.click();
-    // Cleanup
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(blobUrl);
-    console.log('File downloaded successfully:', filename);
+
+    // Small delay before cleanup
+    setTimeout(() => {
+      document.body.removeChild(link);
+    }, 100);
+
+    console.log('Download initiated');
   } catch (error) {
-    console.error('Error downloading file:', error);
-    // Fallback to window.open if fetch fails (CORS issues, etc.)
-    console.log('Falling back to window.open method...');
-    const downloadUrl = getDownloadableCloudinaryUrl(url);
-    window.open(downloadUrl, '_blank');
+    console.error('Error initiating download:', error);
   }
 }
 

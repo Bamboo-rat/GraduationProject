@@ -35,10 +35,10 @@ export default function SupplierPendingDetail({
 
 
   // Handle file download
-  const handleDownload = async (fileUrl: string | null | undefined, filename?: string) => {
+  const handleDownload = (fileUrl: string | null | undefined, filename?: string) => {
     if (!fileUrl) return;
     try {
-      await downloadFile(fileUrl, filename);
+      downloadFile(fileUrl, filename);
     } catch (error) {
       console.error('Error downloading file:', error);
     }
