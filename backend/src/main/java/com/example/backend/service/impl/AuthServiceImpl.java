@@ -283,7 +283,7 @@ public class AuthServiceImpl implements AuthService {
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
                 .tokenType("Bearer")
-                .expiresIn(3600) // 1 hour in seconds
+                .expiresIn(7200) // 2 hours in seconds
                 .refreshExpiresIn(604800) // 7 days in seconds
                 .build();
     }

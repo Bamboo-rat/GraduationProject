@@ -29,7 +29,7 @@ public class TestSecurityConfig {
         Jwt mockJwt = new Jwt(
             "mock-token",
             Instant.now(),
-            Instant.now().plusSeconds(3600),
+            Instant.now().plusSeconds(7200),
             Map.of("alg", "HS256", "typ", "JWT"),
             createMockClaims()
         );

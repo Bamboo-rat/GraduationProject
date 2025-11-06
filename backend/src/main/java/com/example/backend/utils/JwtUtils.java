@@ -30,7 +30,7 @@ public class JwtUtils {
      *
      * @param token JWT token string (without "Bearer " prefix)
      * @return Decoded Jwt object
-     * @throws org.springframework.security.oauth2.jwt.JwtException if token is invalid
+     * @throws JwtException if token is invalid
      */
     public static Jwt decodeToken(String token) {
         if (token == null || token.isEmpty()) {
