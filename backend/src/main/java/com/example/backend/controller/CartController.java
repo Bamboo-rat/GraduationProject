@@ -105,6 +105,19 @@ public class CartController {
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách giỏ hàng thành công", response));
     }
 
+    @GetMapping("/recent")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    @Operation(summary = "Get most recent cart", 
+               description = "Get the cart that was most recently added to or updated. Useful for quick access to active shopping session.")
+    public ResponseEntity<ApiResponse<CartResponse>> getMostRecentCart(
+            Authentication authentication) {
+        String customerId = extractUserId(authentication);
+        log.info("GET /api/cart/recent - Getting most recent cart: customerId={}", customerId);
+
+        CartResponse response = cartService.getMostRecentCart(customerId);
+        return ResponseEntity.ok(ApiResponse.success("Lấy giỏ hàng gần nhất thành công", response));
+    }
+
     @PostMapping("/{cartId}/validate")
     @PreAuthorize("hasRole('CUSTOMER')")
     @Operation(summary = "Validate cart before checkout", description = "Validates cart and removes expired/out of stock items, checks promotion eligibility")

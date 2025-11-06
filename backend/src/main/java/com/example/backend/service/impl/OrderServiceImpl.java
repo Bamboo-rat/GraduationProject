@@ -337,26 +337,6 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public OrderResponse markAsDeliveredByTrackingNumber(String trackingNumber) {
-        log.info("Marking order as delivered via tracking number: trackingNumber={}", trackingNumber);
-
-        Shipment shipment = shipmentRepository.findByTrackingNumber(trackingNumber)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.SHIPMENT_NOT_FOUND));
-
-        Order order = shipment.getOrder();
-        if (order == null) {
-            throw new NotFoundException(ErrorCode.ORDER_NOT_FOUND);
-        }
-
-        String orderId = order.getOrderId();
-        OrderResponse response = completeDelivery(order, shipment);
-
-        log.info("Order marked as delivered via tracking number: orderId={}, trackingNumber={}", orderId, trackingNumber);
-        return response;
-    }
-
-    @Override
-    @Transactional
     public OrderResponse cancelOrder(String customerId, String orderId, CancelOrderRequest request) {
         log.info("Canceling order: customerId={}, orderId={}, reason={}",
                 customerId, orderId, request.getReason());
@@ -956,42 +936,5 @@ public class OrderServiceImpl implements OrderService {
                 .canReview(detail.getOrder().getStatus() == OrderStatus.DELIVERED)
                 .hasReviewed(detail.getReview() != null)
                 .build();
-    }
-
-    // ===== SHIPPING PARTNER DEMO METHODS =====
-
-    @Override
-    @Transactional(readOnly = true)
-    public Page<OrderResponse> getOrdersByShippingProvider(String shippingProvider, int page, int size) {
-        log.info("Getting orders for shipping provider: provider={}, page={}, size={}", 
-                shippingProvider, page, size);
-
-        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        
-        // Find orders in SHIPPING status with matching shipping provider
-        Page<Order> orders = orderRepository.findByStatusAndShipment_ShippingProvider(
-            OrderStatus.SHIPPING, 
-            shippingProvider, 
-            pageable
-        );
-
-        log.info("Found {} orders for shipping provider: {}", orders.getTotalElements(), shippingProvider);
-        
-        return orders.map(this::mapToOrderResponse);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public OrderResponse getOrderByTrackingNumber(String trackingNumber) {
-        log.info("Getting order by tracking number: {}", trackingNumber);
-
-        Shipment shipment = shipmentRepository.findByTrackingNumber(trackingNumber)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.ORDER_NOT_FOUND, 
-                        "Không tìm thấy vận đơn với mã: " + trackingNumber));
-
-        Order order = shipment.getOrder();
-        log.info("Found order {} for tracking number: {}", order.getOrderCode(), trackingNumber);
-
-        return mapToOrderResponse(order);
     }
 }

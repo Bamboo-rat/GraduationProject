@@ -1,9 +1,7 @@
 package com.example.backend.controller;
 
 import com.example.backend.dto.request.ManualTransactionRequest;
-import com.example.backend.dto.request.WithdrawalRequest;
 import com.example.backend.dto.response.*;
-import com.example.backend.entity.WalletTransaction;
 import com.example.backend.service.WalletService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -19,7 +17,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
-import java.util.List;
 
 /**
  * Controller for managing supplier wallets
@@ -105,16 +102,9 @@ public class WalletController {
         return ResponseEntity.ok(ApiResponse.success(stats));
     }
 
-    @PostMapping("/supplier/me/withdraw")
-    @PreAuthorize("hasRole('SUPPLIER')")
-    @Operation(summary = "Request withdrawal", description = "Supplier requests to withdraw money from wallet")
-    public ResponseEntity<ApiResponse<WithdrawalResponse>> requestWithdrawal(
-            @RequestBody WithdrawalRequest request
-    ) {
-        log.info("Withdrawal request from supplier: amount={}", request.getAmount());
-        WithdrawalResponse response = walletService.requestWithdrawal(request);
-        return ResponseEntity.ok(ApiResponse.success("Yêu cầu rút tiền đã được gửi", response));
-    }
+    // NOTE: Supplier self-withdrawal removed - using periodic payout/settlement model instead.
+    // Suppliers view their availableBalance but cannot withdraw.
+    // Admin performs payouts via POST /api/wallets/admin/{walletId}/payout
 
     // ==================== ADMIN ENDPOINTS ====================
 
@@ -218,5 +208,17 @@ public class WalletController {
         log.info("Admin creating manual transaction for supplier: {}", request.getSupplierId());
         TransactionResponse transaction = walletService.createManualTransaction(request);
         return ResponseEntity.ok(ApiResponse.success("Tạo giao dịch thủ công thành công", transaction));
+    }
+
+    @PostMapping("/admin/{walletId}/payout")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN','MODERATOR')")
+    @Operation(summary = "Mark payout as PAID", description = "Admin marks that payout has been paid to supplier (used in periodic settlement model)")
+    public ResponseEntity<ApiResponse<TransactionResponse>> markPayoutAsPaid(
+            @PathVariable String walletId,
+            @RequestBody com.example.backend.dto.request.PayoutRequest request
+    ) {
+        log.info("Admin marking payout as paid: walletId={}, amount={}", walletId, request.getAmount());
+        TransactionResponse txn = walletService.markPayoutAsPaid(walletId, request.getAmount(), request.getExternalReference(), request.getAdminNote());
+        return ResponseEntity.ok(ApiResponse.success("Đã ghi nhận thanh toán (payout) cho nhà cung cấp", txn));
     }
 }

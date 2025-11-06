@@ -71,4 +71,10 @@ public interface CartService {
      * End of day reset - clear all carts (scheduled task)
      */
     void resetAllCarts();
+
+    /**
+     * Get most recently updated cart for customer
+     * Returns the cart that was last modified (added/updated items)
+     */
+    CartResponse getMostRecentCart(String customerId);
 }

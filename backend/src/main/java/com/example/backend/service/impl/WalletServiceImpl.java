@@ -1,7 +1,6 @@
 package com.example.backend.service.impl;
 
 import com.example.backend.dto.request.ManualTransactionRequest;
-import com.example.backend.dto.request.WithdrawalRequest;
 import com.example.backend.dto.response.*;
 import com.example.backend.entity.*;
 import com.example.backend.entity.enums.TransactionType;
@@ -333,11 +332,49 @@ public class WalletServiceImpl implements WalletService {
                 .commissionRate(commissionRate)
                 .estimatedCommissionThisMonth(estimatedCommission)
                 .status(wallet.getStatus().name())
-                .canWithdraw(wallet.getAvailableBalance().compareTo(MINIMUM_WITHDRAWAL) >= 0 
-                        && wallet.getStatus() == WalletStatus.ACTIVE)
+                .canWithdraw(false)
                 .minimumWithdrawal(MINIMUM_WITHDRAWAL)
                 .build();
     }
+
+        @Override
+        @Transactional
+        public TransactionResponse markPayoutAsPaid(String walletId, BigDecimal amount, String externalReference, String adminNote) {
+                String adminId = SecurityUtil.getCurrentUserId();
+                SupplierWallet wallet = walletRepository.findById(walletId)
+                                .orElseThrow(() -> new NotFoundException(ErrorCode.WALLET_NOT_FOUND));
+
+                if (amount.compareTo(BigDecimal.ZERO) <= 0) {
+                        throw new BadRequestException(ErrorCode.INVALID_REQUEST, "Số tiền thanh toán phải lớn hơn 0");
+                }
+
+                if (wallet.getAvailableBalance().compareTo(amount) < 0) {
+                        throw new BadRequestException(ErrorCode.INSUFFICIENT_BALANCE, "Số dư khả dụng không đủ để thanh toán");
+                }
+
+                // Debit available balance and record withdrawal
+                wallet.setAvailableBalance(wallet.getAvailableBalance().subtract(amount));
+                wallet.setTotalWithdrawn(wallet.getTotalWithdrawn().add(amount));
+                wallet.setLastWithdrawalDate(java.time.LocalDateTime.now());
+                wallet = walletRepository.save(wallet);
+
+                WalletTransaction transaction = new WalletTransaction();
+                transaction.setWallet(wallet);
+                transaction.setTransactionType(TransactionType.END_OF_MONTH_WITHDRAWAL);
+                transaction.setAmount(amount);
+                transaction.setBalanceAfter(wallet.getAvailableBalance());
+                transaction.setPendingBalanceAfter(wallet.getPendingBalance());
+                transaction.setAdminId(adminId);
+                transaction.setAdminNote(adminNote);
+                transaction.setExternalReference(externalReference);
+                transaction.setDescription("Payout marked as PAID by admin");
+
+                transaction = transactionRepository.save(transaction);
+
+                log.info("Admin {} marked payout paid for wallet {} amount {}", adminId, walletId, amount);
+
+                return mapToTransactionResponse(transaction, userRepository.findById(adminId).map(u -> u.getFullName()).orElse(null));
+        }
 
     @Override
     @Transactional(readOnly = true)
@@ -383,54 +420,8 @@ public class WalletServiceImpl implements WalletService {
         return buildStatsResponse(transactions, year, month, period);
     }
 
-    @Override
-    @Transactional
-    public WithdrawalResponse requestWithdrawal(WithdrawalRequest request) {
-        String currentUserId = SecurityUtil.getCurrentUserId();
-        SupplierWallet wallet = getWalletEntityBySupplierId(currentUserId);
-
-        if (wallet.getStatus() != WalletStatus.ACTIVE) {
-            throw new BadRequestException(ErrorCode.WALLET_LOCKED, "Ví đang bị khóa, không thể rút tiền");
-        }
-
-        if (request.getAmount().compareTo(MINIMUM_WITHDRAWAL) < 0) {
-            throw new BadRequestException(ErrorCode.MINIMUM_WITHDRAWAL_NOT_MET, "Số tiền rút tối thiểu là " + formatMoney(MINIMUM_WITHDRAWAL));
-        }
-
-        if (request.getAmount().compareTo(wallet.getAvailableBalance()) > 0) {
-            throw new BadRequestException(ErrorCode.INSUFFICIENT_BALANCE, "Số dư không đủ để rút tiền");
-        }
-
-        wallet.setAvailableBalance(wallet.getAvailableBalance().subtract(request.getAmount()));
-        wallet.setTotalWithdrawn(wallet.getTotalWithdrawn().add(request.getAmount()));
-        wallet.setLastWithdrawalDate(LocalDateTime.now());
-        wallet = walletRepository.save(wallet);
-
-        WalletTransaction transaction = new WalletTransaction();
-        transaction.setWallet(wallet);
-        transaction.setTransactionType(TransactionType.END_OF_MONTH_WITHDRAWAL);
-        transaction.setAmount(request.getAmount());
-        transaction.setBalanceAfter(wallet.getAvailableBalance());
-        transaction.setPendingBalanceAfter(wallet.getPendingBalance());
-        transaction.setDescription("Rút tiền về tài khoản " + request.getBankName() + 
-                " - " + request.getBankAccountNumber());
-        transaction.setExternalReference("WITHDRAWAL_" + System.currentTimeMillis());
-
-        transaction = transactionRepository.save(transaction);
-
-        return WithdrawalResponse.builder()
-                .transactionId(transaction.getTransactionId())
-                .amount(request.getAmount())
-                .balanceAfter(wallet.getAvailableBalance())
-                .status("COMPLETED")
-                .message("Yêu cầu rút tiền thành công. Tiền sẽ được chuyển trong vòng 1-3 ngày làm việc.")
-                .requestedAt(transaction.getCreatedAt())
-                .processedAt(transaction.getCreatedAt())
-                .bankName(request.getBankName())
-                .bankAccountNumber(maskBankAccount(request.getBankAccountNumber()))
-                .bankAccountName(request.getBankAccountName())
-                .build();
-    }
+    // NOTE: Supplier self-withdrawal removed.
+    // Using periodic payout/settlement model - admin performs payouts via markPayoutAsPaid().
 
     // ==================== ADMIN METHODS ====================
 
@@ -941,13 +932,6 @@ public class WalletServiceImpl implements WalletService {
 
     private String formatMoney(BigDecimal amount) {
         return VND_FORMAT.format(amount);
-    }
-
-    private String maskBankAccount(String accountNumber) {
-        if (accountNumber == null || accountNumber.length() < 4) return accountNumber;
-        int visibleDigits = 4;
-        String masked = "*".repeat(accountNumber.length() - visibleDigits);
-        return masked + accountNumber.substring(accountNumber.length() - visibleDigits);
     }
 
     private BigDecimal calculateTotalCommission() {

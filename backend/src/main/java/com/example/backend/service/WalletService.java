@@ -1,7 +1,6 @@
 package com.example.backend.service;
 
 import com.example.backend.dto.request.ManualTransactionRequest;
-import com.example.backend.dto.request.WithdrawalRequest;
 import com.example.backend.dto.response.*;
 import com.example.backend.entity.Order;
 import com.example.backend.entity.SupplierWallet;
@@ -71,11 +70,7 @@ public interface WalletService {
      */
     WalletStatsResponse getWalletStats(Integer year, Integer month);
 
-    /**
-     * Request withdrawal
-     */
-    WithdrawalResponse requestWithdrawal(WithdrawalRequest request);
-
+    
     // ==================== ADMIN METHODS ====================
 
     /**
@@ -118,4 +113,10 @@ public interface WalletService {
      * Create manual transaction (admin)
      */
     TransactionResponse createManualTransaction(ManualTransactionRequest request);
+
+        /**
+         * Admin marks a payout as paid for a supplier's wallet (used in periodic settlement model).
+         * This debits the supplier's available balance and records an END_OF_MONTH_WITHDRAWAL transaction.
+         */
+        TransactionResponse markPayoutAsPaid(String walletId, java.math.BigDecimal amount, String externalReference, String adminNote);
 }

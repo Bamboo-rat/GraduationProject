@@ -678,4 +678,17 @@ public class CartServiceImpl implements CartService {
                 .isAvailable(isAvailable)
                 .build();
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CartResponse getMostRecentCart(String customerId) {
+        log.info("Getting most recent cart for customer: customerId={}", customerId);
+
+        Cart cart = cartRepository.findMostRecentCartByCustomerId(customerId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.CART_NOT_FOUND,
+                        "Không tìm thấy giỏ hàng nào"));
+
+        log.info("Found most recent cart: cartId={}, updatedAt={}", cart.getCartId(), cart.getUpdatedAt());
+        return mapToCartResponse(cart);
+    }
 }

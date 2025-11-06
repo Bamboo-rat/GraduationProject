@@ -165,46 +165,6 @@ public class OrderController {
         return ResponseEntity.ok(ApiResponse.success("Đơn hàng đã được giao thành công", response));
     }
 
-    // ===== SHIPPING PARTNER DEMO ENDPOINTS (No Auth Required) =====
-
-    @GetMapping("/shipping/provider/{shippingProvider}")
-    @Operation(summary = "Get orders by shipping provider (Demo)",
-               description = "Get all SHIPPING orders assigned to a specific provider (GHN, GHTK, etc.). " +
-                             "FOR DEMO ONLY - No authentication required. Web demo can call directly.")
-    public ResponseEntity<ApiResponse<Page<OrderResponse>>> getOrdersByShippingProvider(
-            @PathVariable String shippingProvider,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        log.info("GET /api/orders/shipping/provider/{} - Getting orders for shipping provider", shippingProvider);
-
-        Page<OrderResponse> response = orderService.getOrdersByShippingProvider(shippingProvider, page, size);
-        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách đơn hàng thành công", response));
-    }
-
-    @GetMapping("/shipping/tracking/{trackingNumber}")
-    @Operation(summary = "Get order by tracking number (Demo)",
-               description = "Get order details by tracking number. " +
-                             "FOR DEMO ONLY - No authentication required. Useful for web demo lookup.")
-    public ResponseEntity<ApiResponse<OrderResponse>> getOrderByTrackingNumber(
-            @PathVariable String trackingNumber) {
-        log.info("GET /api/orders/shipping/tracking/{} - Getting order by tracking number", trackingNumber);
-
-        OrderResponse response = orderService.getOrderByTrackingNumber(trackingNumber);
-        return ResponseEntity.ok(ApiResponse.success("Lấy thông tin đơn hàng thành công", response));
-    }
-
-    @PostMapping("/shipping/tracking/{trackingNumber}/deliver")
-    @Operation(summary = "Mark as delivered by tracking number (Demo)",
-               description = "Mark order as delivered using tracking number. " +
-                             "FOR DEMO ONLY - No authentication required. " +
-                             "Web demo can call this to complete delivery.")
-    public ResponseEntity<ApiResponse<OrderResponse>> markAsDeliveredByTrackingNumber(
-            @PathVariable String trackingNumber) {
-        log.info("POST /api/orders/shipping/tracking/{}/deliver - Marking as delivered by tracking", trackingNumber);
-
-        OrderResponse response = orderService.markAsDeliveredByTrackingNumber(trackingNumber);
-        return ResponseEntity.ok(ApiResponse.success("Đã xác nhận giao hàng thành công", response));
-    }
 
     // ===== ADMIN ENDPOINTS =====
 

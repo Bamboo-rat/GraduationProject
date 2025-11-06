@@ -63,13 +63,6 @@ public interface OrderService {
     OrderResponse markAsDelivered(String orderId);
 
     /**
-     * Mark order as delivered using tracking number (for third-party shipping partner demo)
-     * - Looks up shipment by tracking number
-     * - Applies the same delivery completion logic as supplier-triggered flow
-     */
-    OrderResponse markAsDeliveredByTrackingNumber(String trackingNumber);
-
-    /**
      * Cancel order
      * - Allowed when status is PENDING or CONFIRMED
      * - From PREPARING onwards, requires cancellation request approval
@@ -119,17 +112,6 @@ public interface OrderService {
      */
     void processRefund(String orderId);
 
-    // ===== SHIPPING PARTNER DEMO ENDPOINTS =====
-
-    /**
-     * Get orders by shipping provider (for web demo)
-     * Returns all SHIPPING orders assigned to a specific provider
-     */
-    Page<OrderResponse> getOrdersByShippingProvider(String shippingProvider, int page, int size);
-
-    /**
-     * Get order by tracking number (for web demo)
-     * Allows looking up order using tracking number
-     */
-    OrderResponse getOrderByTrackingNumber(String trackingNumber);
+    // NOTE: Shipping partner demo methods moved to ShippingPartnerDemoService
+    // to avoid duplication and maintain clear separation of concerns.
 }

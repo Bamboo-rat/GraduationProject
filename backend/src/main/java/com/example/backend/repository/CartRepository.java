@@ -32,6 +32,12 @@ public interface CartRepository extends JpaRepository<Cart, String> {
     List<Cart> findByCustomerId(@Param("customerId") String customerId);
 
     /**
+     * Find most recently updated cart for a customer
+     */
+    @Query("SELECT c FROM Cart c WHERE c.customer.userId = :customerId ORDER BY c.updatedAt DESC LIMIT 1")
+    Optional<Cart> findMostRecentCartByCustomerId(@Param("customerId") String customerId);
+
+    /**
      * Delete all carts for a specific customer
      */
     @Modifying
