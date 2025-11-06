@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router';
 import DashboardLayout from '~/component/layout/DashboardLayout';
 import supplierService, { type Supplier, type SupplierStatus } from '~/service/supplierService';
 import Toast from '~/component/common/Toast';
-import { getDownloadableCloudinaryUrl, downloadFile, viewFile } from '~/utils/fileUtils';
+import { downloadFile, viewFile } from '~/utils/fileUtils';
 import {
   User,
   Building2,
@@ -51,7 +51,7 @@ export default function PartnerDetail() {
     if (!fileUrl) return;
     try {
       downloadFile(fileUrl, filename);
-      setToast({ message: 'Đang tải file...', type: 'success' });
+      setToast({ message: 'File đang được tải xuống', type: 'success' });
     } catch (error) {
       console.error('Error downloading file:', error);
       setToast({ message: 'Không thể tải file', type: 'error' });

@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router';
 import DashboardLayout from '~/component/layout/DashboardLayout';
-import supplierService from '~/service/supplierService';
-import { downloadFile } from '~/utils/fileUtils';
+import supplierService, { type Supplier, type SupplierStatus } from '~/service/supplierService';
+import Toast, { type ToastType } from '~/component/common/Toast';
+import { downloadFile, viewFile } from '~/utils/fileUtils';
 import type { SupplierPendingUpdate, UpdateStatus } from '~/service/supplierService';
 import { FileText, Calendar, User, Building2, Eye, CheckCircle, XCircle, ChevronDown, Download } from 'lucide-react';
 
@@ -19,6 +21,7 @@ export default function BusinessUpdateRequests() {
   const [adminNotes, setAdminNotes] = useState('');
   const [processing, setProcessing] = useState(false);
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
 
   const fetchUpdates = async () => {
     try {
@@ -33,7 +36,10 @@ export default function BusinessUpdateRequests() {
       setTotalElements(response.totalElements);
     } catch (error: any) {
       console.error('Error fetching updates:', error);
-      alert(error.message || 'Không thể tải danh sách yêu cầu');
+      setToast({
+        message: error.message || 'Không thể tải danh sách yêu cầu',
+        type: 'error'
+      });
     } finally {
       setLoading(false);
     }
@@ -56,13 +62,19 @@ export default function BusinessUpdateRequests() {
         selectedUpdate.updateId,
         adminNotes || undefined
       );
-      alert('Đã phê duyệt yêu cầu thành công!');
+      setToast({
+        message: 'Đã phê duyệt yêu cầu thành công!',
+        type: 'success'
+      });
       setShowApproveModal(false);
       setShowDetailModal(false);
       setAdminNotes('');
       fetchUpdates();
     } catch (error: any) {
-      alert(error.message || 'Không thể phê duyệt yêu cầu');
+      setToast({
+        message: error.message || 'Không thể phê duyệt yêu cầu',
+        type: 'error'
+      });
     } finally {
       setProcessing(false);
     }
@@ -72,7 +84,10 @@ export default function BusinessUpdateRequests() {
     if (!selectedUpdate) return;
     
     if (!adminNotes.trim()) {
-      alert('Vui lòng nhập lý do từ chối');
+      setToast({
+        message: 'Vui lòng nhập lý do từ chối',
+        type: 'error'
+      });
       return;
     }
 
@@ -82,13 +97,19 @@ export default function BusinessUpdateRequests() {
         selectedUpdate.updateId,
         adminNotes
       );
-      alert('Đã từ chối yêu cầu');
+      setToast({
+        message: 'Đã từ chối yêu cầu',
+        type: 'success'
+      });
       setShowRejectModal(false);
       setShowDetailModal(false);
       setAdminNotes('');
       fetchUpdates();
     } catch (error: any) {
-      alert(error.message || 'Không thể từ chối yêu cầu');
+      setToast({
+        message: error.message || 'Không thể từ chối yêu cầu',
+        type: 'error'
+      });
     } finally {
       setProcessing(false);
     }
@@ -112,12 +133,14 @@ export default function BusinessUpdateRequests() {
     });
   };
 
-  const handleDownloadFile = (url: string) => {
+   const handleDownload = (fileUrl: string | null | undefined, filename?: string) => {
+    if (!fileUrl) return;
     try {
-      downloadFile(url);
+      downloadFile(fileUrl, filename);
+      setToast({ message: 'File đang được tải xuống', type: 'success' });
     } catch (error) {
       console.error('Error downloading file:', error);
-      alert('Không thể tải file. Vui lòng thử lại hoặc kiểm tra popup blocker.');
+      setToast({ message: 'Không thể tải file', type: 'error' });
     }
   };
 
@@ -395,7 +418,7 @@ export default function BusinessUpdateRequests() {
                       <p className="font-bold text-[#2D2D2D] text-lg">{selectedUpdate.businessLicense}</p>
                       {selectedUpdate.businessLicenseUrl && (
                         <button
-                          onClick={() => handleDownloadFile(selectedUpdate.businessLicenseUrl!)}
+                          onClick={() => handleDownload(selectedUpdate.businessLicenseUrl!)}
                           className="flex items-center gap-2 text-[#2F855A] hover:text-[#276749] font-medium text-sm mt-2 transition-colors"
                         >
                           <Download size={16} />
@@ -410,7 +433,7 @@ export default function BusinessUpdateRequests() {
                       <p className="font-bold text-[#2D2D2D] text-lg">{selectedUpdate.foodSafetyCertificate}</p>
                       {selectedUpdate.foodSafetyCertificateUrl && (
                         <button
-                          onClick={() => handleDownloadFile(selectedUpdate.foodSafetyCertificateUrl!)}
+                          onClick={() => handleDownload(selectedUpdate.foodSafetyCertificateUrl!)}
                           className="flex items-center gap-2 text-[#2F855A] hover:text-[#276749] font-medium text-sm mt-2 transition-colors"
                         >
                           <Download size={16} />
@@ -589,6 +612,15 @@ export default function BusinessUpdateRequests() {
         </div>
       )}
         </div>
+      )}
+      
+      {/* Toast notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
       )}
     </DashboardLayout>
   );

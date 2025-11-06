@@ -43,11 +43,10 @@ export function getDownloadableCloudinaryUrl(url: string): string {
 }
 
 /**
- * Downloads a file by creating a hidden anchor element with the download URL
- * Uses Cloudinary's fl_attachment flag which sets Content-Disposition header
- * This must be synchronous to avoid popup blockers
+ * Downloads a file through backend proxy to avoid CORS and auth issues
+ * The backend fetches from Cloudinary and streams it back with proper headers
  *
- * @param url - The file URL to download
+ * @param url - The Cloudinary file URL to download
  * @param filename - Optional custom filename for the download
  */
 export function downloadFile(url: string, filename?: string): void {
@@ -57,45 +56,68 @@ export function downloadFile(url: string, filename?: string): void {
   }
 
   try {
-    // Add fl_attachment to force download via Content-Disposition header
-    const downloadUrl = getDownloadableCloudinaryUrl(url);
+    // Build backend proxy URL
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+    const encodedUrl = encodeURIComponent(url);
+    let downloadUrl = `${API_BASE_URL}/files/download?url=${encodedUrl}`;
 
-    console.log('Initiating download from:', downloadUrl);
+    // Add custom filename if provided
+    if (filename) {
+      const encodedFilename = encodeURIComponent(filename);
+      downloadUrl += `&filename=${encodedFilename}`;
+    }
 
-    // Create a hidden anchor element
+    console.log('Initiating download through proxy:', downloadUrl);
+
+    // Create hidden anchor and trigger click
     const link = document.createElement('a');
     link.href = downloadUrl;
     link.style.display = 'none';
 
-    // Set download attribute if filename provided
+    // Download attribute helps suggest filename to browser
     if (filename) {
       link.download = filename;
     }
 
-    // Append to body, click, and remove
     document.body.appendChild(link);
     link.click();
 
-    // Small delay before cleanup
+    // Cleanup after a short delay
     setTimeout(() => {
-      document.body.removeChild(link);
+      if (link.parentNode) {
+        document.body.removeChild(link);
+      }
     }, 100);
 
-    console.log('Download initiated');
+    console.log('Download initiated successfully');
   } catch (error) {
     console.error('Error initiating download:', error);
   }
 }
 
 /**
- * Simple method to open file in new tab (for viewing)
+ * Opens file for viewing in new tab through backend proxy
+ * Uses inline disposition so file displays in browser instead of downloading
  *
- * @param url - The file URL to view
+ * @param url - The Cloudinary file URL to view
  */
 export function viewFile(url: string): void {
   if (!url) {
     console.error('No URL provided for viewing');
     return;
   }
-  window.open(url, '_blank');
+
+  try {
+    // Build backend proxy URL with inline=true for viewing
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+    const encodedUrl = encodeURIComponent(url);
+    const viewUrl = `${API_BASE_URL}/files/download?url=${encodedUrl}&inline=true`;
+
+    console.log('Opening file for viewing through proxy:', viewUrl);
+
+    // Open in new tab
+    window.open(viewUrl, '_blank');
+  } catch (error) {
+    console.error('Error viewing file:', error);
+  }
 }
