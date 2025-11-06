@@ -400,14 +400,26 @@
             </div>
         </div>
 
-        <!-- Search -->
+        <!-- Search & Filter -->
         <div class="search-box">
-            <input 
-                type="text" 
-                class="search-input" 
-                id="searchInput"
-                placeholder="Tìm kiếm theo mã đơn hàng, tracking number hoặc tên khách hàng..."
-            >
+            <div style="display: grid; grid-template-columns: 1fr auto; gap: 15px; margin-bottom: 15px;">
+                <input 
+                    type="text" 
+                    class="search-input" 
+                    id="searchInput"
+                    placeholder="Tìm kiếm theo mã đơn hàng, tracking number hoặc tên khách hàng..."
+                >
+                <select class="search-input" id="providerFilter" style="max-width: 300px;" onchange="applyFilter()">
+                    <option value="">Tất cả đơn vị vận chuyển</option>
+                    <option value="GIAO_HANG_NHANH">Giao Hàng Nhanh</option>
+                    <option value="GIAO_HANG_TIET_KIEM">Giao Hàng Tiết Kiệm</option>
+                    <option value="VIETTEL_POST">Viettel Post</option>
+                    <option value="VNPOST">VNPost</option>
+                    <option value="J_T_EXPRESS">J&T Express</option>
+                    <option value="GRAB_EXPRESS">Grab Express</option>
+                    <option value="SHOPEE_EXPRESS">Shopee Express</option>
+                </select>
+            </div>
         </div>
 
         <!-- Orders List -->
@@ -433,28 +445,68 @@
     <script>
         let allOrders = [];
         let deliveredToday = 0;
+        const API_BASE_URL = 'http://localhost:8080/api/demo/shipping';
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             const searchInput = document.getElementById('searchInput');
-            searchInput.addEventListener('input', (e) => {
-                filterOrders(e.target.value);
+            searchInput.addEventListener('input', () => {
+                applyFilter();
             });
 
             loadOrders();
         });
 
-        // Load orders
+        // Load orders from backend
         async function loadOrders() {
             const content = document.getElementById('ordersContent');
             content.innerHTML = '<div class="loading">Đang tải danh sách đơn hàng...</div>';
 
-            // Simulate empty state for demo
-            setTimeout(() => {
-                allOrders = [];
-                updateStats();
-                renderOrders(allOrders);
-            }, 1000);
+            try {
+                const response = await fetch(`${API_BASE_URL}/orders`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                console.log('API Response:', result);
+                
+                // Check both formats: {success: true, data: []} or {code: 200, data: []}
+                const isSuccess = result.success === true || result.code === 200;
+                const data = result.data;
+                
+                if (isSuccess && Array.isArray(data)) {
+                    allOrders = data;
+                    
+                    // Count delivered today
+                    const today = new Date().toDateString();
+                    deliveredToday = allOrders.filter(order => {
+                        if (order.deliveredAt) {
+                            const deliveredDate = new Date(order.deliveredAt).toDateString();
+                            return deliveredDate === today;
+                        }
+                        return false;
+                    }).length;
+                    
+                    updateStats();
+                    renderOrders(allOrders);
+                } else {
+                    throw new Error(result.message || 'Không thể tải danh sách đơn hàng');
+                }
+            } catch (error) {
+                console.error('Error loading orders:', error);
+                content.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">⚠️</div>
+                        <h3>Lỗi khi tải dữ liệu</h3>
+                        <p>${error.message}</p>
+                        <button class="refresh-btn" onclick="loadOrders()" style="margin-top: 20px;">
+                            Thử lại
+                        </button>
+                    </div>
+                `;
+            }
         }
 
         // Update statistics
@@ -486,18 +538,26 @@
             `;
         }
 
-        // Filter orders by search term
-        function filterOrders(searchTerm) {
-            if (!searchTerm) {
-                renderOrders(allOrders);
-                return;
+        // Apply combined filter (search + provider)
+        function applyFilter() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const selectedProvider = document.getElementById('providerFilter').value;
+
+            let filtered = allOrders;
+
+            // Filter by shipping provider
+            if (selectedProvider) {
+                filtered = filtered.filter(order => order.shippingProvider === selectedProvider);
             }
 
-            const filtered = allOrders.filter(order => 
-                order.orderCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                order.trackingNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                order.customerName.toLowerCase().includes(searchTerm.toLowerCase())
-            );
+            // Filter by search term
+            if (searchTerm) {
+                filtered = filtered.filter(order => 
+                    order.orderCode.toLowerCase().includes(searchTerm) ||
+                    order.trackingNumber.toLowerCase().includes(searchTerm) ||
+                    order.customerName.toLowerCase().includes(searchTerm)
+                );
+            }
 
             renderOrders(filtered);
         }
@@ -527,6 +587,7 @@
 
         // Utility: Format date
         function formatDate(dateString) {
+            if (!dateString) return 'N/A';
             const date = new Date(dateString);
             return date.toLocaleDateString('vi-VN', {
                 year: 'numeric',
@@ -535,6 +596,123 @@
                 hour: '2-digit',
                 minute: '2-digit'
             });
+        }
+
+        // Create order card HTML
+        function createOrderCard(order) {
+            return `
+                <div class="order-card">
+                    <div class="order-header">
+                        <div class="order-info">
+                            <div class="order-code">${order.orderCode}</div>
+                            <div class="tracking-number">Tracking: ${order.trackingNumber}</div>
+                        </div>
+                        <div class="status-badge">${getStatusLabel(order.shipmentStatus)}</div>
+                    </div>
+                    
+                    <div class="order-details">
+                        <div class="detail-item">
+                            <div class="detail-label">Cửa hàng</div>
+                            <div class="detail-value">${order.storeName || 'N/A'}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Khách hàng</div>
+                            <div class="detail-value">${order.customerName}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Số điện thoại</div>
+                            <div class="detail-value">${order.customerPhone}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Đơn vị vận chuyển</div>
+                            <div class="detail-value">${getProviderLabel(order.shippingProvider)}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Địa chỉ giao hàng</div>
+                            <div class="detail-value">${order.shippingAddress || 'N/A'}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Số tiền COD</div>
+                            <div class="detail-value">${formatMoney(order.codAmount)}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Ngày tạo</div>
+                            <div class="detail-value">${formatDate(order.createdAt)}</div>
+                        </div>
+                        <div class="detail-item">
+                            <div class="detail-label">Dự kiến giao</div>
+                            <div class="detail-value">${formatDate(order.estimatedDeliveryDate)}</div>
+                        </div>
+                    </div>
+
+                    <div class="order-actions">
+                        ${order.shipmentStatus === 'IN_TRANSIT' ? `
+                            <button class="btn btn-deliver" onclick="markAsDelivered('${order.trackingNumber}')">
+                                ✓ Xác nhận đã giao
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Mark order as delivered
+        async function markAsDelivered(trackingNumber) {
+            if (!confirm('Xác nhận đơn hàng này đã được giao thành công?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/orders/${trackingNumber}/deliver`, {
+                    method: 'POST'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                console.log('Mark delivered response:', result);
+
+                // Check both formats
+                const isSuccess = result.success === true || result.code === 200;
+
+                if (isSuccess) {
+                    showToast('Đã cập nhật trạng thái giao hàng thành công!', 'success');
+                    loadOrders(); // Reload orders list
+                } else {
+                    throw new Error(result.message || 'Không thể cập nhật trạng thái');
+                }
+            } catch (error) {
+                console.error('Error marking delivered:', error);
+                showToast(error.message || 'Lỗi khi cập nhật trạng thái', 'error');
+            }
+        }
+
+        // Get status label in Vietnamese
+        function getStatusLabel(status) {
+            const labels = {
+                'PENDING': 'Chờ lấy hàng',
+                'IN_TRANSIT': 'Đang giao hàng',
+                'DELIVERED': 'Đã giao hàng',
+                'CANCELLED': 'Đã hủy',
+                'RETURNED': 'Đã trả hàng'
+            };
+            return labels[status] || status;
+        }
+
+        // Get shipping provider label
+        function getProviderLabel(provider) {
+            const labels = {
+                'GIAO_HANG_NHANH': 'Giao Hàng Nhanh',
+                'GIAO_HANG_TIET_KIEM': 'Giao Hàng Tiết Kiệm',
+                'VIETTEL_POST': 'Viettel Post',
+                'VNPOST': 'VNPost',
+                'J_T_EXPRESS': 'J&T Express',
+                'GRAB_EXPRESS': 'Grab Express',
+                'SHOPEE_EXPRESS': 'Shopee Express'
+            };
+            return labels[provider] || provider;
         }
     </script>
 </body>

@@ -30,7 +30,7 @@
       "subMenu": [
         { "title": "Tất cả Sản phẩm", "link": "/products/list-products", "icon": "package" },
         { "title": "Quản lý Danh mục", "link": "/products/categories", "icon": "tags" },
-        { "title": "Đề xuất danh mục", "link": "/products/category-suggestions", "icon": "folder-plus" }
+        { "title": "Phê duyệt danh mục", "link": "/products/category-suggestions", "icon": "folder-plus" }
       ]
     },
     {

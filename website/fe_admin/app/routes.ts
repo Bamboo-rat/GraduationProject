@@ -39,6 +39,7 @@ export default [
 
     // Operations
     route("orders/list-orders", "routes/orders/list-orders.tsx"),
+    route("orders/:orderId", "routes/orders/order-detail.tsx"),
     route("delivery/management", "routes/orders/deliveryManagement.tsx"),
 
     // Finance
