@@ -193,16 +193,15 @@ public class CustomerServiceImpl implements CustomerService {
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
 
         CustomerStatus currentStatus = customer.getStatus();
-        customer.setActive(active);
 
         // Sync status with active flag, respecting status hierarchy
         if (active) {
             // When enabling, only allow activation for non-permanent states
             // NEVER automatically reactivate BANNED customers
             if (currentStatus == CustomerStatus.BANNED) {
-                log.warn("Cannot auto-activate BANNED customer {}. Requires explicit unban.", userId);
-                // Keep as BANNED, but set active=true for consistency
-                // Admin must explicitly unban to change status
+                log.warn("Cannot activate BANNED customer {}. Must unban first.", userId);
+                throw new BadRequestException(ErrorCode.OPERATION_NOT_ALLOWED,
+                        "Không thể kích hoạt khách hàng đã bị cấm vĩnh viễn. Vui lòng gỡ cấm trước.");
             } else if (currentStatus == CustomerStatus.PENDING_VERIFICATION) {
                 // Keep as PENDING_VERIFICATION until they complete verification
                 log.info("Keeping customer {} in PENDING_VERIFICATION status", userId);
@@ -215,12 +214,11 @@ public class CustomerServiceImpl implements CustomerService {
                 customer.setStatus(CustomerStatus.ACTIVE);
             }
         } else {
-            // When disabling, respect severity hierarchy
-            // NEVER downgrade a more severe status to a less severe one
+            // When disabling, set active=false
+            // Respect severity hierarchy - don't downgrade more severe status
             if (currentStatus == CustomerStatus.BANNED) {
-                // BANNED is permanent - don't downgrade to SUSPENDED
-                log.warn("Customer {} is BANNED - not downgrading to SUSPENDED", userId);
-                // Keep as BANNED
+                // BANNED is permanent - already inactive, just ensure flag is consistent
+                log.info("Customer {} is BANNED - already inactive", userId);
             } else if (currentStatus == CustomerStatus.SUSPENDED) {
                 // Already suspended - no change needed
                 log.info("Customer {} is already SUSPENDED", userId);
@@ -235,6 +233,8 @@ public class CustomerServiceImpl implements CustomerService {
             }
         }
 
+        // Set active flag after validating status changes
+        customer.setActive(active);
         customer = customerRepository.save(customer);
 
         log.info("Customer active status updated: userId={}, active={}, previousStatus={}, newStatus={}",
@@ -344,6 +344,9 @@ public class CustomerServiceImpl implements CustomerService {
                 customer.getPointsThisYear()
         );
 
+        CustomerStatus status = customer.getStatus();
+        CustomerTier tier = customer.getTier();
+
         return CustomerDetailResponse.BasicInfo.builder()
                 .userId(customer.getUserId())
                 .keycloakId(customer.getKeycloakId())
@@ -353,12 +356,12 @@ public class CustomerServiceImpl implements CustomerService {
                 .fullName(customer.getFullName())
                 .dateOfBirth(customer.getDateOfBirth())
                 .avatarUrl(customer.getAvatarUrl())
-                .status(customer.getStatus().toString())
+                .status(status != null ? status.toString() : null)
                 .active(customer.isActive())
                 .createdAt(customer.getCreatedAt())
                 .updatedAt(customer.getUpdatedAt())
                 .lastLoginAt(customer.getCreatedAt()) // Use createdAt as fallback until lastLoginAt is added
-                .tier(customer.getTier().toString())
+                .tier(tier != null ? tier.toString() : null)
                 .tierUpdatedAt(customer.getTierUpdatedAt())
                 .currentPoints(customer.getPoints())
                 .lifetimePoints(customer.getLifetimePoints())
@@ -848,7 +851,7 @@ public class CustomerServiceImpl implements CustomerService {
             case COMMUNITY_REPORT -> 20;
             default -> 5;
         };
-        
+
         int multiplier = switch (severity) {
             case LOW -> 1;
             case MEDIUM -> 2;

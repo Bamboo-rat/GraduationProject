@@ -108,6 +108,18 @@ public enum ErrorCode {
     MINIMUM_WITHDRAWAL_NOT_MET("6006", "Minimum withdrawal amount not met", "Số tiền rút tối thiểu không đạt yêu cầu", HttpStatus.BAD_REQUEST),
     INVALID_MANUAL_TRANSACTION_TYPE("6007", "Invalid transaction type for manual transaction", "Loại giao dịch không hợp lệ cho giao dịch thủ công", HttpStatus.BAD_REQUEST),
     NEGATIVE_BALANCE_NOT_ALLOWED("6008", "Operation would result in negative balance", "Thao tác sẽ làm số dư âm, không được phép", HttpStatus.BAD_REQUEST),
+    WALLET_CREATION_FAILED("6009", "Failed to create wallet", "Không thể tạo ví tiền", HttpStatus.INTERNAL_SERVER_ERROR),
+
+    // ===== 7xxx: Chat & Messaging Errors =====
+    MESSAGE_NOT_FOUND("7001", "Message not found", "Không tìm thấy tin nhắn", HttpStatus.NOT_FOUND),
+    CONVERSATION_NOT_FOUND("7002", "Conversation not found", "Không tìm thấy cuộc trò chuyện", HttpStatus.NOT_FOUND),
+    CANNOT_SEND_MESSAGE_TO_SELF("7003", "Cannot send message to yourself", "Không thể gửi tin nhắn cho chính mình", HttpStatus.BAD_REQUEST),
+    MESSAGE_SEND_FAILED("7004", "Failed to send message", "Gửi tin nhắn thất bại", HttpStatus.INTERNAL_SERVER_ERROR),
+    UNAUTHORIZED_MESSAGE_ACCESS("7005", "Unauthorized access to message", "Bạn không có quyền truy cập tin nhắn này", HttpStatus.FORBIDDEN),
+    CANNOT_DELETE_MESSAGE("7006", "Cannot delete message", "Không thể xóa tin nhắn", HttpStatus.FORBIDDEN),
+    MESSAGE_ALREADY_READ("7007", "Message already marked as read", "Tin nhắn đã được đánh dấu là đã đọc", HttpStatus.BAD_REQUEST),
+    FILE_UPLOAD_FAILED_CHAT("7008", "Failed to upload file for chat", "Tải lên file cho tin nhắn thất bại", HttpStatus.INTERNAL_SERVER_ERROR),
+    INVALID_MESSAGE_TYPE("7009", "Invalid message type", "Loại tin nhắn không hợp lệ", HttpStatus.BAD_REQUEST),
 
     // ===== 9xxx: Internal/Server Errors =====
     OPTIMISTIC_LOCK_ERROR("9001", "Data has been modified by another user", "Dữ liệu đã được thay đổi bởi người dùng khác. Vui lòng thử lại", HttpStatus.CONFLICT),

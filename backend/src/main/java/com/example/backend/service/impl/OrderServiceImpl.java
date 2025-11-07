@@ -95,7 +95,10 @@ public class OrderServiceImpl implements OrderService {
         BigDecimal orderTotal = BigDecimal.ZERO;
         
         for (CartDetail detail : cart.getCartDetails()) {
-            StoreProduct storeProduct = detail.getStoreProduct();
+            // Fetch storeProduct with pessimistic lock to avoid overselling in concurrent checkouts
+            StoreProduct storeProduct = storeProductRepository
+                    .findByStoreProductIdForUpdate(detail.getStoreProduct().getStoreProductId())
+                    .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND));
             ProductVariant variant = storeProduct.getVariant();
             Product product = variant.getProduct();
 
@@ -147,7 +150,10 @@ public class OrderServiceImpl implements OrderService {
 
         // Copy cart details to order details with current prices
         for (CartDetail cartDetail : cart.getCartDetails()) {
-            StoreProduct storeProduct = cartDetail.getStoreProduct();
+            // Re-fetch with lock before deducting stock to ensure atomicity
+            StoreProduct storeProduct = storeProductRepository
+                    .findByStoreProductIdForUpdate(cartDetail.getStoreProduct().getStoreProductId())
+                    .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND));
             ProductVariant variant = storeProduct.getVariant();
             
             // Calculate current unit price and amount

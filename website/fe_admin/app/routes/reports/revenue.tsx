@@ -1,6 +1,7 @@
 import type { Route } from './+types/revenue';
 import RevenueReport from '~/pages/reports/RevenueReport';
 import ProtectedRoute from '~/component/common/ProtectedRoute';
+import DashboardLayout from '~/component/layout/DashboardLayout';
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -12,7 +13,9 @@ export function meta({}: Route.MetaArgs) {
 export default function RevenueRoute() {
   return (
     <ProtectedRoute requiredRoles={['SUPER_ADMIN']}>
-      <RevenueReport />
+      <DashboardLayout>
+        <RevenueReport />
+      </DashboardLayout>
     </ProtectedRoute>
   );
 }

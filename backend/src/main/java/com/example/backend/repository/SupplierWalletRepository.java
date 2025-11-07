@@ -1,8 +1,10 @@
 package com.example.backend.repository;
 
 import com.example.backend.entity.SupplierWallet;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
@@ -21,6 +23,14 @@ public interface SupplierWalletRepository extends JpaRepository<SupplierWallet, 
      */
     @Query("SELECT w FROM SupplierWallet w WHERE w.supplier.userId = :supplierId")
     Optional<SupplierWallet> findBySupplierId(String supplierId);
+
+    /**
+     * Find wallet by supplier ID with pessimistic write lock
+     * Use this when updating wallet balance to prevent race conditions
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT w FROM SupplierWallet w WHERE w.supplier.userId = :supplierId")
+    Optional<SupplierWallet> findBySupplierIdForUpdate(String supplierId);
 
     /**
      * Find all wallets with pending balance > 0

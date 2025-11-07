@@ -570,8 +570,9 @@ public class SupplierServiceImpl implements SupplierService {
             walletService.createWallet(supplier);
             log.info("Wallet created for supplier ID: {}", supplier.getUserId());
         } catch (Exception e) {
-            log.error("Failed to create wallet for supplier ID: {}", supplier.getUserId(), e);
-            // Don't fail the approval if wallet creation fails
+            log.error("CRITICAL: Failed to create wallet for supplier ID: {}", supplier.getUserId(), e);
+            throw new BadRequestException(ErrorCode.WALLET_CREATION_FAILED,
+                    "Không thể tạo ví cho nhà cung cấp. Vui lòng thử lại sau.");
         }
 
         // Queue approval email notification (will auto-retry on failure)

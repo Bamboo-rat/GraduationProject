@@ -51,3 +51,59 @@ export interface ErrorResponse {
   message: string;
   vietnameseMessage: string;
 }
+
+// Chat & Messaging Types
+
+export enum MessageStatus {
+  SENT = 'SENT',
+  DELIVERED = 'DELIVERED',
+  READ = 'READ'
+}
+
+export enum MessageType {
+  TEXT = 'TEXT',
+  IMAGE = 'IMAGE',
+  FILE = 'FILE',
+  ORDER_LINK = 'ORDER_LINK'
+}
+
+export interface UserInfo {
+  userId: string;
+  keycloakId: string;
+  username: string;
+  email: string;
+  phoneNumber: string;
+  fullName: string;
+  avatarUrl: string;
+  active: boolean;
+  userType: 'CUSTOMER' | 'SUPPLIER' | 'ADMIN';
+  status: string;
+  roles?: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChatMessage {
+  messageId: string;
+  content: string;
+  sendTime: string;
+  sender: UserInfo;
+  receiver: UserInfo;
+  status: MessageStatus;
+  type: MessageType;
+  fileUrl?: string;
+}
+
+export interface Conversation {
+  otherUser: UserInfo;
+  lastMessage: ChatMessage;
+  lastMessageTime: string;
+  unreadCount: number;
+}
+
+export interface ChatMessageRequest {
+  content: string;
+  receiverId: string;
+  type?: MessageType;
+  fileUrl?: string;
+}

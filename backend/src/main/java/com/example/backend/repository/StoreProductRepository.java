@@ -10,6 +10,8 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 
 @Repository
 public interface StoreProductRepository extends JpaRepository<StoreProduct, String> {
@@ -102,6 +104,13 @@ public interface StoreProductRepository extends JpaRepository<StoreProduct, Stri
            "AND v.originalPrice > v.discountPrice " +
            "ORDER BY p.createdAt DESC")
     List<StoreProduct> findNewProductsOnSaleToday(Pageable pageable);
+
+       /**
+        * Fetch a StoreProduct with a pessimistic write lock for stock update scenarios
+        */
+       @Lock(LockModeType.PESSIMISTIC_WRITE)
+       @Query("SELECT sp FROM StoreProduct sp WHERE sp.storeProductId = :id")
+       Optional<StoreProduct> findByStoreProductIdForUpdate(@Param("id") String id);
 
     /**
      * Count low stock products (stock quantity < threshold)

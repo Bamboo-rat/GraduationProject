@@ -81,7 +81,9 @@ public class WalletServiceImpl implements WalletService {
         log.info("Adding pending balance for supplier ID: {}, order ID: {}, amount: {}", 
                 supplierId, order.getOrderId(), amount);
 
-        SupplierWallet wallet = getWalletEntityBySupplierId(supplierId);
+        // Use pessimistic lock to prevent race conditions on balance updates
+        SupplierWallet wallet = walletRepository.findBySupplierIdForUpdate(supplierId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.WALLET_NOT_FOUND));
         Supplier supplier = wallet.getSupplier();
 
         BigDecimal commissionRate = supplier.getCommissionRate() != null ?
@@ -134,7 +136,9 @@ public class WalletServiceImpl implements WalletService {
         log.info("Refunding order for supplier ID: {}, order ID: {}, amount: {}, isPending: {}",
                  supplierId, order.getOrderId(), amount, isPending);
 
-        SupplierWallet wallet = getWalletEntityBySupplierId(supplierId);
+        // Use pessimistic lock to prevent race conditions on balance updates
+        SupplierWallet wallet = walletRepository.findBySupplierIdForUpdate(supplierId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.WALLET_NOT_FOUND));
         Supplier supplier = wallet.getSupplier();
 
         BigDecimal commissionRate = supplier.getCommissionRate() != null ?
@@ -196,7 +200,9 @@ public class WalletServiceImpl implements WalletService {
         for (Order order : eligibleOrders) {
             try {
                 Supplier supplier = order.getStore().getSupplier();
-                SupplierWallet wallet = getWalletEntityBySupplierId(supplier.getUserId());
+                // Use pessimistic lock to prevent race conditions on balance updates
+                SupplierWallet wallet = walletRepository.findBySupplierIdForUpdate(supplier.getUserId())
+                        .orElseThrow(() -> new NotFoundException(ErrorCode.WALLET_NOT_FOUND));
 
                 // Calculate net amount after commission
                 BigDecimal commissionRate = supplier.getCommissionRate() != null ?
@@ -642,9 +648,8 @@ public class WalletServiceImpl implements WalletService {
 
         switch (txnType) {
             case ADMIN_DEPOSIT:
+                // Admin deposit is not earnings from orders, only add to available balance
                 wallet.setAvailableBalance(wallet.getAvailableBalance().add(amount));
-                wallet.setTotalEarnings(wallet.getTotalEarnings().add(amount));
-                wallet.setMonthlyEarnings(wallet.getMonthlyEarnings().add(amount));
                 break;
 
             case ADMIN_DEDUCTION:

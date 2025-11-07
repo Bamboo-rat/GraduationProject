@@ -587,13 +587,10 @@ public class CartServiceImpl implements CartService {
 
         return switch (promotionTier) {
             case GENERAL -> true; // All customers eligible
-            case BRONZE_PLUS -> true; // All tiers are Bronze+ (Bronze, Silver, Gold, Platinum, Diamond)
-            case SILVER_PLUS -> customerTier != CustomerTier.BRONZE;
-            case GOLD_PLUS -> customerTier == CustomerTier.GOLD
-                    || customerTier == CustomerTier.PLATINUM
-                    || customerTier == CustomerTier.DIAMOND;
-            case PLATINUM_PLUS -> customerTier == CustomerTier.PLATINUM
-                    || customerTier == CustomerTier.DIAMOND;
+            case BRONZE_PLUS -> customerTier.ordinal() >= CustomerTier.BRONZE.ordinal(); // Bronze and above
+            case SILVER_PLUS -> customerTier.ordinal() >= CustomerTier.SILVER.ordinal(); // Silver and above
+            case GOLD_PLUS -> customerTier.ordinal() >= CustomerTier.GOLD.ordinal(); // Gold and above
+            case PLATINUM_PLUS -> customerTier.ordinal() >= CustomerTier.PLATINUM.ordinal(); // Platinum and above
             case DIAMOND_ONLY -> customerTier == CustomerTier.DIAMOND;
             case BIRTHDAY -> {
                 // Birthday promotion: check if customer's birthday is in current month

@@ -1,6 +1,7 @@
 package com.example.backend.entity.enums;
 
-public enum MessageType {
+public enum
+MessageType {
     TEXT,
     IMAGE,
     FILE,

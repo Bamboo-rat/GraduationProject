@@ -1,6 +1,5 @@
 import type { Route } from './+types/profile';
 import { Profile } from '../pages/profile';
-import DashboardLayout from '../component/layout/DashboardLayout';
 import ProtectedRoute from '../component/common/ProtectedRoute';
 
 export function meta({}: Route.MetaArgs) {
@@ -13,9 +12,7 @@ export function meta({}: Route.MetaArgs) {
 export default function ProfileRoute() {
   return (
     <ProtectedRoute>
-      <DashboardLayout>
         <Profile />
-      </DashboardLayout>
     </ProtectedRoute>
   );
 }
