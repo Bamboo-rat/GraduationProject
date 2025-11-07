@@ -972,18 +972,39 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private OrderResponse mapToOrderResponse(Order order) {
-        List<OrderResponse.OrderItemResponse> items = order.getOrderDetails().stream()
+       List<OrderDetail> orderDetails = order.getOrderDetails() != null
+                ? order.getOrderDetails()
+                : List.of();
+
+        List<OrderResponse.OrderItemResponse> items = orderDetails.stream()
                 .map(this::mapToOrderItemResponse)
                 .collect(Collectors.toList());
 
-        List<String> appliedPromotions = order.getPromotionUsages().stream()
-                .map(usage -> usage.getPromotion().getCode())
-                .collect(Collectors.toList());
+        List<String> appliedPromotions = order.getPromotionUsages() != null
+                ? order.getPromotionUsages().stream()
+                .map(usage -> usage.getPromotion() != null ? usage.getPromotion().getCode() : null)
+                .filter(code -> code != null && !code.isBlank())
+                .collect(Collectors.toList())
+                : List.of();
+
+        Customer customer = order.getCustomer();
+        Store store = order.getStore();
+        Supplier supplier = store != null ? store.getSupplier() : null;
+
+        OrderStatus orderStatus = order.getStatus() != null ? order.getStatus() : OrderStatus.PENDING;
+        PaymentStatus paymentStatus = order.getPaymentStatus() != null
+                ? order.getPaymentStatus()
+                : PaymentStatus.PENDING;
+
+        BigDecimal totalAmount = order.getTotalAmount() != null ? order.getTotalAmount() : BigDecimal.ZERO;
+        BigDecimal shippingFee = order.getShippingFee() != null ? order.getShippingFee() : BigDecimal.ZERO;
+        BigDecimal discount = order.getDiscount() != null ? order.getDiscount() : BigDecimal.ZERO;
+        BigDecimal subtotal = totalAmount.subtract(shippingFee).add(discount);
 
         // Build shipping address object
         OrderResponse.OrderAddressResponse shippingAddressResponse = OrderResponse.OrderAddressResponse.builder()
-                .recipientName(order.getCustomer().getFullName())
-                .phoneNumber(order.getCustomer().getPhoneNumber())
+                .recipientName(customer != null ? customer.getFullName() : null)
+                .phoneNumber(customer != null ? customer.getPhoneNumber() : null)
                 .addressLine(order.getShippingAddress())
                 .ward(null) // TODO: Extract from shippingAddress if available
                 .district(null)
@@ -996,32 +1017,36 @@ public class OrderServiceImpl implements OrderService {
                 .orderId(order.getOrderId()) // Deprecated
                 .orderCode(order.getOrderCode())
                 // Customer info
-                .customerId(order.getCustomer().getUserId())
-                .customerName(order.getCustomer().getFullName())
-                .customerPhone(order.getCustomer().getPhoneNumber())
-                .customerEmail(order.getCustomer().getEmail())
+                .customerId(customer != null ? customer.getUserId() : null)
+                .customerName(customer != null ? customer.getFullName() : null)
+                .customerPhone(customer != null ? customer.getPhoneNumber() : null)
+                .customerEmail(customer != null ? customer.getEmail() : null)
                 // Store/Supplier info
-                .storeId(order.getStore().getStoreId())
-                .storeName(order.getStore().getStoreName())
-                .supplierId(order.getStore().getSupplier().getUserId())
-                .supplierName(order.getStore().getSupplier().getFullName())
+                .storeId(store != null ? store.getStoreId() : null)
+                .storeName(store != null ? store.getStoreName() : null)
+                .supplierId(supplier != null ? supplier.getUserId() : null)
+                .supplierName(supplier != null ? supplier.getFullName() : null)
                 // Items
                 .items(items)
                 // Status
-                .status(order.getStatus().name())
+                .status(orderStatus.name())
                 .statusHistory(null) // TODO: Implement if OrderStatusHistory entity exists
                 // Pricing
-                .subtotal(order.getTotalAmount().subtract(order.getShippingFee()).add(order.getDiscount()))
-                .shippingFee(order.getShippingFee())
-                .discount(order.getDiscount())
-                .totalAmount(order.getTotalAmount())
+                .subtotal(subtotal)
+                .shippingFee(shippingFee)
+                .discount(discount)
+                .totalAmount(totalAmount)
                 // Payment
-                .paymentMethod(order.getPayment() != null ? order.getPayment().getMethod().name() : null)
-                .paymentStatus(order.getPaymentStatus().name())
+                .paymentMethod(order.getPayment() != null && order.getPayment().getMethod() != null
+                        ? order.getPayment().getMethod().name()
+                        : null)
+                .paymentStatus(paymentStatus.name())
                 // Shipping
                 .shippingAddress(shippingAddressResponse)
                 .trackingNumber(order.getShipment() != null ? order.getShipment().getTrackingNumber() : null)
-                .shipmentStatus(order.getShipment() != null ? order.getShipment().getStatus().name() : null)
+                .shipmentStatus(order.getShipment() != null && order.getShipment().getStatus() != null
+                        ? order.getShipment().getStatus().name()
+                        : null)
                 // Notes
                 .note(order.getNote())
                 .cancelReason(order.getCancelReason())
@@ -1041,15 +1066,17 @@ public class OrderServiceImpl implements OrderService {
 
     private OrderResponse.OrderItemResponse mapToOrderItemResponse(OrderDetail detail) {
         StoreProduct storeProduct = detail.getStoreProduct();
-        ProductVariant variant = storeProduct.getVariant();
-        Product product = variant.getProduct();
+        ProductVariant variant = storeProduct != null ? storeProduct.getVariant() : null;
+        Product product = variant != null ? variant.getProduct() : null;
 
-        String imageUrl = product.getImages().isEmpty()
-                ? null
-                : product.getImages().get(0).getImageUrl();
+        String imageUrl = (product != null && product.getImages() != null && !product.getImages().isEmpty())
+                ? product.getImages().get(0).getImageUrl()
+                : null;
 
-        BigDecimal price = detail.getAmount().divide(
-                BigDecimal.valueOf(detail.getQuantity()),
+        int quantity = detail.getQuantity() > 0 ? detail.getQuantity() : 1;
+        BigDecimal amount = detail.getAmount() != null ? detail.getAmount() : BigDecimal.ZERO;
+        BigDecimal price = amount.divide(
+                BigDecimal.valueOf(quantity),
                 2,
                 RoundingMode.HALF_UP
         );
@@ -1057,18 +1084,18 @@ public class OrderServiceImpl implements OrderService {
         return OrderResponse.OrderItemResponse.builder()
                 .id(detail.getOrderDetailId())
                 .orderDetailId(detail.getOrderDetailId()) // Deprecated
-                .productId(product.getProductId())
-                .productName(product.getName())
-                .variantId(variant.getVariantId())
-                .variantName(variant.getSku())
+                .productId(product != null ? product.getProductId() : null)
+                .productName(product != null ? product.getName() : null)
+                .variantId(variant != null ? variant.getVariantId() : null)
+                .variantName(variant != null ? variant.getSku() : null)
                 .imageUrl(imageUrl)
                 .productImage(imageUrl) // Deprecated
                 .quantity(detail.getQuantity())
                 .price(price)
                 .unitPrice(price) // Deprecated
-                .subtotal(detail.getAmount())
-                .amount(detail.getAmount()) // Deprecated
-                .canReview(detail.getOrder().getStatus() == OrderStatus.DELIVERED)
+                .subtotal(amount)
+                .amount(amount) // Deprecated
+                .canReview(detail.getOrder() != null && detail.getOrder().getStatus() == OrderStatus.DELIVERED)
                 .hasReviewed(detail.getReview() != null)
                 .build();
     }
