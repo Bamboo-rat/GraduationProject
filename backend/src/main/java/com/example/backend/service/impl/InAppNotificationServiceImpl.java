@@ -35,8 +35,6 @@ public class InAppNotificationServiceImpl implements InAppNotificationService {
     private final UserNotificationStatusRepository userNotificationStatusRepository;
     private final UserRepository userRepository;
     private final AdminRepository adminRepository;
-    private final SupplierRepository supplierRepository;
-    private final CustomerRepository customerRepository;
 
     @Override
     @Transactional
