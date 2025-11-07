@@ -190,7 +190,7 @@ export default function OrdersList() {
             { value: 'PREPARING', label: 'Đang chuẩn bị' },
             { value: 'SHIPPING', label: 'Đang giao' },
             { value: 'DELIVERED', label: 'Đã giao' },
-            { value: 'CANCELLED', label: 'Đã hủy' },
+            { value: 'CANCELED', label: 'Đã hủy' },
           ].map((tab) => (
             <button
               key={tab.value}

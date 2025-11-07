@@ -138,7 +138,7 @@ public interface OrderRepository extends JpaRepository<Order, String> {
            "WHERE o.status = 'DELIVERED' " +
            "GROUP BY o.store.storeId, o.store.storeName " +
            "ORDER BY orderCount DESC, o.store.storeName ASC")
-    
+
     List<Object[]> findTopStoresByOrderCount(Pageable pageable);
 
     /**

@@ -73,9 +73,8 @@ export type OrderStatus =
   | 'PREPARING'
   | 'SHIPPING'
   | 'DELIVERED'
-  | 'CANCELLED'
-  | 'RETURNED'
-  | 'REFUNDED';
+  | 'CANCELED'
+  | 'RETURNED';
 
 export interface OrderStatusHistory {
   status: OrderStatus;
@@ -280,9 +279,8 @@ class SupplierOrderService {
       PREPARING: 'bg-purple-100 text-purple-800',
       SHIPPING: 'bg-indigo-100 text-indigo-800',
       DELIVERED: 'bg-green-100 text-green-800',
-      CANCELLED: 'bg-red-100 text-red-800',
+      CANCELED: 'bg-red-100 text-red-800',
       RETURNED: 'bg-orange-100 text-orange-800',
-      REFUNDED: 'bg-gray-100 text-gray-800',
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
   }
@@ -297,9 +295,8 @@ class SupplierOrderService {
       PREPARING: 'Đang chuẩn bị',
       SHIPPING: 'Đang giao hàng',
       DELIVERED: 'Đã giao hàng',
-      CANCELLED: 'Đã hủy',
+      CANCELED: 'Đã hủy',
       RETURNED: 'Đã trả hàng',
-      REFUNDED: 'Đã hoàn tiền',
     };
     return labels[status] || status;
   }
@@ -341,9 +338,8 @@ class SupplierOrderService {
       PREPARING: 'SHIPPING',
       SHIPPING: 'DELIVERED',
       DELIVERED: null,
-      CANCELLED: null,
+      CANCELED: null,
       RETURNED: null,
-      REFUNDED: null,
     };
     return flow[currentStatus];
   }
@@ -358,9 +354,8 @@ class SupplierOrderService {
       PREPARING: 'Bắt đầu giao hàng',
       SHIPPING: 'Xác nhận đã giao',
       DELIVERED: null,
-      CANCELLED: null,
+      CANCELED: null,
       RETURNED: null,
-      REFUNDED: null,
     };
     return labels[currentStatus];
   }
