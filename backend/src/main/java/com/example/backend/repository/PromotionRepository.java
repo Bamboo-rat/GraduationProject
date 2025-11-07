@@ -86,4 +86,42 @@ public interface PromotionRepository extends JpaRepository<Promotion, String> {
            "WHERE p.promotionId = :promotionId " +
            "AND (p.totalUsageLimit IS NULL OR p.currentUsageCount < p.totalUsageLimit)")
     int incrementUsageCountIfAvailable(@Param("promotionId") String promotionId);
+
+    /**
+     * Find promotions by status and endDate before a specific date
+     * Used by scheduler to find expired promotions
+     */
+    List<Promotion> findByStatusAndEndDateBefore(PromotionStatus status, LocalDate date);
+
+    /**
+     * Find promotions by status with startDate and endDate range
+     * Used by scheduler to find promotions that should be activated
+     */
+    @Query("SELECT p FROM Promotion p WHERE " +
+           "p.status = :status AND " +
+           "p.startDate <= :startDate AND " +
+           "p.endDate >= :endDate")
+    List<Promotion> findByStatusAndStartDateLessThanEqualAndEndDateGreaterThanEqual(
+            @Param("status") PromotionStatus status,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
+
+    /**
+     * Count promotions by status
+     * Used by scheduler for status summary
+     */
+    long countByStatus(PromotionStatus status);
+
+    /**
+     * Count promotions by status with endDate in a specific range
+     * Used by scheduler to count promotions expiring soon
+     */
+    long countByStatusAndEndDateBetween(PromotionStatus status, LocalDate startDate, LocalDate endDate);
+
+    /**
+     * Count promotions by status with startDate in a specific range
+     * Used by scheduler to count promotions starting soon
+     */
+    long countByStatusAndStartDateBetween(PromotionStatus status, LocalDate startDate, LocalDate endDate);
 }
