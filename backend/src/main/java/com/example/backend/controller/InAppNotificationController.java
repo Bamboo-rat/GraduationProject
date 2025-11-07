@@ -3,7 +3,7 @@ package com.example.backend.controller;
 import com.example.backend.dto.response.ApiResponse;
 import com.example.backend.dto.response.NotificationResponse;
 import com.example.backend.service.InAppNotificationService;
-import com.example.backend.utils.JwtUtils;
+import com.example.backend.util.AuthenticationUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -16,7 +16,6 @@ import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -34,6 +33,7 @@ import java.util.Map;
 public class InAppNotificationController {
 
     private final InAppNotificationService notificationService;
+    private final AuthenticationUtil authenticationUtil;
 
     /**
      * Get all notifications for current user
@@ -49,12 +49,11 @@ public class InAppNotificationController {
             Authentication authentication,
             @PageableDefault(size = 20, sort = "notification.createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
-        Jwt jwt = (Jwt) authentication.getPrincipal();
-        String keycloakId = JwtUtils.extractKeycloakId(jwt);
+        String userId = authenticationUtil.extractUserId(authentication);
 
-        log.info("GET /api/notifications - User {} fetching notifications", keycloakId);
+        log.info("GET /api/notifications - User {} fetching notifications", userId);
 
-        Page<NotificationResponse> notifications = notificationService.getNotificationsForUser(keycloakId, pageable);
+        Page<NotificationResponse> notifications = notificationService.getNotificationsForUser(userId, pageable);
 
         return ResponseEntity.ok(ApiResponse.success("Notifications retrieved successfully", notifications));
     }
@@ -73,12 +72,11 @@ public class InAppNotificationController {
             Authentication authentication,
             @PageableDefault(size = 20, sort = "notification.createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
-        Jwt jwt = (Jwt) authentication.getPrincipal();
-        String keycloakId = JwtUtils.extractKeycloakId(jwt);
+        String userId = authenticationUtil.extractUserId(authentication);
 
-        log.info("GET /api/notifications/unread - User {} fetching unread notifications", keycloakId);
+        log.info("GET /api/notifications/unread - User {} fetching unread notifications", userId);
 
-        Page<NotificationResponse> notifications = notificationService.getUnreadNotificationsForUser(keycloakId, pageable);
+        Page<NotificationResponse> notifications = notificationService.getUnreadNotificationsForUser(userId, pageable);
 
         return ResponseEntity.ok(ApiResponse.success("Unread notifications retrieved successfully", notifications));
     }
@@ -96,12 +94,11 @@ public class InAppNotificationController {
     )
     public ResponseEntity<ApiResponse<Map<String, Long>>> getUnreadCount(Authentication authentication) {
 
-        Jwt jwt = (Jwt) authentication.getPrincipal();
-        String keycloakId = JwtUtils.extractKeycloakId(jwt);
+        String userId = authenticationUtil.extractUserId(authentication);
 
-        log.debug("GET /api/notifications/unread-count - User {}", keycloakId);
+        log.debug("GET /api/notifications/unread-count - User {}", userId);
 
-        long unreadCount = notificationService.getUnreadCount(keycloakId);
+        long unreadCount = notificationService.getUnreadCount(userId);
 
         Map<String, Long> response = new HashMap<>();
         response.put("unreadCount", unreadCount);
@@ -123,12 +120,11 @@ public class InAppNotificationController {
             @PathVariable String notificationId,
             Authentication authentication) {
 
-        Jwt jwt = (Jwt) authentication.getPrincipal();
-        String keycloakId = JwtUtils.extractKeycloakId(jwt);
+        String userId = authenticationUtil.extractUserId(authentication);
 
-        log.info("PATCH /api/notifications/{}/read - User {}", notificationId, keycloakId);
+        log.info("PATCH /api/notifications/{}/read - User {}", notificationId, userId);
 
-        notificationService.markAsRead(keycloakId, notificationId);
+        notificationService.markAsRead(userId, notificationId);
 
         return ResponseEntity.ok(ApiResponse.success("Notification marked as read"));
     }
@@ -145,12 +141,11 @@ public class InAppNotificationController {
     )
     public ResponseEntity<ApiResponse<Map<String, Integer>>> markAllAsRead(Authentication authentication) {
 
-        Jwt jwt = (Jwt) authentication.getPrincipal();
-        String keycloakId = JwtUtils.extractKeycloakId(jwt);
+        String userId = authenticationUtil.extractUserId(authentication);
 
-        log.info("POST /api/notifications/mark-all-read - User {}", keycloakId);
+        log.info("POST /api/notifications/mark-all-read - User {}", userId);
 
-        int count = notificationService.markAllAsRead(keycloakId);
+        int count = notificationService.markAllAsRead(userId);
 
         Map<String, Integer> response = new HashMap<>();
         response.put("markedCount", count);

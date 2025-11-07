@@ -15,37 +15,105 @@ import java.util.List;
 @AllArgsConstructor
 public class OrderResponse {
 
-    private String orderId;
+    private String id;
+    private String orderId; // Deprecated, use 'id'
     private String orderCode;
+    
+    // Customer info
     private String customerId;
     private String customerName;
+    private String customerPhone;
+    private String customerEmail;
+    
+    // Store/Supplier info
     private String storeId;
     private String storeName;
-    private BigDecimal totalAmount;
+    private String supplierId;
+    private String supplierName;
+    
+    // Order items
+    private List<OrderItemResponse> items;
+    
+    // Status
     private String status;
-    private String paymentStatus;
+    private List<OrderStatusHistoryResponse> statusHistory;
+    
+    // Pricing
+    private BigDecimal subtotal;
+    private BigDecimal shippingFee;
+    private BigDecimal discount;
+    private BigDecimal totalAmount;
+    
+    // Payment
     private String paymentMethod;
-    private String shippingAddress;
+    private String paymentStatus;
+    
+    // Shipping
+    private OrderAddressResponse shippingAddress;
     private String trackingNumber;
     private String shipmentStatus;
-    private List<OrderItemResponse> items;
-    private List<String> appliedPromotions;
+    
+    // Notes
+    private String note;
+    private String cancelReason;
+    
+    // Dates
+    private String estimatedDeliveryDate;
+    private String actualDeliveryDate;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private LocalDateTime confirmedAt;
+    private LocalDateTime shippedAt;
+    private LocalDateTime deliveredAt;
+    private LocalDateTime cancelledAt;
+    
+    // Legacy
+    private List<String> appliedPromotions;
 
     @Data
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
     public static class OrderItemResponse {
-        private String orderDetailId;
+        private String id;
+        private String orderDetailId; // Deprecated, use 'id'
+        private String productId;
         private String productName;
+        private String variantId;
         private String variantName;
-        private String productImage;
+        private String imageUrl;
+        private String productImage; // Deprecated, use 'imageUrl'
         private Integer quantity;
-        private BigDecimal unitPrice;
-        private BigDecimal amount;
+        private BigDecimal price;
+        private BigDecimal unitPrice; // Deprecated, use 'price'
+        private BigDecimal subtotal;
+        private BigDecimal amount; // Deprecated, use 'subtotal'
         private Boolean canReview;
         private Boolean hasReviewed;
+    }
+    
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class OrderAddressResponse {
+        private String recipientName;
+        private String phoneNumber;
+        private String addressLine;
+        private String ward;
+        private String district;
+        private String city;
+        private String fullAddress;
+    }
+    
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class OrderStatusHistoryResponse {
+        private String status;
+        private LocalDateTime timestamp;
+        private String note;
+        private String updatedBy;
     }
 }

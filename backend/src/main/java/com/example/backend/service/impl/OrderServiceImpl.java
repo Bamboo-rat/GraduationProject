@@ -137,9 +137,12 @@ public class OrderServiceImpl implements OrderService {
         order.setCustomer(cart.getCustomer());
         order.setStore(cart.getStore());
         order.setTotalAmount(orderTotal); // Use recalculated total, not cart.getTotal()
+        order.setShippingFee(request.getShippingFee() != null ? request.getShippingFee() : BigDecimal.ZERO);
+        order.setDiscount(BigDecimal.ZERO); // Will be updated if promotions applied
         order.setStatus(OrderStatus.PENDING);
         order.setPaymentStatus(PaymentStatus.PENDING);
         order.setShippingAddress(request.getShippingAddress());
+        order.setNote(request.getNote());
         order = orderRepository.save(order);
 
         // Copy cart details to order details with current prices
@@ -170,7 +173,14 @@ public class OrderServiceImpl implements OrderService {
         BigDecimal totalDiscount = BigDecimal.ZERO;
         if (request.getPromotionCodes() != null && !request.getPromotionCodes().isEmpty()) {
             totalDiscount = applyPromotions(order, request.getPromotionCodes());
+            order.setDiscount(totalDiscount); // Save discount amount
+            orderRepository.save(order);
         }
+
+        // Add shipping fee to final total
+        BigDecimal finalTotal = order.getTotalAmount().add(order.getShippingFee());
+        order.setTotalAmount(finalTotal);
+        order = orderRepository.save(order);
 
         // Create payment record with final amount after discount
         Payment payment = new Payment();
@@ -222,6 +232,15 @@ public class OrderServiceImpl implements OrderService {
         validateStatusTransition(oldStatus, newStatus);
 
         order.setStatus(newStatus);
+        
+        // Set timestamp based on status
+        switch (newStatus) {
+            case CONFIRMED -> order.setConfirmedAt(LocalDateTime.now());
+            case SHIPPING -> order.setShippedAt(LocalDateTime.now());
+            case DELIVERED -> order.setDeliveredAt(LocalDateTime.now());
+            case CANCELED -> order.setCancelledAt(LocalDateTime.now());
+        }
+        
         order = orderRepository.save(order);
 
         // Send notification with specific message based on status
@@ -253,6 +272,7 @@ public class OrderServiceImpl implements OrderService {
         }
 
         order.setStatus(OrderStatus.CONFIRMED);
+        order.setConfirmedAt(LocalDateTime.now());
         order = orderRepository.save(order);
 
         sendOrderNotification(order,
@@ -310,6 +330,7 @@ public class OrderServiceImpl implements OrderService {
         shipmentRepository.save(shipment);
 
         order.setStatus(OrderStatus.SHIPPING);
+        order.setShippedAt(LocalDateTime.now());
         order.setShipment(shipment);
         order = orderRepository.save(order);
 
@@ -409,6 +430,8 @@ public class OrderServiceImpl implements OrderService {
         }
 
         order.setStatus(OrderStatus.CANCELED);
+        order.setCancelledAt(LocalDateTime.now());
+        order.setCancelReason(request.getReason());
         order = orderRepository.save(order);
 
         sendOrderNotification(order,
@@ -562,6 +585,7 @@ public class OrderServiceImpl implements OrderService {
             payment.setTransactionId(transactionId);
             order.setPaymentStatus(PaymentStatus.SUCCESS);
             order.setStatus(OrderStatus.CONFIRMED); // Auto-confirm on successful payment
+            order.setConfirmedAt(LocalDateTime.now());
 
             sendOrderNotification(order,
                     String.format("Thanh toán đơn hàng #%s thành công (%s VNĐ). Đơn hàng đã được xác nhận và đang chờ cửa hàng chuẩn bị",
@@ -930,6 +954,7 @@ public class OrderServiceImpl implements OrderService {
         // Update order status
         order.setStatus(OrderStatus.DELIVERED);
         order.setDeliveredAt(LocalDateTime.now());
+        order.setActualDelivery(LocalDateTime.now());
         order.setBalanceReleased(false); // Will be released after 7-day hold period
         order = orderRepository.save(order);
 
@@ -955,24 +980,62 @@ public class OrderServiceImpl implements OrderService {
                 .map(usage -> usage.getPromotion().getCode())
                 .collect(Collectors.toList());
 
+        // Build shipping address object
+        OrderResponse.OrderAddressResponse shippingAddressResponse = OrderResponse.OrderAddressResponse.builder()
+                .recipientName(order.getCustomer().getFullName())
+                .phoneNumber(order.getCustomer().getPhoneNumber())
+                .addressLine(order.getShippingAddress())
+                .ward(null) // TODO: Extract from shippingAddress if available
+                .district(null)
+                .city(null)
+                .fullAddress(order.getShippingAddress())
+                .build();
+
         return OrderResponse.builder()
-                .orderId(order.getOrderId())
+                .id(order.getOrderId())
+                .orderId(order.getOrderId()) // Deprecated
                 .orderCode(order.getOrderCode())
+                // Customer info
                 .customerId(order.getCustomer().getUserId())
                 .customerName(order.getCustomer().getFullName())
+                .customerPhone(order.getCustomer().getPhoneNumber())
+                .customerEmail(order.getCustomer().getEmail())
+                // Store/Supplier info
                 .storeId(order.getStore().getStoreId())
                 .storeName(order.getStore().getStoreName())
-                .totalAmount(order.getTotalAmount())
+                .supplierId(order.getStore().getSupplier().getUserId())
+                .supplierName(order.getStore().getSupplier().getFullName())
+                // Items
+                .items(items)
+                // Status
                 .status(order.getStatus().name())
-                .paymentStatus(order.getPaymentStatus().name())
+                .statusHistory(null) // TODO: Implement if OrderStatusHistory entity exists
+                // Pricing
+                .subtotal(order.getTotalAmount().subtract(order.getShippingFee()).add(order.getDiscount()))
+                .shippingFee(order.getShippingFee())
+                .discount(order.getDiscount())
+                .totalAmount(order.getTotalAmount())
+                // Payment
                 .paymentMethod(order.getPayment() != null ? order.getPayment().getMethod().name() : null)
-                .shippingAddress(order.getShippingAddress())
+                .paymentStatus(order.getPaymentStatus().name())
+                // Shipping
+                .shippingAddress(shippingAddressResponse)
                 .trackingNumber(order.getShipment() != null ? order.getShipment().getTrackingNumber() : null)
                 .shipmentStatus(order.getShipment() != null ? order.getShipment().getStatus().name() : null)
-                .items(items)
-                .appliedPromotions(appliedPromotions)
+                // Notes
+                .note(order.getNote())
+                .cancelReason(order.getCancelReason())
+                // Dates
+                .estimatedDeliveryDate(order.getEstimatedDelivery() != null ? order.getEstimatedDelivery().toString() : null)
+                .actualDeliveryDate(order.getActualDelivery() != null ? order.getActualDelivery().toString() : null)
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())
+                .confirmedAt(order.getConfirmedAt())
+                .shippedAt(order.getShippedAt())
+                .deliveredAt(order.getDeliveredAt())
+                .cancelledAt(order.getCancelledAt())
+                // Legacy
+                .appliedPromotions(appliedPromotions)
                 .build();
     }
 
@@ -981,24 +1044,30 @@ public class OrderServiceImpl implements OrderService {
         ProductVariant variant = storeProduct.getVariant();
         Product product = variant.getProduct();
 
-        String productImage = product.getImages().isEmpty()
+        String imageUrl = product.getImages().isEmpty()
                 ? null
                 : product.getImages().get(0).getImageUrl();
 
-        BigDecimal unitPrice = detail.getAmount().divide(
+        BigDecimal price = detail.getAmount().divide(
                 BigDecimal.valueOf(detail.getQuantity()),
                 2,
                 RoundingMode.HALF_UP
         );
 
         return OrderResponse.OrderItemResponse.builder()
-                .orderDetailId(detail.getOrderDetailId())
+                .id(detail.getOrderDetailId())
+                .orderDetailId(detail.getOrderDetailId()) // Deprecated
+                .productId(product.getProductId())
                 .productName(product.getName())
+                .variantId(variant.getVariantId())
                 .variantName(variant.getSku())
-                .productImage(productImage)
+                .imageUrl(imageUrl)
+                .productImage(imageUrl) // Deprecated
                 .quantity(detail.getQuantity())
-                .unitPrice(unitPrice)
-                .amount(detail.getAmount())
+                .price(price)
+                .unitPrice(price) // Deprecated
+                .subtotal(detail.getAmount())
+                .amount(detail.getAmount()) // Deprecated
                 .canReview(detail.getOrder().getStatus() == OrderStatus.DELIVERED)
                 .hasReviewed(detail.getReview() != null)
                 .build();

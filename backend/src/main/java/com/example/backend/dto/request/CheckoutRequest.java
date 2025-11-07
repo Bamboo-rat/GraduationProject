@@ -9,6 +9,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Data
@@ -30,9 +31,12 @@ public class CheckoutRequest {
     @Schema(description = "Phương thức thanh toán", example = "COD")
     private PaymentMethod paymentMethod;
 
+    @Schema(description = "Phí vận chuyển", example = "25000")
+    private BigDecimal shippingFee;
+
     @Schema(description = "Danh sách mã khuyến mãi áp dụng (optional)", example = "[\"PROMO123\"]")
     private List<String> promotionCodes;
 
     @Schema(description = "Ghi chú đơn hàng (optional)", example = "Giao hàng buổi sáng")
-    private String notes;
+    private String note;
 }

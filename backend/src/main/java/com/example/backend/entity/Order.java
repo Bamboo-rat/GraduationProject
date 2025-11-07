@@ -43,13 +43,26 @@ public class Order {
 
     private BigDecimal totalAmount;
 
+    @Column(precision = 10, scale = 2)
+    private BigDecimal shippingFee = BigDecimal.ZERO;
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal discount = BigDecimal.ZERO;
+
     @Enumerated(EnumType.STRING)
     private OrderStatus status = OrderStatus.PENDING;
 
     @Enumerated(EnumType.STRING)
     private PaymentStatus paymentStatus = PaymentStatus.PENDING;
 
+    @Column(length = 500)
     private String shippingAddress;
+
+    @Column(length = 1000)
+    private String note;
+
+    @Column(length = 500)
+    private String cancelReason;
 
     @CreationTimestamp
     private LocalDateTime createdAt;
@@ -57,7 +70,17 @@ public class Order {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
+    private LocalDateTime confirmedAt;
+
+    private LocalDateTime shippedAt;
+
     private LocalDateTime deliveredAt;
+
+    private LocalDateTime cancelledAt;
+
+    private LocalDateTime estimatedDelivery;
+
+    private LocalDateTime actualDelivery;
 
     /**
      * Flag to track if balance has been released from pending to available

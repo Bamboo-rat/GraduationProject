@@ -111,57 +111,41 @@ public class InAppNotificationServiceImpl implements InAppNotificationService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<NotificationResponse> getNotificationsForUser(String keycloakId, Pageable pageable) {
-        log.info("Getting notifications for user with keycloakId: {}", keycloakId);
-
-        // Find user by keycloakId
-        User user = userRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+    public Page<NotificationResponse> getNotificationsForUser(String userId, Pageable pageable) {
+        log.info("Getting notifications for user: {}", userId);
 
         Page<UserNotificationStatus> statuses = userNotificationStatusRepository
-                .findByUserUserId(user.getUserId(), pageable);
+                .findByUserUserId(userId, pageable);
 
         return statuses.map(this::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Page<NotificationResponse> getUnreadNotificationsForUser(String keycloakId, Pageable pageable) {
-        log.info("Getting unread notifications for user with keycloakId: {}", keycloakId);
-
-        // Find user by keycloakId
-        User user = userRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+    public Page<NotificationResponse> getUnreadNotificationsForUser(String userId, Pageable pageable) {
+        log.info("Getting unread notifications for user: {}", userId);
 
         Page<UserNotificationStatus> statuses = userNotificationStatusRepository
-                .findUnreadByUserId(user.getUserId(), pageable);
+                .findUnreadByUserId(userId, pageable);
 
         return statuses.map(this::toResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public long getUnreadCount(String keycloakId) {
-        log.debug("Getting unread count for user with keycloakId: {}", keycloakId);
+    public long getUnreadCount(String userId) {
+        log.debug("Getting unread count for user: {}", userId);
 
-        // Find user by keycloakId
-        User user = userRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
-
-        return userNotificationStatusRepository.countUnreadByUserId(user.getUserId());
+        return userNotificationStatusRepository.countUnreadByUserId(userId);
     }
 
     @Override
     @Transactional
-    public void markAsRead(String keycloakId, String notificationId) {
-        log.info("Marking notification as read - keycloakId: {}, notification: {}", keycloakId, notificationId);
-
-        // Find user by keycloakId
-        User user = userRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+    public void markAsRead(String userId, String notificationId) {
+        log.info("Marking notification as read - user: {}, notification: {}", userId, notificationId);
 
         UserNotificationStatus status = userNotificationStatusRepository
-                .findByUserIdAndNotificationId(user.getUserId(), notificationId)
+                .findByUserIdAndNotificationId(userId, notificationId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND,
                         "Notification not found for user"));
 
@@ -173,14 +157,10 @@ public class InAppNotificationServiceImpl implements InAppNotificationService {
 
     @Override
     @Transactional
-    public int markAllAsRead(String keycloakId) {
-        log.info("Marking all notifications as read for user with keycloakId: {}", keycloakId);
+    public int markAllAsRead(String userId) {
+        log.info("Marking all notifications as read for user: {}", userId);
 
-        // Find user by keycloakId
-        User user = userRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
-
-        int count = userNotificationStatusRepository.markAllAsReadByUserId(user.getUserId());
+        int count = userNotificationStatusRepository.markAllAsReadByUserId(userId);
 
         log.info("Marked {} notifications as read", count);
         return count;

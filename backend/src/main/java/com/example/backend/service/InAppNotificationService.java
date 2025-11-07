@@ -42,40 +42,40 @@ public interface InAppNotificationService {
 
     /**
      * Get all notifications for a user
-     * @param keycloakId User's Keycloak ID
+     * @param userId User ID
      * @param pageable Pagination
      * @return Page of notifications
      */
-    Page<NotificationResponse> getNotificationsForUser(String keycloakId, Pageable pageable);
+    Page<NotificationResponse> getNotificationsForUser(String userId, Pageable pageable);
 
     /**
      * Get unread notifications for a user
-     * @param keycloakId User's Keycloak ID
+     * @param userId User ID
      * @param pageable Pagination
      * @return Page of unread notifications
      */
-    Page<NotificationResponse> getUnreadNotificationsForUser(String keycloakId, Pageable pageable);
+    Page<NotificationResponse> getUnreadNotificationsForUser(String userId, Pageable pageable);
 
     /**
      * Get count of unread notifications for a user
-     * @param keycloakId User's Keycloak ID
+     * @param userId User ID
      * @return Count of unread notifications
      */
-    long getUnreadCount(String keycloakId);
+    long getUnreadCount(String userId);
 
     /**
      * Mark a notification as read
-     * @param keycloakId User's Keycloak ID
+     * @param userId User ID
      * @param notificationId Notification ID
      */
-    void markAsRead(String keycloakId, String notificationId);
+    void markAsRead(String userId, String notificationId);
 
     /**
      * Mark all notifications as read for a user
-     * @param keycloakId User's Keycloak ID
+     * @param userId User ID
      * @return Number of notifications marked as read
      */
-    int markAllAsRead(String keycloakId);
+    int markAllAsRead(String userId);
 
     /**
      * Delete old notifications (cleanup)
