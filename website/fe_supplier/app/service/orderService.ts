@@ -212,11 +212,13 @@ class SupplierOrderService {
   /**
    * Start shipping order (PREPARING → SHIPPING)
    */
-  async shipOrder(orderId: string, request?: ShipOrderRequest): Promise<Order> {
+  async shipOrder(orderId: string, trackingNumber: string): Promise<Order> {
     try {
+      const queryParams = new URLSearchParams();
+      queryParams.append('trackingNumber', trackingNumber);
+
       const { data } = await axiosInstance.post<ApiResponse<Order>>(
-        `/orders/${orderId}/ship`,
-        request || {}
+        `/orders/${orderId}/ship?${queryParams.toString()}`
       );
       return data.data;
     } catch (error) {

@@ -28,7 +28,7 @@ public class OrderCancelRequestController {
 
     private final OrderCancelRequestService cancelRequestService;
 
-    @Operation(summary = "Create cancel request", description = "Customer creates a cancel request for an order (PREPARING/SHIPPING status)")
+    @Operation(summary = "Create cancel request", description = "Customer creates a cancel request for an order in PREPARING status only. Orders being delivered (SHIPPING) cannot be canceled.")
     @PostMapping
     @PreAuthorize("hasRole('CUSTOMER')")
     public ResponseEntity<CancelRequestResponse> createCancelRequest(

@@ -1,7 +1,7 @@
 package com.example.backend.dto.response;
 
-import com.example.backend.enums.ReturnReason;
-import com.example.backend.enums.ReturnRequestStatus;
+import com.example.backend.entity.enums.ReturnReason;
+import com.example.backend.entity.enums.ReturnRequestStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

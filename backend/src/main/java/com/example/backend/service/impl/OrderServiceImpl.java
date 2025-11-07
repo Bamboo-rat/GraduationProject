@@ -309,7 +309,7 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public OrderResponse startShipping(String orderId, String trackingNumber, String shippingProvider) {
+    public OrderResponse startShipping(String orderId, String trackingNumber) {
         log.info("Starting order shipment: orderId={}, trackingNumber={}", orderId, trackingNumber);
 
         Order order = orderRepository.findById(orderId)
@@ -320,11 +320,11 @@ public class OrderServiceImpl implements OrderService {
                     "Chỉ có thể giao hàng từ trạng thái PREPARING");
         }
 
-        // Create shipment record
+        // Create shipment record with fixed shipping provider
         Shipment shipment = new Shipment();
         shipment.setOrder(order);
         shipment.setTrackingNumber(trackingNumber);
-        shipment.setShippingProvider(shippingProvider);
+        shipment.setShippingProvider("Giao Hàng Nhanh"); // Fixed provider name
         shipment.setStatus(ShipmentStatus.SHIPPING);
         shipment.setEstimatedDeliveryDate(LocalDateTime.now().plusDays(3)); // Default 3 days
         shipmentRepository.save(shipment);
@@ -335,8 +335,8 @@ public class OrderServiceImpl implements OrderService {
         order = orderRepository.save(order);
 
         sendOrderNotification(order,
-                String.format("Đơn hàng #%s đang được giao đến bạn. Mã vận đơn: %s - %s",
-                        order.getOrderCode(), trackingNumber, shippingProvider));
+                String.format("Đơn hàng #%s đang được giao đến bạn. Mã vận đơn: %s - Giao Hàng Nhanh",
+                        order.getOrderCode(), trackingNumber));
 
         log.info("Order shipment started: orderId={}", orderId);
         return mapToOrderResponse(order);

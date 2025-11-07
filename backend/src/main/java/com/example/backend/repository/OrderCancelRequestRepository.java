@@ -5,7 +5,7 @@ import com.example.backend.entity.Order;
 import com.example.backend.entity.OrderCancelRequest;
 import com.example.backend.entity.Store;
 import com.example.backend.entity.enums.CancelRequestStatus;
-import com.example.backend.enums.OrderRequestType;
+import com.example.backend.entity.enums.OrderRequestType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

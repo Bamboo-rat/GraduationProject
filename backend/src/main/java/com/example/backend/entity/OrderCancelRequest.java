@@ -1,8 +1,8 @@
 package com.example.backend.entity;
 
 import com.example.backend.entity.enums.CancelRequestStatus;
-import com.example.backend.enums.OrderRequestType;
-import com.example.backend.enums.ReturnReason;
+import com.example.backend.entity.enums.OrderRequestType;
+import com.example.backend.entity.enums.ReturnReason;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;

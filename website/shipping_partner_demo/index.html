@@ -387,16 +387,20 @@
         <!-- Stats -->
         <div class="stats-grid">
             <div class="stat-card">
-                <h3>Tổng đơn hàng</h3>
+                <h3>Đang giao hàng</h3>
                 <div class="value" id="totalOrders">0</div>
             </div>
             <div class="stat-card">
-                <h3>Đang giao hàng</h3>
-                <div class="value" id="shippingOrders">0</div>
+                <h3>Giao hôm nay</h3>
+                <div class="value" style="color: #38A169;" id="dueTodayOrders">0</div>
             </div>
             <div class="stat-card">
-                <h3>Đã giao hôm nay</h3>
-                <div class="value" id="deliveredToday">0</div>
+                <h3>Quá hạn giao</h3>
+                <div class="value" style="color: #E53E3E;" id="overdueOrders">0</div>
+            </div>
+            <div class="stat-card">
+                <h3>Tổng giá trị COD</h3>
+                <div class="value" style="font-size: 1.4rem;" id="totalCOD">0₫</div>
             </div>
         </div>
 
@@ -411,13 +415,13 @@
                 >
                 <select class="search-input" id="providerFilter" style="max-width: 300px;" onchange="applyFilter()">
                     <option value="">Tất cả đơn vị vận chuyển</option>
-                    <option value="GIAO_HANG_NHANH">Giao Hàng Nhanh</option>
-                    <option value="GIAO_HANG_TIET_KIEM">Giao Hàng Tiết Kiệm</option>
-                    <option value="VIETTEL_POST">Viettel Post</option>
-                    <option value="VNPOST">VNPost</option>
-                    <option value="J_T_EXPRESS">J&T Express</option>
-                    <option value="GRAB_EXPRESS">Grab Express</option>
-                    <option value="SHOPEE_EXPRESS">Shopee Express</option>
+                    <option value="Giao Hàng Nhanh">Giao Hàng Nhanh</option>
+                    <option value="Giao Hàng Tiết Kiệm">Giao Hàng Tiết Kiệm</option>
+                    <option value="Viettel Post">Viettel Post</option>
+                    <option value="VN Post">VN Post</option>
+                    <option value="J&T Express">J&T Express</option>
+                    <option value="Ninja Van">Ninja Van</option>
+                    <option value="Best Express">Best Express</option>
                 </select>
             </div>
         </div>
@@ -425,9 +429,12 @@
         <!-- Orders List -->
         <div class="orders-container">
             <div class="orders-header">
-                <h2>Đơn hàng đang chờ giao</h2>
+                <h2>
+                    <span id="ordersTitle">Đơn hàng đang giao</span>
+                    <span id="ordersCount" style="color: #6B6B6B; font-size: 0.9rem; font-weight: normal;"></span>
+                </h2>
                 <button class="refresh-btn" onclick="loadOrders()">
-                    Làm mới
+                    🔄 Làm mới
                 </button>
             </div>
             <div id="ordersContent" class="loading">
@@ -511,14 +518,43 @@
 
         // Update statistics
         function updateStats() {
-            document.getElementById('totalOrders').textContent = allOrders.length;
-            document.getElementById('shippingOrders').textContent = allOrders.length;
-            document.getElementById('deliveredToday').textContent = deliveredToday;
+            const shippingOrders = allOrders.filter(o => o.shipmentStatus === 'SHIPPING');
+            const today = new Date().toDateString();
+
+            const dueToday = shippingOrders.filter(order => {
+                if (order.estimatedDeliveryDate) {
+                    const dueDate = new Date(order.estimatedDeliveryDate).toDateString();
+                    return dueDate === today;
+                }
+                return false;
+            }).length;
+
+            const overdue = shippingOrders.filter(order => {
+                if (order.estimatedDeliveryDate) {
+                    return new Date(order.estimatedDeliveryDate) < new Date();
+                }
+                return false;
+            }).length;
+
+            const totalCOD = shippingOrders.reduce((sum, order) => sum + (order.codAmount || 0), 0);
+
+            document.getElementById('totalOrders').textContent = shippingOrders.length;
+            document.getElementById('dueTodayOrders').textContent = dueToday;
+            document.getElementById('overdueOrders').textContent = overdue;
+            document.getElementById('totalCOD').textContent = formatMoney(totalCOD);
         }
 
         // Render orders list
         function renderOrders(orders) {
             const content = document.getElementById('ordersContent');
+            const countElement = document.getElementById('ordersCount');
+
+            // Update count
+            if (orders.length > 0) {
+                countElement.textContent = `(${orders.length} đơn)`;
+            } else {
+                countElement.textContent = '';
+            }
 
             if (orders.length === 0) {
                 content.innerHTML = `
@@ -600,11 +636,19 @@
 
         // Create order card HTML
         function createOrderCard(order) {
+            const isOverdue = order.estimatedDeliveryDate && new Date(order.estimatedDeliveryDate) < new Date();
+            const isDueToday = order.estimatedDeliveryDate &&
+                new Date(order.estimatedDeliveryDate).toDateString() === new Date().toDateString();
+
             return `
-                <div class="order-card">
+                <div class="order-card" style="${isOverdue && order.shipmentStatus === 'SHIPPING' ? 'border-color: #FC8181;' : ''}">
                     <div class="order-header">
                         <div class="order-info">
-                            <div class="order-code">${order.orderCode}</div>
+                            <div class="order-code">
+                                ${order.orderCode}
+                                ${isOverdue && order.shipmentStatus === 'SHIPPING' ? '<span style="color: #E53E3E; font-size: 0.9rem; margin-left: 8px;">⚠️ Quá hạn</span>' : ''}
+                                ${isDueToday && order.shipmentStatus === 'SHIPPING' ? '<span style="color: #38A169; font-size: 0.9rem; margin-left: 8px;">📅 Giao hôm nay</span>' : ''}
+                            </div>
                             <div class="tracking-number">Tracking: ${order.trackingNumber}</div>
                         </div>
                         <div class="status-badge">${getStatusLabel(order.shipmentStatus)}</div>
@@ -646,10 +690,13 @@
                     </div>
 
                     <div class="order-actions">
-                        ${order.shipmentStatus === 'IN_TRANSIT' ? `
+                        ${order.shipmentStatus === 'SHIPPING' ? `
                             <button class="btn btn-deliver" onclick="markAsDelivered('${order.trackingNumber}')">
                                 ✓ Xác nhận đã giao
                             </button>
+                        ` : ''}
+                        ${order.shipmentStatus === 'DELIVERED' ? `
+                            <span style="color: #2F855A; font-weight: 600;">✓ Đã giao thành công</span>
                         ` : ''}
                     </div>
                 </div>
@@ -692,27 +739,19 @@
         // Get status label in Vietnamese
         function getStatusLabel(status) {
             const labels = {
-                'PENDING': 'Chờ lấy hàng',
-                'IN_TRANSIT': 'Đang giao hàng',
-                'DELIVERED': 'Đã giao hàng',
-                'CANCELLED': 'Đã hủy',
-                'RETURNED': 'Đã trả hàng'
+                'PREPARING': 'Đang chuẩn bị',
+                'SHIPPING': 'Đang giao hàng',
+                'DELIVERED': 'Đã giao thành công',
+                'FAILED': 'Giao hàng thất bại',
+                'CANCELED': 'Đã hủy'
             };
             return labels[status] || status;
         }
 
-        // Get shipping provider label
+        // Get shipping provider label (backend returns string names, not enums)
         function getProviderLabel(provider) {
-            const labels = {
-                'GIAO_HANG_NHANH': 'Giao Hàng Nhanh',
-                'GIAO_HANG_TIET_KIEM': 'Giao Hàng Tiết Kiệm',
-                'VIETTEL_POST': 'Viettel Post',
-                'VNPOST': 'VNPost',
-                'J_T_EXPRESS': 'J&T Express',
-                'GRAB_EXPRESS': 'Grab Express',
-                'SHOPEE_EXPRESS': 'Shopee Express'
-            };
-            return labels[provider] || provider;
+            // Provider is already in readable format from backend
+            return provider || 'N/A';
         }
     </script>
 </body>

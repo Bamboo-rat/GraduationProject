@@ -49,11 +49,12 @@ public class OrderCancelRequestServiceImpl implements OrderCancelRequestService 
                     "Bạn không có quyền tạo yêu cầu hủy cho đơn hàng này");
         }
 
-        // Validate order status
-        if (order.getStatus() != OrderStatus.PREPARING &&
-            order.getStatus() != OrderStatus.SHIPPING) {
+        // Validate order status - Only allow cancel requests for PREPARING orders
+        // Orders in SHIPPING (being delivered) cannot be canceled
+        if (order.getStatus() != OrderStatus.PREPARING) {
             throw new BadRequestException(ErrorCode.INVALID_ORDER_STATUS,
-                    "Chỉ có thể tạo yêu cầu hủy cho đơn hàng đang ở trạng thái PREPARING hoặc SHIPPING. " +
+                    "Chỉ có thể tạo yêu cầu hủy cho đơn hàng đang ở trạng thái 'Đang chuẩn bị' (PREPARING). " +
+                    "Đơn hàng đang giao (SHIPPING) không thể hủy. " +
                     "Trạng thái hiện tại: " + order.getStatus());
         }
 

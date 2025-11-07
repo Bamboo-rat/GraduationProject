@@ -1,6 +1,6 @@
 package com.example.backend.dto.request;
 
-import com.example.backend.enums.ReturnReason;
+import com.example.backend.entity.enums.ReturnReason;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;

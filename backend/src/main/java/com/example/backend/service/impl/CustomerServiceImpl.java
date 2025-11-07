@@ -728,8 +728,9 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     private CustomerDetailResponse.AddressSummary mapToAddressSummary(Address address) {
-        // Count orders using this address
-        int orderCount = (int) orderRepository.countByShippingAddress(address);
+        // Count orders using this address by searching for street name in shipping address
+        // Use street as the search term since it's most unique part of the address
+        int orderCount = (int) orderRepository.countByShippingAddressContaining(address.getStreet());
 
         return CustomerDetailResponse.AddressSummary.builder()
                 .addressId(address.getAddressId())

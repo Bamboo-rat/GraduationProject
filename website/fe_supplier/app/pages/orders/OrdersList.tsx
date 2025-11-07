@@ -109,17 +109,18 @@ export default function OrdersList() {
 
   const handleShipOrder = async () => {
     if (!selectedOrder) return;
-    
+
+    if (!trackingNumber.trim()) {
+      alert('Vui lòng nhập mã vận đơn');
+      return;
+    }
+
     try {
       setSubmitting(true);
-      await orderService.shipOrder(selectedOrder.id, {
-        trackingNumber: trackingNumber || undefined,
-        estimatedDeliveryDate: estimatedDelivery || undefined,
-      });
-      alert('Đơn hàng đã chuyển sang trạng thái giao hàng!');
+      await orderService.shipOrder(selectedOrder.id, trackingNumber);
+      alert('Đơn hàng đã chuyển sang trạng thái giao hàng qua Giao Hàng Nhanh!');
       setShowShipModal(false);
       setTrackingNumber('');
-      setEstimatedDelivery('');
       loadOrders();
     } catch (err: any) {
       alert(err.message || 'Không thể cập nhật trạng thái');
@@ -498,29 +499,32 @@ export default function OrdersList() {
             <p className="text-gray-600 mb-4">Đơn hàng: #{selectedOrder.orderCode}</p>
             
             <div className="space-y-4 mb-4">
+              {/* Info about shipping provider */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="flex items-start gap-2">
+                  <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-medium text-blue-800">Đơn vị vận chuyển: Giao Hàng Nhanh (GHN)</p>
+                    <p className="text-xs text-blue-600 mt-1">Thời gian giao hàng dự kiến: 3 ngày</p>
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Mã vận đơn (không bắt buộc)
+                  Mã vận đơn <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={trackingNumber}
                   onChange={(e) => setTrackingNumber(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Nhập mã vận đơn"
+                  placeholder="Nhập mã vận đơn từ GHN"
+                  required
                 />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ngày giao dự kiến (không bắt buộc)
-                </label>
-                <input
-                  type="date"
-                  value={estimatedDelivery}
-                  onChange={(e) => setEstimatedDelivery(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <p className="text-xs text-gray-500 mt-1">Nhập mã vận đơn để khách hàng có thể tra cứu</p>
               </div>
             </div>
 
@@ -533,7 +537,7 @@ export default function OrdersList() {
                 {submitting ? 'Đang xử lý...' : 'Bắt đầu giao'}
               </button>
               <button
-                onClick={() => { setShowShipModal(false); setTrackingNumber(''); setEstimatedDelivery(''); }}
+                onClick={() => { setShowShipModal(false); setTrackingNumber(''); }}
                 className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
               >
                 Hủy

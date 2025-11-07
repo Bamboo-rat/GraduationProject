@@ -45,10 +45,10 @@ public interface OrderRepository extends JpaRepository<Order, String> {
     Page<Order> findByCustomerAndStatus(Customer customer, OrderStatus status, Pageable pageable);
 
     /**
-     * Count orders by shipping address
+     * Count orders by shipping address string (searches for substring match)
      */
-    @Query("SELECT COUNT(o) FROM Order o WHERE o.shippingAddress = :address")
-    long countByShippingAddress(@Param("address") Address address);
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.shippingAddress LIKE CONCAT('%', :addressPart, '%')")
+    long countByShippingAddressContaining(@Param("addressPart") String addressPart);
 
     /**
      * Find orders by store with pagination
@@ -138,6 +138,7 @@ public interface OrderRepository extends JpaRepository<Order, String> {
            "WHERE o.status = 'DELIVERED' " +
            "GROUP BY o.store.storeId, o.store.storeName " +
            "ORDER BY orderCount DESC, o.store.storeName ASC")
+    
     List<Object[]> findTopStoresByOrderCount(Pageable pageable);
 
     /**

@@ -10,7 +10,8 @@ import com.example.backend.entity.Store;
 import com.example.backend.entity.User;
 import com.example.backend.entity.enums.CancelRequestStatus;
 import com.example.backend.entity.enums.OrderStatus;
-import com.example.backend.enums.OrderRequestType;
+import com.example.backend.entity.enums.OrderRequestType;
+import com.example.backend.entity.enums.ReturnRequestStatus;
 import com.example.backend.exception.custom.NotFoundException;
 import com.example.backend.exception.custom.BadRequestException;
 import com.example.backend.exception.ErrorCode;
@@ -263,12 +264,12 @@ public class ReturnRequestServiceImpl implements ReturnRequestService {
                 .build();
     }
 
-    private com.example.backend.enums.ReturnRequestStatus mapCancelStatusToReturnStatus(
+    private ReturnRequestStatus mapCancelStatusToReturnStatus(
             CancelRequestStatus status) {
         return switch (status) {
-            case PENDING_REVIEW -> com.example.backend.enums.ReturnRequestStatus.PENDING;
-            case APPROVED -> com.example.backend.enums.ReturnRequestStatus.APPROVED;
-            case REJECTED -> com.example.backend.enums.ReturnRequestStatus.REJECTED;
+            case PENDING_REVIEW -> ReturnRequestStatus.PENDING;
+            case APPROVED -> ReturnRequestStatus.APPROVED;
+            case REJECTED -> ReturnRequestStatus.REJECTED;
         };
     }
 }

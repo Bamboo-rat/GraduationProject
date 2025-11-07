@@ -9,7 +9,6 @@ export default function DeliveryAssign() {
   const [showShipModal, setShowShipModal] = useState(false);
   const [trackingNumber, setTrackingNumber] = useState('');
   const [estimatedDelivery, setEstimatedDelivery] = useState('');
-  const [shippingProvider, setShippingProvider] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -46,17 +45,17 @@ export default function DeliveryAssign() {
   const handleShipOrder = async () => {
     if (!selectedOrder) return;
     
+    if (!trackingNumber.trim()) {
+      alert('Vui lòng nhập mã vận đơn');
+      return;
+    }
+    
     try {
       setSubmitting(true);
-      await orderService.shipOrder(selectedOrder.id, {
-        trackingNumber: trackingNumber || undefined,
-        shippingProvider: shippingProvider || undefined,
-        estimatedDeliveryDate: estimatedDelivery || undefined,
-      });
-      alert('Đơn hàng đã được giao cho đơn vị vận chuyển!');
+      await orderService.shipOrder(selectedOrder.id, trackingNumber);
+      alert('Đơn hàng đã được giao cho Giao Hàng Nhanh!');
       setShowShipModal(false);
       setTrackingNumber('');
-      setShippingProvider('');
       setEstimatedDelivery('');
       loadReadyOrders();
     } catch (err: any) {
@@ -229,47 +228,36 @@ export default function DeliveryAssign() {
             <p className="text-gray-600 mb-4">Đơn hàng: #{selectedOrder.orderCode}</p>
             
             <div className="space-y-4 mb-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Đơn vị vận chuyển
-                </label>
-                <select
-                  value={shippingProvider}
-                  onChange={(e) => setShippingProvider(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Chọn đơn vị vận chuyển</option>
-                  <option value="GHN">Giao Hàng Nhanh (GHN)</option>
-                  <option value="GHTK">Giao Hàng Tiết Kiệm (GHTK)</option>
-                  <option value="J&T">J&T Express</option>
-                  <option value="ViettelPost">Viettel Post</option>
-                  <option value="VNPost">VN Post</option>
-                  <option value="SELF">Tự giao hàng</option>
-                </select>
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <p className="text-sm text-blue-800">
+                  <span className="font-semibold">Đơn vị vận chuyển:</span> Giao Hàng Nhanh (GHN)
+                </p>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Mã vận đơn
+                  Mã vận đơn <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={trackingNumber}
                   onChange={(e) => setTrackingNumber(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Nhập mã vận đơn (nếu có)"
+                  placeholder="Nhập mã vận đơn"
+                  required
                 />
               </div>
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Ngày giao dự kiến
+                  Ngày giao dự kiến (tự động sau 3 ngày)
                 </label>
                 <input
                   type="date"
                   value={estimatedDelivery}
                   onChange={(e) => setEstimatedDelivery(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled
                 />
               </div>
             </div>
@@ -307,7 +295,6 @@ export default function DeliveryAssign() {
                 onClick={() => {
                   setShowShipModal(false);
                   setTrackingNumber('');
-                  setShippingProvider('');
                   setEstimatedDelivery('');
                 }}
                 className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"

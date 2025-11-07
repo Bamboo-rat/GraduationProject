@@ -173,11 +173,10 @@ public class OrderController {
     @Operation(summary = "Start shipping order", description = "Start shipping order (PREPARING → SHIPPING). Creates shipment record with tracking number")
     public ResponseEntity<ApiResponse<OrderResponse>> startShipping(
             @PathVariable String orderId,
-            @RequestParam String trackingNumber,
-            @RequestParam String shippingProvider) {
+            @RequestParam String trackingNumber) {
         log.info("POST /api/orders/{}/ship - Starting shipment: trackingNumber={}", orderId, trackingNumber);
 
-        OrderResponse response = orderService.startShipping(orderId, trackingNumber, shippingProvider);
+        OrderResponse response = orderService.startShipping(orderId, trackingNumber);
         return ResponseEntity.ok(ApiResponse.success("Đơn hàng đang được giao", response));
     }
 
