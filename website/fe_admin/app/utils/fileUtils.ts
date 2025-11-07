@@ -202,15 +202,16 @@ export async function viewFile(url: string): Promise<void> {
 }
 
 /**
- * Fetches an image through the backend proxy and returns a blob URL
- * Used for displaying images in <img> tags with authentication
+ * Fetches a file (image or PDF) through the backend proxy and returns a blob URL
+ * Used for displaying files in components with authentication
+ * Renamed from fetchImageAsBlobUrl to support both images and PDFs
  *
- * @param url - The Cloudinary image URL to fetch
+ * @param url - The Cloudinary file URL to fetch
  * @returns Promise with blob URL or null if failed
  */
-export async function fetchImageAsBlobUrl(url: string): Promise<string | null> {
+export async function fetchFileAsBlobUrl(url: string): Promise<string | null> {
   if (!url) {
-    console.error('No URL provided for image fetch');
+    console.error('No URL provided for file fetch');
     return null;
   }
 
@@ -219,7 +220,7 @@ export async function fetchImageAsBlobUrl(url: string): Promise<string | null> {
     const encodedUrl = encodeURIComponent(url);
     const fetchUrl = `${API_BASE_URL}/files/download?url=${encodedUrl}&inline=true`;
 
-    console.log('Fetching image through proxy:', fetchUrl);
+    console.log('Fetching file through proxy:', fetchUrl);
 
     // Get auth token from localStorage
     const token = localStorage.getItem('access_token');
@@ -228,7 +229,7 @@ export async function fetchImageAsBlobUrl(url: string): Promise<string | null> {
       return null;
     }
 
-    // Fetch image with authentication
+    // Fetch file with authentication
     const response = await fetch(fetchUrl, {
       method: 'GET',
       headers: {
@@ -237,7 +238,7 @@ export async function fetchImageAsBlobUrl(url: string): Promise<string | null> {
     });
 
     if (!response.ok) {
-      console.error(`Image fetch failed: ${response.status} ${response.statusText}`);
+      console.error(`File fetch failed: ${response.status} ${response.statusText}`);
       return null;
     }
 
@@ -246,10 +247,16 @@ export async function fetchImageAsBlobUrl(url: string): Promise<string | null> {
 
     // Create and return blob URL
     const blobUrl = URL.createObjectURL(blob);
-    console.log('Image fetched successfully');
+    console.log('File fetched successfully');
     return blobUrl;
   } catch (error) {
-    console.error('Error fetching image:', error);
+    console.error('Error fetching file:', error);
     return null;
   }
 }
+
+/**
+ * @deprecated Use fetchFileAsBlobUrl instead
+ * Legacy alias for backward compatibility
+ */
+export const fetchImageAsBlobUrl = fetchFileAsBlobUrl;
