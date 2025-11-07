@@ -228,17 +228,37 @@ public class FileStorageController {
     ) {
         log.info("GET /api/files/download - Proxying {} for: {}", inline ? "view" : "download", fileUrl);
 
+        String urlToFetch = fileUrl;
+
         try {
-            // Open connection to Cloudinary URL
-            URL url = new URL(fileUrl);
+            // Try to open connection to Cloudinary URL
+            URL url = new URL(urlToFetch);
             URLConnection connection = url.openConnection();
             connection.setConnectTimeout(5000);
             connection.setReadTimeout(30000);
+            connection.connect();
+
+            // Check if we got a 401 error (authenticated file)
+            if (connection instanceof java.net.HttpURLConnection) {
+                int responseCode = ((java.net.HttpURLConnection) connection).getResponseCode();
+                if (responseCode == 401) {
+                    log.warn("File is authenticated, generating signed URL: {}", fileUrl);
+                    // Generate signed URL valid for 1 hour
+                    urlToFetch = fileStorageService.generateSignedUrl(fileUrl, 3600);
+                    log.info("Using signed URL: {}", urlToFetch);
+
+                    // Reconnect with signed URL
+                    url = new URL(urlToFetch);
+                    connection = url.openConnection();
+                    connection.setConnectTimeout(5000);
+                    connection.setReadTimeout(30000);
+                }
+            }
 
             // Get content type and input stream
             String contentType = connection.getContentType();
             if (contentType == null) {
-                contentType = URLConnection.guessContentTypeFromName(fileUrl);
+                contentType = URLConnection.guessContentTypeFromName(urlToFetch);
             }
             if (contentType == null) {
                 contentType = "application/octet-stream";
@@ -250,7 +270,7 @@ public class FileStorageController {
             // Extract filename from URL if not provided
             String filename = customFilename;
             if (filename == null || filename.isEmpty()) {
-                String[] pathParts = fileUrl.split("/");
+                String[] pathParts = urlToFetch.split("/");
                 filename = pathParts[pathParts.length - 1];
                 // Remove query parameters if any
                 int queryIndex = filename.indexOf('?');

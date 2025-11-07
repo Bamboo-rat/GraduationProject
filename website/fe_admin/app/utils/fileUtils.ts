@@ -45,11 +45,12 @@ export function getDownloadableCloudinaryUrl(url: string): string {
 /**
  * Downloads a file through backend proxy to avoid CORS and auth issues
  * The backend fetches from Cloudinary and streams it back with proper headers
+ * Uses authenticated fetch to include JWT token
  *
  * @param url - The Cloudinary file URL to download
  * @param filename - Optional custom filename for the download
  */
-export function downloadFile(url: string, filename?: string): void {
+export async function downloadFile(url: string, filename?: string): Promise<void> {
   if (!url) {
     console.error('No URL provided for download');
     return;
@@ -67,41 +68,81 @@ export function downloadFile(url: string, filename?: string): void {
       downloadUrl += `&filename=${encodedFilename}`;
     }
 
-    console.log('Initiating download through proxy:', downloadUrl);
+    console.log('Initiating authenticated download through proxy:', downloadUrl);
 
-    // Create hidden anchor and trigger click
+    // Get auth token from localStorage
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      console.error('No authentication token found');
+      throw new Error('Authentication required');
+    }
+
+    // Fetch file with authentication
+    const response = await fetch(downloadUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+    }
+
+    // Get the blob from response
+    const blob = await response.blob();
+
+    // Create blob URL
+    const blobUrl = URL.createObjectURL(blob);
+
+    // Create hidden anchor and trigger download
     const link = document.createElement('a');
-    link.href = downloadUrl;
+    link.href = blobUrl;
     link.style.display = 'none';
 
-    // Download attribute helps suggest filename to browser
-    if (filename) {
-      link.download = filename;
+    // Extract filename from Content-Disposition header or use provided filename
+    let finalFilename = filename;
+    if (!finalFilename) {
+      const contentDisposition = response.headers.get('Content-Disposition');
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+        if (filenameMatch && filenameMatch[1]) {
+          finalFilename = filenameMatch[1].replace(/['"]/g, '');
+          finalFilename = decodeURIComponent(finalFilename);
+        }
+      }
+    }
+
+    if (finalFilename) {
+      link.download = finalFilename;
     }
 
     document.body.appendChild(link);
     link.click();
 
-    // Cleanup after a short delay
+    // Cleanup
     setTimeout(() => {
       if (link.parentNode) {
         document.body.removeChild(link);
       }
+      URL.revokeObjectURL(blobUrl);
     }, 100);
 
-    console.log('Download initiated successfully');
+    console.log('Download completed successfully');
   } catch (error) {
-    console.error('Error initiating download:', error);
+    console.error('Error downloading file:', error);
+    throw error;
   }
 }
 
 /**
  * Opens file for viewing in new tab through backend proxy
  * Uses inline disposition so file displays in browser instead of downloading
+ * Uses authenticated fetch to include JWT token
  *
  * @param url - The Cloudinary file URL to view
  */
-export function viewFile(url: string): void {
+export async function viewFile(url: string): Promise<void> {
   if (!url) {
     console.error('No URL provided for viewing');
     return;
@@ -115,9 +156,100 @@ export function viewFile(url: string): void {
 
     console.log('Opening file for viewing through proxy:', viewUrl);
 
-    // Open in new tab
-    window.open(viewUrl, '_blank');
+    // Get auth token from localStorage
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      console.error('No authentication token found');
+      throw new Error('Authentication required');
+    }
+
+    // Fetch file with authentication
+    const response = await fetch(viewUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`View failed: ${response.status} ${response.statusText}`);
+    }
+
+    // Get the blob from response
+    const blob = await response.blob();
+
+    // Create blob URL and open in new tab
+    const blobUrl = URL.createObjectURL(blob);
+    const newWindow = window.open(blobUrl, '_blank');
+
+    // Cleanup blob URL after window opens (with delay to ensure it loads)
+    if (newWindow) {
+      // Revoke blob URL after 1 minute to free memory
+      setTimeout(() => {
+        URL.revokeObjectURL(blobUrl);
+      }, 60000);
+    } else {
+      // If popup was blocked, revoke immediately
+      URL.revokeObjectURL(blobUrl);
+      console.error('Failed to open new window - popup may be blocked');
+    }
+
+    console.log('File opened for viewing successfully');
   } catch (error) {
     console.error('Error viewing file:', error);
+    throw error;
+  }
+}
+
+/**
+ * Fetches an image through the backend proxy and returns a blob URL
+ * Used for displaying images in <img> tags with authentication
+ *
+ * @param url - The Cloudinary image URL to fetch
+ * @returns Promise with blob URL or null if failed
+ */
+export async function fetchImageAsBlobUrl(url: string): Promise<string | null> {
+  if (!url) {
+    console.error('No URL provided for image fetch');
+    return null;
+  }
+
+  try {
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+    const encodedUrl = encodeURIComponent(url);
+    const fetchUrl = `${API_BASE_URL}/files/download?url=${encodedUrl}&inline=true`;
+
+    console.log('Fetching image through proxy:', fetchUrl);
+
+    // Get auth token from localStorage
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+      console.error('No authentication token found');
+      return null;
+    }
+
+    // Fetch image with authentication
+    const response = await fetch(fetchUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      console.error(`Image fetch failed: ${response.status} ${response.statusText}`);
+      return null;
+    }
+
+    // Get the blob from response
+    const blob = await response.blob();
+
+    // Create and return blob URL
+    const blobUrl = URL.createObjectURL(blob);
+    console.log('Image fetched successfully');
+    return blobUrl;
+  } catch (error) {
+    console.error('Error fetching image:', error);
+    return null;
   }
 }

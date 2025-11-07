@@ -55,6 +55,7 @@ public class FileStorageServiceImpl implements FileStorageService {
                     "folder", bucket.getFolderName(),
                     "public_id", publicId,
                     "resource_type", resourceType, // Explicitly set resource type based on file
+                    "type", "upload", // IMPORTANT: "upload" = public access, "authenticated" = requires signed URL
                     "overwrite", false,
                     "invalidate", true);
 
@@ -217,10 +218,46 @@ public class FileStorageServiceImpl implements FileStorageService {
 
     @Override
     public String generateSignedUrl(String fileUrl, int expirationSeconds) {
-        // Since files are uploaded as PUBLIC (unsigned mode),
-        // they are directly accessible without signed URLs
-        log.debug("Files are public, returning original URL: {}", fileUrl);
-        return fileUrl;
+        // For authenticated files (existing files), generate signed URLs
+        // For public files (new uploads), return the original URL
+
+        try {
+            // Extract public_id and resource type from URL
+            String publicId = extractPublicIdFromUrl(fileUrl);
+            String resourceType = extractResourceTypeFromUrl(fileUrl);
+
+            if (publicId == null) {
+                log.error("Could not extract public_id from URL: {}", fileUrl);
+                return fileUrl;
+            }
+
+            log.info("Generating signed URL for: {} (resource_type: {})", publicId, resourceType);
+
+            // Generate signed URL with expiration
+            long expirationTime = (System.currentTimeMillis() / 1000L) + expirationSeconds;
+
+            @SuppressWarnings("unchecked")
+            Map<String, Object> options = ObjectUtils.asMap(
+                    "resource_type", resourceType,
+                    "type", "authenticated", // Generate URL for authenticated resources
+                    "sign_url", true,
+                    "expires_at", expirationTime
+            );
+
+            String signedUrl = cloudinary.url()
+                    .resourceType(resourceType)
+                    .type("authenticated")
+                    .signed(true)
+                    .generate(publicId);
+
+            log.info("Generated signed URL (expires in {} seconds): {}", expirationSeconds, signedUrl);
+            return signedUrl;
+
+        } catch (Exception e) {
+            log.error("Error generating signed URL for: {}", fileUrl, e);
+            // Fallback to original URL
+            return fileUrl;
+        }
     }
 
     /**
