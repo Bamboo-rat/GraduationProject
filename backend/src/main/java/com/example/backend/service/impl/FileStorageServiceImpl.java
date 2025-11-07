@@ -110,16 +110,6 @@ public class FileStorageServiceImpl implements FileStorageService {
         String extension = getFileExtension(filename).toLowerCase().trim();
         log.debug("File: {} | Extension: {} | Bucket: {}", filename, extension, bucket.getFolderName());
 
-        // Document buckets should ALWAYS use "raw" type (for both documents and images)
-        // This ensures documents are stored with proper access and not processed as
-        // images
-        if (bucket == StorageBucket.BUSINESS_LICENSES ||
-                bucket == StorageBucket.FOOD_SAFETY_CERTIFICATES) {
-
-            log.info("Document bucket detected - forcing resource type to 'raw' for file: {}", filename);
-            return "raw"; // ALWAYS return raw for document buckets, regardless of file type
-        }
-
         // For non-document buckets, determine type based on extension
         // Document formats always use "raw"
         if (extension.matches("pdf|doc|docx|xls|xlsx|txt|csv|zip|rar")) {

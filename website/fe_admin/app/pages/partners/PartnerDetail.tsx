@@ -83,10 +83,9 @@ export default function PartnerDetail() {
 
   // Helper function to detect PDF files
   const isPdfFile = (fileUrl: string | null | undefined): boolean => {
-    if (!fileUrl) return false;
-    const url = fileUrl.toLowerCase();
-    return url.endsWith('.pdf') || url.includes('/raw/upload/') || url.includes('/pdf') || url.includes('_pdf');
-  };
+  if (!fileUrl) return false;
+  return fileUrl.toLowerCase().endsWith('.pdf');
+};
 
   // Handle file download
   const handleDownload = (fileUrl: string | null | undefined, filename?: string) => {

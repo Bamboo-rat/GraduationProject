@@ -64,8 +64,7 @@ export default function SupplierPendingDetail({
   // Detect if a URL is a PDF file
   const isPdfFile = (fileUrl: string | null | undefined): boolean => {
     if (!fileUrl) return false;
-    const url = fileUrl.toLowerCase();
-    return url.endsWith('.pdf') || url.includes('/raw/upload/') || url.includes('/pdf') || url.includes('_pdf');
+    return fileUrl.toLowerCase().endsWith('.pdf');
   };
 
   // Handle file download
@@ -305,7 +304,7 @@ export default function SupplierPendingDetail({
                                   </button>
                                 ) : businessLicenseBlobUrl ? (
                                   <div className="relative h-[500px] border-2 border-default rounded-xl overflow-hidden">
-                                    <PDFViewer 
+                                    <PDFViewer
                                       fileUrl={businessLicenseBlobUrl}
                                       onDownload={() => handleDownload(supplier.businessLicenseUrl, 'giay-phep-kinh-doanh.pdf')}
                                     />
@@ -356,28 +355,15 @@ export default function SupplierPendingDetail({
 
                             {!isPdf ? (
                               <div className="space-y-3">
-                                <div className="relative rounded-lg overflow-hidden border-2 border-default shadow-sm hover:shadow-md transition-shadow cursor-pointer">
-                                  {foodSafetyCertBlobUrl ? (
-                                    <img
-                                      src={foodSafetyCertBlobUrl}
-                                      alt="Food Safety Certificate"
-                                      className="w-full h-48 object-contain bg-surface"
-                                      onClick={() => handleViewFile(supplier.foodSafetyCertificateUrl)}
-                                    />
-                                  ) : (
-                                    <div className="w-full h-48 bg-surface flex items-center justify-center">
-                                      <p className="text-text-light">Đang tải hình ảnh...</p>
-                                    </div>
-                                  )}
-                                </div>
                                 <button
                                   onClick={() => handleViewFile(supplier.foodSafetyCertificateUrl)}
-                                  className="w-full flex items-center justify-center gap-2 text-primary hover:text-primary-dark font-medium text-sm py-2 bg-primary-lighter rounded-lg hover:bg-primary-light transition-colors"
+
+                                  className="w-full flex items-center justify-center gap-2 btn-primary py-3 px-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 text-sm"
                                 >
                                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                                   </svg>
-                                  Mở trong tab mới
+                                  Mở file trong tab mới
                                 </button>
                               </div>
                             ) : (
@@ -395,7 +381,7 @@ export default function SupplierPendingDetail({
                                   </button>
                                 ) : foodSafetyCertBlobUrl ? (
                                   <div className="relative h-[500px] border-2 border-default rounded-xl overflow-hidden">
-                                    <PDFViewer 
+                                    <PDFViewer
                                       fileUrl={foodSafetyCertBlobUrl}
                                       onDownload={() => handleDownload(supplier.foodSafetyCertificateUrl, 'chung-nhan-attp.pdf')}
                                     />
