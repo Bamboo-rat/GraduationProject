@@ -40,6 +40,7 @@ public class WalletServiceImpl implements WalletService {
     private final WalletTransactionRepository transactionRepository;
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
+    private final SupplierRepository supplierRepository;
 
     private static final BigDecimal MINIMUM_WITHDRAWAL = new BigDecimal("50000");
     private static final NumberFormat VND_FORMAT = NumberFormat.getCurrencyInstance(Locale.of("vi", "VN"));
@@ -299,10 +300,19 @@ public class WalletServiceImpl implements WalletService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public WalletSummaryResponse getWalletSummary() {
         String currentUserId = SecurityUtil.getCurrentUserId();
-        SupplierWallet wallet = getWalletEntityBySupplierId(currentUserId);
+        
+        // Get or create wallet if not exists
+        SupplierWallet wallet = walletRepository.findBySupplierId(currentUserId)
+                .orElseGet(() -> {
+                    log.info("Wallet not found for supplier {}, creating new wallet", currentUserId);
+                    Supplier supplier = supplierRepository.findById(currentUserId)
+                            .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+                    return createWallet(supplier);
+                });
+        
         Supplier supplier = wallet.getSupplier();
 
         YearMonth currentMonth = YearMonth.now();

@@ -33,32 +33,40 @@ body {
 /* Custom utility classes for consistent theming */
 @layer components {
   .card {
-    @apply bg-[#FFFEFA] rounded-lg shadow-sm border border-[#B7E4C7];
+    @apply bg-[#FFFEFA] rounded-xl shadow-sm border border-[#DDC6B6];
   }
   
   .card-hover {
-    @apply transition-all duration-200 hover:shadow-md hover:border-[#A4C3A2];
+    @apply transition-all duration-200 hover:shadow-md hover:border-[#A4C3A2] hover:translate-y-[-2px];
   }
   
   .btn-primary {
-    @apply bg-[#2F855A] text-[#FFFEFA] hover:bg-[#8FB491] px-4 py-2 rounded-lg transition-colors font-medium;
+    @apply bg-[#A4C3A2] text-[#2D2D2D] hover:bg-[#8FB491] px-6 py-3 rounded-xl transition-all duration-200 
+           font-semibold hover:shadow-md active:scale-95 flex items-center justify-center gap-2;
   }
   
   .btn-secondary {
-    @apply bg-[#A4C3A2] text-[#2D2D2D] hover:bg-[#8FB491] px-4 py-2 rounded-lg transition-colors font-medium;
+    @apply bg-[#DDC6B6] text-[#2D2D2D] hover:bg-[#C9B2A2] px-6 py-3 rounded-xl transition-all duration-200 
+           font-semibold hover:shadow-md active:scale-95 flex items-center justify-center gap-2;
+  }
+  
+  .btn-danger {
+    @apply bg-[#E63946] text-white hover:bg-[#D22A37] px-6 py-3 rounded-xl transition-all duration-200 
+           font-semibold hover:shadow-md active:scale-95 flex items-center justify-center gap-2;
   }
   
   .input-field {
-    @apply bg-[#F8FFF9] border border-[#B7E4C7] rounded-lg px-4 py-2 text-[#2D2D2D] 
-           focus:outline-none focus:ring-1 focus:ring-[#2F855A] focus:border-[#2F855A] transition-colors;
+    @apply bg-[#FFFEFA] border-2 border-[#DDC6B6] rounded-xl px-4 py-3 text-[#2D2D2D] 
+           focus:outline-none focus:ring-2 focus:ring-[#A4C3A2] focus:border-[#A4C3A2] transition-all duration-200
+           placeholder-[#8B8B8B];
   }
   
   .heading-primary {
-    @apply text-2xl font-bold text-[#2D2D2D];
+    @apply text-3xl font-bold text-[#2D2D2D] mb-2;
   }
   
   .heading-secondary {
-    @apply text-xl font-semibold text-[#2D2D2D];
+    @apply text-xl font-semibold text-[#2D2D2D] mb-4;
   }
   
   .text-muted {
@@ -70,7 +78,7 @@ body {
   }
   
   .border-default {
-    @apply border-[#B7E4C7];
+    @apply border-[#DDC6B6];
   }
   
   .bg-surface {
@@ -81,24 +89,50 @@ body {
     @apply bg-[#F8FFF9];
   }
   
+  .status-badge {
+    @apply inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold;
+  }
+  
   .badge-success {
-    @apply bg-[#E8FFED] text-[#2F855A] px-3 py-1 rounded-full text-sm font-medium;
+    @apply status-badge bg-[#E8FFED] text-[#2F855A];
   }
   
   .badge-warning {
-    @apply bg-orange-50 text-[#FF6B35] px-3 py-1 rounded-full text-sm font-medium;
+    @apply status-badge bg-orange-50 text-[#FF6B35];
   }
   
   .badge-error {
-    @apply bg-red-50 text-[#E63946] px-3 py-1 rounded-full text-sm font-medium;
+    @apply status-badge bg-red-50 text-[#E63946];
   }
   
   .badge-neutral {
-    @apply bg-[#F5EDE6] text-[#6B6B6B] px-3 py-1 rounded-full text-sm font-medium;
+    @apply status-badge bg-[#F5EDE6] text-[#6B6B6B];
+  }
+  
+  .badge-pending {
+    @apply status-badge bg-[#FFF3CD] text-[#856404];
+  }
+  
+  /* Tab styles */
+  .tab-active {
+    @apply border-b-2 border-[#A4C3A2] text-[#2D2D2D] font-semibold;
+  }
+  
+  .tab-inactive {
+    @apply text-[#6B6B6B] hover:text-[#2D2D2D] transition-colors;
+  }
+  
+  /* Modal styles */
+  .modal-overlay {
+    @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4;
+  }
+  
+  .modal-content {
+    @apply bg-[#FFFEFA] rounded-2xl p-6 max-w-md w-full mx-auto shadow-2xl;
   }
 }
 
-/* Animations */
+/* Enhanced animations */
 @keyframes slide-in-right {
   from {
     transform: translateX(100%);
@@ -128,6 +162,15 @@ body {
   }
 }
 
+@keyframes pulse-soft {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
 .animate-slide-in-right {
   animation: slide-in-right 0.3s ease-out;
 }
@@ -138,4 +181,26 @@ body {
 
 .animate-bounce-gentle {
   animation: bounce-gentle 2s infinite;
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2s infinite;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F5EDE6;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #A4C3A2;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #8FB491;
 }

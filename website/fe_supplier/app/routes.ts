@@ -23,6 +23,7 @@ export default [
 
   // Orders routes
   route("orders/list", "routes/orders/list.tsx"),
+  route("orders/:orderId", "routes/orders/$orderId.tsx"),
   route("orders/returns", "routes/orders/returns.tsx"),
 
   // Delivery routes
