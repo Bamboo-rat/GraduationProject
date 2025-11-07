@@ -136,6 +136,7 @@ class SupplierOrderService {
   }): Promise<Page<Order>> {
     try {
       const queryParams = new URLSearchParams();
+      if (params?.storeId) queryParams.append('storeId', params.storeId);
       if (params?.status) queryParams.append('status', params.status);
       if (params?.startDate) queryParams.append('startDate', params.startDate);
       if (params?.endDate) queryParams.append('endDate', params.endDate);
@@ -145,9 +146,9 @@ class SupplierOrderService {
       if (params?.sortBy) queryParams.append('sortBy', params.sortBy);
       if (params?.sortDir) queryParams.append('sortDir', params.sortDir);
 
-      const storeId = params?.storeId || 'me'; // Use 'me' for current supplier's store
+      // Always use '/orders/store/me' endpoint - backend handles storeId filtering
       const { data } = await axiosInstance.get<ApiResponse<Page<Order>>>(
-        `/orders/store/${storeId}?${queryParams.toString()}`
+        `/orders/store/me?${queryParams.toString()}`
       );
       return data.data;
     } catch (error) {

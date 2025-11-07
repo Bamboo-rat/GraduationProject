@@ -1,10 +1,15 @@
 import { useEffect, useState } from 'react';
 import orderService from '~/service/orderService';
+import storeService from '~/service/storeService';
 import type { Order, OrderStatus } from '~/service/orderService';
+import type { StoreResponse } from '~/service/storeService';
 
 export default function OrdersList() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [stores, setStores] = useState<StoreResponse[]>([]);
+  const [selectedStoreId, setSelectedStoreId] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [loadingStores, setLoadingStores] = useState(true);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [status, setStatus] = useState<OrderStatus | ''>('');
@@ -21,13 +26,35 @@ export default function OrdersList() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    loadStores();
+  }, []);
+
+  useEffect(() => {
     loadOrders();
-  }, [page, status]);
+  }, [page, status, selectedStoreId]);
+
+  const loadStores = async () => {
+    try {
+      setLoadingStores(true);
+      const data = await storeService.getMyStores({
+        page: 0,
+        size: 100, // Load all stores
+        sortBy: 'storeName',
+        sortDirection: 'ASC',
+      });
+      setStores(data.content);
+    } catch (err) {
+      console.error('Failed to load stores:', err);
+    } finally {
+      setLoadingStores(false);
+    }
+  };
 
   const loadOrders = async () => {
     try {
       setLoading(true);
       const data = await orderService.getStoreOrders({
+        storeId: selectedStoreId || undefined,
         page,
         size: 10,
         status: status || undefined,
@@ -178,26 +205,86 @@ export default function OrdersList() {
           ))}
         </div>
 
-        {/* Search Bar */}
+        {/* Search Bar & Store Filter */}
         <div className="p-4">
-          <div className="flex gap-4">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Tìm theo mã đơn, tên khách hàng, SĐT..."
-            />
-            <button
-              onClick={handleSearch}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Tìm kiếm
-            </button>
+          <div className="flex flex-col sm:flex-row gap-4">
+            {/* Store Filter Dropdown */}
+            <div className="sm:w-64">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Cửa hàng
+              </label>
+              <select
+                value={selectedStoreId}
+                onChange={(e) => { setSelectedStoreId(e.target.value); setPage(0); }}
+                disabled={loadingStores}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
+              >
+                <option value="">Tất cả cửa hàng ({stores.length})</option>
+                {stores.map((store) => (
+                  <option key={store.storeId} value={store.storeId}>
+                    {store.storeName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Search Input */}
+            <div className="flex-1 flex gap-2">
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Tìm theo mã đơn, tên khách hàng, SĐT..."
+              />
+              <button
+                onClick={handleSearch}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 whitespace-nowrap"
+              >
+                Tìm kiếm
+              </button>
+            </div>
           </div>
+
+          {/* Store Info Summary */}
+          {selectedStoreId && (
+            <div className="mt-3 flex items-center gap-2 text-sm">
+              <span className="text-gray-600">Đang xem đơn hàng của:</span>
+              <span className="font-semibold text-blue-600">
+                {stores.find(s => s.storeId === selectedStoreId)?.storeName}
+              </span>
+              <button
+                onClick={() => { setSelectedStoreId(''); setPage(0); }}
+                className="text-gray-500 hover:text-gray-700 ml-2"
+                title="Xóa bộ lọc"
+              >
+                ✕
+              </button>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* No Store Warning */}
+      {!loadingStores && stores.length === 0 && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+          <div className="flex items-center">
+            <svg className="h-6 w-6 text-yellow-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <div>
+              <p className="font-semibold text-yellow-800">Chưa có cửa hàng</p>
+              <p className="text-sm text-yellow-700">
+                Bạn cần tạo cửa hàng trước khi có thể nhận đơn hàng.{' '}
+                <a href="/stores/create" className="underline hover:text-yellow-900">
+                  Tạo cửa hàng ngay
+                </a>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Orders List */}
       <div className="space-y-4">

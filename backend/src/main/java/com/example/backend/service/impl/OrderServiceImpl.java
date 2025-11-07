@@ -460,9 +460,12 @@ public class OrderServiceImpl implements OrderService {
 
         // Get all supplier's stores
         List<Store> stores = storeRepository.findBySupplierUserId(supplierId);
+        
+        // If supplier has no stores, return empty page instead of throwing exception
         if (stores.isEmpty()) {
-            throw new NotFoundException(ErrorCode.STORE_NOT_FOUND, 
-                "Không tìm thấy cửa hàng của nhà cung cấp");
+            log.warn("Supplier has no stores yet: supplierId={}", supplierId);
+            Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+            return Page.empty(pageable);
         }
 
         // Get storeIds
@@ -480,6 +483,26 @@ public class OrderServiceImpl implements OrderService {
         }
 
         return orders.map(this::mapToOrderResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<OrderResponse> getSupplierStoreOrders(String supplierId, String storeId, OrderStatus status, int page, int size) {
+        log.info("Getting orders for supplier's specific store: supplierId={}, storeId={}, status={}", 
+                supplierId, storeId, status);
+
+        // Validate store ownership
+        List<Store> stores = storeRepository.findBySupplierUserId(supplierId);
+        boolean ownsStore = stores.stream()
+                .anyMatch(store -> store.getStoreId().equals(storeId));
+
+        if (!ownsStore) {
+            throw new BadRequestException(ErrorCode.OPERATION_NOT_ALLOWED,
+                    "Bạn không có quyền truy cập đơn hàng của cửa hàng này");
+        }
+
+        // Get orders for this specific store
+        return getStoreOrders(storeId, status, page, size);
     }
 
     @Override
