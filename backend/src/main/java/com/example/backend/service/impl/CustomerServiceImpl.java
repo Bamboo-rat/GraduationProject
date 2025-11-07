@@ -477,13 +477,17 @@ public class CustomerServiceImpl implements CustomerService {
                 .filter(o -> o.getStatus() == OrderStatus.RETURNED)
                 .count();
 
-        BigDecimal totalOrderValue = allOrders.stream()
+        List<BigDecimal> deliveredOrderAmounts = allOrders.stream()
                 .filter(o -> o.getStatus() == OrderStatus.DELIVERED)
                 .map(Order::getTotalAmount)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        BigDecimal totalOrderValue = deliveredOrderAmounts.stream()
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal averageOrderValue = totalOrders > 0
-                ? totalOrderValue.divide(BigDecimal.valueOf(totalOrders), 2, RoundingMode.HALF_UP)
+        BigDecimal averageOrderValue = !deliveredOrderAmounts.isEmpty()
+                ? totalOrderValue.divide(BigDecimal.valueOf(deliveredOrderAmounts.size()), 2, RoundingMode.HALF_UP)
                 : BigDecimal.ZERO;
 
         // Calculate rates
@@ -543,6 +547,7 @@ public class CustomerServiceImpl implements CustomerService {
                 .filter(o -> o.getCreatedAt().isAfter(thisMonthStart) &&
                         o.getStatus() == OrderStatus.DELIVERED)
                 .map(Order::getTotalAmount)
+                .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         int ordersLastMonth = (int) allOrders.stream()
@@ -554,6 +559,7 @@ public class CustomerServiceImpl implements CustomerService {
                         o.getCreatedAt().isBefore(thisMonthStart) &&
                         o.getStatus() == OrderStatus.DELIVERED)
                 .map(Order::getTotalAmount)
+                .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         // Risk indicators
@@ -771,10 +777,10 @@ public class CustomerServiceImpl implements CustomerService {
     private CustomerDetailResponse.ViolationRecord mapToViolationRecord(CustomerDisciplinaryRecord record) {
         return CustomerDetailResponse.ViolationRecord.builder()
                 .recordId(record.getRecordId())
-                .violationType(record.getViolationType().toString())
-                .severity(record.getSeverity().toString())
+                .violationType(record.getViolationType() != null ? record.getViolationType().toString() : null)
+                .severity(record.getSeverity() != null ? record.getSeverity().toString() : null)
                 .description(record.getDescription())
-                .actionTaken(record.getActionTaken().toString())
+                .actionTaken(record.getActionTaken() != null ? record.getActionTaken().toString() : null)
                 .suspensionDurationDays(record.getSuspensionDurationDays())
                 .suspendedUntil(record.getSuspendedUntil())
                 .reinstatedAt(record.getReinstatedAt())
@@ -805,6 +811,7 @@ public class CustomerServiceImpl implements CustomerService {
                     BigDecimal totalSpent = storeOrders.stream()
                             .filter(o -> o.getStatus() == OrderStatus.DELIVERED)
                             .map(Order::getTotalAmount)
+                            .filter(Objects::nonNull)
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
                     LocalDateTime lastOrderDate = storeOrders.stream()
@@ -826,22 +833,22 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     private int calculateViolationPoints(ViolationType type, com.example.backend.entity.enums.ViolationSeverity severity) {
-        int basePoints = 0;
-
-        // Base points by violation type
-        switch (type) {
-            case ORDER_CANCELLATION -> basePoints = 10;
-            case SPAM_REVIEW -> basePoints = 20;
-            case HARASSMENT -> basePoints = 25;
-            case FRAUDULENT_ACTIVITY -> basePoints = 30;
-            case POLICY_VIOLATION -> basePoints = 15;
-            case SPAM_COMMENT -> basePoints = 10;
-            case BANNED_KEYWORD -> basePoints = 15;
-            case COMMUNITY_REPORT -> basePoints = 20;
-            default -> basePoints = 5;
+        if (type == null || severity == null) {
+            return 0;
         }
 
-        // Multiply by severity
+        int basePoints = switch (type) {
+            case ORDER_CANCELLATION -> 10;
+            case SPAM_REVIEW -> 20;
+            case HARASSMENT -> 25;
+            case FRAUDULENT_ACTIVITY -> 30;
+            case POLICY_VIOLATION -> 15;
+            case SPAM_COMMENT -> 10;
+            case BANNED_KEYWORD -> 15;
+            case COMMUNITY_REPORT -> 20;
+            default -> 5;
+        };
+        
         int multiplier = switch (severity) {
             case LOW -> 1;
             case MEDIUM -> 2;

@@ -294,33 +294,29 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional(readOnly = true)
     public WalletResponse getMyWallet() {
-        String currentUserId = SecurityUtil.getCurrentUserId();
-        SupplierWallet wallet = getWalletEntityBySupplierId(currentUserId);
+        Supplier currentSupplier = getCurrentSupplier();
+        SupplierWallet wallet = getWalletEntityBySupplierId(currentSupplier.getUserId());
         return mapToWalletResponse(wallet);
     }
 
     @Override
     @Transactional
     public WalletSummaryResponse getWalletSummary() {
-        String currentUserId = SecurityUtil.getCurrentUserId();
+        Supplier supplier = getCurrentSupplier();
         
         // Get or create wallet if not exists
-        SupplierWallet wallet = walletRepository.findBySupplierId(currentUserId)
+        SupplierWallet wallet = walletRepository.findBySupplierId(supplier.getUserId())
                 .orElseGet(() -> {
-                    log.info("Wallet not found for supplier {}, creating new wallet", currentUserId);
-                    Supplier supplier = supplierRepository.findById(currentUserId)
-                            .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+                    log.info("Wallet not found for supplier {}, creating new wallet", supplier.getUserId());
                     return createWallet(supplier);
                 });
-        
-        Supplier supplier = wallet.getSupplier();
 
         YearMonth currentMonth = YearMonth.now();
         LocalDateTime startOfMonth = currentMonth.atDay(1).atStartOfDay();
         LocalDateTime endOfMonth = currentMonth.atEndOfMonth().atTime(23, 59, 59);
 
         Long orderCount = orderRepository.countBySupplierIdAndCreatedAtBetween(
-                currentUserId, startOfMonth, endOfMonth
+                supplier.getUserId(), startOfMonth, endOfMonth
         );
 
         BigDecimal totalBalance = wallet.getAvailableBalance().add(wallet.getPendingBalance());
@@ -394,8 +390,8 @@ public class WalletServiceImpl implements WalletService {
             LocalDate endDate,
             org.springframework.data.domain.Pageable pageable
     ) {
-        String currentUserId = SecurityUtil.getCurrentUserId();
-        SupplierWallet wallet = getWalletEntityBySupplierId(currentUserId);
+        Supplier currentSupplier = getCurrentSupplier();
+        SupplierWallet wallet = getWalletEntityBySupplierId(currentSupplier.getUserId());
 
         return getTransactionsByWallet(wallet.getWalletId(), transactionType, startDate, endDate, pageable);
     }
@@ -403,8 +399,8 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional(readOnly = true)
     public WalletStatsResponse getWalletStats(Integer year, Integer month) {
-        String currentUserId = SecurityUtil.getCurrentUserId();
-        SupplierWallet wallet = getWalletEntityBySupplierId(currentUserId);
+        Supplier currentSupplier = getCurrentSupplier();
+        SupplierWallet wallet = getWalletEntityBySupplierId(currentSupplier.getUserId());
 
         if (year == null) year = LocalDate.now().getYear();
         
@@ -428,6 +424,16 @@ public class WalletServiceImpl implements WalletService {
         );
 
         return buildStatsResponse(transactions, year, month, period);
+    }
+
+    private Supplier getCurrentSupplier() {
+        String currentKeycloakId = SecurityUtil.getCurrentUserId();
+        if (currentKeycloakId == null) {
+            throw new NotFoundException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        return supplierRepository.findByKeycloakId(currentKeycloakId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
     }
 
     // NOTE: Supplier self-withdrawal removed.
