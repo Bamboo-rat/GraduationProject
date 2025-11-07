@@ -39,6 +39,16 @@ public interface ReviewRepository extends JpaRepository<Review, String> {
     Page<Review> findByCustomerOrderByCreatedAtDesc(Customer customer, Pageable pageable);
 
     /**
+     * Find all reviews by customer (no pagination)
+     */
+    List<Review> findByCustomer(Customer customer);
+
+    /**
+     * Find recent reviews by customer (last 20)
+     */
+    List<Review> findTop20ByCustomerOrderByCreatedAtDesc(Customer customer);
+
+    /**
      * Find all reviews by store
      */
     Page<Review> findByStoreAndMarkedAsSpamFalseOrderByCreatedAtDesc(Store store, Pageable pageable);

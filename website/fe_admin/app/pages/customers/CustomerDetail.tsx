@@ -1,17 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import DashboardLayout from '~/component/layout/DashboardLayout';
-import customerService, { type CustomerResponse } from '~/service/customerService';
+import customerService, { type CustomerDetailResponse, type ViolationsDiscipline, type BehavioralStatistics, type EvaluationRecommendation } from '~/service/customerService';
+import SuspendBanConfirmModal from '~/component/features/SuspendBanConfirmModal';
 import Toast, { type ToastType } from '~/component/common/Toast';
 
 export default function CustomerDetail() {
   const navigate = useNavigate();
   const { userId } = useParams();
-  const [customer, setCustomer] = useState<CustomerResponse | null>(null);
+  const [customerDetail, setCustomerDetail] = useState<CustomerDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showActionModal, setShowActionModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState<'suspend' | 'ban' | 'activate' | null>(null);
 
   useEffect(() => {
     if (userId) {
@@ -25,8 +27,8 @@ export default function CustomerDetail() {
     try {
       setLoading(true);
       setError(null);
-      const data = await customerService.getCustomerById(userId);
-      setCustomer(data);
+      const data = await customerService.getCustomerDetailForAdmin(userId);
+      setCustomerDetail(data);
     } catch (err: any) {
       setError(err.message || 'Không thể tải thông tin khách hàng');
     } finally {
@@ -34,24 +36,44 @@ export default function CustomerDetail() {
     }
   };
 
-  const handleToggleActive = async () => {
-    if (!customer) return;
+  const handleActionClick = (action: 'suspend' | 'ban' | 'activate') => {
+    setPendingAction(action);
+    setShowActionModal(true);
+  };
+
+  const handleConfirmAction = async () => {
+    if (!customerDetail || !pendingAction) return;
 
     try {
-      const updated = await customerService.setActiveStatus(customer.userId, !customer.active);
-      setCustomer(updated);
+      const active = pendingAction === 'activate';
+      await customerService.setActiveStatus(customerDetail.basicInfo.userId, active);
+
       setToast({
-        message: `Đã ${updated.active ? 'kích hoạt' : 'tạm khóa'} tài khoản khách hàng thành công`,
+        message: `Đã ${
+          pendingAction === 'activate' ? 'kích hoạt' :
+          pendingAction === 'suspend' ? 'tạm khóa' : 'cấm'
+        } tài khoản khách hàng thành công`,
         type: 'success'
       });
-      setShowConfirmModal(false);
+
+      setShowActionModal(false);
+      setPendingAction(null);
+
+      // Refresh data
+      await fetchCustomerDetail();
     } catch (err: any) {
       setToast({
         message: err.message || 'Không thể cập nhật trạng thái',
         type: 'error'
       });
-      setShowConfirmModal(false);
+      setShowActionModal(false);
+      setPendingAction(null);
     }
+  };
+
+  const handleCancelAction = () => {
+    setShowActionModal(false);
+    setPendingAction(null);
   };
 
   const getStatusBadge = (status: string) => {
@@ -59,6 +81,7 @@ export default function CustomerDetail() {
       ACTIVE: { label: 'Hoạt động', className: 'bg-green-100 text-green-800' },
       PENDING_VERIFICATION: { label: 'Chờ xác thực', className: 'bg-yellow-100 text-yellow-800' },
       SUSPENDED: { label: 'Tạm khóa', className: 'bg-red-100 text-red-800' },
+      BANNED: { label: 'Cấm', className: 'bg-red-600 text-white' },
       INACTIVE: { label: 'Ngừng hoạt động', className: 'bg-gray-100 text-gray-800' },
     };
 
@@ -77,6 +100,7 @@ export default function CustomerDetail() {
       SILVER: { label: 'Bạc', className: 'bg-gray-300 text-gray-800' },
       GOLD: { label: 'Vàng', className: 'bg-yellow-300 text-yellow-900' },
       PLATINUM: { label: 'Bạch kim', className: 'bg-purple-100 text-purple-800' },
+      DIAMOND: { label: 'Kim cương', className: 'bg-blue-100 text-blue-800' },
     };
 
     const config = tierConfig[tier] || { label: tier, className: 'bg-gray-100 text-gray-800' };
@@ -99,6 +123,13 @@ export default function CustomerDetail() {
     });
   };
 
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND'
+    }).format(amount);
+  };
+
   if (loading) {
     return (
       <DashboardLayout>
@@ -112,7 +143,7 @@ export default function CustomerDetail() {
     );
   }
 
-  if (error || !customer) {
+  if (error || !customerDetail) {
     return (
       <DashboardLayout>
         <div className="p-6">
@@ -135,6 +166,8 @@ export default function CustomerDetail() {
     );
   }
 
+  const { basicInfo, activityHistory, violationsDiscipline, behavioralStatistics, evaluationRecommendation } = customerDetail;
+
   return (
     <DashboardLayout>
       <div className="p-6">
@@ -151,64 +184,111 @@ export default function CustomerDetail() {
             </button>
             <div>
               <h1 className="text-2xl font-bold text-gray-800">Chi tiết Khách hàng</h1>
-              <p className="text-gray-600">@{customer.username}</p>
+              <p className="text-gray-600">@{basicInfo.username}</p>
             </div>
           </div>
-          <button
-            onClick={() => setShowConfirmModal(true)}
-            className={`px-4 py-2 rounded-lg font-medium ${
-              customer.active
-                ? 'bg-red-600 hover:bg-red-700 text-white'
-                : 'bg-green-600 hover:bg-green-700 text-white'
-            }`}
-          >
-            {customer.active ? 'Tạm khóa tài khoản' : 'Kích hoạt tài khoản'}
-          </button>
+          <div className="flex gap-2">
+            {basicInfo.status === 'ACTIVE' && (
+              <>
+                <button
+                  onClick={() => handleActionClick('suspend')}
+                  className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-medium"
+                >
+                  Tạm khóa
+                </button>
+                <button
+                  onClick={() => handleActionClick('ban')}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium"
+                >
+                  Cấm tài khoản
+                </button>
+              </>
+            )}
+            {(basicInfo.status === 'SUSPENDED' || basicInfo.status === 'BANNED') && (
+              <button
+                onClick={() => handleActionClick('activate')}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium"
+              >
+                Kích hoạt lại
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Profile Info */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 space-y-6">
+            {/* Basic Info */}
             <div className="bg-white rounded-lg shadow p-6">
               <div className="text-center mb-6">
                 <img
-                  src={customer.avatarUrl || 'https://via.placeholder.com/150'}
-                  alt={customer.fullName || customer.username}
+                  src={basicInfo.avatarUrl || 'https://via.placeholder.com/150'}
+                  alt={basicInfo.fullName || basicInfo.username}
                   className="w-32 h-32 rounded-full mx-auto object-cover mb-4"
                 />
                 <h2 className="text-xl font-bold text-gray-800 mb-2">
-                  {customer.fullName || 'Chưa cập nhật'}
+                  {basicInfo.fullName || 'Chưa cập nhật'}
                 </h2>
                 <div className="flex items-center justify-center space-x-2 mb-3">
-                  {getStatusBadge(customer.status)}
-                  {getTierBadge(customer.tier)}
+                  {getStatusBadge(basicInfo.status)}
+                  {getTierBadge(basicInfo.tier)}
                 </div>
               </div>
 
               <div className="space-y-4">
                 <div>
                   <label className="text-sm font-medium text-gray-500">Email</label>
-                  <p className="text-gray-900">{customer.email}</p>
+                  <p className="text-gray-900">{basicInfo.email}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500">Số điện thoại</label>
-                  <p className="text-gray-900">{customer.phoneNumber}</p>
+                  <p className="text-gray-900">{basicInfo.phoneNumber}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500">Ngày sinh</label>
                   <p className="text-gray-900">
-                    {customer.dateOfBirth
-                      ? new Date(customer.dateOfBirth).toLocaleDateString('vi-VN')
+                    {basicInfo.dateOfBirth
+                      ? new Date(basicInfo.dateOfBirth).toLocaleDateString('vi-VN')
                       : 'Chưa cập nhật'}
                   </p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500">Ngày đăng ký</label>
-                  <p className="text-gray-900">{formatDate(customer.createdAt)}</p>
+                  <p className="text-gray-900">{formatDate(basicInfo.createdAt)}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-500">Cập nhật lần cuối</label>
-                  <p className="text-gray-900">{formatDate(customer.updatedAt)}</p>
+                  <label className="text-sm font-medium text-gray-500">Đăng nhập lần cuối</label>
+                  <p className="text-gray-900">{formatDate(basicInfo.lastLoginAt)}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* AI Recommendation */}
+            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg shadow p-6">
+              <h3 className="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2">
+                <span className="text-2xl">🤖</span>
+                Khuyến nghị AI
+              </h3>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Đánh giá:</span>
+                  <span className={`px-3 py-1 rounded-full text-sm font-bold ${
+                    evaluationRecommendation.recommendation === 'BAN' ? 'bg-red-100 text-red-800' :
+                    evaluationRecommendation.recommendation === 'SUSPEND' ? 'bg-orange-100 text-orange-800' :
+                    evaluationRecommendation.recommendation === 'WARN' ? 'bg-yellow-100 text-yellow-800' :
+                    'bg-green-100 text-green-800'
+                  }`}>
+                    {evaluationRecommendation.recommendation === 'BAN' ? 'Cấm' :
+                     evaluationRecommendation.recommendation === 'SUSPEND' ? 'Tạm khóa' :
+                     evaluationRecommendation.recommendation === 'WARN' ? 'Cảnh báo' : 'Cho phép'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-sm text-gray-600">Độ tin cậy: </span>
+                  <span className="font-bold text-blue-600">{evaluationRecommendation.confidenceScore}%</span>
+                </div>
+                <div className="pt-2 border-t border-blue-200">
+                  <p className="text-sm text-gray-700">{evaluationRecommendation.reason}</p>
                 </div>
               </div>
             </div>
@@ -219,119 +299,155 @@ export default function CustomerDetail() {
             {/* Points & Tier Info */}
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-lg font-bold text-gray-800 mb-4">Điểm tích lũy & Hạng thành viên</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="bg-blue-50 rounded-lg p-4">
                   <p className="text-sm text-gray-600 mb-1">Điểm hiện tại</p>
                   <p className="text-2xl font-bold text-blue-600">
-                    {customer.points.toLocaleString('vi-VN')}
+                    {basicInfo.currentPoints.toLocaleString('vi-VN')}
                   </p>
                 </div>
                 <div className="bg-purple-50 rounded-lg p-4">
                   <p className="text-sm text-gray-600 mb-1">Tổng điểm tích lũy</p>
                   <p className="text-2xl font-bold text-purple-600">
-                    {customer.lifetimePoints.toLocaleString('vi-VN')}
+                    {basicInfo.lifetimePoints.toLocaleString('vi-VN')}
                   </p>
                 </div>
                 <div className="bg-green-50 rounded-lg p-4">
                   <p className="text-sm text-gray-600 mb-1">Điểm năm nay</p>
                   <p className="text-2xl font-bold text-green-600">
-                    {customer.pointsThisYear.toLocaleString('vi-VN')}
+                    {basicInfo.pointsThisYear.toLocaleString('vi-VN')}
+                  </p>
+                </div>
+                <div className="bg-yellow-50 rounded-lg p-4">
+                  <p className="text-sm text-gray-600 mb-1">Điểm đến hạng kế</p>
+                  <p className="text-2xl font-bold text-yellow-600">
+                    {basicInfo.pointsToNextTier.toLocaleString('vi-VN')}
                   </p>
                 </div>
               </div>
-              {customer.tierUpdatedAt && (
-                <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                  <p className="text-sm text-gray-600">
-                    Hạng thành viên được cập nhật lần cuối:{' '}
-                    <span className="font-medium">{formatDate(customer.tierUpdatedAt)}</span>
-                  </p>
-                </div>
-              )}
             </div>
 
-            {/* Account Status */}
+            {/* Behavioral Statistics */}
             <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-bold text-gray-800 mb-4">Trạng thái tài khoản</h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center">
-                    <div
-                      className={`w-3 h-3 rounded-full mr-3 ${
-                        customer.active ? 'bg-green-500' : 'bg-red-500'
-                      }`}
-                    ></div>
-                    <span className="text-gray-700">Trạng thái hoạt động</span>
+              <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <span className="text-xl">📊</span>
+                Thống kê hành vi
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                <div className="text-center p-3 bg-gray-50 rounded">
+                  <div className="text-2xl font-bold text-gray-900">{behavioralStatistics.totalOrders}</div>
+                  <div className="text-xs text-gray-600">Tổng đơn</div>
+                </div>
+                <div className="text-center p-3 bg-gray-50 rounded">
+                  <div className="text-2xl font-bold text-green-600">{behavioralStatistics.completedOrders}</div>
+                  <div className="text-xs text-gray-600">Hoàn thành</div>
+                </div>
+                <div className="text-center p-3 bg-gray-50 rounded">
+                  <div className="text-2xl font-bold text-red-600">{behavioralStatistics.canceledOrders}</div>
+                  <div className="text-xs text-gray-600">Hủy ({behavioralStatistics.cancellationRate.toFixed(1)}%)</div>
+                </div>
+                <div className="text-center p-3 bg-gray-50 rounded">
+                  <div className="text-2xl font-bold text-orange-600">{behavioralStatistics.returnedOrders}</div>
+                  <div className="text-xs text-gray-600">Trả ({behavioralStatistics.returnRate.toFixed(1)}%)</div>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-3 bg-blue-50 rounded">
+                  <div className="text-sm text-gray-600 mb-1">Tổng giá trị đơn hàng</div>
+                  <div className="text-xl font-bold text-blue-600">
+                    {formatCurrency(behavioralStatistics.totalOrderValue)}
                   </div>
-                  <span className="font-medium">{customer.active ? 'Đang hoạt động' : 'Tạm khóa'}</span>
                 </div>
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <span className="text-gray-700">Trạng thái xác thực</span>
-                  {getStatusBadge(customer.status)}
-                </div>
-                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <span className="text-gray-700">Hạng thành viên</span>
-                  {getTierBadge(customer.tier)}
+                <div className="p-3 bg-purple-50 rounded">
+                  <div className="text-sm text-gray-600 mb-1">Điểm rủi ro</div>
+                  <div className={`text-xl font-bold ${
+                    behavioralStatistics.riskScore >= 70 ? 'text-red-600' :
+                    behavioralStatistics.riskScore >= 50 ? 'text-orange-600' : 'text-green-600'
+                  }`}>
+                    {behavioralStatistics.riskScore}/100
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Quick Actions */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-bold text-gray-800 mb-4">Thao tác nhanh</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <button className="px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 text-left">
-                  <div className="font-medium text-gray-900">Xem lịch sử đơn hàng</div>
-                  <div className="text-sm text-gray-500">Danh sách đơn hàng đã đặt</div>
-                </button>
-                <button className="px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 text-left">
-                  <div className="font-medium text-gray-900">Xem lịch sử giao dịch</div>
-                  <div className="text-sm text-gray-500">Giao dịch thanh toán</div>
-                </button>
-                <button className="px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 text-left">
-                  <div className="font-medium text-gray-900">Xem điểm tích lũy</div>
-                  <div className="text-sm text-gray-500">Lịch sử tích điểm</div>
-                </button>
-                <button className="px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 text-left">
-                  <div className="font-medium text-gray-900">Xem đánh giá</div>
-                  <div className="text-sm text-gray-500">Đánh giá sản phẩm</div>
-                </button>
+            {/* Violations Summary */}
+            {violationsDiscipline.totalViolations > 0 && (
+              <div className="bg-white rounded-lg shadow p-6">
+                <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+                  <span className="text-xl">⚠️</span>
+                  Tổng quan vi phạm
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                  <div className="text-center p-3 bg-red-50 rounded">
+                    <div className="text-2xl font-bold text-red-600">{violationsDiscipline.totalViolations}</div>
+                    <div className="text-xs text-gray-600">Tổng vi phạm</div>
+                  </div>
+                  <div className="text-center p-3 bg-orange-50 rounded">
+                    <div className="text-2xl font-bold text-orange-600">{violationsDiscipline.activeWarningsCount}</div>
+                    <div className="text-xs text-gray-600">Cảnh báo</div>
+                  </div>
+                  <div className="text-center p-3 bg-purple-50 rounded">
+                    <div className="text-2xl font-bold text-purple-600">{violationsDiscipline.totalSuspensions}</div>
+                    <div className="text-xs text-gray-600">Lịch sử khóa</div>
+                  </div>
+                  <div className="text-center p-3 bg-gray-50 rounded">
+                    <div className="text-2xl font-bold text-gray-900">{violationsDiscipline.violationPoints}</div>
+                    <div className="text-xs text-gray-600">Điểm vi phạm</div>
+                  </div>
+                </div>
+
+                {violationsDiscipline.isCurrentlySuspended && (
+                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-800 font-medium">
+                      ⚠️ Tài khoản đang bị tạm khóa đến: {formatDate(violationsDiscipline.currentSuspensionEndsAt)}
+                    </p>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
+
+            {/* Recent Orders */}
+            {activityHistory.recentOrders.length > 0 && (
+              <div className="bg-white rounded-lg shadow p-6">
+                <h3 className="text-lg font-bold text-gray-800 mb-4">Đơn hàng gần đây</h3>
+                <div className="space-y-3">
+                  {activityHistory.recentOrders.slice(0, 5).map((order) => (
+                    <div key={order.orderId} className="flex items-center justify-between p-3 bg-gray-50 rounded">
+                      <div>
+                        <p className="font-medium text-gray-900">{order.orderCode}</p>
+                        <p className="text-sm text-gray-600">{order.storeName}</p>
+                        <p className="text-xs text-gray-500">{formatDate(order.createdAt)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-gray-900">{formatCurrency(order.totalAmount)}</p>
+                        <span className={`text-xs px-2 py-1 rounded ${
+                          order.status === 'DELIVERED' ? 'bg-green-100 text-green-800' :
+                          order.wasCanceled ? 'bg-red-100 text-red-800' :
+                          'bg-blue-100 text-blue-800'
+                        }`}>
+                          {order.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Confirmation Modal */}
-      {showConfirmModal && customer && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center w-full h-full z-50 p-4 animate-fadeIn">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Xác nhận {customer.active ? 'tạm khóa' : 'kích hoạt'}
-            </h3>
-            <p className="text-gray-600 mb-6">
-              Bạn có chắc muốn {customer.active ? 'tạm khóa' : 'kích hoạt'} khách hàng này?
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowConfirmModal(false)}
-                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleToggleActive}
-                className={`px-4 py-2 text-white rounded-lg font-medium transition-colors ${
-                  customer.active
-                    ? 'bg-red-600 hover:bg-red-700'
-                    : 'bg-green-600 hover:bg-green-700'
-                }`}
-              >
-                {customer.active ? 'Tạm khóa' : 'Kích hoạt'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Suspend/Ban Confirmation Modal */}
+      <SuspendBanConfirmModal
+        show={showActionModal}
+        action={pendingAction}
+        customerName={basicInfo.fullName || basicInfo.username}
+        violations={violationsDiscipline}
+        statistics={behavioralStatistics}
+        recommendation={evaluationRecommendation}
+        onConfirm={handleConfirmAction}
+        onCancel={handleCancelAction}
+      />
 
       {/* Toast notification */}
       {toast && (

@@ -42,6 +42,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderDetailRepository orderDetailRepository;
     private final CartRepository cartRepository;
     private final CustomerRepository customerRepository;
+    private final StoreRepository storeRepository;
     private final PaymentRepository paymentRepository;
     private final ShipmentRepository shipmentRepository;
     private final StoreProductRepository storeProductRepository;
@@ -387,6 +388,16 @@ public class OrderServiceImpl implements OrderService {
         // Rollback promotions
         if (!order.getPromotionUsages().isEmpty()) {
             for (PromotionUsage usage : order.getPromotionUsages()) {
+                // Decrement promotion usage count
+                String promotionId = usage.getPromotion().getPromotionId();
+                int decremented = promotionRepository.decrementUsageCount(promotionId);
+                if (decremented > 0) {
+                    log.info("Decremented usage count for promotion: promotionId={}", promotionId);
+                } else {
+                    log.warn("Failed to decrement usage count for promotion (count may be 0): promotionId={}", promotionId);
+                }
+                
+                // Delete usage record
                 promotionUsageRepository.delete(usage);
             }
         }
@@ -444,15 +455,46 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<OrderResponse> getStoreOrders(String storeId, OrderStatus status, int page, int size) {
-        Store store = new Store();
-        store.setStoreId(storeId);
+    public Page<OrderResponse> getSupplierOrders(String supplierId, OrderStatus status, int page, int size) {
+        log.info("Getting orders for supplier: supplierId={}, status={}", supplierId, status);
+
+        // Get all supplier's stores
+        List<Store> stores = storeRepository.findBySupplierUserId(supplierId);
+        if (stores.isEmpty()) {
+            throw new NotFoundException(ErrorCode.STORE_NOT_FOUND, 
+                "Không tìm thấy cửa hàng của nhà cung cấp");
+        }
+
+        // Get storeIds
+        List<String> storeIds = stores.stream()
+                .map(Store::getStoreId)
+                .collect(Collectors.toList());
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
 
-        Page<Order> orders = status != null
-                ? orderRepository.findByStoreAndStatus(store, status, pageable)
-                : orderRepository.findByStore(store, pageable);
+        Page<Order> orders;
+        if (status != null) {
+            orders = orderRepository.findByStoreStoreIdInAndStatus(storeIds, status, pageable);
+        } else {
+            orders = orderRepository.findByStoreStoreIdIn(storeIds, pageable);
+        }
+
+        return orders.map(this::mapToOrderResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<OrderResponse> getStoreOrders(String storeId, OrderStatus status, int page, int size) {
+        log.info("Getting orders for store: storeId={}, status={}", storeId, status);
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        Page<Order> orders;
+        if (status != null) {
+            orders = orderRepository.findByStoreStoreIdAndStatus(storeId, status, pageable);
+        } else {
+            orders = orderRepository.findByStoreStoreId(storeId, pageable);
+        }
 
         return orders.map(this::mapToOrderResponse);
     }
@@ -508,6 +550,7 @@ public class OrderServiceImpl implements OrderService {
                             order.getOrderCode()));
         } else {
             payment.setStatus(PaymentStatus.FAILED);
+            order.setPaymentStatus(PaymentStatus.FAILED);
             sendOrderNotification(order,
                     String.format("Thanh toán đơn hàng #%s thất bại. Vui lòng thử lại hoặc chọn phương thức thanh toán khác",
                             order.getOrderCode()));

@@ -3,13 +3,12 @@ package com.example.backend.service;
 import com.example.backend.dto.request.CustomerUpdateRequest;
 import com.example.backend.dto.request.PhoneAuthStep1Request;
 import com.example.backend.dto.request.PhoneAuthStep2Request;
-import com.example.backend.dto.response.CustomerResponse;
-import com.example.backend.dto.response.LoginResponse;
-import com.example.backend.dto.response.PhoneAuthStep1Response;
+import com.example.backend.dto.response.*;
 import com.example.backend.entity.enums.CustomerStatus;
 import com.example.backend.entity.enums.CustomerTier;
 import org.springframework.data.domain.Page;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -102,4 +101,85 @@ public interface CustomerService {
      * @return Map with statistics
      */
     Map<String, Object> getCustomerStats();
+
+    /**
+     * Get comprehensive customer details for admin evaluation (admin only)
+     * Includes all information needed to assess customer behavior and make ban decisions
+     *
+     * @param userId Customer user ID
+     * @return CustomerDetailResponse with full details
+     */
+    CustomerDetailResponse getCustomerDetailForAdmin(String userId);
+
+    // ===== CUSTOMER HISTORY APIs =====
+
+    /**
+     * Get customer order history
+     *
+     * @param userId Customer user ID
+     * @param page Page number
+     * @param size Page size
+     * @return Page of orders
+     */
+    Page<OrderSummaryResponse> getCustomerOrders(
+            String userId, int page, int size);
+
+    /**
+     * Get customer point transaction history
+     *
+     * @param userId Customer user ID
+     * @param page Page number
+     * @param size Page size
+     * @return Page of point transactions
+     */
+    Page<PointTransactionResponse> getCustomerPointTransactions(
+            String userId, int page, int size);
+
+    /**
+     * Get customer addresses
+     *
+     * @param userId Customer user ID
+     * @return List of addresses
+     */
+    List<AddressResponse> getCustomerAddresses(String userId);
+
+    /**
+     * Get customer reviews
+     *
+     * @param userId Customer user ID
+     * @param page Page number
+     * @param size Page size
+     * @return Page of reviews
+     */
+    Page<ReviewResponse> getCustomerReviews(
+            String userId, int page, int size);
+
+    /**
+     * Get customer favorite stores
+     *
+     * @param userId Customer user ID
+     * @param page Page number
+     * @param size Page size
+     * @return Page of favorite stores
+     */
+    Page<FavoriteStoreResponse> getCustomerFavoriteStores(
+            String userId, int page, int size);
+
+    /**
+     * Suspend customer with reason (admin only)
+     *
+     * @param userId Customer user ID
+     * @param reason Suspension reason
+     * @param durationDays Suspension duration in days (optional, null for indefinite)
+     * @return Updated CustomerResponse
+     */
+    CustomerResponse suspendCustomer(String userId, String reason, Integer durationDays);
+
+    /**
+     * Unsuspend customer (admin only)
+     *
+     * @param userId Customer user ID
+     * @return Updated CustomerResponse
+     */
+    CustomerResponse unsuspendCustomer(String userId);
 }

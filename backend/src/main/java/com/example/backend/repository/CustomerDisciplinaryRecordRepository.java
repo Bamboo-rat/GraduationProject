@@ -27,6 +27,21 @@ public interface CustomerDisciplinaryRecordRepository extends JpaRepository<Cust
     List<CustomerDisciplinaryRecord> findByCustomerUserIdOrderByCreatedAtDesc(String customerId);
 
     /**
+     * Find all records by customer entity
+     */
+    List<CustomerDisciplinaryRecord> findByCustomerOrderByCreatedAtDesc(com.example.backend.entity.Customer customer);
+
+    /**
+     * Count unresolved violations by customer entity
+     */
+    @Query("SELECT COUNT(cdr) FROM CustomerDisciplinaryRecord cdr " +
+           "WHERE cdr.customer = :customer AND cdr.resolved = :isResolved")
+    long countByCustomerAndIsResolved(
+            @Param("customer") com.example.backend.entity.Customer customer,
+            @Param("isResolved") boolean isResolved
+    );
+
+    /**
      * Find all records for a customer (paginated)
      */
     Page<CustomerDisciplinaryRecord> findByCustomerUserId(String customerId, Pageable pageable);

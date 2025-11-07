@@ -1,5 +1,6 @@
 package com.example.backend.repository;
 
+import com.example.backend.entity.Address;
 import com.example.backend.entity.Customer;
 import com.example.backend.entity.Order;
 import com.example.backend.entity.Store;
@@ -29,9 +30,25 @@ public interface OrderRepository extends JpaRepository<Order, String> {
     Page<Order> findByCustomer(Customer customer, Pageable pageable);
 
     /**
+     * Find all orders by customer (no pagination)
+     */
+    List<Order> findByCustomer(Customer customer);
+
+    /**
+     * Find recent orders by customer (last 20)
+     */
+    List<Order> findTop20ByCustomerOrderByCreatedAtDesc(Customer customer);
+
+    /**
      * Find orders by customer and status
      */
     Page<Order> findByCustomerAndStatus(Customer customer, OrderStatus status, Pageable pageable);
+
+    /**
+     * Count orders by shipping address
+     */
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.shippingAddress = :address")
+    long countByShippingAddress(@Param("address") Address address);
 
     /**
      * Find orders by store with pagination
@@ -42,6 +59,26 @@ public interface OrderRepository extends JpaRepository<Order, String> {
      * Find orders by store and status
      */
     Page<Order> findByStoreAndStatus(Store store, OrderStatus status, Pageable pageable);
+
+    /**
+     * Find orders by store ID (using property path)
+     */
+    Page<Order> findByStoreStoreId(String storeId, Pageable pageable);
+
+    /**
+     * Find orders by store ID and status (using property path)
+     */
+    Page<Order> findByStoreStoreIdAndStatus(String storeId, OrderStatus status, Pageable pageable);
+
+    /**
+     * Find orders by multiple store IDs (for supplier with multiple stores)
+     */
+    Page<Order> findByStoreStoreIdIn(List<String> storeIds, Pageable pageable);
+
+    /**
+     * Find orders by multiple store IDs and status
+     */
+    Page<Order> findByStoreStoreIdInAndStatus(List<String> storeIds, OrderStatus status, Pageable pageable);
 
     /**
      * Find orders by status
@@ -115,7 +152,7 @@ public interface OrderRepository extends JpaRepository<Order, String> {
            "WHERE o.status = 'DELIVERED' " +
            "AND o.createdAt BETWEEN :startDate AND :endDate " +
            "GROUP BY FUNCTION('DATE', o.createdAt) " +
-           "ORDER BY date ASC")
+           "ORDER BY FUNCTION('DATE', o.createdAt) ASC")
     List<Object[]> findSalesTrendsByDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
     /**

@@ -104,6 +104,21 @@ public class OrderController {
 
     // ===== SUPPLIER ENDPOINTS =====
 
+    @GetMapping("/store/me")
+    @PreAuthorize("hasRole('SUPPLIER')")
+    @Operation(summary = "Get my store orders", description = "Get all orders for current supplier's store with pagination and status filter")
+    public ResponseEntity<ApiResponse<Page<OrderResponse>>> getMyStoreOrders(
+            @RequestParam(required = false) OrderStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            Authentication authentication) {
+        String userId = extractUserId(authentication);
+        log.info("GET /api/orders/store/me - Getting supplier's store orders: userId={}, status={}", userId, status);
+
+        Page<OrderResponse> response = orderService.getSupplierOrders(userId, status, page, size);
+        return ResponseEntity.ok(ApiResponse.success("Lấy danh sách đơn hàng thành công", response));
+    }
+
     @GetMapping("/store/{storeId}")
     @PreAuthorize("hasRole('SUPPLIER')")
     @Operation(summary = "Get store orders", description = "Get all orders for a specific store with pagination and status filter")

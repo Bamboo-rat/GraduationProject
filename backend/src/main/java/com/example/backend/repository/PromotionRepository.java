@@ -88,6 +88,20 @@ public interface PromotionRepository extends JpaRepository<Promotion, String> {
     int incrementUsageCountIfAvailable(@Param("promotionId") String promotionId);
 
     /**
+     * Atomically decrement promotion usage count (for rollback/cancellation)
+     * This is thread-safe and prevents race conditions
+     * Ensures currentUsageCount never goes below 0
+     *
+     * @param promotionId The promotion ID
+     * @return Number of rows updated (1 if successful, 0 if promotion not found or count already 0)
+     */
+    @Modifying
+    @Query("UPDATE Promotion p SET p.currentUsageCount = p.currentUsageCount - 1 " +
+           "WHERE p.promotionId = :promotionId " +
+           "AND p.currentUsageCount > 0")
+    int decrementUsageCount(@Param("promotionId") String promotionId);
+
+    /**
      * Find promotions by status and endDate before a specific date
      * Used by scheduler to find expired promotions
      */

@@ -22,6 +22,11 @@ public interface PointTransactionRepository extends JpaRepository<PointTransacti
     Page<PointTransaction> findByCustomerOrderByCreatedAtDesc(Customer customer, Pageable pageable);
 
     /**
+     * Find recent transactions by customer (last 20)
+     */
+    List<PointTransaction> findTop20ByCustomerOrderByCreatedAtDesc(Customer customer);
+
+    /**
      * Find transactions by customer and type
      */
     Page<PointTransaction> findByCustomerAndTransactionTypeOrderByCreatedAtDesc(

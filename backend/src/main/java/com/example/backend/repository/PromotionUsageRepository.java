@@ -1,5 +1,6 @@
 package com.example.backend.repository;
 
+import com.example.backend.entity.Customer;
 import com.example.backend.entity.PromotionUsage;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -61,6 +62,11 @@ public interface PromotionUsageRepository extends JpaRepository<PromotionUsage, 
            "WHERE pu.customer.userId = :customerId " +
            "ORDER BY pu.usedAt DESC")
     List<PromotionUsage> findByCustomerId(@Param("customerId") String customerId);
+
+    /**
+     * Find recent promotions used by customer (last 20)
+     */
+    List<PromotionUsage> findTop20ByCustomerOrderByUsedAtDesc(Customer customer);
 
     /**
      * Find usage record by order ID

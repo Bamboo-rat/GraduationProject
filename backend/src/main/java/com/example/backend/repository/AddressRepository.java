@@ -1,6 +1,7 @@
 package com.example.backend.repository;
 
 import com.example.backend.entity.Address;
+import com.example.backend.entity.Customer;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -24,6 +25,13 @@ public interface AddressRepository extends JpaRepository<Address, String> {
      */
     @Query("SELECT a FROM Address a WHERE a.customer.userId = :customerId ORDER BY a.isDefault DESC, a.addressId DESC")
     List<Address> findByCustomerId(@Param("customerId") String customerId);
+
+    /**
+     * Find all addresses by customer entity
+     * @param customer Customer entity
+     * @return List of addresses
+     */
+    List<Address> findByCustomer(Customer customer);
 
     /**
      * Find default address for a specific customer

@@ -36,4 +36,32 @@ public final class CustomerTierUtils {
 
         return CustomerTier.BRONZE;
     }
+
+    /**
+     * Calculate points required to reach next tier
+     * 
+     * @param currentTier Current customer tier
+     * @param currentPoints Current points this year
+     * @return Points needed for next tier (0 if already at max tier)
+     */
+    public static int getPointsRequiredForNextTier(CustomerTier currentTier, int currentPoints) {
+        if (currentTier == null) {
+            return CustomerTier.SILVER.getMinPoints();
+        }
+
+        CustomerTier nextTier = switch (currentTier) {
+            case BRONZE -> CustomerTier.SILVER;
+            case SILVER -> CustomerTier.GOLD;
+            case GOLD -> CustomerTier.PLATINUM;
+            case PLATINUM -> CustomerTier.DIAMOND;
+            case DIAMOND -> null; // Already at max tier
+        };
+
+        if (nextTier == null) {
+            return 0; // Already at maximum tier
+        }
+
+        int pointsNeeded = nextTier.getMinPoints() - currentPoints;
+        return Math.max(0, pointsNeeded);
+    }
 }

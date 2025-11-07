@@ -20,6 +20,166 @@ export interface CustomerResponse {
   updatedAt: string;
 }
 
+// ==================== COMPREHENSIVE CUSTOMER DETAIL TYPES ====================
+
+export interface BasicInfo {
+  userId: string;
+  keycloakId: string;
+  username: string;
+  email: string;
+  phoneNumber: string;
+  fullName: string;
+  dateOfBirth?: string;
+  avatarUrl?: string;
+  status: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+  lastLoginAt?: string;
+  tier: string;
+  tierUpdatedAt?: string;
+  currentPoints: number;
+  lifetimePoints: number;
+  pointsThisYear: number;
+  pointsToNextTier: number;
+}
+
+export interface OrderSummary {
+  orderId: string;
+  orderCode: string;
+  storeName: string;
+  totalAmount: number;
+  status: string;
+  createdAt: string;
+  deliveredAt?: string;
+  wasCanceled: boolean;
+  cancelReason?: string;
+}
+
+export interface PointTransaction {
+  transactionId: string;
+  type: string;
+  points: number;
+  description: string;
+  relatedOrderCode?: string;
+  createdAt: string;
+}
+
+export interface AddressSummary {
+  addressId: string;
+  fullName: string;
+  phoneNumber: string;
+  fullAddress: string;
+  isDefault: boolean;
+  orderCount: number;
+}
+
+export interface ReviewSummary {
+  reviewId: string;
+  productName: string;
+  storeName: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+  hasBeenReported: boolean;
+}
+
+export interface PromotionUsageSummary {
+  promotionCode: string;
+  promotionTitle: string;
+  discountAmount: number;
+  orderCode?: string;
+  usedAt: string;
+}
+
+export interface ActivityHistory {
+  recentOrders: OrderSummary[];
+  recentPointTransactions: PointTransaction[];
+  addresses: AddressSummary[];
+  recentReviews: ReviewSummary[];
+  recentPromotionUsage: PromotionUsageSummary[];
+}
+
+export interface ViolationRecord {
+  recordId: string;
+  violationType: string;
+  severity: string;
+  description: string;
+  actionTaken: string;
+  suspensionDurationDays?: number;
+  suspendedUntil?: string;
+  reinstatedAt?: string;
+  isResolved: boolean;
+  referenceId?: string;
+  referenceType?: string;
+  createdAt: string;
+  reviewedByAdmin?: string;
+  adminNotes?: string;
+}
+
+export interface ViolationsDiscipline {
+  violationHistory: ViolationRecord[];
+  activeWarnings: ViolationRecord[];
+  suspensionHistory: ViolationRecord[];
+  totalViolations: number;
+  activeWarningsCount: number;
+  totalSuspensions: number;
+  violationPoints: number;
+  isCurrentlySuspended: boolean;
+  currentSuspensionEndsAt?: string;
+}
+
+export interface FavoriteStoreSummary {
+  storeId: string;
+  storeName: string;
+  orderCount: number;
+  totalSpent: number;
+  lastOrderDate?: string;
+}
+
+export interface BehavioralStatistics {
+  totalOrders: number;
+  completedOrders: number;
+  canceledOrders: number;
+  returnedOrders: number;
+  totalOrderValue: number;
+  averageOrderValue: number;
+  purchaseFrequency: number;
+  cancellationRate: number;
+  returnRate: number;
+  daysSinceLastOrder: number;
+  daysSinceFirstOrder: number;
+  averageRatingGiven: number;
+  totalReviews: number;
+  reportedReviews: number;
+  topFavoriteStores: FavoriteStoreSummary[];
+  ordersThisMonth: number;
+  spendingThisMonth: number;
+  ordersLastMonth: number;
+  spendingLastMonth: number;
+  hasHighCancellationRate: boolean;
+  hasHighReturnRate: boolean;
+  hasReportedReviews: boolean;
+  hasActiveViolations: boolean;
+  riskScore: number;
+}
+
+export interface EvaluationRecommendation {
+  recommendation: string; // ALLOW, WARN, SUSPEND, BAN
+  reason: string;
+  confidenceScore: number;
+  riskFactors: string[];
+  positiveFactors: string[];
+}
+
+export interface CustomerDetailResponse {
+  basicInfo: BasicInfo;
+  activityHistory: ActivityHistory;
+  violationsDiscipline: ViolationsDiscipline;
+  behavioralStatistics: BehavioralStatistics;
+  evaluationRecommendation: EvaluationRecommendation;
+}
+
 /**
  * Customer Service for Admin Portal
  * Handles admin operations for viewing and managing customers
@@ -82,6 +242,17 @@ class CustomerService {
     byTier: { tier: string; count: number }[];
   }> {
     const response = await axiosInstance.get<ApiResponse<any>>('/customers/stats');
+    return response.data.data;
+  }
+
+  /**
+   * Get comprehensive customer details for admin evaluation
+   * Includes violations, activity history, behavioral statistics
+   */
+  async getCustomerDetailForAdmin(userId: string): Promise<CustomerDetailResponse> {
+    const response = await axiosInstance.get<ApiResponse<CustomerDetailResponse>>(
+      `/customers/${userId}/detail`
+    );
     return response.data.data;
   }
 }

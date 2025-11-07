@@ -31,8 +31,8 @@ public interface ProductRepository extends JpaRepository<Product, String>, JpaSp
     // Find products by status and category
     Page<Product> findByStatusAndCategoryCategoryId(ProductStatus status, String categoryCategoryId, Pageable pageable);
 
-    // Find active products (ACTIVE or HIDDEN status)
-    @Query("SELECT p FROM Product p WHERE p.supplier.userId = :supplierId AND p.status IN ('ACTIVE', 'HIDDEN')")
+    // Find active products (ACTIVE or INACTIVE status)
+    @Query("SELECT p FROM Product p WHERE p.supplier.userId = :supplierId AND p.status IN (com.example.backend.entity.enums.ProductStatus.ACTIVE, com.example.backend.entity.enums.ProductStatus.INACTIVE)")
     Page<Product> findActiveProductsBySupplierId(@Param("supplierId") String supplierId, Pageable pageable);
 
     // Search products by name

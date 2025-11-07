@@ -33,15 +33,6 @@
     },
     {
       "id": 4,
-      "title": "Giao nhận",
-      "icon": "truck",
-      "link": "/delivery/assign",
-      "subMenu": [
-        { "title": "Theo dõi giao hàng", "link": "/delivery/tracking" }
-      ]
-    },
-    {
-      "id": 5,
       "title": "Tài chính",
       "icon": "credit-card",
       "link": "/finance/revenue",
@@ -52,7 +43,7 @@
       ]
     },
     {
-      "id": 6,
+      "id": 5,
       "title": "Báo cáo & Thống kê",
       "icon": "bar-chart",
       "link": "/reports/revenue-over-time",
@@ -64,7 +55,7 @@
       ]
     },
     {
-      "id": 7,
+      "id": 6,
       "title": "Quản lý Cửa hàng",
       "icon": "store",
       "link": "/store/list",
@@ -74,7 +65,7 @@
       ]
     },
     {
-      "id": 8,
+      "id": 7,
       "title": "Khách hàng & Phản hồi",
       "icon": "users",
       "link": "/feedback/reviews",

@@ -88,6 +88,11 @@ public interface OrderService {
     Page<OrderResponse> getCustomerOrders(String customerId, OrderStatus status, int page, int size);
 
     /**
+     * Get supplier's store orders with pagination and filters
+     */
+    Page<OrderResponse> getSupplierOrders(String supplierId, OrderStatus status, int page, int size);
+
+    /**
      * Get store orders with pagination and filters
      */
     Page<OrderResponse> getStoreOrders(String storeId, OrderStatus status, int page, int size);

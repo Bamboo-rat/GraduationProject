@@ -4,7 +4,6 @@ import com.example.backend.dto.request.CustomerUpdateRequest;
 import com.example.backend.dto.response.ApiResponse;
 import com.example.backend.dto.response.CustomerResponse;
 import com.example.backend.service.CustomerService;
-import com.example.backend.utils.JwtUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -118,5 +117,187 @@ public class CustomerController {
 
         java.util.Map<String, Object> stats = customerService.getCustomerStats();
         return ResponseEntity.ok(ApiResponse.success(stats));
+    }
+
+    @GetMapping("/{userId}/detail")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF')")
+    @Operation(summary = "Get comprehensive customer details (Admin)",
+               description = "Get comprehensive customer details including violations, behavioral statistics, and AI recommendation for admin evaluation")
+    public ResponseEntity<ApiResponse<com.example.backend.dto.response.CustomerDetailResponse>> getCustomerDetailForAdmin(
+            @PathVariable String userId) {
+        log.info("GET /api/customers/{}/detail - Getting comprehensive customer details for admin", userId);
+
+        com.example.backend.dto.response.CustomerDetailResponse response =
+                customerService.getCustomerDetailForAdmin(userId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    // ===== Customer History Endpoints =====
+
+    @GetMapping("/{userId}/orders")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF', 'CUSTOMER')")
+    @Operation(summary = "Get customer order history",
+               description = "Get paginated list of customer orders with basic information. " +
+                           "Customers can only access their own orders, admins can access any customer's orders")
+    public ResponseEntity<ApiResponse<org.springframework.data.domain.Page<com.example.backend.dto.response.OrderSummaryResponse>>> getCustomerOrders(
+            @PathVariable String userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            Authentication authentication) {
+        log.info("GET /api/customers/{}/orders - Getting customer order history (page: {}, size: {})", userId, page, size);
+
+        // Authorization: Customers can only view their own orders
+        if (authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_CUSTOMER"))) {
+            Jwt jwt = (Jwt) authentication.getPrincipal();
+            String currentUserId = jwt.getSubject();
+            if (!currentUserId.equals(userId)) {
+                return ResponseEntity.status(403)
+                        .body(ApiResponse.error("FORBIDDEN", "You can only view your own orders"));
+            }
+        }
+
+        org.springframework.data.domain.Page<com.example.backend.dto.response.OrderSummaryResponse> orders =
+                customerService.getCustomerOrders(userId, page, size);
+        return ResponseEntity.ok(ApiResponse.success(orders));
+    }
+
+    @GetMapping("/{userId}/point-transactions")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF', 'CUSTOMER')")
+    @Operation(summary = "Get customer point transaction history",
+               description = "Get paginated list of customer point transactions. " +
+                           "Customers can only access their own transactions, admins can access any customer's transactions")
+    public ResponseEntity<ApiResponse<org.springframework.data.domain.Page<com.example.backend.dto.response.PointTransactionResponse>>> getCustomerPointTransactions(
+            @PathVariable String userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            Authentication authentication) {
+        log.info("GET /api/customers/{}/point-transactions - Getting point transaction history (page: {}, size: {})",
+                userId, page, size);
+
+        // Authorization: Customers can only view their own transactions
+        if (authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_CUSTOMER"))) {
+            Jwt jwt = (Jwt) authentication.getPrincipal();
+            String currentUserId = jwt.getSubject();
+            if (!currentUserId.equals(userId)) {
+                return ResponseEntity.status(403)
+                        .body(ApiResponse.error("FORBIDDEN", "You can only view your own transactions"));
+            }
+        }
+
+        org.springframework.data.domain.Page<com.example.backend.dto.response.PointTransactionResponse> transactions =
+                customerService.getCustomerPointTransactions(userId, page, size);
+        return ResponseEntity.ok(ApiResponse.success(transactions));
+    }
+
+    @GetMapping("/{userId}/addresses")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF', 'CUSTOMER')")
+    @Operation(summary = "Get customer addresses",
+               description = "Get list of customer addresses. " +
+                           "Customers can only access their own addresses, admins can access any customer's addresses")
+    public ResponseEntity<ApiResponse<java.util.List<com.example.backend.dto.response.AddressResponse>>> getCustomerAddresses(
+            @PathVariable String userId,
+            Authentication authentication) {
+        log.info("GET /api/customers/{}/addresses - Getting customer addresses", userId);
+
+        // Authorization: Customers can only view their own addresses
+        if (authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_CUSTOMER"))) {
+            Jwt jwt = (Jwt) authentication.getPrincipal();
+            String currentUserId = jwt.getSubject();
+            if (!currentUserId.equals(userId)) {
+                return ResponseEntity.status(403)
+                        .body(ApiResponse.error("FORBIDDEN", "You can only view your own addresses"));
+            }
+        }
+
+        java.util.List<com.example.backend.dto.response.AddressResponse> addresses =
+                customerService.getCustomerAddresses(userId);
+        return ResponseEntity.ok(ApiResponse.success(addresses));
+    }
+
+    @GetMapping("/{userId}/reviews")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF', 'CUSTOMER')")
+    @Operation(summary = "Get customer reviews",
+               description = "Get paginated list of customer product reviews. " +
+                           "Customers can only access their own reviews, admins can access any customer's reviews")
+    public ResponseEntity<ApiResponse<org.springframework.data.domain.Page<com.example.backend.dto.response.ReviewResponse>>> getCustomerReviews(
+            @PathVariable String userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            Authentication authentication) {
+        log.info("GET /api/customers/{}/reviews - Getting customer reviews (page: {}, size: {})", userId, page, size);
+
+        // Authorization: Customers can only view their own reviews
+        if (authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_CUSTOMER"))) {
+            Jwt jwt = (Jwt) authentication.getPrincipal();
+            String currentUserId = jwt.getSubject();
+            if (!currentUserId.equals(userId)) {
+                return ResponseEntity.status(403)
+                        .body(ApiResponse.error("FORBIDDEN", "You can only view your own reviews"));
+            }
+        }
+
+        org.springframework.data.domain.Page<com.example.backend.dto.response.ReviewResponse> reviews =
+                customerService.getCustomerReviews(userId, page, size);
+        return ResponseEntity.ok(ApiResponse.success(reviews));
+    }
+
+    @GetMapping("/{userId}/favorite-stores")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF', 'CUSTOMER')")
+    @Operation(summary = "Get customer favorite stores",
+               description = "Get paginated list of customer's favorite stores. " +
+                           "Customers can only access their own favorites, admins can access any customer's favorites")
+    public ResponseEntity<ApiResponse<org.springframework.data.domain.Page<com.example.backend.dto.response.FavoriteStoreResponse>>> getCustomerFavoriteStores(
+            @PathVariable String userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            Authentication authentication) {
+        log.info("GET /api/customers/{}/favorite-stores - Getting customer favorite stores (page: {}, size: {})",
+                userId, page, size);
+
+        // Authorization: Customers can only view their own favorites
+        if (authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_CUSTOMER"))) {
+            Jwt jwt = (Jwt) authentication.getPrincipal();
+            String currentUserId = jwt.getSubject();
+            if (!currentUserId.equals(userId)) {
+                return ResponseEntity.status(403)
+                        .body(ApiResponse.error("FORBIDDEN", "You can only view your own favorites"));
+            }
+        }
+
+        org.springframework.data.domain.Page<com.example.backend.dto.response.FavoriteStoreResponse> favorites =
+                customerService.getCustomerFavoriteStores(userId, page, size);
+        return ResponseEntity.ok(ApiResponse.success(favorites));
+    }
+
+    // ===== Customer Management Endpoints (Admin Only) =====
+
+    @PostMapping("/{userId}/suspend")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR')")
+    @Operation(summary = "Suspend customer account",
+               description = "Suspend customer account with a reason and optional duration. Creates disciplinary record. (Admin only)")
+    public ResponseEntity<ApiResponse<CustomerResponse>> suspendCustomer(
+            @PathVariable String userId,
+            @RequestBody com.example.backend.dto.request.SuspendCustomerRequest request) {
+        log.info("POST /api/customers/{}/suspend - Suspending customer (reason: {}, duration: {} days)",
+                userId, request.getReason(), request.getDurationDays());
+
+        CustomerResponse response = customerService.suspendCustomer(userId, request.getReason(), request.getDurationDays());
+        return ResponseEntity.ok(ApiResponse.success("Customer suspended successfully", response));
+    }
+
+    @PostMapping("/{userId}/unsuspend")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR')")
+    @Operation(summary = "Unsuspend customer account",
+               description = "Reactivate suspended customer account and mark disciplinary records as resolved. (Admin only)")
+    public ResponseEntity<ApiResponse<CustomerResponse>> unsuspendCustomer(@PathVariable String userId) {
+        log.info("POST /api/customers/{}/unsuspend - Unsuspending customer", userId);
+
+        CustomerResponse response = customerService.unsuspendCustomer(userId);
+        return ResponseEntity.ok(ApiResponse.success("Customer unsuspended successfully", response));
     }
 }
