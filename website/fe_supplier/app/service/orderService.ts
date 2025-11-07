@@ -54,6 +54,7 @@ export interface Order {
   
   note?: string;
   cancelReason?: string;
+  trackingNumber?: string;
   
   estimatedDeliveryDate?: string;
   actualDeliveryDate?: string;

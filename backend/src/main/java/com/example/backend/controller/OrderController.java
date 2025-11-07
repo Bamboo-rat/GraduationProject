@@ -7,6 +7,7 @@ import com.example.backend.dto.response.ApiResponse;
 import com.example.backend.dto.response.OrderResponse;
 import com.example.backend.entity.enums.OrderStatus;
 import com.example.backend.service.OrderService;
+import com.example.backend.util.AuthenticationUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -17,7 +18,6 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -31,6 +31,7 @@ import java.util.List;
 public class OrderController {
 
     private final OrderService orderService;
+    private final AuthenticationUtil authenticationUtil;
 
     // ===== CUSTOMER ENDPOINTS =====
 
@@ -259,7 +260,6 @@ public class OrderController {
     }
 
     private String extractUserId(Authentication authentication) {
-        Jwt jwt = (Jwt) authentication.getPrincipal();
-        return jwt.getSubject();
+        return authenticationUtil.extractUserId(authentication);
     }
 }
