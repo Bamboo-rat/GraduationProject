@@ -17,20 +17,22 @@ public class AuthenticationUtil {
 
     /**
      * Extract userId from JWT token.
-     * Converts keycloakId (JWT subject) to actual userId from database.
+     * Handles both:
+     * 1. Custom customer tokens (subject = userId)
+     * 2. Keycloak tokens for admin/supplier (subject = keycloakId)
      *
      * @param authentication Spring Security Authentication object
      * @return userId from database
-     * @throws NotFoundException if user not found with keycloakId
+     * @throws NotFoundException if user not found
      */
     public String extractUserId(Authentication authentication) {
         Jwt jwt = (Jwt) authentication.getPrincipal();
-        String keycloakId = jwt.getSubject();
-        
-        // Get actual userId from database using keycloakId
-        User user = userRepository.findByKeycloakId(keycloakId)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND, "keycloakId: " + keycloakId));
-        
+        String subject = jwt.getSubject();
+
+        User user = userRepository.findById(subject)
+                .or(() -> userRepository.findByKeycloakId(subject))
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND, "subject: " + subject));
+
         return user.getUserId();
     }
 
