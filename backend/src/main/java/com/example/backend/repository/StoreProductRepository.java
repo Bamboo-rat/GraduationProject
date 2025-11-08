@@ -183,14 +183,13 @@ public interface StoreProductRepository extends JpaRepository<StoreProduct, Stri
     @Query("""
         SELECT
             p.productId,
-            p.name as productName,
+            p.name,
             v.variantId,
-            v.name as variantName,
-            c.name as categoryName,
-            sup.businessName as supplierName,
+            v.name,
+            c.name,
+            sup.businessName,
             s.storeName,
             sp.stockQuantity,
-            sp.initialStock,
             v.expiryDate,
             v.originalPrice,
             v.discountPrice,
@@ -213,24 +212,24 @@ public interface StoreProductRepository extends JpaRepository<StoreProduct, Stri
     @Query("""
         SELECT
             c.categoryId,
-            c.name as categoryName,
+            c.name,
             c.imageUrl,
-            COUNT(DISTINCT p.productId) as totalProducts,
-            COUNT(DISTINCT CASE WHEN sp.stockQuantity > 0 THEN p.productId END) as unsoldProducts,
-            COUNT(DISTINCT CASE WHEN v.expiryDate < CURRENT_DATE THEN p.productId END) as expiredProducts,
-            COUNT(DISTINCT CASE WHEN v.expiryDate BETWEEN CURRENT_DATE AND CURRENT_DATE + 7 THEN p.productId END) as nearExpiryProducts,
-            SUM(sp.stockQuantity) as totalStockQuantity,
-            SUM(CASE WHEN sp.stockQuantity > 0 THEN sp.stockQuantity ELSE 0 END) as unsoldQuantity,
-            SUM(CASE WHEN v.expiryDate < CURRENT_DATE THEN sp.stockQuantity ELSE 0 END) as expiredQuantity,
-            SUM(sp.stockQuantity * v.originalPrice) as totalStockValue,
-            SUM(CASE WHEN sp.stockQuantity > 0 THEN sp.stockQuantity * v.originalPrice ELSE 0 END) as unsoldValue
+            COUNT(DISTINCT p.productId),
+            COUNT(DISTINCT CASE WHEN sp.stockQuantity > 0 THEN p.productId ELSE NULL END),
+            COUNT(DISTINCT CASE WHEN v.expiryDate < CURRENT_DATE THEN p.productId ELSE NULL END),
+            COUNT(DISTINCT CASE WHEN v.expiryDate BETWEEN CURRENT_DATE AND (CURRENT_DATE + 7 DAY) THEN p.productId ELSE NULL END),
+            COALESCE(SUM(sp.stockQuantity), 0),
+            COALESCE(SUM(CASE WHEN sp.stockQuantity > 0 THEN sp.stockQuantity ELSE 0 END), 0),
+            COALESCE(SUM(CASE WHEN v.expiryDate < CURRENT_DATE THEN sp.stockQuantity ELSE 0 END), 0),
+            COALESCE(SUM(sp.stockQuantity * v.originalPrice), 0),
+            COALESCE(SUM(CASE WHEN sp.stockQuantity > 0 THEN sp.stockQuantity * v.originalPrice ELSE 0 END), 0)
         FROM StoreProduct sp
         JOIN sp.variant v
         JOIN v.product p
         LEFT JOIN p.category c
         WHERE c IS NOT NULL
         GROUP BY c.categoryId, c.name, c.imageUrl
-        ORDER BY unsoldValue DESC
+        ORDER BY COALESCE(SUM(CASE WHEN sp.stockQuantity > 0 THEN sp.stockQuantity * v.originalPrice ELSE 0 END), 0) DESC
     """)
     List<Object[]> findWasteByCategory();
 
@@ -239,26 +238,25 @@ public interface StoreProductRepository extends JpaRepository<StoreProduct, Stri
      */
     @Query("""
         SELECT
-            sup.userId as supplierId,
-            sup.businessName as supplierName,
+            sup.userId,
+            sup.businessName,
             sup.avatarUrl,
-            COUNT(DISTINCT p.productId) as totalProducts,
-            COUNT(DISTINCT CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.ACTIVE THEN p.productId END) as activeProducts,
-            COUNT(DISTINCT CASE WHEN sp.stockQuantity > 0 THEN p.productId END) as unsoldProducts,
-            COUNT(DISTINCT CASE WHEN v.expiryDate < CURRENT_DATE THEN p.productId END) as expiredProducts,
-            COUNT(DISTINCT s.storeId) as totalStores,
-            COUNT(DISTINCT CASE WHEN s.status = com.example.backend.entity.enums.StoreStatus.ACTIVE THEN s.storeId END) as activeStores,
-            SUM(sp.stockQuantity) as totalStockQuantity,
-            SUM(sp.initialStock - sp.stockQuantity) as soldQuantity,
-            SUM(CASE WHEN sp.stockQuantity > 0 THEN sp.stockQuantity ELSE 0 END) as unsoldQuantity,
-            SUM(CASE WHEN v.expiryDate < CURRENT_DATE THEN sp.stockQuantity ELSE 0 END) as expiredQuantity
+            COUNT(DISTINCT p.productId),
+            COUNT(DISTINCT CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.ACTIVE THEN p.productId ELSE NULL END),
+            COUNT(DISTINCT CASE WHEN sp.stockQuantity > 0 THEN p.productId ELSE NULL END),
+            COUNT(DISTINCT CASE WHEN v.expiryDate < CURRENT_DATE THEN p.productId ELSE NULL END),
+            COUNT(DISTINCT s.storeId),
+            COUNT(DISTINCT CASE WHEN s.status = com.example.backend.entity.enums.StoreStatus.ACTIVE THEN s.storeId ELSE NULL END),
+            COALESCE(SUM(sp.stockQuantity), 0),
+            COALESCE(SUM(CASE WHEN sp.stockQuantity > 0 THEN sp.stockQuantity ELSE 0 END), 0),
+            COALESCE(SUM(CASE WHEN v.expiryDate < CURRENT_DATE THEN sp.stockQuantity ELSE 0 END), 0)
         FROM StoreProduct sp
         JOIN sp.variant v
         JOIN v.product p
         JOIN sp.store s
         JOIN s.supplier sup
         GROUP BY sup.userId, sup.businessName, sup.avatarUrl
-        ORDER BY unsoldQuantity DESC
+        ORDER BY COALESCE(SUM(CASE WHEN sp.stockQuantity > 0 THEN sp.stockQuantity ELSE 0 END), 0) DESC
     """)
     List<Object[]> findWasteBySupplier();
 
@@ -267,19 +265,17 @@ public interface StoreProductRepository extends JpaRepository<StoreProduct, Stri
      */
     @Query("""
         SELECT
-            COUNT(DISTINCT p.productId) as totalProducts,
-            COUNT(DISTINCT CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.ACTIVE THEN p.productId END) as activeProducts,
-            COUNT(DISTINCT CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.SOLD_OUT THEN p.productId END) as soldOutProducts,
-            COUNT(DISTINCT CASE WHEN v.expiryDate < CURRENT_DATE THEN p.productId END) as expiredProducts,
-            COUNT(DISTINCT CASE WHEN v.expiryDate BETWEEN CURRENT_DATE AND CURRENT_DATE + 7 THEN p.productId END) as nearExpiryProducts,
-            SUM(sp.stockQuantity) as totalStockQuantity,
-            SUM(sp.initialStock - sp.stockQuantity) as soldQuantity,
-            SUM(CASE WHEN sp.stockQuantity > 0 THEN sp.stockQuantity ELSE 0 END) as unsoldQuantity,
-            SUM(CASE WHEN v.expiryDate < CURRENT_DATE THEN sp.stockQuantity ELSE 0 END) as expiredQuantity,
-            SUM(sp.stockQuantity * v.originalPrice) as totalStockValue,
-            SUM((sp.initialStock - sp.stockQuantity) * v.discountPrice) as soldValue,
-            SUM(CASE WHEN sp.stockQuantity > 0 THEN sp.stockQuantity * v.originalPrice ELSE 0 END) as unsoldValue,
-            SUM(CASE WHEN v.expiryDate < CURRENT_DATE THEN sp.stockQuantity * v.originalPrice ELSE 0 END) as wasteValue
+            COUNT(DISTINCT p.productId),
+            COUNT(DISTINCT CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.ACTIVE THEN p.productId ELSE NULL END),
+            COUNT(DISTINCT CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.SOLD_OUT THEN p.productId ELSE NULL END),
+            COUNT(DISTINCT CASE WHEN v.expiryDate < CURRENT_DATE THEN p.productId ELSE NULL END),
+            COUNT(DISTINCT CASE WHEN v.expiryDate BETWEEN CURRENT_DATE AND (CURRENT_DATE + 7 DAY) THEN p.productId ELSE NULL END),
+            COALESCE(SUM(sp.stockQuantity), 0),
+            COALESCE(SUM(CASE WHEN sp.stockQuantity > 0 THEN sp.stockQuantity ELSE 0 END), 0),
+            COALESCE(SUM(CASE WHEN v.expiryDate < CURRENT_DATE THEN sp.stockQuantity ELSE 0 END), 0),
+            COALESCE(SUM(sp.stockQuantity * v.originalPrice), 0),
+            COALESCE(SUM(CASE WHEN sp.stockQuantity > 0 THEN sp.stockQuantity * v.originalPrice ELSE 0 END), 0),
+            COALESCE(SUM(CASE WHEN v.expiryDate < CURRENT_DATE THEN sp.stockQuantity * v.originalPrice ELSE 0 END), 0)
         FROM StoreProduct sp
         JOIN sp.variant v
         JOIN v.product p

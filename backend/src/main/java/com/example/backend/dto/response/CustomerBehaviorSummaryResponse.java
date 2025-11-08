@@ -35,7 +35,6 @@ public class CustomerBehaviorSummaryResponse {
     private BigDecimal totalCustomerValue;
 
     // Tier distribution
-    private Long generalTierCount;
     private Long bronzeTierCount;
     private Long silverTierCount;
     private Long goldTierCount;

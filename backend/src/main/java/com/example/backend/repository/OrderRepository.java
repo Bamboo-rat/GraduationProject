@@ -233,8 +233,10 @@ public interface OrderRepository extends JpaRepository<Order, String> {
 
     /**
      * Get revenue breakdown by supplier
-     * Returns: supplierId, supplierName, avatarUrl, orderCount, totalRevenue
+     * Returns: supplierId, supplierName, avatarUrl, orderCount, totalRevenue, productCount, storeCount
+
      */
+
     @Query("""
         SELECT
             s.userId,
@@ -242,16 +244,12 @@ public interface OrderRepository extends JpaRepository<Order, String> {
             s.avatarUrl,
             COUNT(DISTINCT o.orderId),
             SUM(o.totalAmount),
-            COUNT(DISTINCT p.productId),
+            COUNT(DISTINCT sp.variant.product.productId),
             COUNT(DISTINCT st.storeId)
         FROM Order o
         JOIN o.store st
         JOIN st.supplier s
         LEFT JOIN st.storeProducts sp
-        LEFT JOIN sp.product p
-        WHERE o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED
-            AND o.createdAt BETWEEN :startDate AND :endDate
-        GROUP BY s.userId, s.businessName, s.avatarUrl
         ORDER BY SUM(o.totalAmount) DESC
     """)
     List<Object[]> findRevenueBySupplier(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
