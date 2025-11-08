@@ -94,23 +94,23 @@ body {
   }
   
   .badge-success {
-    @apply status-badge bg-[#E8FFED] text-[#2F855A];
+    @apply inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-[#E8FFED] text-[#2F855A];
   }
   
   .badge-warning {
-    @apply status-badge bg-orange-50 text-[#FF6B35];
+    @apply inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-orange-50 text-[#FF6B35];
   }
   
   .badge-error {
-    @apply status-badge bg-red-50 text-[#E63946];
+    @apply inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-red-50 text-[#E63946];
   }
   
   .badge-neutral {
-    @apply status-badge bg-[#F5EDE6] text-[#6B6B6B];
+    @apply inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-[#F5EDE6] text-[#6B6B6B];
   }
   
   .badge-pending {
-    @apply status-badge bg-[#FFF3CD] text-[#856404];
+    @apply inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-[#FFF3CD] text-[#856404];
   }
   
   /* Tab styles */
@@ -124,7 +124,7 @@ body {
   
   /* Modal styles */
   .modal-overlay {
-    @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4;
+    @apply fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4;
   }
   
   .modal-content {

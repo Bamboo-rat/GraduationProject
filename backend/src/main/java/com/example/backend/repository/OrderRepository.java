@@ -1,6 +1,5 @@
 package com.example.backend.repository;
 
-import com.example.backend.entity.Address;
 import com.example.backend.entity.Customer;
 import com.example.backend.entity.Order;
 import com.example.backend.entity.Store;
@@ -229,4 +228,119 @@ public interface OrderRepository extends JpaRepository<Order, String> {
      * Returns orders in SHIPPING status assigned to specific provider
      */
     Page<Order> findByStatusAndShipment_ShippingProvider(OrderStatus status, String shippingProvider, Pageable pageable);
+
+    // ==================== REVENUE REPORT QUERIES ====================
+
+    /**
+     * Get revenue breakdown by supplier
+     * Returns: supplierId, supplierName, avatarUrl, orderCount, totalRevenue
+     */
+    @Query("""
+        SELECT
+            s.userId,
+            s.businessName,
+            s.avatarUrl,
+            COUNT(DISTINCT o.orderId),
+            SUM(o.totalAmount),
+            COUNT(DISTINCT p.productId),
+            COUNT(DISTINCT st.storeId)
+        FROM Order o
+        JOIN o.store st
+        JOIN st.supplier s
+        LEFT JOIN st.storeProducts sp
+        LEFT JOIN sp.product p
+        WHERE o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED
+            AND o.createdAt BETWEEN :startDate AND :endDate
+        GROUP BY s.userId, s.businessName, s.avatarUrl
+        ORDER BY SUM(o.totalAmount) DESC
+    """)
+    List<Object[]> findRevenueBySupplier(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    /**
+     * Get revenue time series (daily/weekly/monthly aggregation)
+     */
+    @Query("""
+        SELECT
+            FUNCTION('DATE', o.createdAt),
+            COUNT(DISTINCT o.orderId),
+            SUM(o.totalAmount),
+            AVG(o.totalAmount)
+        FROM Order o
+        WHERE o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED
+            AND o.createdAt BETWEEN :startDate AND :endDate
+        GROUP BY FUNCTION('DATE', o.createdAt)
+        ORDER BY FUNCTION('DATE', o.createdAt) ASC
+    """)
+    List<Object[]> findRevenueTimeSeries(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    /**
+     * Get revenue summary for date range
+     */
+    @Query("""
+        SELECT
+            COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN o.totalAmount ELSE 0 END), 0),
+            COUNT(DISTINCT CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN o.orderId ELSE NULL END),
+            COUNT(DISTINCT CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.CANCELED THEN o.orderId ELSE NULL END),
+            COUNT(DISTINCT o.orderId),
+            AVG(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN o.totalAmount ELSE NULL END)
+        FROM Order o
+        WHERE o.createdAt BETWEEN :startDate AND :endDate
+    """)
+    Object[] findRevenueSummary(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    // ==================== CUSTOMER BEHAVIOR REPORT QUERIES ====================
+
+    /**
+     * Get customer segmentation by tier
+     */
+    @Query("""
+        SELECT
+            c.tier,
+            COUNT(DISTINCT c.userId),
+            COUNT(DISTINCT o.orderId),
+            SUM(o.totalAmount),
+            AVG(o.totalAmount)
+        FROM Customer c
+        LEFT JOIN c.orders o
+        WHERE o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED
+            AND o.createdAt BETWEEN :startDate AND :endDate
+        GROUP BY c.tier
+    """)
+    List<Object[]> findCustomerSegmentation(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    /**
+     * Get customer lifetime value data
+     */
+    @Query("""
+        SELECT
+            c.userId,
+            c.fullName,
+            c.email,
+            c.phoneNumber,
+            c.tier,
+            c.createdAt,
+            COUNT(DISTINCT o.orderId),
+            COUNT(DISTINCT CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN o.orderId ELSE NULL END),
+            COUNT(DISTINCT CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.CANCELED THEN o.orderId ELSE NULL END),
+            COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN o.totalAmount ELSE 0 END), 0),
+            COALESCE(AVG(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN o.totalAmount ELSE NULL END), 0)
+        FROM Customer c
+        LEFT JOIN c.orders o
+        GROUP BY c.userId, c.fullName, c.email, c.phoneNumber, c.tier, c.createdAt
+        HAVING COUNT(DISTINCT o.orderId) > 0
+        ORDER BY COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN o.totalAmount ELSE 0 END), 0) DESC
+    """)
+    List<Object[]> findCustomerLifetimeValue(Pageable pageable);
+
+    /**
+     * Count new vs returning customers in period
+     */
+    @Query("""
+        SELECT
+            COUNT(DISTINCT CASE WHEN c.createdAt BETWEEN :startDate AND :endDate THEN c.userId ELSE NULL END),
+            COUNT(DISTINCT CASE WHEN c.createdAt < :startDate AND o.createdAt BETWEEN :startDate AND :endDate THEN c.userId ELSE NULL END)
+        FROM Customer c
+        LEFT JOIN c.orders o
+    """)
+    Object[] findNewVsReturningCustomers(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 }

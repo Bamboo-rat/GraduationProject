@@ -93,4 +93,32 @@ public interface OrderDetailRepository extends JpaRepository<OrderDetail, String
            "WHERE od.order.status = 'DELIVERED' " +
            "AND od.order.createdAt BETWEEN :startDate AND :endDate")
     Double calculateRevenueByDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    // ==================== REVENUE REPORT QUERIES ====================
+
+    /**
+     * Find revenue by category with date range filter
+     * Returns: categoryId, categoryName, imageUrl, orderCount, productsSold, revenue
+     */
+    @Query("""
+        SELECT
+            c.categoryId as categoryId,
+            c.name as categoryName,
+            c.imageUrl as categoryImageUrl,
+            COUNT(DISTINCT od.order.orderId) as orderCount,
+            SUM(od.quantity) as productsSold,
+            SUM(od.quantity * od.amount) as revenue,
+            AVG(od.order.totalAmount) as avgOrderValue
+        FROM OrderDetail od
+        JOIN od.storeProduct sp
+        JOIN sp.variant v
+        JOIN v.product p
+        LEFT JOIN p.category c
+        WHERE od.order.status = com.example.backend.entity.enums.OrderStatus.DELIVERED
+            AND od.order.createdAt BETWEEN :startDate AND :endDate
+            AND c IS NOT NULL
+        GROUP BY c.categoryId, c.name, c.imageUrl
+        ORDER BY revenue DESC
+    """)
+    List<Object[]> findRevenueByCategoryWithDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 }

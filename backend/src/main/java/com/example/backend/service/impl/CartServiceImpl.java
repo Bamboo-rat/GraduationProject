@@ -483,9 +483,6 @@ public class CartServiceImpl implements CartService {
             return existingCart.get();
         }
 
-        // If no cart exists, create new one
-        // Note: There's still a tiny race condition window here, but the unique constraint
-        // uk_cart_customer_store will catch any duplicates
         try {
             Cart newCart = new Cart();
             newCart.setCustomer(customer);

@@ -49,8 +49,6 @@
       "link": "/reports/revenue-over-time",
       "subMenu": [
         { "title": "Doanh thu theo thời gian", "link": "/reports/revenue-over-time" },
-        { "title": "Sản phẩm bán chạy nhất", "link": "/reports/top-products" },
-        { "title": "Báo cáo giao hàng", "link": "/reports/delivery" },
         { "title": "Phân tích đánh giá", "link": "/reports/reviews-analysis" }
       ]
     },

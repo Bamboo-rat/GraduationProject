@@ -173,4 +173,116 @@ public interface StoreProductRepository extends JpaRepository<StoreProduct, Stri
        Page<String> findAvailableIdsByStoreIdAndCategoryId(@Param("storeId") String storeId,
                                                                                                   @Param("categoryId") String categoryId,
                                                                                                   Pageable pageable);
+
+    // ==================== WASTE REPORT QUERIES ====================
+
+    /**
+     * Find unsold inventory (products with stock remaining)
+     * Returns detailed inventory for waste tracking
+     */
+    @Query("""
+        SELECT
+            p.productId,
+            p.name as productName,
+            v.variantId,
+            v.name as variantName,
+            c.name as categoryName,
+            sup.businessName as supplierName,
+            s.storeName,
+            sp.stockQuantity,
+            sp.initialStock,
+            v.expiryDate,
+            v.originalPrice,
+            v.discountPrice,
+            p.status
+        FROM StoreProduct sp
+        JOIN sp.variant v
+        JOIN v.product p
+        JOIN sp.store s
+        JOIN s.supplier sup
+        LEFT JOIN p.category c
+        WHERE sp.stockQuantity > 0
+            AND p.status != com.example.backend.entity.enums.ProductStatus.SOLD_OUT
+        ORDER BY v.expiryDate ASC NULLS LAST
+    """)
+    List<Object[]> findUnsoldInventory();
+
+    /**
+     * Find waste metrics by category
+     */
+    @Query("""
+        SELECT
+            c.categoryId,
+            c.name as categoryName,
+            c.imageUrl,
+            COUNT(DISTINCT p.productId) as totalProducts,
+            COUNT(DISTINCT CASE WHEN sp.stockQuantity > 0 THEN p.productId END) as unsoldProducts,
+            COUNT(DISTINCT CASE WHEN v.expiryDate < CURRENT_DATE THEN p.productId END) as expiredProducts,
+            COUNT(DISTINCT CASE WHEN v.expiryDate BETWEEN CURRENT_DATE AND CURRENT_DATE + 7 THEN p.productId END) as nearExpiryProducts,
+            SUM(sp.stockQuantity) as totalStockQuantity,
+            SUM(CASE WHEN sp.stockQuantity > 0 THEN sp.stockQuantity ELSE 0 END) as unsoldQuantity,
+            SUM(CASE WHEN v.expiryDate < CURRENT_DATE THEN sp.stockQuantity ELSE 0 END) as expiredQuantity,
+            SUM(sp.stockQuantity * v.originalPrice) as totalStockValue,
+            SUM(CASE WHEN sp.stockQuantity > 0 THEN sp.stockQuantity * v.originalPrice ELSE 0 END) as unsoldValue
+        FROM StoreProduct sp
+        JOIN sp.variant v
+        JOIN v.product p
+        LEFT JOIN p.category c
+        WHERE c IS NOT NULL
+        GROUP BY c.categoryId, c.name, c.imageUrl
+        ORDER BY unsoldValue DESC
+    """)
+    List<Object[]> findWasteByCategory();
+
+    /**
+     * Find waste metrics by supplier
+     */
+    @Query("""
+        SELECT
+            sup.userId as supplierId,
+            sup.businessName as supplierName,
+            sup.avatarUrl,
+            COUNT(DISTINCT p.productId) as totalProducts,
+            COUNT(DISTINCT CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.ACTIVE THEN p.productId END) as activeProducts,
+            COUNT(DISTINCT CASE WHEN sp.stockQuantity > 0 THEN p.productId END) as unsoldProducts,
+            COUNT(DISTINCT CASE WHEN v.expiryDate < CURRENT_DATE THEN p.productId END) as expiredProducts,
+            COUNT(DISTINCT s.storeId) as totalStores,
+            COUNT(DISTINCT CASE WHEN s.status = com.example.backend.entity.enums.StoreStatus.ACTIVE THEN s.storeId END) as activeStores,
+            SUM(sp.stockQuantity) as totalStockQuantity,
+            SUM(sp.initialStock - sp.stockQuantity) as soldQuantity,
+            SUM(CASE WHEN sp.stockQuantity > 0 THEN sp.stockQuantity ELSE 0 END) as unsoldQuantity,
+            SUM(CASE WHEN v.expiryDate < CURRENT_DATE THEN sp.stockQuantity ELSE 0 END) as expiredQuantity
+        FROM StoreProduct sp
+        JOIN sp.variant v
+        JOIN v.product p
+        JOIN sp.store s
+        JOIN s.supplier sup
+        GROUP BY sup.userId, sup.businessName, sup.avatarUrl
+        ORDER BY unsoldQuantity DESC
+    """)
+    List<Object[]> findWasteBySupplier();
+
+    /**
+     * Get waste summary statistics
+     */
+    @Query("""
+        SELECT
+            COUNT(DISTINCT p.productId) as totalProducts,
+            COUNT(DISTINCT CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.ACTIVE THEN p.productId END) as activeProducts,
+            COUNT(DISTINCT CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.SOLD_OUT THEN p.productId END) as soldOutProducts,
+            COUNT(DISTINCT CASE WHEN v.expiryDate < CURRENT_DATE THEN p.productId END) as expiredProducts,
+            COUNT(DISTINCT CASE WHEN v.expiryDate BETWEEN CURRENT_DATE AND CURRENT_DATE + 7 THEN p.productId END) as nearExpiryProducts,
+            SUM(sp.stockQuantity) as totalStockQuantity,
+            SUM(sp.initialStock - sp.stockQuantity) as soldQuantity,
+            SUM(CASE WHEN sp.stockQuantity > 0 THEN sp.stockQuantity ELSE 0 END) as unsoldQuantity,
+            SUM(CASE WHEN v.expiryDate < CURRENT_DATE THEN sp.stockQuantity ELSE 0 END) as expiredQuantity,
+            SUM(sp.stockQuantity * v.originalPrice) as totalStockValue,
+            SUM((sp.initialStock - sp.stockQuantity) * v.discountPrice) as soldValue,
+            SUM(CASE WHEN sp.stockQuantity > 0 THEN sp.stockQuantity * v.originalPrice ELSE 0 END) as unsoldValue,
+            SUM(CASE WHEN v.expiryDate < CURRENT_DATE THEN sp.stockQuantity * v.originalPrice ELSE 0 END) as wasteValue
+        FROM StoreProduct sp
+        JOIN sp.variant v
+        JOIN v.product p
+    """)
+    Object[] findWasteSummary();
 }
