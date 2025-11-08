@@ -57,6 +57,16 @@ public class SecurityConfig {
                         // Supplier endpoints (accessible by supplier and admins)
                         .requestMatchers("/api/suppliers/**").hasAnyRole("SUPPLIER", "SUPER_ADMIN", "MODERATOR", "STAFF")
 
+                        // Order endpoints
+                        .requestMatchers("/api/orders/checkout").hasRole("CUSTOMER")
+                        .requestMatchers("/api/orders/my-orders").hasRole("CUSTOMER")
+                        .requestMatchers("/api/orders/store/**").hasRole("SUPPLIER")
+                        .requestMatchers("/api/orders/*/confirm", "/api/orders/*/prepare", "/api/orders/*/ship", "/api/orders/*/deliver").hasRole("SUPPLIER")
+                        .requestMatchers("/api/orders/*/cancel").hasAnyRole("CUSTOMER", "SUPPLIER")
+                        .requestMatchers("/api/orders/all").hasAnyRole("SUPER_ADMIN", "MODERATOR", "STAFF")
+                        // Public access for order viewing (for 3rd party integrations like shipping partners)
+                        .requestMatchers("/api/orders/**").permitAll()
+
                         // Admin endpoints
                         .requestMatchers("/api/admins/**").hasAnyRole("SUPER_ADMIN", "MODERATOR", "STAFF")
 

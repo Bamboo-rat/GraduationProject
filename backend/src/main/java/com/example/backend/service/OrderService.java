@@ -49,9 +49,9 @@ public interface OrderService {
     /**
      * Start shipping order (PREPARING → SHIPPING)
      * - Creates shipment record
-     * - Assigns tracking number
+     * - Auto-generates unique tracking number
      */
-    OrderResponse startShipping(String orderId, String trackingNumber);
+    OrderResponse startShipping(String orderId);
 
     /**
      * Mark order as delivered (SHIPPING → DELIVERED)

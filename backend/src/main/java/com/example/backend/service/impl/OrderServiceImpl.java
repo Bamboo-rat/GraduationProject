@@ -28,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -428,8 +429,8 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional
-    public OrderResponse startShipping(String orderId, String trackingNumber) {
-        log.info("Starting order shipment: orderId={}, trackingNumber={}", orderId, trackingNumber);
+    public OrderResponse startShipping(String orderId) {
+        log.info("Starting order shipment: orderId={}", orderId);
 
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.ORDER_NOT_FOUND));
@@ -439,6 +440,9 @@ public class OrderServiceImpl implements OrderService {
                     "Chỉ có thể giao hàng từ trạng thái PREPARING");
         }
 
+        // Generate unique tracking number
+        String trackingNumber = generateTrackingNumber(order);
+        
         // Create shipment record with fixed shipping provider
         Shipment shipment = new Shipment();
         shipment.setOrder(order);
@@ -457,8 +461,21 @@ public class OrderServiceImpl implements OrderService {
                 String.format("Đơn hàng #%s đang được giao đến bạn. Mã vận đơn: %s - Giao Hàng Nhanh",
                         order.getOrderCode(), trackingNumber));
 
-        log.info("Order shipment started: orderId={}", orderId);
+        log.info("Order shipment started: orderId={}, trackingNumber={}", orderId, trackingNumber);
         return mapToOrderResponse(order);
+    }
+    
+    /**
+     * Generate unique tracking number for shipment
+     * Format: GHN-YYYYMMDD-ORDERCODE-XXXX
+     * Example: GHN-20251108-ORD1234-A5B2
+     */
+    private String generateTrackingNumber(Order order) {
+        String datePrefix = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        String orderCode = order.getOrderCode().replace("#", "");
+        String randomSuffix = UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+        
+        return String.format("GHN-%s-%s-%s", datePrefix, orderCode, randomSuffix);
     }
 
     @Override

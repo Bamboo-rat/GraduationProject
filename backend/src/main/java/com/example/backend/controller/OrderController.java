@@ -170,13 +170,12 @@ public class OrderController {
 
     @PostMapping("/{orderId}/ship")
     @PreAuthorize("hasRole('SUPPLIER')")
-    @Operation(summary = "Start shipping order", description = "Start shipping order (PREPARING → SHIPPING). Creates shipment record with tracking number")
+    @Operation(summary = "Start shipping order", description = "Start shipping order (PREPARING → SHIPPING). Automatically generates tracking number and creates shipment record")
     public ResponseEntity<ApiResponse<OrderResponse>> startShipping(
-            @PathVariable String orderId,
-            @RequestParam String trackingNumber) {
-        log.info("POST /api/orders/{}/ship - Starting shipment: trackingNumber={}", orderId, trackingNumber);
+            @PathVariable String orderId) {
+        log.info("POST /api/orders/{}/ship - Starting shipment", orderId);
 
-        OrderResponse response = orderService.startShipping(orderId, trackingNumber);
+        OrderResponse response = orderService.startShipping(orderId);
         return ResponseEntity.ok(ApiResponse.success("Đơn hàng đang được giao", response));
     }
 
