@@ -60,13 +60,13 @@ public class OrderServiceImpl implements OrderService {
 
     /**
      * Get points reward percentage from system config
+     * 
      * @return BigDecimal percentage (e.g., 0.05 for 5%)
      */
     private BigDecimal getPointsPercentage() {
         return systemConfigService.getConfigValueAsDecimal(
                 CONFIG_KEY_POINTS_PERCENTAGE,
-                DEFAULT_POINTS_PERCENTAGE
-        );
+                DEFAULT_POINTS_PERCENTAGE);
     }
 
     @Override
@@ -93,9 +93,10 @@ public class OrderServiceImpl implements OrderService {
         // Validate inventory and recalculate prices with current prices
         List<CartDetail> itemsToRemove = new ArrayList<>();
         BigDecimal orderTotal = BigDecimal.ZERO;
-        
+
         for (CartDetail detail : cart.getCartDetails()) {
-            // Fetch storeProduct with pessimistic lock to avoid overselling in concurrent checkouts
+            // Fetch storeProduct with pessimistic lock to avoid overselling in concurrent
+            // checkouts
             StoreProduct storeProduct = storeProductRepository
                     .findByStoreProductIdForUpdate(detail.getStoreProduct().getStoreProductId())
                     .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND));
@@ -120,7 +121,7 @@ public class OrderServiceImpl implements OrderService {
                         String.format("Sản phẩm '%s' không đủ số lượng. Còn lại: %d",
                                 product.getName(), storeProduct.getStockQuantity()));
             }
-            
+
             // Recalculate amount with current price (not cart's old price)
             BigDecimal currentUnitPrice = storeProduct.getPriceOverride() != null
                     ? storeProduct.getPriceOverride()
@@ -155,13 +156,13 @@ public class OrderServiceImpl implements OrderService {
                     .findByStoreProductIdForUpdate(cartDetail.getStoreProduct().getStoreProductId())
                     .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND));
             ProductVariant variant = storeProduct.getVariant();
-            
+
             // Calculate current unit price and amount
             BigDecimal currentUnitPrice = storeProduct.getPriceOverride() != null
                     ? storeProduct.getPriceOverride()
                     : (variant.getDiscountPrice() != null ? variant.getDiscountPrice() : variant.getOriginalPrice());
             BigDecimal itemAmount = currentUnitPrice.multiply(BigDecimal.valueOf(cartDetail.getQuantity()));
-            
+
             OrderDetail orderDetail = new OrderDetail();
             orderDetail.setOrder(order);
             orderDetail.setStoreProduct(cartDetail.getStoreProduct());
@@ -184,7 +185,8 @@ public class OrderServiceImpl implements OrderService {
         }
 
         // Add shipping fee to final total
-        BigDecimal finalTotal = order.getTotalAmount().add(order.getShippingFee());
+        BigDecimal finalTotal = order.getTotalAmount()
+                .add(order.getShippingFee() != null ? order.getShippingFee() : BigDecimal.ZERO);
         order.setTotalAmount(finalTotal);
         order = orderRepository.save(order);
 
@@ -238,7 +240,7 @@ public class OrderServiceImpl implements OrderService {
         validateStatusTransition(oldStatus, newStatus);
 
         order.setStatus(newStatus);
-        
+
         // Set timestamp based on status
         switch (newStatus) {
             case CONFIRMED -> order.setConfirmedAt(LocalDateTime.now());
@@ -246,7 +248,7 @@ public class OrderServiceImpl implements OrderService {
             case DELIVERED -> order.setDeliveredAt(LocalDateTime.now());
             case CANCELED -> order.setCancelledAt(LocalDateTime.now());
         }
-        
+
         order = orderRepository.save(order);
 
         // Send notification with specific message based on status
@@ -377,24 +379,27 @@ public class OrderServiceImpl implements OrderService {
 
         // Validate cancellation based on order status
         if (order.getStatus() == OrderStatus.DELIVERED ||
-            order.getStatus() == OrderStatus.CANCELED ||
-            order.getStatus() == OrderStatus.RETURNED) {
+                order.getStatus() == OrderStatus.CANCELED ||
+                order.getStatus() == OrderStatus.RETURNED) {
             throw new BadRequestException(ErrorCode.INVALID_ORDER_STATUS,
                     "Không thể hủy đơn hàng ở trạng thái hiện tại");
         }
 
-        // CRITICAL FIX: This check ensures that customers cannot bypass the cancel request workflow.
+        // CRITICAL FIX: This check ensures that customers cannot bypass the cancel
+        // request workflow.
         // Only PENDING or CONFIRMED orders can be canceled directly by anyone.
         // Suppliers can cancel at any stage up to SHIPPING, but customers cannot.
         if (isCustomer && order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.CONFIRMED) {
             throw new BadRequestException(ErrorCode.OPERATION_NOT_ALLOWED,
                     "Bạn chỉ có thể hủy trực tiếp đơn hàng ở trạng thái 'Chờ xác nhận' hoặc 'Đã xác nhận'. " +
-                    "Đối với các trạng thái khác, vui lòng tạo 'Yêu cầu hủy đơn'.");
+                            "Đối với các trạng thái khác, vui lòng tạo 'Yêu cầu hủy đơn'.");
         }
 
-        // Suppliers can cancel up to the PREPARING stage. SHIPPING is handled by cancel request.
-        if (!isCustomer && order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.CONFIRMED && order.getStatus() != OrderStatus.PREPARING) {
-             throw new BadRequestException(ErrorCode.OPERATION_NOT_ALLOWED,
+        // Suppliers can cancel up to the PREPARING stage. SHIPPING is handled by cancel
+        // request.
+        if (!isCustomer && order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.CONFIRMED
+                && order.getStatus() != OrderStatus.PREPARING) {
+            throw new BadRequestException(ErrorCode.OPERATION_NOT_ALLOWED,
                     "Nhà cung cấp chỉ có thể hủy trực tiếp đơn hàng ở trạng thái 'Chờ xác nhận', 'Đã xác nhận', hoặc 'Đang chuẩn bị'.");
         }
 
@@ -407,8 +412,8 @@ public class OrderServiceImpl implements OrderService {
 
         // Process refund if payment was made
         if (order.getPayment() != null &&
-            order.getPayment().getStatus() == PaymentStatus.SUCCESS &&
-            order.getPayment().getMethod() != PaymentMethod.COD) {
+                order.getPayment().getStatus() == PaymentStatus.SUCCESS &&
+                order.getPayment().getMethod() != PaymentMethod.COD) {
             processRefund(orderId);
         }
 
@@ -421,9 +426,10 @@ public class OrderServiceImpl implements OrderService {
                 if (decremented > 0) {
                     log.info("Decremented usage count for promotion: promotionId={}", promotionId);
                 } else {
-                    log.warn("Failed to decrement usage count for promotion (count may be 0): promotionId={}", promotionId);
+                    log.warn("Failed to decrement usage count for promotion (count may be 0): promotionId={}",
+                            promotionId);
                 }
-                
+
                 // Delete usage record
                 promotionUsageRepository.delete(usage);
             }
@@ -432,7 +438,8 @@ public class OrderServiceImpl implements OrderService {
         // Record customer violation if applicable
         if (isCustomer && request.getCustomerFault()) {
             automatedSuspensionService.recordOrderCancellation(customerId, orderId, request.getCustomerFault());
-            log.info("Customer violation recorded for order cancellation: customerId={}, orderId={}", customerId, orderId);
+            log.info("Customer violation recorded for order cancellation: customerId={}, orderId={}", customerId,
+                    orderId);
         }
 
         order.setStatus(OrderStatus.CANCELED);
@@ -445,7 +452,8 @@ public class OrderServiceImpl implements OrderService {
                         order.getOrderCode(),
                         request.getReason(),
                         (order.getPayment() != null && order.getPayment().getStatus() == PaymentStatus.REFUNDED)
-                                ? ". Tiền đã được hoàn lại" : ""));
+                                ? ". Tiền đã được hoàn lại"
+                                : ""));
 
         log.info("Order canceled successfully: orderId={}", orderId);
         return mapToOrderResponse(order);
@@ -476,8 +484,8 @@ public class OrderServiceImpl implements OrderService {
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
 
         Page<Order> orders = status != null
-                ? orderRepository.findByCustomerAndStatus(customer, status, pageable)
-                : orderRepository.findByCustomer(customer, pageable);
+                ? orderRepository.findByCustomerUserIdAndStatus(customerId, status, pageable)
+                : orderRepository.findByCustomerUserId(customerId, pageable);
 
         return orders.map(this::mapToOrderResponse);
     }
@@ -489,7 +497,7 @@ public class OrderServiceImpl implements OrderService {
 
         // Get all supplier's stores
         List<Store> stores = storeRepository.findBySupplierUserId(supplierId);
-        
+
         // If supplier has no stores, return empty page instead of throwing exception
         if (stores.isEmpty()) {
             log.warn("Supplier has no stores yet: supplierId={}", supplierId);
@@ -516,8 +524,9 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<OrderResponse> getSupplierStoreOrders(String supplierId, String storeId, OrderStatus status, int page, int size) {
-        log.info("Getting orders for supplier's specific store: supplierId={}, storeId={}, status={}", 
+    public Page<OrderResponse> getSupplierStoreOrders(String supplierId, String storeId, OrderStatus status, int page,
+            int size) {
+        log.info("Getting orders for supplier's specific store: supplierId={}, storeId={}, status={}",
                 supplierId, storeId, status);
 
         // Validate store ownership
@@ -594,7 +603,8 @@ public class OrderServiceImpl implements OrderService {
             order.setConfirmedAt(LocalDateTime.now());
 
             sendOrderNotification(order,
-                    String.format("Thanh toán đơn hàng #%s thành công (%s VNĐ). Đơn hàng đã được xác nhận và đang chờ cửa hàng chuẩn bị",
+                    String.format(
+                            "Thanh toán đơn hàng #%s thành công (%s VNĐ). Đơn hàng đã được xác nhận và đang chờ cửa hàng chuẩn bị",
                             order.getOrderCode(), order.getTotalAmount()));
 
             // Notify supplier about confirmed paid order
@@ -605,7 +615,8 @@ public class OrderServiceImpl implements OrderService {
             payment.setStatus(PaymentStatus.FAILED);
             order.setPaymentStatus(PaymentStatus.FAILED);
             sendOrderNotification(order,
-                    String.format("Thanh toán đơn hàng #%s thất bại. Vui lòng thử lại hoặc chọn phương thức thanh toán khác",
+                    String.format(
+                            "Thanh toán đơn hàng #%s thất bại. Vui lòng thử lại hoặc chọn phương thức thanh toán khác",
                             order.getOrderCode()));
         }
 
@@ -644,7 +655,8 @@ public class OrderServiceImpl implements OrderService {
         paymentRepository.save(payment);
         orderRepository.save(order);
 
-        // Deduct from supplier wallet (refund from pendingBalance since order not delivered yet)
+        // Deduct from supplier wallet (refund from pendingBalance since order not
+        // delivered yet)
         walletService.refundOrder(
                 order.getStore().getSupplier().getUserId(),
                 order,
@@ -694,11 +706,11 @@ public class OrderServiceImpl implements OrderService {
         pointTransaction.setCustomer(customer);
         pointTransaction.setTransactionType(PointTransactionType.EARN);
         pointTransaction.setPointsChange(pointsToAward.intValue());
-        pointTransaction.setReason("Hoàn thành đơn hàng #" + order.getOrderCode() + 
+        pointTransaction.setReason("Hoàn thành đơn hàng #" + order.getOrderCode() +
                 " - Tích " + getPointsPercentage().multiply(new BigDecimal("100")).intValue() + "% giá trị đơn hàng");
         pointTransactionRepository.save(pointTransaction);
 
-        log.info("Created point transaction record: transactionId={}, points={}", 
+        log.info("Created point transaction record: transactionId={}, points={}",
                 pointTransaction.getTransactionId(), pointsToAward);
 
         // Record supplier wallet pending balance (after commission deduction)
@@ -706,8 +718,7 @@ public class OrderServiceImpl implements OrderService {
                 order.getStore().getSupplier().getUserId(),
                 order,
                 order.getTotalAmount(),
-                "Doanh thu đơn hàng " + order.getOrderCode()
-        );
+                "Doanh thu đơn hàng " + order.getOrderCode());
 
         // Update FavoriteStore metrics if store is favorited by customer
         updateFavoriteStoreMetrics(customer.getUserId(), order.getStore().getStoreId());
@@ -721,7 +732,7 @@ public class OrderServiceImpl implements OrderService {
      * - Update last order date
      * 
      * @param customerId Customer ID
-     * @param storeId Store ID
+     * @param storeId    Store ID
      */
     private void updateFavoriteStoreMetrics(String customerId, String storeId) {
         try {
@@ -730,13 +741,13 @@ public class OrderServiceImpl implements OrderService {
                         favoriteStore.setOrderCount(favoriteStore.getOrderCount() + 1);
                         favoriteStore.setLastOrderDate(LocalDateTime.now());
                         favoriteStoreRepository.save(favoriteStore);
-                        
-                        log.info("Updated FavoriteStore metrics: customerId={}, storeId={}, orderCount={}", 
+
+                        log.info("Updated FavoriteStore metrics: customerId={}, storeId={}, orderCount={}",
                                 customerId, storeId, favoriteStore.getOrderCount());
                     });
         } catch (Exception e) {
             // Don't fail order completion if favorite store update fails
-            log.error("Failed to update FavoriteStore metrics: customerId={}, storeId={}", 
+            log.error("Failed to update FavoriteStore metrics: customerId={}, storeId={}",
                     customerId, storeId, e);
         }
     }
@@ -744,7 +755,7 @@ public class OrderServiceImpl implements OrderService {
     private BigDecimal applyPromotions(Order order, List<String> promotionCodes) {
         BigDecimal totalDiscount = BigDecimal.ZERO;
         BigDecimal originalAmount = order.getTotalAmount();
-        
+
         for (String code : promotionCodes) {
             Promotion promotion = promotionRepository.findByCodeWithLock(code)
                     .orElse(null);
@@ -761,7 +772,7 @@ public class OrderServiceImpl implements OrderService {
             }
 
             if (promotion.getMinimumOrderAmount() != null &&
-                originalAmount.compareTo(promotion.getMinimumOrderAmount()) < 0) {
+                    originalAmount.compareTo(promotion.getMinimumOrderAmount()) < 0) {
                 log.warn("Order does not meet minimum amount: code={}, required={}, actual={}",
                         code, promotion.getMinimumOrderAmount(), originalAmount);
                 continue;
@@ -769,7 +780,7 @@ public class OrderServiceImpl implements OrderService {
 
             // Check usage limits (while holding lock)
             if (promotion.getTotalUsageLimit() != null &&
-                promotion.getCurrentUsageCount() >= promotion.getTotalUsageLimit()) {
+                    promotion.getCurrentUsageCount() >= promotion.getTotalUsageLimit()) {
                 log.warn("Promotion usage limit reached: code={}", code);
                 continue;
             }
@@ -806,7 +817,7 @@ public class OrderServiceImpl implements OrderService {
                     promotion.getCurrentUsageCount() + 1,
                     promotion.getTotalUsageLimit());
         }
-        
+
         // Update order total amount after applying all discounts
         if (totalDiscount.compareTo(BigDecimal.ZERO) > 0) {
             BigDecimal finalAmount = originalAmount.subtract(totalDiscount);
@@ -816,14 +827,14 @@ public class OrderServiceImpl implements OrderService {
             }
             order.setTotalAmount(finalAmount);
             orderRepository.save(order);
-            
+
             log.info("Order total updated after promotions: orderId={}, original={}, discount={}, final={}",
                     order.getOrderId(), originalAmount, totalDiscount, finalAmount);
         }
-        
+
         return totalDiscount;
     }
-    
+
     /**
      * Calculate discount amount based on promotion type
      */
@@ -837,7 +848,7 @@ public class OrderServiceImpl implements OrderService {
 
             // Apply max discount limit if set
             if (promotion.getMaxDiscountAmount() != null &&
-                discount.compareTo(promotion.getMaxDiscountAmount()) > 0) {
+                    discount.compareTo(promotion.getMaxDiscountAmount()) > 0) {
                 discount = promotion.getMaxDiscountAmount();
             }
         } else if (promotion.getType() == com.example.backend.entity.enums.PromotionType.FIXED_AMOUNT) {
@@ -874,8 +885,7 @@ public class OrderServiceImpl implements OrderService {
                     order.getCustomer().getUserId(),
                     NotificationType.ORDER_STATUS_UPDATE,
                     message,
-                    linkUrl
-            );
+                    linkUrl);
 
             log.info("Order notification sent: orderId={}, customerId={}, message={}",
                     order.getOrderId(), order.getCustomer().getUserId(), message);
@@ -896,8 +906,7 @@ public class OrderServiceImpl implements OrderService {
                     order.getStore().getSupplier().getUserId(),
                     NotificationType.NEW_ORDER,
                     message,
-                    linkUrl
-            );
+                    linkUrl);
 
             log.info("Order notification sent to supplier: orderId={}, supplierId={}, message={}",
                     order.getOrderId(), order.getStore().getSupplier().getUserId(), message);
@@ -943,14 +952,15 @@ public class OrderServiceImpl implements OrderService {
 
         // Validate shipment status
         Shipment resolvedShipment = shipment != null ? shipment : order.getShipment();
-        
+
         if (resolvedShipment != null) {
             if (resolvedShipment.getStatus() != ShipmentStatus.SHIPPING) {
                 throw new BadRequestException(ErrorCode.INVALID_ORDER_STATUS,
-                        String.format("Không thể xác nhận giao hàng. Vận đơn đang ở trạng thái %s, cần ở trạng thái SHIPPING",
+                        String.format(
+                                "Không thể xác nhận giao hàng. Vận đơn đang ở trạng thái %s, cần ở trạng thái SHIPPING",
                                 resolvedShipment.getStatus().getDisplayName()));
             }
-            
+
             // Update shipment status
             resolvedShipment.setStatus(ShipmentStatus.DELIVERED);
             shipmentRepository.save(resolvedShipment);
@@ -971,14 +981,15 @@ public class OrderServiceImpl implements OrderService {
                 .setScale(0, RoundingMode.HALF_UP);
 
         sendOrderNotification(order,
-                String.format("Đơn hàng #%s đã được giao thành công! Bạn nhận được %s điểm thưởng. Đánh giá sản phẩm để nhận thêm điểm",
+                String.format(
+                        "Đơn hàng #%s đã được giao thành công! Bạn nhận được %s điểm thưởng. Đánh giá sản phẩm để nhận thêm điểm",
                         order.getOrderCode(), pointsAwarded));
 
         return mapToOrderResponse(order);
     }
 
     private OrderResponse mapToOrderResponse(Order order) {
-       List<OrderDetail> orderDetails = order.getOrderDetails() != null
+        List<OrderDetail> orderDetails = order.getOrderDetails() != null
                 ? order.getOrderDetails()
                 : List.of();
 
@@ -988,9 +999,9 @@ public class OrderServiceImpl implements OrderService {
 
         List<String> appliedPromotions = order.getPromotionUsages() != null
                 ? order.getPromotionUsages().stream()
-                .map(usage -> usage.getPromotion() != null ? usage.getPromotion().getCode() : null)
-                .filter(code -> code != null && !code.isBlank())
-                .collect(Collectors.toList())
+                        .map(usage -> usage.getPromotion() != null ? usage.getPromotion().getCode() : null)
+                        .filter(code -> code != null && !code.isBlank())
+                        .collect(Collectors.toList())
                 : List.of();
 
         Customer customer = order.getCustomer();
@@ -1038,10 +1049,11 @@ public class OrderServiceImpl implements OrderService {
                 .status(orderStatus.name())
                 .statusHistory(null) // TODO: Implement if OrderStatusHistory entity exists
                 // Pricing
-                .subtotal(subtotal)
-                .shippingFee(shippingFee)
-                .discount(discount)
-                .totalAmount(totalAmount)
+                .subtotal(order.getTotalAmount()
+                        .subtract(order.getShippingFee() != null ? order.getShippingFee() : BigDecimal.ZERO)
+                        .add(order.getDiscount() != null ? order.getDiscount() : BigDecimal.ZERO))
+                .shippingFee(order.getShippingFee() != null ? order.getShippingFee() : BigDecimal.ZERO)
+                .discount(order.getDiscount() != null ? order.getDiscount() : BigDecimal.ZERO)
                 // Payment
                 .paymentMethod(order.getPayment() != null && order.getPayment().getMethod() != null
                         ? order.getPayment().getMethod().name()
@@ -1057,7 +1069,8 @@ public class OrderServiceImpl implements OrderService {
                 .note(order.getNote())
                 .cancelReason(order.getCancelReason())
                 // Dates
-                .estimatedDeliveryDate(order.getEstimatedDelivery() != null ? order.getEstimatedDelivery().toString() : null)
+                .estimatedDeliveryDate(
+                        order.getEstimatedDelivery() != null ? order.getEstimatedDelivery().toString() : null)
                 .actualDeliveryDate(order.getActualDelivery() != null ? order.getActualDelivery().toString() : null)
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())
@@ -1084,8 +1097,7 @@ public class OrderServiceImpl implements OrderService {
         BigDecimal price = amount.divide(
                 BigDecimal.valueOf(quantity),
                 2,
-                RoundingMode.HALF_UP
-        );
+                RoundingMode.HALF_UP);
 
         return OrderResponse.OrderItemResponse.builder()
                 .id(detail.getOrderDetailId())

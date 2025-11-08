@@ -34,6 +34,11 @@ public interface OrderRepository extends JpaRepository<Order, String> {
      */
     List<Order> findByCustomer(Customer customer);
 
+       /**
+     * Find orders by customer id with pagination
+     */
+    Page<Order> findByCustomerUserId(String customerId, Pageable pageable);
+
     /**
      * Find recent orders by customer (last 20)
      */
@@ -43,6 +48,11 @@ public interface OrderRepository extends JpaRepository<Order, String> {
      * Find orders by customer and status
      */
     Page<Order> findByCustomerAndStatus(Customer customer, OrderStatus status, Pageable pageable);
+
+     /**
+     * Find orders by customer id and status with pagination
+     */
+    Page<Order> findByCustomerUserIdAndStatus(String customerId, OrderStatus status, Pageable pageable);
 
     /**
      * Count orders by shipping address string (searches for substring match)
