@@ -174,7 +174,7 @@ public class CartController {
 
     @DeleteMapping("/{cartId}/promotions/{promotionCode}")
     @PreAuthorize("hasRole('CUSTOMER')")
-    @Operation(summary = "Remove promotion from cart", description = "Remove applied promotion from cart")
+    @Operation(summary = "Remove promotion", description = "Remove promotion code from cart")
     public ResponseEntity<ApiResponse<CartResponse>> removePromotion(
             @PathVariable String cartId,
             @PathVariable String promotionCode,
@@ -185,6 +185,21 @@ public class CartController {
 
         CartResponse response = cartService.removePromotion(customerId, cartId, promotionCode);
         return ResponseEntity.ok(ApiResponse.success("Đã gỡ bỏ mã khuyến mãi", response));
+    }
+
+    @GetMapping("/{cartId}/shipping-fee")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    @Operation(summary = "Calculate shipping fee", description = "Calculate shipping fee based on store location and delivery address")
+    public ResponseEntity<ApiResponse<java.math.BigDecimal>> calculateShippingFee(
+            @PathVariable String cartId,
+            @RequestParam String addressId,
+            Authentication authentication) {
+        String customerId = extractUserId(authentication);
+        log.info("GET /api/cart/{}/shipping-fee - Calculating shipping fee: customerId={}, addressId={}",
+                cartId, customerId, addressId);
+
+        java.math.BigDecimal shippingFee = cartService.calculateShippingFee(customerId, cartId, addressId);
+        return ResponseEntity.ok(ApiResponse.success("Tính phí vận chuyển thành công", shippingFee));
     }
 
     private String extractUserId(Authentication authentication) {

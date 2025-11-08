@@ -134,6 +134,16 @@ public interface OrderRepository extends JpaRepository<Order, String> {
     boolean existsByOrderCode(String orderCode);
 
     /**
+     * Check if idempotency key exists
+     */
+    boolean existsByIdempotencyKey(String idempotencyKey);
+
+    /**
+     * Find order by idempotency key (for duplicate checkout prevention)
+     */
+    Optional<Order> findByIdempotencyKey(String idempotencyKey);
+
+    /**
      * Find recent orders for customer (for cancellation tracking)
      */
     @Query("SELECT o FROM Order o WHERE o.customer.userId = :customerId AND o.createdAt >= :since ORDER BY o.createdAt DESC")

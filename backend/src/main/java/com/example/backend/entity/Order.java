@@ -31,7 +31,8 @@ import java.util.List;
     @Index(name = "idx_order_customer_status", columnList = "customer_id, status"),
     @Index(name = "idx_order_store_status", columnList = "store_id, status"),
     @Index(name = "idx_order_customer_created", columnList = "customer_id, createdAt"),
-    @Index(name = "idx_order_status_created", columnList = "status, createdAt")
+    @Index(name = "idx_order_status_created", columnList = "status, createdAt"),
+    @Index(name = "idx_order_idempotency", columnList = "idempotencyKey", unique = true)
 })
 public class Order {
     @Id
@@ -40,6 +41,9 @@ public class Order {
 
     @Column(unique = true, nullable = false)
     private String orderCode;
+
+    @Column(unique = true, nullable = false, length = 100)
+    private String idempotencyKey;
 
     private BigDecimal totalAmount;
 

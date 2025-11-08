@@ -56,6 +56,7 @@ public enum ErrorCode {
     SUPPLIER_NOT_ACTIVE("3013", "Supplier is not active", "Nhà cung cấp không ở trạng thái hoạt động", HttpStatus.BAD_REQUEST),
     SUPPLIER_NOT_PAUSED("3014", "Supplier is not paused", "Nhà cung cấp không ở trạng thái tạm dừng", HttpStatus.BAD_REQUEST),
     CANNOT_SELF_UNSUSPEND("3015", "Cannot unsuspend by yourself", "Bạn không thể tự gỡ bỏ đình chỉ", HttpStatus.FORBIDDEN),
+    ADDRESS_NOT_FOUND("3016", "Address not found", "Không tìm thấy địa chỉ", HttpStatus.NOT_FOUND),
 
     // ===== 4xxx: Product & Category Errors =====
     PRODUCT_NOT_FOUND("4001", "Product not found", "Không tìm thấy sản phẩm", HttpStatus.NOT_FOUND),

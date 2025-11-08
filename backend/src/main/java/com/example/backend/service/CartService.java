@@ -68,6 +68,11 @@ public interface CartService {
     CartResponse removePromotion(String customerId, String cartId, String promotionCode);
 
     /**
+     * Calculate shipping fee based on store location and delivery address
+     */
+    java.math.BigDecimal calculateShippingFee(String customerId, String cartId, String addressId);
+
+    /**
      * End of day reset - clear all carts (scheduled task)
      */
     void resetAllCarts();

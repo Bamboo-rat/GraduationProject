@@ -37,6 +37,7 @@ public class CartServiceImpl implements CartService {
     private final PromotionRepository promotionRepository;
     private final PromotionUsageRepository promotionUsageRepository;
     private final OrderRepository orderRepository;
+    private final AddressRepository addressRepository;
 
     @Override
     @Transactional
@@ -420,6 +421,57 @@ public class CartServiceImpl implements CartService {
         log.info("Resetting all carts (end of day)");
         cartRepository.deleteAllCarts();
         log.info("All carts reset successfully");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public BigDecimal calculateShippingFee(String customerId, String cartId, String addressId) {
+        log.info("Calculating shipping fee: customerId={}, cartId={}, addressId={}",
+                customerId, cartId, addressId);
+
+        // Get cart
+        Cart cart = cartRepository.findById(cartId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.CART_NOT_FOUND));
+
+        // Verify ownership
+        if (!cart.getCustomer().getUserId().equals(customerId)) {
+            throw new BadRequestException(ErrorCode.UNAUTHORIZED_ACCESS,
+                    "Bạn không có quyền truy cập giỏ hàng này");
+        }
+
+        // Get store
+        Store store = cart.getStore();
+        if (store == null) {
+            throw new BadRequestException(ErrorCode.INVALID_REQUEST,
+                    "Giỏ hàng không có cửa hàng liên kết");
+        }
+
+        // Get store coordinates
+        Double storeLat = store.getLatitude();
+        Double storeLon = store.getLongitude();
+
+        // Get delivery address
+        Address address = addressRepository.findById(addressId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.ADDRESS_NOT_FOUND));
+
+        // Verify address belongs to customer
+        if (!address.getCustomer().getUserId().equals(customerId)) {
+            throw new BadRequestException(ErrorCode.UNAUTHORIZED_ACCESS,
+                    "Địa chỉ không thuộc về khách hàng này");
+        }
+
+        // Get address coordinates
+        Double addressLat = address.getLatitude();
+        Double addressLon = address.getLongitude();
+
+        // Calculate shipping fee using utility
+        BigDecimal shippingFee = com.example.backend.utils.ShippingFeeCalculator
+                .calculateShippingFee(storeLat, storeLon, addressLat, addressLon);
+
+        log.info("Shipping fee calculated: {} VND for cart {} to address {}",
+                shippingFee, cartId, addressId);
+
+        return shippingFee;
     }
 
     // Helper methods

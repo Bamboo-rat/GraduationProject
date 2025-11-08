@@ -39,4 +39,10 @@ public class CheckoutRequest {
 
     @Schema(description = "Ghi chú đơn hàng (optional)", example = "Giao hàng buổi sáng")
     private String note;
+
+    @NotBlank(message = "Idempotency key is required")
+    @Schema(description = "Unique key để đảm bảo request không bị duplicate (UUID from frontend)", 
+            example = "550e8400-e29b-41d4-a716-446655440000",
+            required = true)
+    private String idempotencyKey;
 }
