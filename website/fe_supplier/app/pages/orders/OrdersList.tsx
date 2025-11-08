@@ -22,7 +22,6 @@ export default function OrdersList() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [estimatedDelivery, setEstimatedDelivery] = useState('');
-  const [trackingNumber, setTrackingNumber] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -110,17 +109,13 @@ export default function OrdersList() {
   const handleShipOrder = async () => {
     if (!selectedOrder) return;
 
-    if (!trackingNumber.trim()) {
-      alert('Vui lòng nhập mã vận đơn');
-      return;
-    }
+    if (!confirm('Bắt đầu giao hàng đơn này? Hệ thống sẽ tự động tạo mã vận đơn.')) return;
 
     try {
       setSubmitting(true);
-      await orderService.shipOrder(selectedOrder.id, trackingNumber);
+      await orderService.shipOrder(selectedOrder.id);
       alert('Đơn hàng đã chuyển sang trạng thái giao hàng qua Giao Hàng Nhanh!');
       setShowShipModal(false);
-      setTrackingNumber('');
       loadOrders();
     } catch (err: any) {
       alert(err.message || 'Không thể cập nhật trạng thái');
@@ -594,19 +589,19 @@ export default function OrdersList() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-[#2D2D2D] mb-3">
-                  Mã vận đơn <span className="text-[#E63946]">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={trackingNumber}
-                  onChange={(e) => setTrackingNumber(e.target.value)}
-                  className="input-field w-full"
-                  placeholder="Nhập mã vận đơn từ GHN"
-                  required
-                />
-                <p className="text-xs text-muted mt-2">Nhập mã vận đơn để khách hàng có thể tra cứu trạng thái giao hàng</p>
+              <div className="bg-[#FFF8E1] border border-[#FFE082] rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <svg className="w-5 h-5 text-[#F57C00] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-semibold text-[#F57C00]">Mã vận đơn tự động</p>
+                    <p className="text-xs text-[#F57C00] mt-1">
+                      Hệ thống sẽ tự động tạo mã vận đơn duy nhất khi bạn xác nhận giao hàng. 
+                      Khách hàng sẽ nhận được mã này qua thông báo.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -616,10 +611,10 @@ export default function OrdersList() {
                 disabled={submitting}
                 className="btn-primary flex-1 disabled:opacity-50"
               >
-                {submitting ? 'Đang xử lý...' : 'Bắt đầu giao hàng'}
+                {submitting ? 'Đang xử lý...' : 'Xác nhận giao hàng'}
               </button>
               <button
-                onClick={() => { setShowShipModal(false); setTrackingNumber(''); }}
+                onClick={() => setShowShipModal(false)}
                 className="btn-secondary"
               >
                 Hủy

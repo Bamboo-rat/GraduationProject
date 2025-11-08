@@ -108,12 +108,6 @@ export interface CancelOrderRequest {
   cancelReason: string;
 }
 
-export interface ShipOrderRequest {
-  trackingNumber?: string;
-  shippingProvider?: string;
-  estimatedDeliveryDate?: string;
-}
-
 // Order Service for Supplier
 class SupplierOrderService {
   private handleError(error: any): Error {
@@ -210,14 +204,12 @@ class SupplierOrderService {
 
   /**
    * Start shipping order (PREPARING → SHIPPING)
+   * Backend will auto-generate tracking number
    */
-  async shipOrder(orderId: string, trackingNumber: string): Promise<Order> {
+  async shipOrder(orderId: string): Promise<Order> {
     try {
-      const queryParams = new URLSearchParams();
-      queryParams.append('trackingNumber', trackingNumber);
-
       const { data } = await axiosInstance.post<ApiResponse<Order>>(
-        `/orders/${orderId}/ship?${queryParams.toString()}`
+        `/orders/${orderId}/ship`
       );
       return data.data;
     } catch (error) {
