@@ -207,34 +207,36 @@ public interface StoreProductRepository extends JpaRepository<StoreProduct, Stri
     List<Object[]> findUnsoldInventory();
 
     /**
-     * Find waste metrics by category
+     * Find waste metrics by category (JPQL-safe version)
      */
     @Query("""
-        SELECT
-            c.categoryId,
-            c.name,
-            c.imageUrl,
-            COUNT(DISTINCT p.productId),
-            COUNT(DISTINCT CASE WHEN sp.stockQuantity > 0 THEN p.productId ELSE NULL END),
-            COUNT(DISTINCT CASE WHEN v.expiryDate < CURRENT_DATE THEN p.productId ELSE NULL END),
-            COUNT(DISTINCT CASE WHEN v.expiryDate BETWEEN CURRENT_DATE AND (CURRENT_DATE + 7 DAY) THEN p.productId ELSE NULL END),
-            COALESCE(SUM(sp.stockQuantity), 0),
-            COALESCE(SUM(CASE WHEN sp.stockQuantity > 0 THEN sp.stockQuantity ELSE 0 END), 0),
-            COALESCE(SUM(CASE WHEN v.expiryDate < CURRENT_DATE THEN sp.stockQuantity ELSE 0 END), 0),
-            COALESCE(SUM(sp.stockQuantity * v.originalPrice), 0),
-            COALESCE(SUM(CASE WHEN sp.stockQuantity > 0 THEN sp.stockQuantity * v.originalPrice ELSE 0 END), 0)
-        FROM StoreProduct sp
-        JOIN sp.variant v
-        JOIN v.product p
-        LEFT JOIN p.category c
-        WHERE c IS NOT NULL
-        GROUP BY c.categoryId, c.name, c.imageUrl
-        ORDER BY COALESCE(SUM(CASE WHEN sp.stockQuantity > 0 THEN sp.stockQuantity * v.originalPrice ELSE 0 END), 0) DESC
-    """)
+    SELECT
+        c.categoryId,
+        c.name,
+        c.imageUrl,
+        COUNT(DISTINCT p.productId),
+        SUM(CASE WHEN sp.stockQuantity > 0 THEN 1 ELSE 0 END),
+        SUM(CASE WHEN v.expiryDate < CURRENT_DATE THEN 1 ELSE 0 END),
+        SUM(CASE WHEN v.expiryDate BETWEEN CURRENT_DATE AND FUNCTION('DATE_ADD', CURRENT_DATE, 'INTERVAL 7 DAY') THEN 1 ELSE 0 END),
+        COALESCE(SUM(sp.stockQuantity), 0),
+        COALESCE(SUM(CASE WHEN sp.stockQuantity > 0 THEN sp.stockQuantity ELSE 0 END), 0),
+        COALESCE(SUM(CASE WHEN v.expiryDate < CURRENT_DATE THEN sp.stockQuantity ELSE 0 END), 0),
+        COALESCE(SUM(sp.stockQuantity * v.originalPrice), 0),
+        COALESCE(SUM(CASE WHEN sp.stockQuantity > 0 THEN sp.stockQuantity * v.originalPrice ELSE 0 END), 0)
+    FROM StoreProduct sp
+    JOIN sp.variant v
+    JOIN v.product p
+    LEFT JOIN p.category c
+    WHERE c IS NOT NULL
+    GROUP BY c.categoryId, c.name, c.imageUrl
+    ORDER BY COALESCE(SUM(CASE WHEN sp.stockQuantity > 0 THEN sp.stockQuantity * v.originalPrice ELSE 0 END), 0) DESC
+""")
     List<Object[]> findWasteByCategory();
 
+
+
     /**
-     * Find waste metrics by supplier
+     * Find waste metrics by supplier (JPQL-safe version)
      */
     @Query("""
         SELECT
@@ -242,11 +244,11 @@ public interface StoreProductRepository extends JpaRepository<StoreProduct, Stri
             sup.businessName,
             sup.avatarUrl,
             COUNT(DISTINCT p.productId),
-            COUNT(DISTINCT CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.ACTIVE THEN p.productId ELSE NULL END),
-            COUNT(DISTINCT CASE WHEN sp.stockQuantity > 0 THEN p.productId ELSE NULL END),
-            COUNT(DISTINCT CASE WHEN v.expiryDate < CURRENT_DATE THEN p.productId ELSE NULL END),
+            SUM(CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.ACTIVE THEN 1 ELSE 0 END),
+            SUM(CASE WHEN sp.stockQuantity > 0 THEN 1 ELSE 0 END),
+            SUM(CASE WHEN v.expiryDate < CURRENT_DATE THEN 1 ELSE 0 END),
             COUNT(DISTINCT s.storeId),
-            COUNT(DISTINCT CASE WHEN s.status = com.example.backend.entity.enums.StoreStatus.ACTIVE THEN s.storeId ELSE NULL END),
+            SUM(CASE WHEN s.status = com.example.backend.entity.enums.StoreStatus.ACTIVE THEN 1 ELSE 0 END),
             COALESCE(SUM(sp.stockQuantity), 0),
             COALESCE(SUM(CASE WHEN sp.stockQuantity > 0 THEN sp.stockQuantity ELSE 0 END), 0),
             COALESCE(SUM(CASE WHEN v.expiryDate < CURRENT_DATE THEN sp.stockQuantity ELSE 0 END), 0)
@@ -260,25 +262,29 @@ public interface StoreProductRepository extends JpaRepository<StoreProduct, Stri
     """)
     List<Object[]> findWasteBySupplier();
 
+
+
     /**
-     * Get waste summary statistics
+     * Find global waste summary metrics (JPQL-safe version)
      */
     @Query("""
         SELECT
             COUNT(DISTINCT p.productId),
-            COUNT(DISTINCT CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.ACTIVE THEN p.productId ELSE NULL END),
-            COUNT(DISTINCT CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.SOLD_OUT THEN p.productId ELSE NULL END),
-            COUNT(DISTINCT CASE WHEN v.expiryDate < CURRENT_DATE THEN p.productId ELSE NULL END),
-            COUNT(DISTINCT CASE WHEN v.expiryDate BETWEEN CURRENT_DATE AND (CURRENT_DATE + 7 DAY) THEN p.productId ELSE NULL END),
+            SUM(CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.ACTIVE THEN 1 ELSE 0 END),
+            SUM(CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.SOLD_OUT THEN 1 ELSE 0 END),
+            SUM(CASE WHEN v.expiryDate < CURRENT_DATE THEN 1 ELSE 0 END),
+            SUM(CASE WHEN v.expiryDate BETWEEN CURRENT_DATE AND FUNCTION('DATE_ADD', CURRENT_DATE, 'INTERVAL 7 DAY') THEN 1 ELSE 0 END),
             COALESCE(SUM(sp.stockQuantity), 0),
-            COALESCE(SUM(CASE WHEN sp.stockQuantity > 0 THEN sp.stockQuantity ELSE 0 END), 0),
+            0L,
+            COALESCE(SUM(sp.stockQuantity), 0),
             COALESCE(SUM(CASE WHEN v.expiryDate < CURRENT_DATE THEN sp.stockQuantity ELSE 0 END), 0),
             COALESCE(SUM(sp.stockQuantity * v.originalPrice), 0),
-            COALESCE(SUM(CASE WHEN sp.stockQuantity > 0 THEN sp.stockQuantity * v.originalPrice ELSE 0 END), 0),
-            COALESCE(SUM(CASE WHEN v.expiryDate < CURRENT_DATE THEN sp.stockQuantity * v.originalPrice ELSE 0 END), 0)
+            0,
+            COALESCE(SUM(sp.stockQuantity * v.originalPrice), 0)
         FROM StoreProduct sp
         JOIN sp.variant v
         JOIN v.product p
     """)
     Object[] findWasteSummary();
+
 }

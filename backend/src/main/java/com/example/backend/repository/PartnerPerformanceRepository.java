@@ -1,10 +1,6 @@
 package com.example.backend.repository;
 
 import com.example.backend.entity.Supplier;
-import com.example.backend.entity.enums.ProductStatus;
-import com.example.backend.entity.enums.StoreStatus;
-import com.example.backend.entity.enums.OrderStatus;
-import com.example.backend.entity.enums.SupplierStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -24,18 +20,18 @@ public interface PartnerPerformanceRepository extends JpaRepository<Supplier, St
      */
     @Query("""
         SELECT
-            s.userId as supplierId,
-            s.businessName as businessName,
-            s.avatarUrl as avatarUrl,
-            COUNT(DISTINCT st.storeId) as totalStores,
-            COUNT(DISTINCT CASE WHEN st.status = com.example.backend.entity.enums.StoreStatus.ACTIVE THEN st.storeId END) as activeStores,
-            COUNT(DISTINCT CASE WHEN st.status != com.example.backend.entity.enums.StoreStatus.ACTIVE THEN st.storeId END) as inactiveStores,
-            COUNT(DISTINCT p.productId) as totalProducts,
-            COUNT(DISTINCT CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.ACTIVE THEN p.productId END) as activeProducts,
-            COUNT(DISTINCT CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.SOLD_OUT THEN p.productId END) as outOfStockProducts,
-            COUNT(DISTINCT o.orderId) as totalOrders,
-            COUNT(DISTINCT CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN o.orderId END) as completedOrders,
-            COUNT(DISTINCT CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.CANCELED THEN o.orderId END) as cancelledOrders
+            s.userId AS supplierId,
+            s.businessName AS businessName,
+            s.avatarUrl AS avatarUrl,
+            COUNT(DISTINCT st.storeId) AS totalStores,
+            SUM(CASE WHEN st.status = com.example.backend.entity.enums.StoreStatus.ACTIVE THEN 1 ELSE 0 END) AS activeStores,
+            SUM(CASE WHEN st.status != com.example.backend.entity.enums.StoreStatus.ACTIVE THEN 1 ELSE 0 END) AS inactiveStores,
+            COUNT(DISTINCT p.productId) AS totalProducts,
+            SUM(CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.ACTIVE THEN 1 ELSE 0 END) AS activeProducts,
+            SUM(CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.SOLD_OUT THEN 1 ELSE 0 END) AS outOfStockProducts,
+            COUNT(DISTINCT o.orderId) AS totalOrders,
+            SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN 1 ELSE 0 END) AS completedOrders,
+            SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.CANCELED THEN 1 ELSE 0 END) AS cancelledOrders
         FROM Supplier s
         LEFT JOIN s.stores st
         LEFT JOIN s.products p
@@ -50,30 +46,30 @@ public interface PartnerPerformanceRepository extends JpaRepository<Supplier, St
      */
     @Query("""
         SELECT
-            s.userId as supplierId,
-            s.businessName as businessName,
-            s.avatarUrl as avatarUrl,
-            COUNT(DISTINCT st.storeId) as totalStores,
-            COUNT(DISTINCT CASE WHEN st.status = com.example.backend.entity.enums.StoreStatus.ACTIVE THEN st.storeId END) as activeStores,
-            COUNT(DISTINCT CASE WHEN st.status != com.example.backend.entity.enums.StoreStatus.ACTIVE THEN st.storeId END) as inactiveStores,
-            COUNT(DISTINCT p.productId) as totalProducts,
-            COUNT(DISTINCT CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.ACTIVE THEN p.productId END) as activeProducts,
-            COUNT(DISTINCT CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.SOLD_OUT THEN p.productId END) as outOfStockProducts,
-            COUNT(DISTINCT o.orderId) as totalOrders,
-            COUNT(DISTINCT CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN o.orderId END) as completedOrders,
-            COUNT(DISTINCT CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.CANCELED THEN o.orderId END) as cancelledOrders
+            s.userId AS supplierId,
+            s.businessName AS businessName,
+            s.avatarUrl AS avatarUrl,
+            COUNT(DISTINCT st.storeId) AS totalStores,
+            SUM(CASE WHEN st.status = com.example.backend.entity.enums.StoreStatus.ACTIVE THEN 1 ELSE 0 END) AS activeStores,
+            SUM(CASE WHEN st.status != com.example.backend.entity.enums.StoreStatus.ACTIVE THEN 1 ELSE 0 END) AS inactiveStores,
+            COUNT(DISTINCT p.productId) AS totalProducts,
+            SUM(CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.ACTIVE THEN 1 ELSE 0 END) AS activeProducts,
+            SUM(CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.SOLD_OUT THEN 1 ELSE 0 END) AS outOfStockProducts,
+            COUNT(DISTINCT o.orderId) AS totalOrders,
+            SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN 1 ELSE 0 END) AS completedOrders,
+            SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.CANCELED THEN 1 ELSE 0 END) AS cancelledOrders
         FROM Supplier s
         LEFT JOIN s.stores st
         LEFT JOIN s.products p
         LEFT JOIN st.orders o
         WHERE s.userId = :supplierId
-            AND (o.createdAt IS NULL OR (o.createdAt >= :startDate AND o.createdAt <= :endDate))
+          AND (o.createdAt IS NULL OR (o.createdAt >= :startDate AND o.createdAt <= :endDate))
         GROUP BY s.userId, s.businessName, s.avatarUrl
     """)
     Map<String, Object> getPerformanceMetricsByPeriod(
-        @Param("supplierId") String supplierId,
-        @Param("startDate") LocalDateTime startDate,
-        @Param("endDate") LocalDateTime endDate
+            @Param("supplierId") String supplierId,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate
     );
 
     /**
@@ -81,18 +77,18 @@ public interface PartnerPerformanceRepository extends JpaRepository<Supplier, St
      */
     @Query("""
         SELECT
-            s.userId as supplierId,
-            s.businessName as businessName,
-            s.avatarUrl as avatarUrl,
-            COUNT(DISTINCT st.storeId) as totalStores,
-            COUNT(DISTINCT CASE WHEN st.status = com.example.backend.entity.enums.StoreStatus.ACTIVE THEN st.storeId END) as activeStores,
-            COUNT(DISTINCT CASE WHEN st.status != com.example.backend.entity.enums.StoreStatus.ACTIVE THEN st.storeId END) as inactiveStores,
-            COUNT(DISTINCT p.productId) as totalProducts,
-            COUNT(DISTINCT CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.ACTIVE THEN p.productId END) as activeProducts,
-            COUNT(DISTINCT CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.SOLD_OUT THEN p.productId END) as outOfStockProducts,
-            COUNT(DISTINCT o.orderId) as totalOrders,
-            COUNT(DISTINCT CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN o.orderId END) as completedOrders,
-            COUNT(DISTINCT CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.CANCELED THEN o.orderId END) as cancelledOrders
+            s.userId AS supplierId,
+            s.businessName AS businessName,
+            s.avatarUrl AS avatarUrl,
+            COUNT(DISTINCT st.storeId) AS totalStores,
+            SUM(CASE WHEN st.status = com.example.backend.entity.enums.StoreStatus.ACTIVE THEN 1 ELSE 0 END) AS activeStores,
+            SUM(CASE WHEN st.status != com.example.backend.entity.enums.StoreStatus.ACTIVE THEN 1 ELSE 0 END) AS inactiveStores,
+            COUNT(DISTINCT p.productId) AS totalProducts,
+            SUM(CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.ACTIVE THEN 1 ELSE 0 END) AS activeProducts,
+            SUM(CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.SOLD_OUT THEN 1 ELSE 0 END) AS outOfStockProducts,
+            COUNT(DISTINCT o.orderId) AS totalOrders,
+            SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN 1 ELSE 0 END) AS completedOrders,
+            SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.CANCELED THEN 1 ELSE 0 END) AS cancelledOrders
         FROM Supplier s
         LEFT JOIN s.stores st
         LEFT JOIN s.products p
@@ -107,17 +103,17 @@ public interface PartnerPerformanceRepository extends JpaRepository<Supplier, St
      */
     @Query("""
         SELECT
-            COUNT(DISTINCT s.userId) as totalPartners,
-            SUM(CASE WHEN s.status = com.example.backend.entity.enums.SupplierStatus.ACTIVE THEN 1 ELSE 0 END) as activePartners,
-            SUM(CASE WHEN s.status = com.example.backend.entity.enums.SupplierStatus.PAUSE THEN 1 ELSE 0 END) as inactivePartners,
-            SUM(CASE WHEN s.status = com.example.backend.entity.enums.SupplierStatus.SUSPENDED THEN 1 ELSE 0 END) as suspendedPartners,
-            COUNT(DISTINCT st.storeId) as totalStores,
-            COUNT(DISTINCT CASE WHEN st.status = com.example.backend.entity.enums.StoreStatus.ACTIVE THEN st.storeId END) as totalActiveStores,
-            COUNT(DISTINCT p.productId) as totalProducts,
-            COUNT(DISTINCT CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.ACTIVE THEN p.productId END) as totalActiveProducts,
-            COUNT(DISTINCT o.orderId) as totalOrders,
-            COUNT(DISTINCT CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN o.orderId END) as totalCompletedOrders,
-            COUNT(DISTINCT CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.CANCELED THEN o.orderId END) as totalCancelledOrders
+            COUNT(DISTINCT s.userId) AS totalPartners,
+            SUM(CASE WHEN s.status = com.example.backend.entity.enums.SupplierStatus.ACTIVE THEN 1 ELSE 0 END) AS activePartners,
+            SUM(CASE WHEN s.status = com.example.backend.entity.enums.SupplierStatus.PAUSE THEN 1 ELSE 0 END) AS inactivePartners,
+            SUM(CASE WHEN s.status = com.example.backend.entity.enums.SupplierStatus.SUSPENDED THEN 1 ELSE 0 END) AS suspendedPartners,
+            COUNT(DISTINCT st.storeId) AS totalStores,
+            SUM(CASE WHEN st.status = com.example.backend.entity.enums.StoreStatus.ACTIVE THEN 1 ELSE 0 END) AS totalActiveStores,
+            COUNT(DISTINCT p.productId) AS totalProducts,
+            SUM(CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.ACTIVE THEN 1 ELSE 0 END) AS totalActiveProducts,
+            COUNT(DISTINCT o.orderId) AS totalOrders,
+            SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN 1 ELSE 0 END) AS totalCompletedOrders,
+            SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.CANCELED THEN 1 ELSE 0 END) AS totalCancelledOrders
         FROM Supplier s
         LEFT JOIN s.stores st
         LEFT JOIN s.products p
@@ -143,15 +139,15 @@ public interface PartnerPerformanceRepository extends JpaRepository<Supplier, St
      * Get suppliers ordered by completion rate
      */
     @Query("""
-    SELECT s
-    FROM Supplier s
-    LEFT JOIN s.stores st
-    LEFT JOIN st.orders o
-    WHERE s.status = com.example.backend.entity.enums.SupplierStatus.ACTIVE
-    GROUP BY s.userId
-    ORDER BY
-        (CAST(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN 1 ELSE 0 END) AS double) /
-        CAST(NULLIF(COUNT(o.orderId), 0) AS double)) DESC
-""")
+        SELECT s
+        FROM Supplier s
+        LEFT JOIN s.stores st
+        LEFT JOIN st.orders o
+        WHERE s.status = com.example.backend.entity.enums.SupplierStatus.ACTIVE
+        GROUP BY s.userId
+        ORDER BY 
+            (CAST(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN 1 ELSE 0 END) AS double) /
+             CAST(NULLIF(COUNT(o.orderId), 0) AS double)) DESC
+    """)
     Page<Supplier> findSuppliersOrderedByCompletionRate(Pageable pageable);
 }
