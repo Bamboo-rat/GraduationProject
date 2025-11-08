@@ -23,9 +23,11 @@ public class CheckoutRequest {
     @Schema(description = "ID của giỏ hàng", example = "uuid-cart-id")
     private String cartId;
 
-    @NotBlank(message = "Shipping address is required")
-    @Schema(description = "Địa chỉ giao hàng", example = "123 Nguyễn Huệ, Quận 1, TP.HCM")
-    private String shippingAddress;
+    @NotBlank(message = "Address ID is required")
+    @Schema(description = "ID của địa chỉ giao hàng (từ danh sách addresses của customer)", 
+            example = "uuid-address-id", 
+            required = true)
+    private String addressId;
 
     @NotNull(message = "Payment method is required")
     @Schema(description = "Phương thức thanh toán", example = "COD")
@@ -40,9 +42,8 @@ public class CheckoutRequest {
     @Schema(description = "Ghi chú đơn hàng (optional)", example = "Giao hàng buổi sáng")
     private String note;
 
-    @NotBlank(message = "Idempotency key is required")
-    @Schema(description = "Unique key để đảm bảo request không bị duplicate (UUID from frontend)", 
+    @Schema(description = "Unique key để đảm bảo request không bị duplicate. Nếu không cung cấp, backend sẽ tự động generate UUID.", 
             example = "550e8400-e29b-41d4-a716-446655440000",
-            required = true)
+            required = false)
     private String idempotencyKey;
 }

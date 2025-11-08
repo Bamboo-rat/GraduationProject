@@ -55,9 +55,13 @@ public class OrderServiceImpl implements OrderService {
     private final SystemConfigService systemConfigService;
     private final PointTransactionRepository pointTransactionRepository;
     private final FavoriteStoreRepository favoriteStoreRepository;
+    private final AddressRepository addressRepository;
 
     private static final String CONFIG_KEY_POINTS_PERCENTAGE = "points.reward.percentage";
     private static final BigDecimal DEFAULT_POINTS_PERCENTAGE = new BigDecimal("0.05"); // 5% default
+    
+    // Minimum order value after discount (10,000 VND)
+    private static final BigDecimal MIN_ORDER_VALUE = new BigDecimal("10000");
 
     /**
      * Get points reward percentage from system config
@@ -73,6 +77,13 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(isolation = Isolation.SERIALIZABLE)
     public OrderResponse checkout(String customerId, CheckoutRequest request) {
+        // Generate idempotency key if not provided by frontend
+        if (request.getIdempotencyKey() == null || request.getIdempotencyKey().trim().isEmpty()) {
+            String generatedKey = java.util.UUID.randomUUID().toString();
+            request.setIdempotencyKey(generatedKey);
+            log.warn("Frontend did not provide idempotency key. Auto-generated: {}", generatedKey);
+        }
+
         log.info("Processing checkout: customerId={}, cartId={}, idempotencyKey={}", 
                 customerId, request.getCartId(), request.getIdempotencyKey());
 
@@ -100,6 +111,16 @@ public class OrderServiceImpl implements OrderService {
         if (!cart.getCustomer().getUserId().equals(customerId)) {
             throw new BadRequestException(ErrorCode.UNAUTHORIZED_ACCESS,
                     "Bạn không có quyền truy cập giỏ hàng này");
+        }
+
+        // Get and validate shipping address
+        Address shippingAddress = addressRepository.findById(request.getAddressId())
+                .orElseThrow(() -> new NotFoundException(ErrorCode.ADDRESS_NOT_FOUND));
+        
+        // Verify address belongs to customer
+        if (!shippingAddress.getCustomer().getUserId().equals(customerId)) {
+            throw new BadRequestException(ErrorCode.UNAUTHORIZED_ACCESS,
+                    "Địa chỉ này không thuộc về bạn");
         }
 
         // Validate cart has items
@@ -175,21 +196,47 @@ public class OrderServiceImpl implements OrderService {
                 ? request.getShippingFee() 
                 : BigDecimal.ZERO;
 
-        // Step 4: Calculate final total ONCE
+        // Step 4: Validate discount does not exceed allowed maximum
+        // Business rule: Discount cannot exceed (Subtotal - MIN_ORDER_VALUE)
+        // This ensures order value after discount is at least MIN_ORDER_VALUE
+        BigDecimal maxAllowedDiscount = subtotal.subtract(MIN_ORDER_VALUE);
+        if (maxAllowedDiscount.compareTo(BigDecimal.ZERO) < 0) {
+            throw new BadRequestException(ErrorCode.INVALID_REQUEST,
+                    String.format("Giá trị đơn hàng tối thiểu là %s VNĐ", MIN_ORDER_VALUE));
+        }
+        
+        if (totalDiscount.compareTo(maxAllowedDiscount) > 0) {
+            log.warn("Discount {} exceeds maximum allowed {}. Capping discount.", totalDiscount, maxAllowedDiscount);
+            totalDiscount = maxAllowedDiscount;
+        }
+
+        // Step 5: Calculate final total ONCE
         // Formula: Final Total = Subtotal - Discount + Shipping Fee
         BigDecimal finalTotal = subtotal
                 .subtract(totalDiscount)
                 .add(shippingFee);
 
-        // Ensure total is not negative
-        if (finalTotal.compareTo(BigDecimal.ZERO) < 0) {
-            finalTotal = BigDecimal.ZERO;
+        // Sanity check: Final total should never be less than MIN_ORDER_VALUE + shipping
+        BigDecimal minFinalTotal = MIN_ORDER_VALUE.add(shippingFee);
+        if (finalTotal.compareTo(minFinalTotal) < 0) {
+            throw new BadRequestException(ErrorCode.INVALID_REQUEST,
+                    String.format("Tổng đơn hàng sau giảm giá phải tối thiểu %s VNĐ (chưa bao gồm phí ship)", 
+                            MIN_ORDER_VALUE));
         }
+
+        // Format shipping address string from Address entity
+        String formattedAddress = String.format("%s - %s\n%s, %s, %s, %s",
+                shippingAddress.getFullName(),
+                shippingAddress.getPhoneNumber(),
+                shippingAddress.getStreet(),
+                shippingAddress.getWard(),
+                shippingAddress.getDistrict(),
+                shippingAddress.getProvince());
 
         // Create order with all calculated values
         Order order = new Order();
         order.setOrderCode(generateOrderCode());
-        order.setIdempotencyKey(request.getIdempotencyKey()); // Set idempotency key
+        order.setIdempotencyKey(request.getIdempotencyKey());
         order.setCustomer(cart.getCustomer());
         order.setStore(cart.getStore());
         order.setTotalAmount(finalTotal);  // Set ONCE with final calculated value
@@ -197,7 +244,7 @@ public class OrderServiceImpl implements OrderService {
         order.setDiscount(totalDiscount);
         order.setStatus(OrderStatus.PENDING);
         order.setPaymentStatus(PaymentStatus.PENDING);
-        order.setShippingAddress(request.getShippingAddress());
+        order.setShippingAddress(formattedAddress);
         order.setNote(request.getNote());
         order = orderRepository.save(order);
 
@@ -816,13 +863,23 @@ public class OrderServiceImpl implements OrderService {
                     discount.compareTo(promotion.getMaxDiscountAmount()) > 0) {
                 discount = promotion.getMaxDiscountAmount();
             }
+
+            // Ensure discount does not exceed (subtotal - MIN_ORDER_VALUE)
+            BigDecimal maxAllowedDiscount = subtotal.subtract(MIN_ORDER_VALUE);
+            if (maxAllowedDiscount.compareTo(BigDecimal.ZERO) > 0 && 
+                discount.compareTo(maxAllowedDiscount) > 0) {
+                discount = maxAllowedDiscount;
+            }
         } else if (promotion.getType() == com.example.backend.entity.enums.PromotionType.FIXED_AMOUNT) {
             // Fixed amount discount
             discount = promotion.getDiscountValue();
 
-            // Discount cannot exceed subtotal
-            if (discount.compareTo(subtotal) > 0) {
-                discount = subtotal;
+            // Discount cannot exceed (subtotal - MIN_ORDER_VALUE)
+            // This ensures order value after discount is at least MIN_ORDER_VALUE
+            BigDecimal maxAllowedDiscount = subtotal.subtract(MIN_ORDER_VALUE);
+            if (maxAllowedDiscount.compareTo(BigDecimal.ZERO) > 0 && 
+                discount.compareTo(maxAllowedDiscount) > 0) {
+                discount = maxAllowedDiscount;
             }
         } else {
             // FREE_SHIPPING or other types - no monetary discount on subtotal
@@ -1059,14 +1116,17 @@ public class OrderServiceImpl implements OrderService {
         BigDecimal discount = order.getDiscount() != null ? order.getDiscount() : BigDecimal.ZERO;
         BigDecimal subtotal = totalAmount.subtract(shippingFee).add(discount);
 
-        // Build shipping address object
+        // Build shipping address object - parse from formatted string
+        // Format: "Nguyễn Văn A - 0901234567\n123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. HCM"
+        String[] addressParts = parseShippingAddress(order.getShippingAddress());
+        
         OrderResponse.OrderAddressResponse shippingAddressResponse = OrderResponse.OrderAddressResponse.builder()
-                .recipientName(customer != null ? customer.getFullName() : null)
-                .phoneNumber(customer != null ? customer.getPhoneNumber() : null)
-                .addressLine(order.getShippingAddress())
-                .ward(null) // TODO: Extract from shippingAddress if available
-                .district(null)
-                .city(null)
+                .recipientName(addressParts[0])  // Parsed recipient name
+                .phoneNumber(addressParts[1])     // Parsed phone
+                .addressLine(addressParts[2])     // Street
+                .ward(addressParts[3])            // Ward
+                .district(addressParts[4])        // District
+                .city(addressParts[5])            // City
                 .fullAddress(order.getShippingAddress())
                 .build();
 
@@ -1156,5 +1216,44 @@ public class OrderServiceImpl implements OrderService {
                 .canReview(detail.getOrder() != null && detail.getOrder().getStatus() == OrderStatus.DELIVERED)
                 .hasReviewed(detail.getReview() != null)
                 .build();
+    }
+
+    /**
+     * Parse shipping address string to extract components
+     * Format: "Nguyễn Văn A - 0901234567\n123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. HCM"
+     * Returns: [recipientName, phone, street, ward, district, city]
+     */
+    private String[] parseShippingAddress(String shippingAddress) {
+        String[] result = new String[6];
+        
+        if (shippingAddress == null || shippingAddress.trim().isEmpty()) {
+            return result; // Return array of nulls
+        }
+
+        try {
+            // Split by newline
+            String[] lines = shippingAddress.split("\n", 2);
+            
+            if (lines.length > 0) {
+                // Parse first line: "Nguyễn Văn A - 0901234567"
+                String[] recipientInfo = lines[0].split(" - ", 2);
+                result[0] = recipientInfo.length > 0 ? recipientInfo[0].trim() : null; // recipientName
+                result[1] = recipientInfo.length > 1 ? recipientInfo[1].trim() : null; // phone
+            }
+            
+            if (lines.length > 1) {
+                // Parse second line: "123 Nguyễn Huệ, Phường Bến Nghé, Quận 1, TP. HCM"
+                String[] addressParts = lines[1].split(",");
+                result[2] = addressParts.length > 0 ? addressParts[0].trim() : null; // street
+                result[3] = addressParts.length > 1 ? addressParts[1].trim() : null; // ward
+                result[4] = addressParts.length > 2 ? addressParts[2].trim() : null; // district
+                result[5] = addressParts.length > 3 ? addressParts[3].trim() : null; // city
+            }
+        } catch (Exception e) {
+            log.warn("Failed to parse shipping address: {}", shippingAddress, e);
+            // Return partial result or nulls
+        }
+
+        return result;
     }
 }
