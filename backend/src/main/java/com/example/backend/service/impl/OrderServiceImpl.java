@@ -1049,11 +1049,10 @@ public class OrderServiceImpl implements OrderService {
                 .status(orderStatus.name())
                 .statusHistory(null) // TODO: Implement if OrderStatusHistory entity exists
                 // Pricing
-                .subtotal(order.getTotalAmount()
-                        .subtract(order.getShippingFee() != null ? order.getShippingFee() : BigDecimal.ZERO)
-                        .add(order.getDiscount() != null ? order.getDiscount() : BigDecimal.ZERO))
-                .shippingFee(order.getShippingFee() != null ? order.getShippingFee() : BigDecimal.ZERO)
-                .discount(order.getDiscount() != null ? order.getDiscount() : BigDecimal.ZERO)
+                .subtotal(subtotal)
+                .shippingFee(shippingFee)
+                .discount(discount)
+                .totalAmount(totalAmount)
                 // Payment
                 .paymentMethod(order.getPayment() != null && order.getPayment().getMethod() != null
                         ? order.getPayment().getMethod().name()

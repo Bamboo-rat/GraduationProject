@@ -16,6 +16,11 @@ public class SecurityConfig {
     private final HybridJwtDecoder hybridJwtDecoder;
 
     @Bean
+    public HybridJwtAuthenticationConverter jwtAuthenticationConverter() {
+        return new HybridJwtAuthenticationConverter();
+    }
+
+    @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
@@ -73,7 +78,7 @@ public class SecurityConfig {
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt
                                 .decoder(hybridJwtDecoder)
-                                .jwtAuthenticationConverter(new HybridJwtAuthenticationConverter())
+                                .jwtAuthenticationConverter(jwtAuthenticationConverter())
                         )
                 );
 
