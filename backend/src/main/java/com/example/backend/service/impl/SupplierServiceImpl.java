@@ -404,6 +404,9 @@ public class SupplierServiceImpl implements SupplierService {
             ValidationUtils.validatePhoneNumber(request.getPhoneNumber());
             supplier.setPhoneNumber(request.getPhoneNumber());
         }
+        if (request.getGender() != null) {
+            supplier.setGender(request.getGender());
+        }
         if (request.getAvatarUrl() != null) {
             supplier.setAvatarUrl(request.getAvatarUrl());
         }

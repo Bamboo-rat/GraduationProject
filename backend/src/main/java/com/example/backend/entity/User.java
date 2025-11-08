@@ -1,5 +1,6 @@
 package com.example.backend.entity;
 
+import com.example.backend.entity.enums.Gender;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -46,6 +47,9 @@ public abstract class User {
     private String phoneNumber;
 
     private String fullName;
+
+    @Enumerated(EnumType.STRING)
+    private Gender gender;
 
     // Ảnh đại diện (avatar) cho user hoặc admin
     private String avatarUrl;

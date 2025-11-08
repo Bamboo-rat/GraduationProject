@@ -175,6 +175,9 @@ public class AdminServiceImpl implements AdminService {
             ValidationUtils.validatePhoneNumber(request.getPhoneNumber());
             admin.setPhoneNumber(request.getPhoneNumber());
         }
+        if (request.getGender() != null) {
+            admin.setGender(request.getGender());
+        }
         if (request.getAvatarUrl() != null) {
             admin.setAvatarUrl(request.getAvatarUrl());
         }

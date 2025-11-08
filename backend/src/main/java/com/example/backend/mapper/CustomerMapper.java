@@ -4,6 +4,7 @@ import com.example.backend.dto.response.CustomerResponse;
 import com.example.backend.entity.Customer;
 import com.example.backend.entity.enums.CustomerStatus;
 import com.example.backend.entity.enums.CustomerTier;
+import com.example.backend.entity.enums.Gender;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
@@ -21,6 +22,7 @@ public interface CustomerMapper {
      * Note: totalOrders, totalReviews, and addressCount are set to null to avoid lazy loading issues
      * These statistics should be loaded separately if needed
      */
+    @Mapping(target = "gender", source = "gender", qualifiedByName = "genderToString")
     @Mapping(target = "status", source = "status", qualifiedByName = "customerStatusToString")
     @Mapping(target = "tier", source = "tier", qualifiedByName = "customerTierToString")
     @Mapping(target = "totalOrders", constant = "0")
@@ -34,6 +36,11 @@ public interface CustomerMapper {
     List<CustomerResponse> toResponseList(List<Customer> customers);
 
     // Custom enum converters
+    @Named("genderToString")
+    default String genderToString(Gender gender) {
+        return gender != null ? gender.name() : null;
+    }
+
     @Named("customerStatusToString")
     default String customerStatusToString(CustomerStatus status) {
         return status != null ? status.name() : null;

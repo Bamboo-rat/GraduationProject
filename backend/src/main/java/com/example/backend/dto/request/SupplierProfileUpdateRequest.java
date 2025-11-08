@@ -1,5 +1,6 @@
 package com.example.backend.dto.request;
 
+import com.example.backend.entity.enums.Gender;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -21,6 +22,8 @@ public class SupplierProfileUpdateRequest {
 
     @Pattern(regexp = "^(\\+84|0)[0-9]{9,10}$", message = "Invalid Vietnamese phone number")
     private String phoneNumber;
+
+    private Gender gender;
 
     private String avatarUrl;
 

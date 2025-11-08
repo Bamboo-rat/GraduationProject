@@ -26,6 +26,7 @@ public class CustomerResponse {
     private String email;
     private String phoneNumber;
     private String fullName;
+    private String gender; // MALE, FEMALE, OTHER
     private boolean active;
     
     // Customer specific info

@@ -171,6 +171,9 @@ public class CustomerServiceImpl implements CustomerService {
             }
             customer.setEmail(request.getEmail());
         }
+        if (request.getGender() != null) {
+            customer.setGender(request.getGender());
+        }
         if (request.getDateOfBirth() != null) {
             customer.setDateOfBirth(request.getDateOfBirth());
         }
