@@ -3,7 +3,9 @@ package com.example.backend.repository;
 import com.example.backend.entity.Cart;
 import com.example.backend.entity.Customer;
 import com.example.backend.entity.Store;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -19,6 +21,14 @@ public interface CartRepository extends JpaRepository<Cart, String> {
      * Find cart by customer and store (enforces one cart per store per customer)
      */
     Optional<Cart> findByCustomerAndStore(Customer customer, Store store);
+
+    /**
+     * Find cart by customer and store with pessimistic write lock
+     * Used to prevent race condition when creating new carts
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT c FROM Cart c WHERE c.customer = :customer AND c.store = :store")
+    Optional<Cart> findByCustomerAndStoreForUpdate(@Param("customer") Customer customer, @Param("store") Store store);
 
     /**
      * Find all carts for a customer

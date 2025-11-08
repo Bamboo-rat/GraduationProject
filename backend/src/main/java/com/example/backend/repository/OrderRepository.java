@@ -124,6 +124,11 @@ public interface OrderRepository extends JpaRepository<Order, String> {
     long countByCustomer(Customer customer);
 
     /**
+     * Count orders by customer and status (for promotion eligibility check)
+     */
+    long countByCustomerAndStatus(Customer customer, OrderStatus status);
+
+    /**
      * Count orders by store
      */
     long countByStore(Store store);

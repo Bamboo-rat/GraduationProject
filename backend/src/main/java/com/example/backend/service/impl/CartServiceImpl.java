@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -75,14 +76,8 @@ public class CartServiceImpl implements CartService {
         Store store = storeProduct.getStore();
 
         // Find or create cart for this customer-store combination
-        Cart cart = cartRepository.findByCustomerAndStore(customer, store)
-                .orElseGet(() -> {
-                    Cart newCart = new Cart();
-                    newCart.setCustomer(customer);
-                    newCart.setStore(store);
-                    newCart.setTotal(BigDecimal.ZERO);
-                    return cartRepository.save(newCart);
-                });
+        // Use pessimistic lock to prevent race condition when creating new cart
+        Cart cart = getOrCreateCart(customer, store);
 
         // Check if item already exists in cart
         CartDetail cartDetail = cartDetailRepository.findByCartAndStoreProduct(cart, storeProduct)
@@ -475,6 +470,39 @@ public class CartServiceImpl implements CartService {
     }
 
     // Helper methods
+
+    /**
+     * Get or create cart with pessimistic lock to prevent race condition
+     * This prevents duplicate cart creation when multiple requests arrive simultaneously
+     */
+    private Cart getOrCreateCart(Customer customer, Store store) {
+        // First, try to get existing cart with pessimistic write lock
+        Optional<Cart> existingCart = cartRepository.findByCustomerAndStoreForUpdate(customer, store);
+        
+        if (existingCart.isPresent()) {
+            return existingCart.get();
+        }
+
+        // If no cart exists, create new one
+        // Note: There's still a tiny race condition window here, but the unique constraint
+        // uk_cart_customer_store will catch any duplicates
+        try {
+            Cart newCart = new Cart();
+            newCart.setCustomer(customer);
+            newCart.setStore(store);
+            newCart.setTotal(BigDecimal.ZERO);
+            return cartRepository.save(newCart);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // Duplicate cart was created by concurrent request
+            // Retry by fetching the cart that was just created by the other thread
+            log.warn("Duplicate cart creation detected (race condition). Retrying fetch for customer={}, store={}",
+                    customer.getUserId(), store.getStoreId());
+            
+            return cartRepository.findByCustomerAndStore(customer, store)
+                    .orElseThrow(() -> new BadRequestException(ErrorCode.CART_NOT_FOUND,
+                            "Lỗi tạo giỏ hàng. Vui lòng thử lại"));
+        }
+    }
 
     private BigDecimal calculateAmount(StoreProduct storeProduct, int quantity) {
         ProductVariant variant = storeProduct.getVariant();

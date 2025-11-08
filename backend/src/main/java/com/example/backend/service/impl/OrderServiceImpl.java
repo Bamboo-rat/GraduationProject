@@ -177,17 +177,35 @@ public class OrderServiceImpl implements OrderService {
         // Step 1: Calculate subtotal (before discount and shipping)
         BigDecimal subtotal = orderTotal;
 
-        // Step 2: Apply promotions and calculate discount
+        // Step 2: Apply promotions and calculate discount (with stacking validation)
         BigDecimal totalDiscount = BigDecimal.ZERO;
         if (request.getPromotionCodes() != null && !request.getPromotionCodes().isEmpty()) {
-            // Validate promotions without applying yet
+            // Track remaining subtotal after each promotion
+            BigDecimal remainingSubtotal = subtotal;
+            
             for (String promotionCode : request.getPromotionCodes()) {
                 Promotion promotion = promotionRepository.findByCode(promotionCode)
                         .orElseThrow(() -> new NotFoundException(ErrorCode.PROMOTION_NOT_FOUND));
                 
-                // Calculate discount amount
-                BigDecimal discountAmount = calculatePromotionDiscount(promotion, subtotal);
+                // IMPORTANT: Validate minimum order amount with REMAINING subtotal
+                // This prevents stacking abuse where multiple promotions reduce below minimum
+                if (promotion.getMinimumOrderAmount() != null &&
+                        remainingSubtotal.compareTo(promotion.getMinimumOrderAmount()) < 0) {
+                    throw new BadRequestException(ErrorCode.INVALID_REQUEST,
+                            String.format("Promotion '%s' yêu cầu giá trị đơn hàng tối thiểu %s VNĐ. " +
+                                    "Giá trị hiện tại sau các promotion trước: %s VNĐ",
+                                    promotion.getCode(), promotion.getMinimumOrderAmount(), remainingSubtotal));
+                }
+                
+                // Calculate discount amount based on REMAINING subtotal
+                BigDecimal discountAmount = calculatePromotionDiscount(promotion, remainingSubtotal);
                 totalDiscount = totalDiscount.add(discountAmount);
+                
+                // Update remaining subtotal for next promotion
+                remainingSubtotal = remainingSubtotal.subtract(discountAmount);
+                
+                log.debug("Promotion {} applied: discount={}, remainingSubtotal={}", 
+                        promotionCode, discountAmount, remainingSubtotal);
             }
         }
 
@@ -891,11 +909,15 @@ public class OrderServiceImpl implements OrderService {
 
     /**
      * Apply promotions to order and record usage (called after order is created)
+     * IMPORTANT: Tracks remaining subtotal to validate stacked promotions correctly
      */
     private void applyPromotionsToOrder(Order order, List<String> promotionCodes) {
         BigDecimal subtotal = order.getTotalAmount()
                 .add(order.getDiscount())
                 .subtract(order.getShippingFee());
+        
+        // Track remaining subtotal after each promotion (for stacking validation)
+        BigDecimal remainingSubtotal = subtotal;
 
         for (String code : promotionCodes) {
             Promotion promotion = promotionRepository.findByCodeWithLock(code)
@@ -905,21 +927,42 @@ public class OrderServiceImpl implements OrderService {
                 log.warn("Promotion not found during application: code={}", code);
                 continue;
             }
-
-            // Validate promotion eligibility
+            
+            // 1. Check promotion status
             if (promotion.getStatus() != PromotionStatus.ACTIVE) {
-                log.warn("Promotion not active during application: code={}", code);
+                log.warn("Promotion not active during checkout: code={}", code);
                 continue;
             }
 
+            // 2. Check date range (start/end dates)
+            java.time.LocalDate today = java.time.LocalDate.now();
+            if (promotion.getStartDate() != null && today.isBefore(promotion.getStartDate())) {
+                log.warn("Promotion not yet started during checkout: code={}, startDate={}", 
+                        code, promotion.getStartDate());
+                continue;
+            }
+            if (promotion.getEndDate() != null && today.isAfter(promotion.getEndDate())) {
+                log.warn("Promotion expired during checkout: code={}, endDate={}", 
+                        code, promotion.getEndDate());
+                continue;
+            }
+
+            // 3. Check customer tier eligibility
+            if (!isCustomerEligibleForPromotionTier(order.getCustomer(), promotion)) {
+                log.warn("Customer no longer eligible for promotion tier during checkout: customerId={}, tier={}, code={}", 
+                        order.getCustomer().getUserId(), promotion.getTier(), code);
+                continue;
+            }
+
+            // 4. Check minimum order amount with REMAINING subtotal (after previous promotions)
             if (promotion.getMinimumOrderAmount() != null &&
-                    subtotal.compareTo(promotion.getMinimumOrderAmount()) < 0) {
-                log.warn("Order does not meet minimum amount during application: code={}, required={}, actual={}",
-                        code, promotion.getMinimumOrderAmount(), subtotal);
+                    remainingSubtotal.compareTo(promotion.getMinimumOrderAmount()) < 0) {
+                log.warn("Order does not meet minimum amount during checkout: code={}, required={}, remaining={}",
+                        code, promotion.getMinimumOrderAmount(), remainingSubtotal);
                 continue;
             }
 
-            // Check usage limits (while holding lock)
+            // 5. Check usage limits (while holding lock)
             if (promotion.getTotalUsageLimit() != null &&
                     promotion.getCurrentUsageCount() >= promotion.getTotalUsageLimit()) {
                 log.warn("Promotion usage limit reached during application: code={}", code);
@@ -934,23 +977,26 @@ public class OrderServiceImpl implements OrderService {
                 continue;
             }
 
-            // Calculate discount amount (should match what was calculated earlier)
-            BigDecimal discountAmount = calculatePromotionDiscount(promotion, subtotal);
+            // Calculate discount amount based on REMAINING subtotal
+            BigDecimal discountAmount = calculatePromotionDiscount(promotion, remainingSubtotal);
 
             // Create promotion usage record
             PromotionUsage usage = new PromotionUsage();
             usage.setPromotion(promotion);
             usage.setCustomer(order.getCustomer());
             usage.setOrder(order);
-            usage.setOrderAmount(subtotal);
+            usage.setOrderAmount(remainingSubtotal); // Record remaining subtotal before this promotion
             usage.setDiscountAmount(discountAmount);
             usage.setUsedAt(LocalDateTime.now());
             promotionUsageRepository.save(usage);
 
             order.getPromotionUsages().add(usage);
+            
+            // Update remaining subtotal for next promotion
+            remainingSubtotal = remainingSubtotal.subtract(discountAmount);
 
-            log.info("Promotion applied and recorded: code={}, orderId={}, discount={}, usageCount={}/{}",
-                    code, order.getOrderId(), discountAmount,
+            log.info("Promotion applied and recorded: code={}, orderId={}, discount={}, remainingSubtotal={}, usageCount={}/{}",
+                    code, order.getOrderId(), discountAmount, remainingSubtotal,
                     promotion.getCurrentUsageCount() + 1,
                     promotion.getTotalUsageLimit());
         }
@@ -963,6 +1009,49 @@ public class OrderServiceImpl implements OrderService {
     @Deprecated
     private BigDecimal calculateDiscountAmount(Promotion promotion, BigDecimal orderAmount) {
         return calculatePromotionDiscount(promotion, orderAmount);
+    }
+
+    /**
+     * Check if customer is eligible for promotion tier
+     * This method validates tier-specific requirements like birthday month, first-time customer, etc.
+     */
+    private boolean isCustomerEligibleForPromotionTier(Customer customer, Promotion promotion) {
+        PromotionTier promotionTier = promotion.getTier();
+        CustomerTier customerTier = customer.getTier();
+
+        return switch (promotionTier) {
+            case GENERAL -> true; // All customers eligible
+            case BRONZE_PLUS -> customerTier.ordinal() >= CustomerTier.BRONZE.ordinal(); // Bronze and above
+            case SILVER_PLUS -> customerTier.ordinal() >= CustomerTier.SILVER.ordinal(); // Silver and above
+            case GOLD_PLUS -> customerTier.ordinal() >= CustomerTier.GOLD.ordinal(); // Gold and above
+            case PLATINUM_PLUS -> customerTier.ordinal() >= CustomerTier.PLATINUM.ordinal(); // Platinum and above
+            case DIAMOND_ONLY -> customerTier == CustomerTier.DIAMOND;
+            case BIRTHDAY -> {
+                // Birthday promotion: check if customer's birthday is in current month
+                if (customer.getDateOfBirth() == null) {
+                    log.warn("Customer {} has no birthday set, cannot use BIRTHDAY promotion", customer.getUserId());
+                    yield false;
+                }
+                java.time.LocalDate now = java.time.LocalDate.now();
+                boolean isBirthdayMonth = customer.getDateOfBirth().getMonth() == now.getMonth();
+                if (!isBirthdayMonth) {
+                    log.warn("Customer {} birthday is not in current month (applied: {}, checkout: {}), cannot use BIRTHDAY promotion",
+                            customer.getUserId(), customer.getDateOfBirth().getMonth(), now.getMonth());
+                }
+                yield isBirthdayMonth;
+            }
+            case FIRST_TIME -> {
+                // First-time promotion: check if customer has any previous completed orders
+                // Count only DELIVERED orders to prevent abuse
+                long completedOrderCount = orderRepository.countByCustomerAndStatus(customer, OrderStatus.DELIVERED);
+                boolean isFirstTime = completedOrderCount == 0;
+                if (!isFirstTime) {
+                    log.warn("Customer {} has {} completed orders, cannot use FIRST_TIME promotion",
+                            customer.getUserId(), completedOrderCount);
+                }
+                yield isFirstTime;
+            }
+        };
     }
 
     private String generateOrderCode() {
