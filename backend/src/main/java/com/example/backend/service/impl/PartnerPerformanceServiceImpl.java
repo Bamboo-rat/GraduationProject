@@ -135,6 +135,8 @@ public class PartnerPerformanceServiceImpl implements PartnerPerformanceService 
             .totalOrders(getLongValue(data, "totalOrders"))
             .completedOrders(getLongValue(data, "completedOrders"))
             .cancelledOrders(getLongValue(data, "cancelledOrders"))
+            .totalRevenue(getDoubleValue(data, "totalRevenue"))
+            .commission(getDoubleValue(data, "commission"))
             .build();
 
         // Calculate rates

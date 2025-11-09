@@ -149,9 +149,11 @@ public interface OrderRepository extends JpaRepository<Order, String> {
             FUNCTION('DATE', o.createdAt),
             COUNT(DISTINCT o.orderId),
             SUM(o.totalAmount - o.discount + o.shippingFee),
-            SUM((o.totalAmount - o.discount + o.shippingFee) * o.store.supplier.commissionRate),
+            SUM((o.totalAmount - o.discount + o.shippingFee) * s.commissionRate),
             AVG(o.totalAmount - o.discount + o.shippingFee)
         FROM Order o
+        JOIN o.store st
+        JOIN st.supplier s
         WHERE o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED
           AND o.createdAt BETWEEN :startDate AND :endDate
         GROUP BY FUNCTION('DATE', o.createdAt)
@@ -166,8 +168,10 @@ public interface OrderRepository extends JpaRepository<Order, String> {
             SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.CANCELED THEN 1 ELSE 0 END),
             COUNT(o),
             COALESCE(AVG(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN (o.totalAmount - o.discount + o.shippingFee) ELSE NULL END), 0),
-            COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN (o.totalAmount - o.discount + o.shippingFee) * o.store.supplier.commissionRate ELSE 0 END), 0)
+            COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN (o.totalAmount - o.discount + o.shippingFee) * s.commissionRate ELSE 0 END), 0)
         FROM Order o
+        JOIN o.store st
+        JOIN st.supplier s
         WHERE o.createdAt BETWEEN :startDate AND :endDate
     """)
     Object[] findRevenueSummary(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);

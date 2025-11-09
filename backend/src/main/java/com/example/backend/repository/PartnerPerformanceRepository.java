@@ -9,7 +9,6 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Map;
 
 @Repository
@@ -31,7 +30,9 @@ public interface PartnerPerformanceRepository extends JpaRepository<Supplier, St
             (SELECT COUNT(DISTINCT p4.productId) FROM Product p4 WHERE p4.supplier.userId = s.userId AND p4.status = com.example.backend.entity.enums.ProductStatus.SOLD_OUT) AS outOfStockProducts,
             (SELECT COUNT(DISTINCT o2.orderId) FROM Order o2 WHERE o2.store.supplier.userId = s.userId) AS totalOrders,
             (SELECT COUNT(DISTINCT o3.orderId) FROM Order o3 WHERE o3.store.supplier.userId = s.userId AND o3.status = com.example.backend.entity.enums.OrderStatus.DELIVERED) AS completedOrders,
-            (SELECT COUNT(DISTINCT o4.orderId) FROM Order o4 WHERE o4.store.supplier.userId = s.userId AND o4.status = com.example.backend.entity.enums.OrderStatus.CANCELED) AS cancelledOrders
+            (SELECT COUNT(DISTINCT o4.orderId) FROM Order o4 WHERE o4.store.supplier.userId = s.userId AND o4.status = com.example.backend.entity.enums.OrderStatus.CANCELED) AS cancelledOrders,
+            (SELECT COALESCE(SUM(o5.totalAmount - o5.discount + o5.shippingFee), 0.0) FROM Order o5 WHERE o5.store.supplier.userId = s.userId AND o5.status = com.example.backend.entity.enums.OrderStatus.DELIVERED) AS totalRevenue,
+            (SELECT COALESCE(SUM((o6.totalAmount - o6.discount + o6.shippingFee) * s.commissionRate), 0.0) FROM Order o6 WHERE o6.store.supplier.userId = s.userId AND o6.status = com.example.backend.entity.enums.OrderStatus.DELIVERED) AS commission
         FROM Supplier s
         WHERE s.userId = :supplierId
     """)
@@ -53,7 +54,9 @@ public interface PartnerPerformanceRepository extends JpaRepository<Supplier, St
             (SELECT COUNT(DISTINCT p4.productId) FROM Product p4 WHERE p4.supplier.userId = s.userId AND p4.status = com.example.backend.entity.enums.ProductStatus.SOLD_OUT) AS outOfStockProducts,
             (SELECT COUNT(DISTINCT o2.orderId) FROM Order o2 WHERE o2.store.supplier.userId = s.userId AND o2.createdAt >= :startDate AND o2.createdAt <= :endDate) AS totalOrders,
             (SELECT COUNT(DISTINCT o3.orderId) FROM Order o3 WHERE o3.store.supplier.userId = s.userId AND o3.createdAt >= :startDate AND o3.createdAt <= :endDate AND o3.status = com.example.backend.entity.enums.OrderStatus.DELIVERED) AS completedOrders,
-            (SELECT COUNT(DISTINCT o4.orderId) FROM Order o4 WHERE o4.store.supplier.userId = s.userId AND o4.createdAt >= :startDate AND o4.createdAt <= :endDate AND o4.status = com.example.backend.entity.enums.OrderStatus.CANCELED) AS cancelledOrders
+            (SELECT COUNT(DISTINCT o4.orderId) FROM Order o4 WHERE o4.store.supplier.userId = s.userId AND o4.createdAt >= :startDate AND o4.createdAt <= :endDate AND o4.status = com.example.backend.entity.enums.OrderStatus.CANCELED) AS cancelledOrders,
+            (SELECT COALESCE(SUM(o5.totalAmount - o5.discount + o5.shippingFee), 0.0) FROM Order o5 WHERE o5.store.supplier.userId = s.userId AND o5.createdAt >= :startDate AND o5.createdAt <= :endDate AND o5.status = com.example.backend.entity.enums.OrderStatus.DELIVERED) AS totalRevenue,
+            (SELECT COALESCE(SUM((o6.totalAmount - o6.discount + o6.shippingFee) * s.commissionRate), 0.0) FROM Order o6 WHERE o6.store.supplier.userId = s.userId AND o6.createdAt >= :startDate AND o6.createdAt <= :endDate AND o6.status = com.example.backend.entity.enums.OrderStatus.DELIVERED) AS commission
         FROM Supplier s
         WHERE s.userId = :supplierId
     """)
@@ -79,7 +82,9 @@ public interface PartnerPerformanceRepository extends JpaRepository<Supplier, St
             (SELECT COUNT(DISTINCT p4.productId) FROM Product p4 WHERE p4.supplier.userId = s.userId AND p4.status = com.example.backend.entity.enums.ProductStatus.SOLD_OUT) AS outOfStockProducts,
             (SELECT COUNT(DISTINCT o2.orderId) FROM Order o2 WHERE o2.store.supplier.userId = s.userId) AS totalOrders,
             (SELECT COUNT(DISTINCT o3.orderId) FROM Order o3 WHERE o3.store.supplier.userId = s.userId AND o3.status = com.example.backend.entity.enums.OrderStatus.DELIVERED) AS completedOrders,
-            (SELECT COUNT(DISTINCT o4.orderId) FROM Order o4 WHERE o4.store.supplier.userId = s.userId AND o4.status = com.example.backend.entity.enums.OrderStatus.CANCELED) AS cancelledOrders
+            (SELECT COUNT(DISTINCT o4.orderId) FROM Order o4 WHERE o4.store.supplier.userId = s.userId AND o4.status = com.example.backend.entity.enums.OrderStatus.CANCELED) AS cancelledOrders,
+            (SELECT COALESCE(SUM(o5.totalAmount - o5.discount + o5.shippingFee), 0.0) FROM Order o5 WHERE o5.store.supplier.userId = s.userId AND o5.status = com.example.backend.entity.enums.OrderStatus.DELIVERED) AS totalRevenue,
+            (SELECT COALESCE(SUM((o6.totalAmount - o6.discount + o6.shippingFee) * s.commissionRate), 0.0) FROM Order o6 WHERE o6.store.supplier.userId = s.userId AND o6.status = com.example.backend.entity.enums.OrderStatus.DELIVERED) AS commission
         FROM Supplier s
         WHERE s.status = com.example.backend.entity.enums.SupplierStatus.ACTIVE
     """)

@@ -129,4 +129,52 @@ public interface OrderDetailRepository extends JpaRepository<OrderDetail, String
         ORDER BY revenue DESC
     """)
     List<Object[]> findRevenueByCategoryWithDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    // ==================== SUPPLIER-SPECIFIC QUERIES ====================
+
+    /**
+     * Find top products by revenue for a specific supplier
+     * Returns: productId, productName, categoryName, totalSold, revenue, imageUrl
+     * Revenue = SUM(quantity * amount) from delivered orders
+     */
+    @Query("SELECT p.productId, p.name, c.name, " +
+           "SUM(od.quantity) as totalSold, " +
+           "SUM(od.quantity * od.amount) as revenue, " +
+           "CASE WHEN SIZE(p.images) > 0 THEN (SELECT MIN(pi.imageUrl) FROM ProductImage pi WHERE pi.product = p) ELSE NULL END " +
+           "FROM OrderDetail od " +
+           "JOIN od.storeProduct sp " +
+           "JOIN sp.variant v " +
+           "JOIN v.product p " +
+           "LEFT JOIN p.category c " +
+           "WHERE od.order.status = 'DELIVERED' " +
+           "AND p.supplier.userId = :supplierId " +
+           "GROUP BY p.productId, p.name, c.name " +
+           "ORDER BY revenue DESC")
+    List<Object[]> findTopProductsByRevenueForSupplier(@Param("supplierId") String supplierId, Pageable pageable);
+
+    /**
+     * Find revenue by category for a specific supplier
+     * Returns: categoryId, categoryName, imageUrl, orderCount, productsSold, revenue, avgOrderValue
+     */
+    @Query("""
+        SELECT
+            c.categoryId as categoryId,
+            c.name as categoryName,
+            c.imageUrl as categoryImageUrl,
+            COUNT(DISTINCT od.order.orderId) as orderCount,
+            SUM(od.quantity) as productsSold,
+            SUM(od.quantity * od.amount) as revenue,
+            AVG(od.order.totalAmount - od.order.discount + od.order.shippingFee) as avgOrderValue
+        FROM OrderDetail od
+        JOIN od.storeProduct sp
+        JOIN sp.variant v
+        JOIN v.product p
+        LEFT JOIN p.category c
+        WHERE od.order.status = com.example.backend.entity.enums.OrderStatus.DELIVERED
+            AND p.supplier.userId = :supplierId
+            AND c IS NOT NULL
+        GROUP BY c.categoryId, c.name, c.imageUrl
+        ORDER BY revenue DESC
+    """)
+    List<Object[]> findRevenueByCategoryForSupplier(@Param("supplierId") String supplierId);
 }
