@@ -3,8 +3,12 @@ import chatService from '~/service/chatService';
 import type { ChatMessage, Conversation, ChatMessageRequest } from '~/service/types';
 import { MessageType } from '~/service/types';
 import { Send, Paperclip, Search, MoreVertical, Phone, Video, Smile } from 'lucide-react';
+import { useAuth } from '~/AuthContext';
 
 export default function SupplierAdminChat() {
+  const { user } = useAuth();
+  const currentUserId = user?.userId;
+  
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -15,6 +19,12 @@ export default function SupplierAdminChat() {
   const [typing, setTyping] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const selectedConversationRef = useRef<Conversation | null>(null);
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    selectedConversationRef.current = selectedConversation;
+  }, [selectedConversation]);
 
   useEffect(() => {
     initializeChat();
@@ -31,22 +41,35 @@ export default function SupplierAdminChat() {
       await chatService.connect();
       console.log('WebSocket connected');
 
-      // Subscribe to incoming messages
+      // Subscribe to incoming messages - use ref to get current selection
       const unsubscribeMessage = chatService.onMessage((message: ChatMessage) => {
         console.log('New message received:', message);
-        setMessages(prev => [...prev, message]);
+        const current = selectedConversationRef.current;
         
-        // Mark as read if conversation is open
-        if (selectedConversation?.otherUser.userId === message.sender.userId) {
-          chatService.markAsRead(message.messageId);
+        // Only add message if it belongs to current conversation
+        if (current && 
+            (message.sender.userId === current.otherUser.userId || 
+             message.receiver.userId === current.otherUser.userId)) {
+          setMessages(prev => [...prev, message]); // Append to end
+          
+          // Only mark as read if we are the receiver (not sender)
+          if (message.receiver.userId === currentUserId) {
+            chatService.markAsRead(message.messageId);
+          }
         }
+        
+        // Refresh conversations to update unread counts
+        loadConversations();
       });
 
-      // Subscribe to typing indicators
+      // Subscribe to typing indicators - use ref to get current selection
       const unsubscribeTyping = chatService.onTypingIndicator((senderId: string) => {
-        setTyping(senderId);
-        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-        typingTimeoutRef.current = setTimeout(() => setTyping(null), 3000);
+        const current = selectedConversationRef.current;
+        if (current && senderId === current.otherUser.userId) {
+          setTyping(senderId);
+          if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+          typingTimeoutRef.current = setTimeout(() => setTyping(null), 3000);
+        }
       });
 
       // Load conversations
@@ -275,7 +298,7 @@ export default function SupplierAdminChat() {
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
               {messages.map((message, index) => {
-                const isOwn = message.sender.userId !== selectedConversation.otherUser.userId;
+                const isOwn = message.sender.userId === currentUserId;
                 const showDate = index === 0 || 
                   formatDate(messages[index - 1].sendTime) !== formatDate(message.sendTime);
 

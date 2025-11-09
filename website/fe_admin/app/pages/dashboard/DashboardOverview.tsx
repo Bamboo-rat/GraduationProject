@@ -299,22 +299,6 @@ export default function DashboardOverview() {
           </div>
         </div>
 
-        {/* Inventory Alerts */}
-        {(overview.lowStockProducts > 0 || overview.outOfStockProducts > 0) && (
-          <div className="card mb-8 p-6 border-l-4 border-[#FF6B35] bg-[#FFF8E1]">
-            <div className="flex items-start">
-              <AlertTriangle className="w-5 h-5 text-[#FF6B35] mt-0.5 mr-3 flex-shrink-0" />
-              <div>
-                <h3 className="text-sm font-medium text-[#FF6B35] mb-2">Cảnh báo tồn kho</h3>
-                <div className="text-sm text-[#8B4513] space-y-1">
-                  <p>• {overview.lowStockProducts} sản phẩm sắp hết hàng (dưới 10 sản phẩm)</p>
-                  <p>• {overview.outOfStockProducts} sản phẩm đã hết hàng</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Sales Trends */}
         {salesTrends.length > 0 && (
           <div className="card p-6">

@@ -584,7 +584,7 @@ export default function OrdersList() {
                   </svg>
                   <div>
                     <p className="text-sm font-semibold text-[#2F855A]">Đơn vị vận chuyển: Giao Hàng Nhanh (GHN)</p>
-                    <p className="text-xs text-[#2F855A] mt-1">Thời gian giao hàng dự kiến: 2-3 ngày làm việc</p>
+                    <p className="text-xs text-[#2F855A] mt-1">Thời gian giao hàng dự kiến: 20 - 30 phút</p>
                   </div>
                 </div>
               </div>

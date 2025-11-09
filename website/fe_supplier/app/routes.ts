@@ -49,6 +49,9 @@ export default [
   route("feedback/reviews", "routes/feedback/reviews.tsx"),
   route("feedback/support", "routes/feedback/support.tsx"),
 
+  // Chat routes
+  route("chat", "routes/chat.tsx"),
+
   // Settings routes
   route("settings", "routes/settings/settings.tsx")
 

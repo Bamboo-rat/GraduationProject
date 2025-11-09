@@ -56,14 +56,25 @@ public class ChatServiceImpl implements ChatService {
             store = storeRepository.findById(request.getStoreId())
                     .orElseThrow(() -> new NotFoundException(ErrorCode.STORE_NOT_FOUND,
                             "Store not found"));
-            
-            // Get the supplier (store owner) as the receiver
 
-            receiver = store.getSupplier();
-            log.info("Customer-store conversation: storeId={}, supplierId={}", 
-                    request.getStoreId(), receiver.getUserId());
+            // Determine receiver based on who is sending
+            String supplierId = store.getSupplier().getUserId();
+
+            if (senderId.equals(supplierId)) {
+                // Supplier is sending to customer - use receiverId from request
+                receiver = userRepository.findById(request.getReceiverId())
+                        .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND,
+                                "Receiver (customer) not found"));
+                log.info("Supplier-to-customer store conversation: storeId={}, supplierId={}, customerId={}",
+                        request.getStoreId(), senderId, receiver.getUserId());
+            } else {
+                // Customer is sending to supplier - receiver is store owner
+                receiver = store.getSupplier();
+                log.info("Customer-to-supplier store conversation: storeId={}, customerId={}, supplierId={}",
+                        request.getStoreId(), senderId, receiver.getUserId());
+            }
         } else {
-            // Regular user-to-user conversation
+            // Regular user-to-user conversation (admin-supplier, admin-customer, etc.)
             receiver = userRepository.findById(request.getReceiverId())
                     .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND,
                             "Receiver not found"));

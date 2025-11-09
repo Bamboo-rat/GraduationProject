@@ -9,4 +9,7 @@ export default defineConfig({
     host: true,
   },
   plugins: [tailwindcss(), reactRouter(), tsconfigPaths()],
+  define: {
+    global: 'globalThis',
+  },
 });

@@ -391,22 +391,22 @@ export default function BusinessUpdateRequests() {
                   {/* Changes Summary */}
                   <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
                     <span className="text-[#8B8B8B]">Thay đổi:</span>
-                    {update.requestedChanges.name && (
+                    {update.requestedChanges?.name && (
                       <span className="bg-[#E8FFED] text-[#2F855A] px-2 py-1 rounded-lg font-medium">
                         Tên cửa hàng
                       </span>
                     )}
-                    {update.requestedChanges.description && (
+                    {update.requestedChanges?.description && (
                       <span className="bg-[#E8FFED] text-[#2F855A] px-2 py-1 rounded-lg font-medium">
                         Mô tả
                       </span>
                     )}
-                    {update.requestedChanges.address && (
+                    {update.requestedChanges?.address && (
                       <span className="bg-[#E8FFED] text-[#2F855A] px-2 py-1 rounded-lg font-medium">
                         Địa chỉ
                       </span>
                     )}
-                    {update.requestedChanges.phoneNumber && (
+                    {update.requestedChanges?.phoneNumber && (
                       <span className="bg-[#E8FFED] text-[#2F855A] px-2 py-1 rounded-lg font-medium">
                         Số điện thoại
                       </span>
@@ -658,11 +658,11 @@ export default function BusinessUpdateRequests() {
                       Thông tin cập nhật
                     </h3>
                     <div className="space-y-4">
-                      {selectedStoreUpdate.requestedChanges.name && (
+                      {selectedStoreUpdate.requestedChanges?.name && (
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <span className="text-xs text-[#8B8B8B]">Hiện tại</span>
-                            <p className="text-[#6B6B6B]">{selectedStoreUpdate.currentValues.name || '-'}</p>
+                            <p className="text-[#6B6B6B]">{selectedStoreUpdate.currentValues?.name || '-'}</p>
                           </div>
                           <div>
                             <span className="text-xs text-[#8B8B8B]">Tên cửa hàng mới</span>
@@ -670,11 +670,11 @@ export default function BusinessUpdateRequests() {
                           </div>
                         </div>
                       )}
-                      {selectedStoreUpdate.requestedChanges.description && (
+                      {selectedStoreUpdate.requestedChanges?.description && (
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <span className="text-xs text-[#8B8B8B]">Hiện tại</span>
-                            <p className="text-[#6B6B6B]">{selectedStoreUpdate.currentValues.description || '-'}</p>
+                            <p className="text-[#6B6B6B]">{selectedStoreUpdate.currentValues?.description || '-'}</p>
                           </div>
                           <div>
                             <span className="text-xs text-[#8B8B8B]">Mô tả mới</span>
@@ -682,11 +682,11 @@ export default function BusinessUpdateRequests() {
                           </div>
                         </div>
                       )}
-                      {selectedStoreUpdate.requestedChanges.address && (
+                      {selectedStoreUpdate.requestedChanges?.address && (
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <span className="text-xs text-[#8B8B8B]">Hiện tại</span>
-                            <p className="text-[#6B6B6B]">{selectedStoreUpdate.currentValues.address || '-'}</p>
+                            <p className="text-[#6B6B6B]">{selectedStoreUpdate.currentValues?.address || '-'}</p>
                           </div>
                           <div>
                             <span className="text-xs text-[#8B8B8B]">Địa chỉ mới</span>
@@ -694,11 +694,11 @@ export default function BusinessUpdateRequests() {
                           </div>
                         </div>
                       )}
-                      {selectedStoreUpdate.requestedChanges.phoneNumber && (
+                      {selectedStoreUpdate.requestedChanges?.phoneNumber && (
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <span className="text-xs text-[#8B8B8B]">Hiện tại</span>
-                            <p className="text-[#6B6B6B]">{selectedStoreUpdate.currentValues.phoneNumber || '-'}</p>
+                            <p className="text-[#6B6B6B]">{selectedStoreUpdate.currentValues?.phoneNumber || '-'}</p>
                           </div>
                           <div>
                             <span className="text-xs text-[#8B8B8B]">Số điện thoại mới</span>

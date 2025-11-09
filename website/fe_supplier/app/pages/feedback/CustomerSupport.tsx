@@ -1,10 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Search, MessageSquare, Circle, CheckCheck } from 'lucide-react';
 import chatService from '~/service/chatService';
+import { useAuth } from '~/AuthContext';
 import type { ChatMessage, Conversation, ChatMessageRequest } from '~/service/types';
 import { MessageType } from '~/service/types';
 
 export default function CustomerSupport() {
+  const { user } = useAuth();
+  const currentUserId = user?.userId;
+  
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -15,6 +19,12 @@ export default function CustomerSupport() {
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const selectedConversationRef = useRef<Conversation | null>(null);
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    selectedConversationRef.current = selectedConversation;
+  }, [selectedConversation]);
 
   // Auto-scroll to bottom when new messages arrive
   const scrollToBottom = () => {
@@ -40,23 +50,30 @@ export default function CustomerSupport() {
       await chatService.connect();
       setIsConnected(true);
 
-      // Subscribe to incoming messages
+      // Subscribe to incoming messages - use ref to get current selection
       const unsubscribeMessage = chatService.onMessage((message: ChatMessage) => {
-        // Add message to current conversation if it matches
-        if (selectedConversation &&
-            (message.sender.userId === selectedConversation.otherUser.userId ||
-             message.receiver.userId === selectedConversation.otherUser.userId)) {
+        const current = selectedConversationRef.current;
+        
+        // Only add message if it belongs to current conversation
+        if (current &&
+            (message.sender.userId === current.otherUser.userId ||
+             message.receiver.userId === current.otherUser.userId)) {
           setMessages(prev => [...prev, message]); // Append to end
-          // Mark as read immediately
-          chatService.markAsRead(message.messageId);
+          
+          // Only mark as read if we are the receiver (not sender)
+          if (message.receiver.userId === currentUserId) {
+            chatService.markAsRead(message.messageId);
+          }
         }
-        // Update conversations list
+        
+        // Update conversations list to refresh unread counts
         loadConversations();
       });
 
-      // Subscribe to typing indicators
+      // Subscribe to typing indicators - use ref to get current selection
       const unsubscribeTyping = chatService.onTypingIndicator((senderId: string) => {
-        if (selectedConversation && senderId === selectedConversation.otherUser.userId) {
+        const current = selectedConversationRef.current;
+        if (current && senderId === current.otherUser.userId) {
           setIsTyping(true);
           if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
           typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 3000);
@@ -288,7 +305,7 @@ export default function CustomerSupport() {
               ) : (
                 <>
                   {messages.map((message) => {
-                    const isOwn = message.sender.userId !== selectedConversation.otherUser.userId;
+                    const isOwn = message.sender.userId === currentUserId;
                     return (
                       <div
                         key={message.messageId}
@@ -311,7 +328,7 @@ export default function CustomerSupport() {
                                 minute: '2-digit',
                               })}
                             </span>
-                            {getMessageStatus(message, message.sender.userId)}
+                            {getMessageStatus(message, currentUserId)}
                           </div>
                         </div>
                       </div>
