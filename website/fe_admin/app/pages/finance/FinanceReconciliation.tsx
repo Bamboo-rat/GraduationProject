@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Wallet, TrendingUp, Clock, Users, DollarSign, CreditCard, RefreshCw, Calendar, Store, User } from 'lucide-react';
 import DashboardLayout from '~/component/layout/DashboardLayout';
 import walletService from '~/service/walletService';
 import type { SystemWalletSummaryResponse, ReconciliationResponse } from '~/service/walletService';
@@ -72,6 +73,9 @@ export default function FinanceReconciliation() {
                   {walletService.formatVND(summary?.totalBalance || 0)}
                 </p>
               </div>
+              <div className="bg-blue-100 p-3 rounded-full">
+                <Wallet className="w-6 h-6 text-blue-600" />
+              </div>
             </div>
           </div>
 
@@ -83,6 +87,9 @@ export default function FinanceReconciliation() {
                   {walletService.formatVND(summary?.totalAvailableBalance || 0)}
                 </p>
               </div>
+              <div className="bg-green-100 p-3 rounded-full">
+                <TrendingUp className="w-6 h-6 text-green-600" />
+              </div>
             </div>
           </div>
 
@@ -93,6 +100,9 @@ export default function FinanceReconciliation() {
                 <p className="text-2xl font-bold text-yellow-600 mt-2">
                   {walletService.formatVND(summary?.totalPendingBalance || 0)}
                 </p>
+              </div>
+              <div className="bg-yellow-100 p-3 rounded-full">
+                <Clock className="w-6 h-6 text-yellow-600" />
               </div>
             </div>
           </div>
@@ -108,6 +118,9 @@ export default function FinanceReconciliation() {
                   Hoạt động: {summary?.totalActiveWallets || 0}
                 </p>
               </div>
+              <div className="bg-purple-100 p-3 rounded-full">
+                <Users className="w-6 h-6 text-purple-600" />
+              </div>
             </div>
           </div>
         </div>
@@ -115,17 +128,26 @@ export default function FinanceReconciliation() {
         {/* Monthly Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
           <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold mb-4">Doanh thu tháng</h3>
+            <div className="flex items-center gap-2 mb-4">
+              <Calendar className="w-5 h-5 text-green-600" />
+              <h3 className="text-lg font-semibold">Doanh thu tháng</h3>
+            </div>
             <div className="space-y-3">
               <div>
-                <p className="text-sm text-gray-500">Chi trả cho NCC</p>
+                <div className="flex items-center gap-2 mb-1">
+                  <Store className="w-4 h-4 text-gray-400" />
+                  <p className="text-sm text-gray-500">Chi trả cho NCC</p>
+                </div>
                 <p className="text-xs text-gray-400">(Sau trừ hoa hồng)</p>
                 <p className="text-xl font-bold text-green-600">
                   {walletService.formatVND(summary?.monthlyEarnings || 0)}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">💰 Doanh thu Platform</p>
+                <div className="flex items-center gap-2 mb-1">
+                  <DollarSign className="w-4 h-4 text-blue-500" />
+                  <p className="text-sm text-gray-500">Doanh thu Platform</p>
+                </div>
                 <p className="text-xs text-blue-500">(Hoa hồng SaveFood thu)</p>
                 <p className="text-xl font-bold text-blue-600">
                   {walletService.formatVND(summary?.monthlyCommissionEarned || 0)}
@@ -135,16 +157,25 @@ export default function FinanceReconciliation() {
           </div>
 
           <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold mb-4">Thống kê tổng</h3>
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingUp className="w-5 h-5 text-blue-600" />
+              <h3 className="text-lg font-semibold">Thống kê tổng</h3>
+            </div>
             <div className="space-y-3">
               <div>
-                <p className="text-sm text-gray-500">Tổng thu nhập</p>
+                <div className="flex items-center gap-2 mb-1">
+                  <DollarSign className="w-4 h-4 text-gray-400" />
+                  <p className="text-sm text-gray-500">Tổng thu nhập</p>
+                </div>
                 <p className="text-xl font-bold">
                   {walletService.formatVND(summary?.totalEarnings || 0)}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Đã rút</p>
+                <div className="flex items-center gap-2 mb-1">
+                  <CreditCard className="w-4 h-4 text-red-600" />
+                  <p className="text-sm text-gray-500">Đã rút</p>
+                </div>
                 <p className="text-xl font-bold text-red-600">
                   {walletService.formatVND(summary?.totalWithdrawn || 0)}
                 </p>
@@ -153,16 +184,25 @@ export default function FinanceReconciliation() {
           </div>
 
           <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold mb-4">Trung bình</h3>
+            <div className="flex items-center gap-2 mb-4">
+              <Users className="w-5 h-5 text-purple-600" />
+              <h3 className="text-lg font-semibold">Trung bình</h3>
+            </div>
             <div className="space-y-3">
               <div>
-                <p className="text-sm text-gray-500">Số dư trung bình/ví</p>
+                <div className="flex items-center gap-2 mb-1">
+                  <Wallet className="w-4 h-4 text-gray-400" />
+                  <p className="text-sm text-gray-500">Số dư trung bình/ví</p>
+                </div>
                 <p className="text-xl font-bold">
                   {walletService.formatVND(summary?.averageWalletBalance || 0)}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Thu nhập tháng TB</p>
+                <div className="flex items-center gap-2 mb-1">
+                  <Calendar className="w-4 h-4 text-gray-400" />
+                  <p className="text-sm text-gray-500">Thu nhập tháng TB</p>
+                </div>
                 <p className="text-xl font-bold">
                   {walletService.formatVND(summary?.averageMonthlyEarnings || 0)}
                 </p>
@@ -173,7 +213,10 @@ export default function FinanceReconciliation() {
 
         {/* Reconciliation Report */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h3 className="text-lg font-semibold mb-4">Báo cáo đối soát</h3>
+          <div className="flex items-center gap-2 mb-4">
+            <CreditCard className="w-5 h-5 text-blue-600" />
+            <h3 className="text-lg font-semibold">Báo cáo đối soát</h3>
+          </div>
 
           {/* Date Filter */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -208,7 +251,10 @@ export default function FinanceReconciliation() {
           {/* Summary Stats */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div className="space-y-4">
-              <h4 className="font-semibold text-gray-700">Thông tin đơn hàng</h4>
+              <div className="flex items-center gap-2">
+                <Store className="w-5 h-5 text-gray-600" />
+                <h4 className="font-semibold text-gray-700">Thông tin đơn hàng</h4>
+              </div>
               <div className="flex justify-between py-2 border-b">
                 <span className="text-gray-600">Tổng giá trị đơn hàng:</span>
                 <span className="font-semibold">{walletService.formatVND(reconciliation?.totalOrderValue || 0)}</span>
@@ -224,7 +270,10 @@ export default function FinanceReconciliation() {
             </div>
 
             <div className="space-y-4">
-              <h4 className="font-semibold text-gray-700">Thanh toán & Hoàn tiền</h4>
+              <div className="flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-gray-600" />
+                <h4 className="font-semibold text-gray-700">Thanh toán & Hoàn tiền</h4>
+              </div>
               <div className="flex justify-between py-2 border-b">
                 <span className="text-gray-600">Đã trả NCC:</span>
                 <span className="font-semibold text-green-600">{walletService.formatVND(reconciliation?.totalPaidToSuppliers || 0)}</span>
@@ -242,7 +291,10 @@ export default function FinanceReconciliation() {
 
           {/* Platform Revenue */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <h4 className="font-semibold text-blue-800 mb-3">Doanh thu nền tảng</h4>
+            <div className="flex items-center gap-2 mb-3">
+              <DollarSign className="w-5 h-5 text-blue-800" />
+              <h4 className="font-semibold text-blue-800">Doanh thu nền tảng</h4>
+            </div>
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
                 <p className="text-sm text-blue-600">Thu nhập</p>
@@ -267,7 +319,10 @@ export default function FinanceReconciliation() {
 
           {/* Supplier Breakdown Table */}
           <div>
-            <h4 className="font-semibold text-gray-700 mb-3">Chi tiết theo nhà cung cấp</h4>
+            <div className="flex items-center gap-2 mb-3">
+              <User className="w-5 h-5 text-gray-600" />
+              <h4 className="font-semibold text-gray-700">Chi tiết theo nhà cung cấp</h4>
+            </div>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">

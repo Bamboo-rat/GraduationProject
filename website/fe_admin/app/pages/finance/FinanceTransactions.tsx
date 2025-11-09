@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { DollarSign, CheckCircle, XCircle, CreditCard, RefreshCw, X, Store, Calendar, Eye, FileText } from 'lucide-react';
 import DashboardLayout from '~/component/layout/DashboardLayout';
 import walletService from '~/service/walletService';
 import type { TransactionResponse } from '~/service/walletService';
@@ -97,14 +98,15 @@ export default function FinanceTransactions() {
           <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow p-4 text-white">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-100 text-sm">💰 Hoa hồng Platform</p>
+                <div className="flex items-center gap-2 mb-1">
+                  <DollarSign className="w-4 h-4" />
+                  <p className="text-blue-100 text-sm">Hoa hồng Platform</p>
+                </div>
                 <p className="text-2xl font-bold mt-1">{walletService.formatVND(stats.totalCommissionEarned)}</p>
                 <p className="text-blue-100 text-xs mt-1">Doanh thu từ commission</p>
               </div>
               <div className="bg-blue-400 bg-opacity-30 p-3 rounded-full">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+                <DollarSign className="w-6 h-6" />
               </div>
             </div>
           </div>
@@ -112,14 +114,15 @@ export default function FinanceTransactions() {
           <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg shadow p-4 text-white">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-green-100 text-sm">✅ Đã trả NCC</p>
+                <div className="flex items-center gap-2 mb-1">
+                  <CheckCircle className="w-4 h-4" />
+                  <p className="text-green-100 text-sm">Đã trả NCC</p>
+                </div>
                 <p className="text-2xl font-bold mt-1">{walletService.formatVND(stats.totalPaidToSuppliers)}</p>
                 <p className="text-green-100 text-xs mt-1">Thanh toán nhà cung cấp</p>
               </div>
               <div className="bg-green-400 bg-opacity-30 p-3 rounded-full">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+                <CheckCircle className="w-6 h-6" />
               </div>
             </div>
           </div>
@@ -127,14 +130,15 @@ export default function FinanceTransactions() {
           <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-lg shadow p-4 text-white">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-red-100 text-sm">❌ Đã hoàn tiền</p>
+                <div className="flex items-center gap-2 mb-1">
+                  <XCircle className="w-4 h-4" />
+                  <p className="text-red-100 text-sm">Đã hoàn tiền</p>
+                </div>
                 <p className="text-2xl font-bold mt-1">{walletService.formatVND(stats.totalRefunded)}</p>
                 <p className="text-red-100 text-xs mt-1">Refund & cancellation</p>
               </div>
               <div className="bg-red-400 bg-opacity-30 p-3 rounded-full">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+                <XCircle className="w-6 h-6" />
               </div>
             </div>
           </div>
@@ -142,14 +146,15 @@ export default function FinanceTransactions() {
           <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shadow p-4 text-white">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-100 text-sm">📊 Tổng GD</p>
+                <div className="flex items-center gap-2 mb-1">
+                  <FileText className="w-4 h-4" />
+                  <p className="text-purple-100 text-sm">Tổng GD</p>
+                </div>
                 <p className="text-2xl font-bold mt-1">{stats.totalTransactions}</p>
                 <p className="text-purple-100 text-xs mt-1">Giao dịch trên trang này</p>
               </div>
               <div className="bg-purple-400 bg-opacity-30 p-3 rounded-full">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
+                <FileText className="w-6 h-6" />
               </div>
             </div>
           </div>
@@ -192,15 +197,17 @@ export default function FinanceTransactions() {
             <div className="flex items-end gap-2">
               <button
                 onClick={loadTransactions}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2"
               >
-                🔄 Làm mới
+                <RefreshCw className="w-4 h-4" />
+                Làm mới
               </button>
               <button
                 onClick={() => { setType(''); setSupplierId(''); setPage(0); }}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition flex items-center gap-2"
               >
-                ✖️ Xóa bộ lọc
+                <X className="w-4 h-4" />
+                Xóa bộ lọc
               </button>
             </div>
           </div>
@@ -214,9 +221,7 @@ export default function FinanceTransactions() {
             </div>
           ) : transactions.length === 0 ? (
             <div className="p-12 text-center text-gray-500">
-              <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
+              <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
               <p className="text-lg font-semibold">Không có giao dịch nào</p>
               <p className="text-sm text-gray-400 mt-1">Thử thay đổi bộ lọc hoặc quay lại sau</p>
             </div>
@@ -271,8 +276,9 @@ export default function FinanceTransactions() {
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <button
                           onClick={() => setSelectedTransaction(transaction)}
-                          className="text-blue-600 hover:text-blue-800 font-medium"
+                          className="text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
                         >
+                          <Eye className="w-4 h-4" />
                           Chi tiết
                         </button>
                       </td>
@@ -314,11 +320,12 @@ export default function FinanceTransactions() {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 max-w-lg w-full mx-4">
               <div className="flex justify-between items-start mb-4">
-                <h3 className="text-xl font-bold">Chi tiết giao dịch</h3>
+                <div className="flex items-center gap-2">
+                  <CreditCard className="w-5 h-5 text-blue-600" />
+                  <h3 className="text-xl font-bold">Chi tiết giao dịch</h3>
+                </div>
                 <button onClick={() => setSelectedTransaction(null)} className="text-gray-400 hover:text-gray-600">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <X className="w-6 h-6" />
                 </button>
               </div>
 
@@ -328,7 +335,10 @@ export default function FinanceTransactions() {
                   <span className="font-semibold">#{selectedTransaction.id}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Nhà cung cấp:</span>
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <Store className="w-4 h-4" />
+                    <span>Nhà cung cấp:</span>
+                  </div>
                   <div className="text-right">
                     <div className="font-semibold">{selectedTransaction.supplierName || 'N/A'}</div>
                     <div className="text-xs text-gray-500">{selectedTransaction.supplierId}</div>
@@ -339,16 +349,25 @@ export default function FinanceTransactions() {
                   <span className="font-semibold">{walletService.getTransactionTypeLabel(selectedTransaction.transactionType)}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Số tiền:</span>
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <DollarSign className="w-4 h-4" />
+                    <span>Số tiền:</span>
+                  </div>
                   <div className="text-right">
                     <span className={`font-bold text-lg ${getTransactionColor(selectedTransaction)}`}>
                       {selectedTransaction.amount >= 0 ? '+' : ''}{walletService.formatVND(selectedTransaction.amount)}
                     </span>
                     {selectedTransaction.transactionType === 'COMMISSION_FEE' && (
-                      <div className="text-xs text-blue-500 mt-1">💰 Doanh thu Platform</div>
+                      <div className="flex items-center gap-1 text-xs text-blue-500 mt-1 justify-end">
+                        <DollarSign className="w-3 h-3" />
+                        <span>Doanh thu Platform</span>
+                      </div>
                     )}
                     {selectedTransaction.transactionType === 'ORDER_COMPLETED' && (
-                      <div className="text-xs text-green-500 mt-1">✅ Thanh toán cho NCC</div>
+                      <div className="flex items-center gap-1 text-xs text-green-500 mt-1 justify-end">
+                        <CheckCircle className="w-3 h-3" />
+                        <span>Thanh toán cho NCC</span>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -363,7 +382,10 @@ export default function FinanceTransactions() {
                   </div>
                 )}
                 <div className="flex justify-between py-2 border-b">
-                  <span className="text-gray-600">Thời gian:</span>
+                  <div className="flex items-center gap-2 text-gray-600">
+                    <Calendar className="w-4 h-4" />
+                    <span>Thời gian:</span>
+                  </div>
                   <span className="font-semibold">{new Date(selectedTransaction.createdAt).toLocaleString('vi-VN')}</span>
                 </div>
                 {selectedTransaction.description && (

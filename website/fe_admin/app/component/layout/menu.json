@@ -37,7 +37,7 @@
     },
     {
       "id": 4,
-      "title": "Banner & Khuyến mãi",
+      "title": "Banner & khuyến mãi",
       "icon": "percent",
       "link": "/marketing/promotions",
       "subMenu": [
@@ -47,7 +47,7 @@
     },
     {
       "id": 5,
-      "title": "Quản lý Khách hàng",
+      "title": "Quản lý khách hàng",
       "icon": "users",
       "link": "/customers/list-customers",
       "subMenu": [
@@ -67,7 +67,7 @@
     },
     {
       "id": 8,
-      "title": "Quản lý Nhân sự",
+      "title": "Quản lý nhân sự",
       "icon": "users",
       "link": "/employees/admins",
       "subMenu": [
@@ -76,7 +76,7 @@
     },
     {
       "id": 9,
-      "title": "Phân tích & Báo cáo",
+      "title": "Phân tích & báo cáo",
       "icon": "bar-chart-3",
       "link": "/reports/revenue",
       "subMenu": [

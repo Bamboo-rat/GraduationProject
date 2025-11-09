@@ -217,17 +217,7 @@ class SupplierOrderService {
     }
   }
 
-  /**
-   * Deliver order (SHIPPING → DELIVERED)
-   */
-  async deliverOrder(orderId: string): Promise<Order> {
-    try {
-      const { data } = await axiosInstance.post<ApiResponse<Order>>(`/orders/${orderId}/deliver`);
-      return data.data;
-    } catch (error) {
-      throw this.handleError(error);
-    }
-  }
+ 
 
   /**
    * Cancel order

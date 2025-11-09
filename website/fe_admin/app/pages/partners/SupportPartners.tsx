@@ -72,10 +72,20 @@ export default function SupportPartners() {
           if (message.receiver.userId === currentUserId) {
             chatService.markAsRead(message.messageId);
           }
+        } else {
+
+          setSuppliers(prev => prev.map(s => {
+            if (s.userId === message.sender.userId) {
+              return {
+                ...s,
+                unreadCount: (s.unreadCount || 0) + 1,
+                lastMessageTime: message.sendTime
+              };
+            }
+            return s;
+          }));
         }
-        
-        // Update unread counts for all suppliers
-        loadSuppliers();
+
       });
 
       // Subscribe to typing indicators - use ref to get current selection
@@ -136,13 +146,24 @@ export default function SupportPartners() {
       setSuppliers(suppliersWithUnread);
     } catch (error: any) {
       console.error('[SupportPartners] Failed to load suppliers:', error);
-      console.error('[SupportPartners] Error details:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status
-      });
-      // Show error to user
-      alert(`Không thể tải danh sách nhà cung cấp: ${error.message || 'Lỗi không xác định'}`);
+
+      if (error.response?.status !== 404) {
+        const apiUrl = import.meta.env.VITE_API_BASE_URL || 'NOT_CONFIGURED';
+        console.error('[SupportPartners] API Base URL:', apiUrl);
+        console.error('[SupportPartners] Error details:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+          url: error.config?.url
+        });
+        
+        if (suppliers.length === 0) {
+          console.warn('Không thể tải danh sách nhà cung cấp:', error.message);
+        }
+      }
+      
+      // Set empty array on error so UI shows "no suppliers" state
+      setSuppliers([]);
     } finally {
       setLoadingSuppliers(false);
     }

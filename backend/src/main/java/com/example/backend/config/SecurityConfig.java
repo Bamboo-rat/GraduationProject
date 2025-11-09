@@ -41,9 +41,11 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/api/demo/shipping/**",
                                 "/v3/api-docs/**",
-                                "/api/mobile/**",
-                                "/api/chat/**"
+                                "/api/mobile/**"
                         ).permitAll()
+
+                        // Chat endpoints - require authentication (all roles)
+                        .requestMatchers("/api/chat/**").authenticated()
 
                         // Authenticated endpoints
                         .requestMatchers("/api/auth/me").authenticated()

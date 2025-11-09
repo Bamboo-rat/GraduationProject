@@ -43,7 +43,9 @@ public class ChatMessage {
     @Enumerated(EnumType.STRING)
     private MessageStatus status = MessageStatus.SENT;
 
-    // Trong ChatMessage.java
     @Enumerated(EnumType.STRING)
     private MessageType type = MessageType.TEXT;
+
+    @Column(length = 500)
+    private String fileUrl;
 }

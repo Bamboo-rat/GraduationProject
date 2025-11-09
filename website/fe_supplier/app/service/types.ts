@@ -94,6 +94,7 @@ export interface ChatMessage {
   status: MessageStatus;
   type: MessageType;
   fileUrl?: string;
+  storeId?: string;
 }
 
 export interface Conversation {
@@ -108,4 +109,5 @@ export interface ChatMessageRequest {
   receiverId: string;
   type?: MessageType;
   fileUrl?: string;
+  storeId?: string; // Store context for customer-store conversations
 }

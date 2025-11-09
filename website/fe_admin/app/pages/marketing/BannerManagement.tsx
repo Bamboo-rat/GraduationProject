@@ -3,7 +3,7 @@ import DashboardLayout from '~/component/layout/DashboardLayout';
 import bannerService from '~/service/bannerService';
 import fileStorageService from '~/service/fileStorageService';
 import type { BannerResponse, BannerRequest } from '~/service/bannerService';
-import { PlusCircle, Search, Filter, Eye, Edit2, ToggleLeft, ToggleRight, Trash2, Upload, Image as ImageIcon } from 'lucide-react';
+import { PlusCircle, Search, Filter, Eye, Edit2, ToggleLeft, ToggleRight, Upload, Image as ImageIcon } from 'lucide-react';
 
 export default function BannerManagement() {
   const [banners, setBanners] = useState<BannerResponse[]>([]);
@@ -23,7 +23,6 @@ export default function BannerManagement() {
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedBanner, setSelectedBanner] = useState<BannerResponse | null>(null);
 
   // Form state
@@ -119,20 +118,6 @@ export default function BannerManagement() {
     }
   };
 
-  const handleDeleteBanner = async () => {
-    if (!selectedBanner) return;
-
-    try {
-      await bannerService.deleteBanner(selectedBanner.bannerId);
-      setSuccess('Xóa banner thành công!');
-      setShowDeleteModal(false);
-      setSelectedBanner(null);
-      fetchBanners();
-    } catch (error: any) {
-      setError('Xóa banner thất bại: ' + error.message);
-    }
-  };
-
   const handleToggleStatus = async (banner: BannerResponse) => {
     try {
       if (banner.status === 'ACTIVE') {
@@ -163,11 +148,6 @@ export default function BannerManagement() {
       status: banner.status,
     });
     setShowEditModal(true);
-  };
-
-  const openDeleteModal = (banner: BannerResponse) => {
-    setSelectedBanner(banner);
-    setShowDeleteModal(true);
   };
 
   const resetForm = () => {
@@ -344,13 +324,6 @@ export default function BannerManagement() {
                               title="Sửa"
                             >
                               <Edit2 size={18} />
-                            </button>
-                            <button
-                              onClick={() => openDeleteModal(banner)}
-                              className="text-text hover:text-accent-red transition-colors p-1"
-                              title="Xóa"
-                            >
-                              <Trash2 size={18} />
                             </button>
                           </div>
                         </td>
@@ -652,38 +625,6 @@ export default function BannerManagement() {
                     'Cập nhật'
                   )}
                 </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Delete Confirmation Modal */}
-        {showDeleteModal && selectedBanner && (
-          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center w-full h-full z-50 p-4 animate-fadeIn">
-            <div className="bg-surface rounded-lg p-6 w-96 mx-4 card-hover">
-              <div className="text-center">
-                <h3 className="heading-secondary mb-2">Xác nhận xóa</h3>
-                <div className="mt-2 px-2 py-3">
-                  <p className="text-sm text-muted">
-                    Bạn có chắc chắn muốn xóa banner này?
-                    <br />
-                    Hành động này không thể hoàn tác.
-                  </p>
-                </div>
-                <div className="flex justify-center space-x-3 px-4 py-3">
-                  <button
-                    onClick={() => setShowDeleteModal(false)}
-                    className="btn-secondary px-4 py-2"
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    onClick={handleDeleteBanner}
-                    className="btn-primary bg-accent-red hover:bg-red-600 px-4 py-2"
-                  >
-                    Xóa
-                  </button>
-                </div>
               </div>
             </div>
           </div>

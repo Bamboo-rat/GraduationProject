@@ -28,7 +28,7 @@ public interface ChatMessageMapper {
     @Mapping(target = "receiver", source = "receiver", qualifiedByName = "userToUserInfoResponse")
     @Mapping(target = "status", source = "status", qualifiedByName = "messageStatusToEnum")
     @Mapping(target = "type", source = "type", qualifiedByName = "messageTypeToEnum")
-    @Mapping(target = "fileUrl", ignore = true) // Will be set from content if needed
+    @Mapping(target = "fileUrl", source = "fileUrl")
     @Mapping(target = "storeId", source = "store.storeId")
     @Mapping(target = "storeName", source = "store.storeName")
     ChatMessageResponse toResponse(ChatMessage chatMessage);

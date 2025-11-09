@@ -1,14 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Search, MessageSquare, Circle, CheckCheck } from 'lucide-react';
+import { Send, Search, MessageSquare, Circle, CheckCheck, Store } from 'lucide-react';
 import chatService from '~/service/chatService';
+import storeService from '~/service/storeService';
 import { useAuth } from '~/AuthContext';
 import type { ChatMessage, Conversation, ChatMessageRequest } from '~/service/types';
+import type { StoreResponse } from '~/service/storeService';
 import { MessageType } from '~/service/types';
 
 export default function CustomerSupport() {
   const { user } = useAuth();
   const currentUserId = user?.userId;
   
+  const [stores, setStores] = useState<StoreResponse[]>([]);
+  const [selectedStoreId, setSelectedStoreId] = useState<string>('');
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -20,11 +24,16 @@ export default function CustomerSupport() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const selectedConversationRef = useRef<Conversation | null>(null);
+  const selectedStoreIdRef = useRef<string>('');
   
-  // Keep ref in sync with state
+  // Keep refs in sync with state
   useEffect(() => {
     selectedConversationRef.current = selectedConversation;
   }, [selectedConversation]);
+
+  useEffect(() => {
+    selectedStoreIdRef.current = selectedStoreId;
+  }, [selectedStoreId]);
 
   // Auto-scroll to bottom when new messages arrive
   const scrollToBottom = () => {
@@ -35,15 +44,41 @@ export default function CustomerSupport() {
     scrollToBottom();
   }, [messages]);
 
-  // Load conversations on mount
+  // Load stores on mount
   useEffect(() => {
-    loadConversations();
+    loadStores();
     connectWebSocket();
 
     return () => {
       chatService.disconnect();
     };
   }, []);
+
+  // Load conversations when store is selected
+  useEffect(() => {
+    if (selectedStoreId) {
+      loadConversations();
+    } else {
+      setConversations([]);
+      setSelectedConversation(null);
+    }
+  }, [selectedStoreId]);
+
+  const loadStores = async () => {
+    try {
+      const data = await storeService.getStoreBySupplier();
+      setStores(data);
+      // Auto-select first ACTIVE store if available
+      const activeStore = data.find(s => s.status === 'ACTIVE');
+      if (activeStore) {
+        setSelectedStoreId(activeStore.storeId);
+      } else if (data.length > 0) {
+        setSelectedStoreId(data[0].storeId);
+      }
+    } catch (error) {
+      console.error('Failed to load stores:', error);
+    }
+  };
 
   const connectWebSocket = async () => {
     try {
@@ -53,9 +88,13 @@ export default function CustomerSupport() {
       // Subscribe to incoming messages - use ref to get current selection
       const unsubscribeMessage = chatService.onMessage((message: ChatMessage) => {
         const current = selectedConversationRef.current;
+        const currentStoreId = selectedStoreIdRef.current;
         
-        // Only add message if it belongs to current conversation
-        if (current &&
+        // Check if message belongs to current store
+        const belongsToSelectedStore = message.storeId === currentStoreId;
+        
+        // Only add message if it belongs to current conversation AND current store
+        if (belongsToSelectedStore && current &&
             (message.sender.userId === current.otherUser.userId ||
              message.receiver.userId === current.otherUser.userId)) {
           setMessages(prev => [...prev, message]); // Append to end
@@ -66,8 +105,10 @@ export default function CustomerSupport() {
           }
         }
         
-        // Update conversations list to refresh unread counts
-        loadConversations();
+        // Update conversations list to refresh unread counts (only if message is for current store)
+        if (belongsToSelectedStore) {
+          loadConversations();
+        }
       });
 
       // Subscribe to typing indicators - use ref to get current selection
@@ -91,11 +132,17 @@ export default function CustomerSupport() {
   };
 
   const loadConversations = async () => {
+    if (!selectedStoreId) {
+      setConversations([]);
+      return;
+    }
+
     try {
-      const data = await chatService.getConversations();
+      const data = await chatService.getStoreConversations(selectedStoreId);
       setConversations(data);
     } catch (error) {
       console.error('Failed to load conversations:', error);
+      setConversations([]);
     }
   };
 
@@ -123,12 +170,13 @@ export default function CustomerSupport() {
   };
 
   const handleSendMessage = async () => {
-    if (!messageInput.trim() || !selectedConversation) return;
+    if (!messageInput.trim() || !selectedConversation || !selectedStoreId) return;
 
     const request: ChatMessageRequest = {
       content: messageInput.trim(),
       receiverId: selectedConversation.otherUser.userId,
       type: MessageType.TEXT,
+      storeId: selectedStoreId, // Include store context
     };
 
     try {
@@ -206,16 +254,38 @@ export default function CustomerSupport() {
         {/* Header */}
         <div className="p-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold mb-3">Hỗ trợ & Tư vấn</h2>
+          
+          {/* Store Selector */}
+          <div className="relative mb-3">
+            <Store className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <select
+              value={selectedStoreId}
+              onChange={(e) => setSelectedStoreId(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
+            >
+              <option value="">-- Chọn cửa hàng --</option>
+              {stores.map((store) => (
+                <option key={store.storeId} value={store.storeId}>
+                  {store.storeName} {store.status !== 'ACTIVE' && `(${store.status})`}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Tìm kiếm..."
+              placeholder="Tìm kiếm khách hàng..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              disabled={!selectedStoreId}
             />
           </div>
+
+          {/* Connection Status */}
           <div className="mt-2 flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
             <span className="text-xs text-gray-500">
@@ -226,7 +296,12 @@ export default function CustomerSupport() {
 
         {/* Conversations */}
         <div className="flex-1 overflow-y-auto">
-          {filteredConversations.length === 0 ? (
+          {!selectedStoreId ? (
+            <div className="flex flex-col items-center justify-center h-full text-gray-400">
+              <Store className="w-12 h-12 mb-2" />
+              <p className="text-sm">Vui lòng chọn cửa hàng</p>
+            </div>
+          ) : filteredConversations.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-400">
               <MessageSquare className="w-12 h-12 mb-2" />
               <p className="text-sm">Chưa có cuộc trò chuyện</p>

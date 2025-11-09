@@ -242,6 +242,31 @@ class ChatService {
   async deleteMessage(messageId: string): Promise<void> {
     await axiosInstance.delete(`/chat/messages/${messageId}`);
   }
+
+  /**
+   * Get all customer conversations for a specific store (Supplier only)
+   */
+  async getStoreConversations(storeId: string): Promise<Conversation[]> {
+    const response = await axiosInstance.get<ApiResponse<Conversation[]>>(
+      `/chat/supplier/store/${storeId}/conversations`
+    );
+    return response.data.data;
+  }
+
+  /**
+   * Get customer-store conversation history (Customer side)
+   */
+  async getStoreConversation(
+    storeId: string,
+    page: number = 0,
+    size: number = 20
+  ): Promise<Page<ChatMessage>> {
+    const response = await axiosInstance.get<ApiResponse<Page<ChatMessage>>>(
+      `/chat/store/${storeId}/conversation`,
+      { params: { page, size } }
+    );
+    return response.data.data;
+  }
 }
 
 export default new ChatService();

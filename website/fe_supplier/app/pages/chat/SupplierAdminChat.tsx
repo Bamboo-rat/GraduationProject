@@ -89,7 +89,9 @@ export default function SupplierAdminChat() {
   const loadConversations = async () => {
     try {
       const data = await chatService.getConversations();
-      setConversations(data);
+      // Filter to show only conversations with ADMIN users
+      const adminConversations = data.filter(conv => conv.otherUser.userType === 'ADMIN');
+      setConversations(adminConversations);
     } catch (error) {
       console.error('Error loading conversations:', error);
     }

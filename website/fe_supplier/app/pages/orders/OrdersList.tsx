@@ -124,17 +124,20 @@ export default function OrdersList() {
     }
   };
 
-  const handleDeliverOrder = async (orderId: string) => {
-    if (!confirm('Xác nhận đơn hàng đã được giao thành công?')) return;
-    
-    try {
-      await orderService.deliverOrder(orderId);
-      alert('Xác nhận giao hàng thành công!');
-      loadOrders();
-    } catch (err: any) {
-      alert(err.message || 'Không thể cập nhật trạng thái');
-    }
-  };
+  // REMOVED: handleDeliverOrder function
+  // Suppliers should not be able to mark orders as delivered when status is SHIPPING
+  // Only shippers can update to DELIVERED status through their system
+  // const handleDeliverOrder = async (orderId: string) => {
+  //   if (!confirm('Xác nhận đơn hàng đã được giao thành công?')) return;
+  //   
+  //   try {
+  //     await orderService.deliverOrder(orderId);
+  //     alert('Xác nhận giao hàng thành công!');
+  //     loadOrders();
+  //   } catch (err: any) {
+  //     alert(err.message || 'Không thể cập nhật trạng thái');
+  //   }
+  // };
 
   const handleCancelOrder = async () => {
     if (!selectedOrder || !cancelReason.trim()) {
@@ -488,16 +491,19 @@ export default function OrdersList() {
                         </>
                       )}
                       
+                      {/* SHIPPING status: Show info message instead of action buttons */}
                       {order.status === 'SHIPPING' && (
-                        <button
-                          onClick={() => handleDeliverOrder(order.id)}
-                          className="btn-primary w-full text-sm"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          Xác nhận đã giao
-                        </button>
+                        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                          <div className="flex items-start gap-3">
+                            <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <div>
+                              <p className="text-sm font-semibold text-blue-900">Đơn hàng đang được giao</p>
+                              <p className="text-xs text-blue-700 mt-1">Đơn viên vận chuyển sẽ cập nhật trạng thái khi giao hàng thành công</p>
+                            </div>
+                          </div>
+                        </div>
                       )}
                     </div>
                   </div>
