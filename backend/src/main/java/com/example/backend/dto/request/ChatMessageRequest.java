@@ -19,6 +19,8 @@ public class ChatMessageRequest {
 
     @NotBlank(message = "Receiver ID is required")
     private String receiverId;
+    
+    private String storeId;
 
     private MessageType type = MessageType.TEXT;
 

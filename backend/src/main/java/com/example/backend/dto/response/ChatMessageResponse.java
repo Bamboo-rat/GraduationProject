@@ -24,4 +24,8 @@ public class ChatMessageResponse {
     private MessageStatus status;
     private MessageType type;
     private String fileUrl; // Optional: for IMAGE/FILE types
+    
+    // Store context
+    private String storeId;
+    private String storeName;
 }

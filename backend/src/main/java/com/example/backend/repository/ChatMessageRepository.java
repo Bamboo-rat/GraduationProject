@@ -118,4 +118,47 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, String
         @Param("receiverId") String receiverId,
         Pageable pageable
     );
+
+    /**
+     * Find conversation between customer and store
+     * Customer can be sender or receiver, store context is required
+     */
+    @Query("SELECT cm FROM ChatMessage cm " +
+           "WHERE cm.store.storeId = :storeId " +
+           "AND ((cm.sender.userId = :customerId) OR (cm.receiver.userId = :customerId)) " +
+           "ORDER BY cm.sendTime DESC")
+    Page<ChatMessage> findConversationBetweenCustomerAndStore(
+        @Param("customerId") String customerId,
+        @Param("storeId") String storeId,
+        Pageable pageable
+    );
+
+    /**
+     * Find all conversations for a store (for supplier to view)
+     * Groups by customer
+     */
+    @Query("SELECT DISTINCT CASE " +
+           "WHEN cm.sender.userId != :supplierId THEN cm.sender.userId " +
+           "ELSE cm.receiver.userId END " +
+           "FROM ChatMessage cm " +
+           "WHERE cm.store.storeId = :storeId " +
+           "AND (cm.sender.userId = :supplierId OR cm.receiver.userId = :supplierId)")
+    List<String> findAllCustomersInStoreConversations(
+        @Param("storeId") String storeId,
+        @Param("supplierId") String supplierId
+    );
+
+    /**
+     * Count unread messages for a store from a specific customer
+     */
+    @Query("SELECT COUNT(cm) FROM ChatMessage cm " +
+           "WHERE cm.store.storeId = :storeId " +
+           "AND cm.receiver.userId = :supplierId " +
+           "AND cm.sender.userId = :customerId " +
+           "AND cm.status != 'READ'")
+    Long countUnreadMessagesInStoreConversation(
+        @Param("storeId") String storeId,
+        @Param("supplierId") String supplierId,
+        @Param("customerId") String customerId
+    );
 }

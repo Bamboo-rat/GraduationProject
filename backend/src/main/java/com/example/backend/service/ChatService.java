@@ -96,4 +96,26 @@ public interface ChatService {
      * @param userId    ID of the user requesting deletion (must be sender)
      */
     void deleteMessage(String messageId, String userId);
+
+    /**
+     * Get conversation between customer and store
+     * Customer sees messages with the store
+     * Supplier sees messages as the store
+     *
+     * @param customerId ID of the customer
+     * @param storeId    ID of the store
+     * @param pageable   Pagination parameters
+     * @return Page of ChatMessageResponse objects
+     */
+    Page<ChatMessageResponse> getStoreConversation(String customerId, String storeId, Pageable pageable);
+
+    /**
+     * Get all store conversations for a supplier
+     * Returns list of customers who have chatted with the store
+     *
+     * @param supplierId ID of the supplier (store owner)
+     * @param storeId    ID of the store
+     * @return List of ConversationResponse objects
+     */
+    List<ConversationResponse> getStoreConversations(String supplierId, String storeId);
 }

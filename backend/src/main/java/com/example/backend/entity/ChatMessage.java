@@ -36,6 +36,10 @@ public class ChatMessage {
     @JoinColumn(name = "receiver_id", nullable = false)
     private User receiver;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "store_id", nullable = true)
+    private Store store;
+
     @Enumerated(EnumType.STRING)
     private MessageStatus status = MessageStatus.SENT;
 

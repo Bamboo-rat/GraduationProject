@@ -175,4 +175,39 @@ public class ChatController {
         chatService.deleteMessage(messageId, userId);
         return ResponseEntity.ok(ApiResponse.success("Message deleted successfully"));
     }
+
+    // ==================== STORE CONVERSATION ENDPOINTS ====================
+
+    @GetMapping("/store/{storeId}/conversation")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    @Operation(summary = "Get customer-store conversation",
+               description = "Customer gets conversation history with a specific store")
+    public ResponseEntity<ApiResponse<Page<ChatMessageResponse>>> getStoreConversation(
+            Authentication authentication,
+            @PathVariable String storeId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        String customerId = getUserIdFromAuth(authentication);
+        log.info("GET /api/chat/store/{}/conversation - Customer {} getting store conversation (page: {}, size: {})",
+                storeId, customerId, page, size);
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "sendTime"));
+        Page<ChatMessageResponse> messages = chatService.getStoreConversation(customerId, storeId, pageable);
+        return ResponseEntity.ok(ApiResponse.success(messages));
+    }
+
+    @GetMapping("/supplier/store/{storeId}/conversations")
+    @PreAuthorize("hasRole('SUPPLIER')")
+    @Operation(summary = "Get all store conversations for supplier",
+               description = "Supplier gets all customer conversations for their store")
+    public ResponseEntity<ApiResponse<List<ConversationResponse>>> getStoreConversations(
+            Authentication authentication,
+            @PathVariable String storeId) {
+        String supplierId = getUserIdFromAuth(authentication);
+        log.info("GET /api/chat/supplier/store/{}/conversations - Supplier {} getting store conversations",
+                storeId, supplierId);
+
+        List<ConversationResponse> conversations = chatService.getStoreConversations(supplierId, storeId);
+        return ResponseEntity.ok(ApiResponse.success(conversations));
+    }
 }

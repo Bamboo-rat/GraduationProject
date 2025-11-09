@@ -182,6 +182,20 @@ class StoreService {
   }
 
   /**
+   * Get all stores for current supplier (simple array, no pagination)
+   * Useful for dropdowns and quick access
+   */
+  async getStoreBySupplier(): Promise<StoreResponse[]> {
+    try {
+      const response = await this.getMyStores({ page: 0, size: 100 });
+      return response.content;
+    } catch (error: any) {
+      console.error('Error fetching supplier stores:', error);
+      throw new Error(error.response?.data?.message || 'Không thể tải danh sách cửa hàng');
+    }
+  }
+
+  /**
    * Get store by ID
    * Endpoint: GET /api/stores/{id}
    */
@@ -419,4 +433,6 @@ class StoreService {
   }
 }
 
-export default new StoreService();
+const storeService = new StoreService();
+export { storeService };
+export default storeService;

@@ -5,6 +5,7 @@ import com.example.backend.dto.response.ChatMessageResponse;
 import com.example.backend.dto.response.ConversationResponse;
 import com.example.backend.dto.response.UserInfoResponse;
 import com.example.backend.entity.ChatMessage;
+import com.example.backend.entity.Store;
 import com.example.backend.entity.User;
 import com.example.backend.entity.enums.MessageStatus;
 import com.example.backend.exception.ErrorCode;
@@ -12,6 +13,7 @@ import com.example.backend.exception.custom.ForbiddenException;
 import com.example.backend.exception.custom.NotFoundException;
 import com.example.backend.mapper.ChatMessageMapper;
 import com.example.backend.repository.ChatMessageRepository;
+import com.example.backend.repository.StoreRepository;
 import com.example.backend.repository.UserRepository;
 import com.example.backend.service.ChatService;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +34,7 @@ public class ChatServiceImpl implements ChatService {
     private final ChatMessageRepository chatMessageRepository;
     private final UserRepository userRepository;
     private final ChatMessageMapper chatMessageMapper;
+    private final StoreRepository storeRepository;
 
     @Override
     @Transactional
@@ -55,6 +58,15 @@ public class ChatServiceImpl implements ChatService {
         chatMessage.setReceiver(receiver);
         chatMessage.setType(request.getType());
         chatMessage.setStatus(MessageStatus.SENT);
+
+        // Set store context if provided (customer-store conversation)
+        if (request.getStoreId() != null && !request.getStoreId().isEmpty()) {
+            Store store = storeRepository.findById(request.getStoreId())
+                    .orElseThrow(() -> new NotFoundException(ErrorCode.STORE_NOT_FOUND,
+                            "Store not found"));
+            chatMessage.setStore(store);
+            log.info("Message is part of customer-store conversation: storeId={}", request.getStoreId());
+        }
 
         // Save message
         ChatMessage savedMessage = chatMessageRepository.save(chatMessage);
@@ -270,5 +282,98 @@ public class ChatServiceImpl implements ChatService {
         // Delete message
         chatMessageRepository.delete(message);
         log.info("Message {} deleted successfully", messageId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ChatMessageResponse> getStoreConversation(String customerId, String storeId, Pageable pageable) {
+        log.info("Getting store conversation: customerId={}, storeId={}", customerId, storeId);
+
+        // Validate customer exists
+        if (!userRepository.existsById(customerId)) {
+            throw new NotFoundException(ErrorCode.USER_NOT_FOUND, "Customer not found");
+        }
+
+        // Validate store exists
+        if (!storeRepository.existsById(storeId)) {
+            throw new NotFoundException(ErrorCode.STORE_NOT_FOUND, "Store not found");
+        }
+
+        // Get conversation messages
+        Page<ChatMessage> messages = chatMessageRepository.findConversationBetweenCustomerAndStore(
+                customerId, storeId, pageable);
+
+        // Convert to response DTOs
+        return messages.map(chatMessageMapper::toResponse);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ConversationResponse> getStoreConversations(String supplierId, String storeId) {
+        log.info("Getting store conversations for supplier: supplierId={}, storeId={}", supplierId, storeId);
+
+        // Validate supplier exists
+        if (!userRepository.existsById(supplierId)) {
+            throw new NotFoundException(ErrorCode.USER_NOT_FOUND, "Supplier not found");
+        }
+
+        // Validate store exists and belongs to supplier
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.STORE_NOT_FOUND, "Store not found"));
+
+        if (!store.getSupplier().getUserId().equals(supplierId)) {
+            throw new ForbiddenException(ErrorCode.UNAUTHORIZED_ACCESS,
+                    "You can only view conversations for your own store");
+        }
+
+        // Get all customers who have chatted with this store
+        List<String> customerIds = chatMessageRepository.findAllCustomersInStoreConversations(storeId, supplierId);
+        log.info("Found {} customers with conversations for store {}", customerIds.size(), storeId);
+
+        List<ConversationResponse> conversations = new ArrayList<>();
+
+        for (String customerId : customerIds) {
+            try {
+                // Get customer user info
+                User customer = userRepository.findById(customerId)
+                        .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND,
+                                "Customer not found"));
+
+                // Get last message in this store conversation
+                Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 1);
+                Page<ChatMessage> messagesPage = chatMessageRepository.findConversationBetweenCustomerAndStore(
+                        customerId, storeId, pageable);
+
+                if (messagesPage.hasContent()) {
+                    ChatMessage lastMessage = messagesPage.getContent().get(0);
+
+                    // Get unread count
+                    Long unreadCount = chatMessageRepository.countUnreadMessagesInStoreConversation(
+                            storeId, supplierId, customerId);
+
+                    // Convert to response DTOs
+                    UserInfoResponse customerInfo = chatMessageMapper.userToUserInfoResponse(customer);
+                    ChatMessageResponse lastMessageResponse = chatMessageMapper.toResponse(lastMessage);
+
+                    // Build conversation response
+                    ConversationResponse conversation = ConversationResponse.builder()
+                            .otherUser(customerInfo)
+                            .lastMessage(lastMessageResponse)
+                            .lastMessageTime(lastMessage.getSendTime())
+                            .unreadCount(unreadCount)
+                            .build();
+
+                    conversations.add(conversation);
+                }
+            } catch (Exception e) {
+                log.error("Error processing store conversation with customer {}: {}", customerId, e.getMessage());
+                // Continue to next customer
+            }
+        }
+
+        // Sort by last message time descending (most recent first)
+        conversations.sort((c1, c2) -> c2.getLastMessageTime().compareTo(c1.getLastMessageTime()));
+
+        return conversations;
     }
 }
