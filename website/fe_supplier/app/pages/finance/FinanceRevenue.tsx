@@ -115,10 +115,10 @@ export default function FinanceRevenue() {
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold mb-4">Thu nhập tháng này</h3>
           <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Doanh thu tháng</span>
-              <span className="font-semibold text-lg">
-                {walletService.formatVND(summary?.monthlyEarnings || 0)}
+            <div className="flex justify-between items-center pb-3 border-b">
+              <span className="text-gray-600 font-medium">Doanh thu gộp tháng</span>
+              <span className="font-semibold text-lg text-gray-900">
+                {walletService.formatVND(summary?.monthlyOrders || 0)}
               </span>
             </div>
             <div className="flex justify-between items-center">
@@ -128,16 +128,24 @@ export default function FinanceRevenue() {
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">Hoa hồng ước tính ({summary?.commissionRate}%)</span>
+              <span className="text-red-600 flex items-center gap-1">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                </svg>
+                Hoa hồng Platform ({summary?.commissionRate}%)
+              </span>
               <span className="font-semibold text-lg text-red-600">
                 -{walletService.formatVND(summary?.estimatedCommissionThisMonth || 0)}
               </span>
             </div>
-            <div className="border-t pt-3 flex justify-between items-center">
-              <span className="text-gray-800 font-medium">Thu nhập ròng</span>
-              <span className="font-bold text-xl text-green-600">
-                {walletService.formatVND((summary?.monthlyEarnings || 0) - (summary?.estimatedCommissionThisMonth || 0))}
+            <div className="border-t-2 pt-3 flex justify-between items-center bg-green-50 -mx-4 px-4 py-3 rounded-lg">
+              <span className="text-gray-800 font-bold">💰 Thu nhập ròng của bạn</span>
+              <span className="font-bold text-2xl text-green-600">
+                {walletService.formatVND(summary?.monthlyEarnings || 0)}
               </span>
+            </div>
+            <div className="text-xs text-gray-500 italic mt-2">
+              * Thu nhập ròng = Doanh thu gộp - Hoa hồng Platform SaveFood
             </div>
           </div>
         </div>
@@ -172,43 +180,32 @@ export default function FinanceRevenue() {
         </div>
       </div>
 
-      {/* Withdrawal Info */}
-      {summary?.canWithdraw ? (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <div className="flex items-start">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-green-800">Có thể rút tiền</h3>
-              <p className="text-sm text-green-700 mt-1">
-                Bạn có thể rút tiền ngay bây giờ. Số tiền tối thiểu: {walletService.formatVND(summary.minimumWithdrawal)}
-              </p>
+      {/* Auto-Withdrawal Info */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-6">
+        <div className="flex items-start gap-4">
+          <div className="bg-blue-100 p-3 rounded-full flex-shrink-0">
+            <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-blue-900 mb-2">
+              🔄 Chuyển khoản Tự động
+            </h3>
+            <p className="text-blue-800 mb-3">
+              Hệ thống SaveFood tự động chuyển <strong>toàn bộ số dư khả dụng</strong> vào tài khoản ngân hàng của bạn <strong>vào cuối mỗi tháng</strong> (ngày 28-31).
+            </p>
+            <div className="flex items-center gap-3">
+              <span className="bg-white text-blue-900 px-4 py-2 rounded-lg font-semibold text-sm shadow-sm">
+                ⏰ Kỳ chuyển tiền tiếp theo: Cuối tháng này
+              </span>
+              <span className="bg-green-100 text-green-800 px-3 py-1.5 rounded-lg font-medium text-sm">
+                ✓ Tự động 100%
+              </span>
             </div>
           </div>
         </div>
-      ) : (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <div className="flex items-start">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-yellow-800">Chưa đủ điều kiện rút tiền</h3>
-              <p className="text-sm text-yellow-700 mt-1">
-                {summary?.status !== 'ACTIVE' 
-                  ? 'Ví của bạn đang bị khóa' 
-                  : `Số dư khả dụng chưa đạt mức tối thiểu (${walletService.formatVND(summary?.minimumWithdrawal || 50000)})`
-                }
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

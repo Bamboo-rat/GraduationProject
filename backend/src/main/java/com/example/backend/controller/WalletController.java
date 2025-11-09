@@ -119,6 +119,47 @@ public class WalletController {
         return ResponseEntity.ok(ApiResponse.success(wallet));
     }
 
+    @GetMapping("/admin/transactions")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF')")
+    @Operation(summary = "Get all transactions", description = "Admin gets all wallet transactions across all suppliers")
+    public ResponseEntity<ApiResponse<Page<TransactionResponse>>> getAllTransactions(
+            @Parameter(description = "Supplier ID filter (optional)")
+            @RequestParam(required = false) String supplierId,
+            
+            @Parameter(description = "Transaction type filter")
+            @RequestParam(required = false) String transactionType,
+            
+            @Parameter(description = "Start date (YYYY-MM-DD)")
+            @RequestParam(required = false) LocalDate startDate,
+            
+            @Parameter(description = "End date (YYYY-MM-DD)")
+            @RequestParam(required = false) LocalDate endDate,
+            
+            @Parameter(description = "Page number (0-indexed)")
+            @RequestParam(defaultValue = "0") int page,
+            
+            @Parameter(description = "Page size")
+            @RequestParam(defaultValue = "20") int size,
+            
+            @Parameter(description = "Sort field")
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            
+            @Parameter(description = "Sort direction")
+            @RequestParam(defaultValue = "DESC") String sortDir
+    ) {
+        log.info("Admin fetching all transactions: supplierId={}, type={}, page={}, size={}", 
+                supplierId, transactionType, page, size);
+        
+        Sort.Direction direction = sortDir.equalsIgnoreCase("ASC") ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortBy));
+        
+        Page<TransactionResponse> transactions = walletService.getAllTransactions(
+                supplierId, transactionType, startDate, endDate, pageable
+        );
+        
+        return ResponseEntity.ok(ApiResponse.success(transactions));
+    }
+
     @GetMapping("/admin/supplier/{supplierId}/transactions")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF')")
     @Operation(summary = "Get supplier transactions", description = "Admin gets transaction history of a supplier")

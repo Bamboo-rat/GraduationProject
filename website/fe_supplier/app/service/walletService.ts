@@ -269,10 +269,14 @@ class SupplierWalletService {
    */
   getTransactionTypeLabel(type: string): string {
     const labels: Record<string, string> = {
+      'ORDER_COMPLETED': 'Đơn hàng hoàn thành',
       'ORDER_PAYMENT': 'Thanh toán đơn hàng',
       'WITHDRAWAL': 'Rút tiền',
+      'COMMISSION_FEE': 'Phí hoa hồng Platform',
+      'COMMISSION_REFUND': '↩Hoàn hoa hồng (đơn hủy)',
       'COMMISSION': 'Hoa hồng',
       'REFUND': 'Hoàn tiền',
+      'ORDER_REFUND': 'Hoàn tiền đơn hủy',
       'BALANCE_RELEASE': 'Giải ngân',
       'ADJUSTMENT': 'Điều chỉnh',
       'PENALTY': 'Phạt',

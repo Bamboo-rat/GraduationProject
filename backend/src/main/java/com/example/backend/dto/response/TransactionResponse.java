@@ -9,12 +9,16 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
-@Builder
+@Builder(toBuilder = true)
 @NoArgsConstructor
 @AllArgsConstructor
 public class TransactionResponse {
     private String transactionId;
     private String walletId;
+    
+    // Supplier info (for admin views)
+    private String supplierId;
+    private String supplierName;
     
     // Transaction info
     private String transactionType;

@@ -79,6 +79,17 @@ public interface WalletService {
     WalletResponse getWalletBySupplierId(String supplierId);
 
     /**
+     * Get all transactions across all suppliers (admin)
+     */
+    Page<TransactionResponse> getAllTransactions(
+            String supplierId,
+            String transactionType,
+            LocalDate startDate,
+            LocalDate endDate,
+            Pageable pageable
+    );
+
+    /**
      * Get transactions for specific supplier (admin)
      */
     Page<TransactionResponse> getSupplierTransactions(

@@ -118,13 +118,15 @@ export default function FinanceReconciliation() {
             <h3 className="text-lg font-semibold mb-4">Doanh thu tháng</h3>
             <div className="space-y-3">
               <div>
-                <p className="text-sm text-gray-500">Tổng doanh thu</p>
+                <p className="text-sm text-gray-500">Chi trả cho NCC</p>
+                <p className="text-xs text-gray-400">(Sau trừ hoa hồng)</p>
                 <p className="text-xl font-bold text-green-600">
                   {walletService.formatVND(summary?.monthlyEarnings || 0)}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500">Hoa hồng thu được</p>
+                <p className="text-sm text-gray-500">💰 Doanh thu Platform</p>
+                <p className="text-xs text-blue-500">(Hoa hồng SaveFood thu)</p>
                 <p className="text-xl font-bold text-blue-600">
                   {walletService.formatVND(summary?.monthlyCommissionEarned || 0)}
                 </p>
@@ -272,9 +274,15 @@ export default function FinanceReconciliation() {
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nhà cung cấp</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Số đơn</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tổng doanh thu</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hoa hồng</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Thu nhập ròng</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Doanh thu gộp</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <div>Hoa hồng Platform</div>
+                      <div className="text-[10px] font-normal text-blue-500 normal-case">(SaveFood thu)</div>
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <div>Thanh toán NCC</div>
+                      <div className="text-[10px] font-normal text-green-500 normal-case">(Ròng sau hoa hồng)</div>
+                    </th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hoàn tiền</th>
                   </tr>
                 </thead>
@@ -290,8 +298,8 @@ export default function FinanceReconciliation() {
                         <td className="px-4 py-3 text-sm font-semibold">
                           {walletService.formatVND(supplier.totalEarnings)}
                         </td>
-                        <td className="px-4 py-3 text-sm text-red-600">
-                          -{walletService.formatVND(supplier.commission)}
+                        <td className="px-4 py-3 text-sm text-blue-600 font-semibold">
+                          {walletService.formatVND(supplier.commission)}
                         </td>
                         <td className="px-4 py-3 text-sm font-semibold text-green-600">
                           {walletService.formatVND(supplier.netEarnings)}

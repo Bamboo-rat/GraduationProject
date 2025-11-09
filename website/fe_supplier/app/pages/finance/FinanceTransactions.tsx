@@ -51,11 +51,15 @@ export default function FinanceTransactions() {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Tất cả</option>
-              <option value="ORDER_PAYMENT">Thanh toán đơn hàng</option>
-              <option value="WITHDRAWAL">Rút tiền</option>
-              <option value="COMMISSION">Hoa hồng</option>
-              <option value="REFUND">Hoàn tiền</option>
-              <option value="BALANCE_RELEASE">Giải ngân</option>
+              <option value="ORDER_COMPLETED">✅ Đơn hàng hoàn thành</option>
+              <option value="COMMISSION_FEE">💳 Phí hoa hồng Platform</option>
+              <option value="COMMISSION_REFUND">↩️ Hoàn hoa hồng (đơn hủy)</option>
+              <option value="ORDER_REFUND">❌ Hoàn tiền đơn hủy</option>
+              <option value="WITHDRAWAL">💸 Rút tiền</option>
+              <option value="BALANCE_RELEASE">🔓 Giải ngân</option>
+              <option value="ADJUSTMENT">🔧 Điều chỉnh</option>
+              <option value="PENALTY">⚠️ Phạt</option>
+              <option value="BONUS">🎁 Thưởng</option>
             </select>
           </div>
 

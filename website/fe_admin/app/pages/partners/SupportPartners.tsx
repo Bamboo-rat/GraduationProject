@@ -101,12 +101,16 @@ export default function SupportPartners() {
   const loadSuppliers = async () => {
     setLoadingSuppliers(true);
     try {
+      console.log('[SupportPartners] Loading suppliers...');
+      
       // Get all suppliers
       const response = await supplierService.getAllSuppliers(0, 100, undefined, '', 'businessName', 'ASC');
+      console.log('[SupportPartners] Suppliers loaded:', response);
       const suppliersData = response.content;
 
       // Get conversations to find unread counts
       const conversations = await chatService.getConversations();
+      console.log('[SupportPartners] Conversations loaded:', conversations);
       
       // Merge unread counts with suppliers
       const suppliersWithUnread: SupplierWithUnread[] = suppliersData.map(supplier => {
@@ -128,9 +132,17 @@ export default function SupportPartners() {
         return a.businessName.localeCompare(b.businessName);
       });
 
+      console.log('[SupportPartners] Final suppliers with unread:', suppliersWithUnread);
       setSuppliers(suppliersWithUnread);
-    } catch (error) {
-      console.error('Failed to load suppliers:', error);
+    } catch (error: any) {
+      console.error('[SupportPartners] Failed to load suppliers:', error);
+      console.error('[SupportPartners] Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      // Show error to user
+      alert(`Không thể tải danh sách nhà cung cấp: ${error.message || 'Lỗi không xác định'}`);
     } finally {
       setLoadingSuppliers(false);
     }

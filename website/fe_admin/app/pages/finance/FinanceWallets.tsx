@@ -249,13 +249,14 @@ export default function FinanceWallets() {
               </div>
 
               <div className="bg-purple-50 p-4 rounded-lg">
-                <p className="text-sm text-gray-600 mb-1">Doanh thu tháng</p>
+                <p className="text-sm text-gray-600 mb-1">Thu nhập tháng (Ròng)</p>
+                <p className="text-xs text-gray-500">(Sau trừ hoa hồng)</p>
                 <p className="text-xl font-bold text-purple-600">{walletService.formatVND(selectedWallet.monthlyEarnings)}</p>
               </div>
 
               <div className="col-span-2 border-t pt-4 space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Tổng thu nhập:</span>
+                  <span className="text-gray-600">Tổng thu nhập (Ròng):</span>
                   <span className="font-semibold">{walletService.formatVND(selectedWallet.totalEarnings)}</span>
                 </div>
                 <div className="flex justify-between">
@@ -267,8 +268,11 @@ export default function FinanceWallets() {
                   <span className="font-semibold text-red-600">{walletService.formatVND(selectedWallet.totalRefunded)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Hoa hồng:</span>
-                  <span className="font-semibold">{selectedWallet.commissionRate}%</span>
+                  <span className="text-gray-600">Hoa hồng Platform:</span>
+                  <span className="font-semibold text-blue-600">{selectedWallet.commissionRate}%</span>
+                </div>
+                <div className="col-span-2 bg-blue-50 p-3 rounded text-xs text-blue-700 mt-2">
+                  💡 <strong>Lưu ý:</strong> Tất cả số tiền hiển thị là số ròng sau khi đã trừ {selectedWallet.commissionRate}% hoa hồng cho Platform SaveFood
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Trạng thái:</span>

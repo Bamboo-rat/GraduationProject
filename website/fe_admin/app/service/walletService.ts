@@ -49,8 +49,12 @@ export interface SystemWalletSummaryResponse {
 }
 
 export interface TransactionResponse {
+  id: string;
   transactionId: string;
   walletId: string;
+  
+  supplierId?: string;
+  supplierName?: string;
   
   transactionType: string;
   transactionTypeLabel: string;
@@ -72,6 +76,7 @@ export interface TransactionResponse {
   
   isIncome: boolean;
   displayAmount: string;
+  status?: string;
 }
 
 export interface ReconciliationResponse {
@@ -138,7 +143,40 @@ class AdminWalletService {
   }
 
   /**
-   * Get supplier transactions
+   * Get all transactions (admin) - all suppliers
+   */
+  async getAllTransactions(params?: {
+    supplierId?: string;
+    transactionType?: string;
+    startDate?: string;
+    endDate?: string;
+    page?: number;
+    size?: number;
+    sortBy?: string;
+    sortDir?: string;
+  }): Promise<PageResponse<TransactionResponse>> {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params?.supplierId) queryParams.append('supplierId', params.supplierId);
+      if (params?.transactionType) queryParams.append('transactionType', params.transactionType);
+      if (params?.startDate) queryParams.append('startDate', params.startDate);
+      if (params?.endDate) queryParams.append('endDate', params.endDate);
+      if (params?.page !== undefined) queryParams.append('page', params.page.toString());
+      if (params?.size) queryParams.append('size', params.size.toString());
+      if (params?.sortBy) queryParams.append('sortBy', params.sortBy);
+      if (params?.sortDir) queryParams.append('sortDir', params.sortDir);
+
+      const { data } = await axiosInstance.get<ApiResponse<PageResponse<TransactionResponse>>>(
+        `/wallets/admin/transactions?${queryParams.toString()}`
+      );
+      return data.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Get supplier transactions (specific supplier)
    */
   async getSupplierTransactions(
     supplierId: string,
@@ -291,6 +329,55 @@ class AdminWalletService {
       default:
         return 'bg-gray-100 text-gray-800';
     }
+  }
+
+  /**
+   * Get transaction type label
+   */
+  getTransactionTypeLabel(type: string): string {
+    const labels: Record<string, string> = {
+      'ORDER_COMPLETED': '✅ Đơn hàng hoàn thành',
+      'ORDER_PAYMENT': 'Thanh toán đơn hàng',
+      'WITHDRAWAL': 'Rút tiền',
+      'COMMISSION_FEE': '💳 Phí hoa hồng Platform',
+      'COMMISSION_REFUND': '↩️ Hoàn hoa hồng (đơn hủy)',
+      'COMMISSION': 'Hoa hồng',
+      'REFUND': 'Hoàn tiền',
+      'ORDER_REFUND': '❌ Hoàn tiền đơn hủy',
+      'BALANCE_RELEASE': 'Giải ngân',
+      'ADJUSTMENT': 'Điều chỉnh',
+      'PENALTY': 'Phạt',
+      'BONUS': 'Thưởng',
+    };
+    return labels[type] || type;
+  }
+
+  /**
+   * Get transaction status color
+   */
+  getTransactionStatusColor(status: string): string {
+    switch (status) {
+      case 'COMPLETED':
+        return 'bg-green-100 text-green-800';
+      case 'PENDING':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'FAILED':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  }
+
+  /**
+   * Get transaction status label
+   */
+  getTransactionStatusLabel(status: string): string {
+    const labels: Record<string, string> = {
+      'COMPLETED': 'Hoàn thành',
+      'PENDING': 'Đang xử lý',
+      'FAILED': 'Thất bại',
+    };
+    return labels[status] || status;
   }
 }
 

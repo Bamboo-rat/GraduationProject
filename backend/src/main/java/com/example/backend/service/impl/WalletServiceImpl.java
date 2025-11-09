@@ -475,6 +475,60 @@ public class WalletServiceImpl implements WalletService {
 
     @Override
     @Transactional(readOnly = true)
+    public Page<TransactionResponse> getAllTransactions(
+            String supplierId,
+            String transactionType,
+            LocalDate startDate,
+            LocalDate endDate,
+            org.springframework.data.domain.Pageable pageable
+    ) {
+        LocalDateTime start = startDate != null ? startDate.atStartOfDay() : null;
+        LocalDateTime end = endDate != null ? endDate.atTime(23, 59, 59) : null;
+
+        Specification<WalletTransaction> spec = (root, query, cb) -> {
+            List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
+
+            // Optional filter by supplier ID
+            if (supplierId != null && !supplierId.trim().isEmpty()) {
+                predicates.add(cb.equal(root.get("wallet").get("supplier").get("userId"), supplierId));
+            }
+
+            // Filter by transaction type
+            if (transactionType != null && !transactionType.equalsIgnoreCase("ALL")) {
+                predicates.add(cb.equal(root.get("transactionType"), 
+                        TransactionType.valueOf(transactionType)));
+            }
+
+            // Filter by date range
+            if (start != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"), start));
+            }
+
+            if (end != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"), end));
+            }
+
+            return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        };
+
+        Page<WalletTransaction> transactions = transactionRepository.findAll(spec, pageable);
+        return transactions.map(t -> {
+            // Include supplier info in response
+            TransactionResponse response = mapToTransactionResponse(t, null);
+            SupplierWallet wallet = t.getWallet();
+            if (wallet != null && wallet.getSupplier() != null) {
+                Supplier supplier = wallet.getSupplier();
+                return response.toBuilder()
+                        .supplierId(supplier.getUserId())
+                        .supplierName(supplier.getFullName())
+                        .build();
+            }
+            return response;
+        });
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Page<TransactionResponse> getSupplierTransactions(
             String supplierId,
             String transactionType,
