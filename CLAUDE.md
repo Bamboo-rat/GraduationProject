@@ -4,15 +4,25 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**SaveFood** is a food waste reduction platform that connects suppliers (restaurants, supermarkets) with customers to sell near-expiry food products at discounted prices. This is a full-stack monorepo with:
+**SaveFood** is a food waste reduction platform that connects suppliers (restaurants, supermarkets) with customers to sell near-expiry food products at discounted prices. This is a production-grade full-stack monorepo with:
 
-- **Backend**: Spring Boot 3.5.6 + Java 21 REST API
-- **Frontend Admin Portal**: React Router 7 + TypeScript admin dashboard
+- **Backend**: Spring Boot 3.5.6 + Java 21 REST API (~19,325 lines of Java code)
+- **Frontend Admin Portal**: React Router 7 + TypeScript admin dashboard (37 routes)
 - **Frontend Supplier Portal**: React Router 7 + TypeScript supplier dashboard
-- **Authentication**: Keycloak OAuth2/JWT
-- **Database**: PostgreSQL (production) / MySQL (dev) / H2 (test)
+- **Authentication**: Keycloak OAuth2/JWT + Custom JWT (hybrid system)
+- **Database**: AWS RDS MySQL (production) / PostgreSQL/MySQL (dev) / H2 (test)
 - **Storage**: Cloudinary for file uploads
 - **Cache/OTP**: Redis
+- **Real-time**: WebSocket chat via STOMP/SockJS
+
+**Project Scale**:
+- 38 JPA entities with JOINED inheritance hierarchy
+- 32 REST controllers with full CRUD operations
+- 28 service implementations
+- 23 frontend service layers
+- 6 scheduled background tasks
+- Comprehensive error handling with centralized error codes
+- Full Swagger/OpenAPI documentation
 
 ## Repository Structure
 
@@ -103,7 +113,7 @@ npm run typecheck
 npm start
 ```
 
-Frontend runs at: **http://localhost:5173** (default Vite dev server)
+Frontend runs at: **http://localhost:3001** (configured in vite.config.ts)
 
 ### Frontend Supplier
 
@@ -163,9 +173,25 @@ Managed via Keycloak with Spring Security OAuth2 Resource Server:
 
 ### Authentication Flow
 
-1. **Keycloak** handles authentication and JWT issuance
-2. **Spring Security** validates JWT tokens and enforces role-based access
-3. All users created in **Keycloak first**, then synced to local database with `keycloakId`
+**Multi-System Authentication**:
+
+1. **Keycloak OAuth2/JWT** (Admin & Supplier):
+   - Realm: `savefood`
+   - Client: `backend-fs`
+   - Issuer URI: `http://localhost:8081/realms/savefood`
+   - Roles managed in Keycloak
+
+2. **Custom JWT** (Customer):
+   - HS256 algorithm with 256-bit secret
+   - Access token: 2 hours (7,200,000ms)
+   - Refresh token: 7 days (604,800,000ms)
+   - Token stored in Redis with TTL
+
+3. **Hybrid JWT Decoder** (`HybridJwtDecoder.java`):
+   - Automatically detects token issuer
+   - Routes to Keycloak or custom decoder
+   - Single SecurityConfig for all user types
+   - All users created in **Keycloak first** (for Admin/Supplier), then synced to local database with `keycloakId`
 
 ### Registration Flows
 
@@ -178,6 +204,8 @@ Managed via Keycloak with Spring Security OAuth2 Resource Server:
 2. Step 2: Email OTP verification → PENDING_DOCUMENTS
 3. Step 3: Upload documents (business license, food safety certificate required; avatar optional) → PENDING_STORE_INFO
 4. Step 4: Business + store info → PENDING_APPROVAL (awaits admin approval)
+   - **CRITICAL**: Supplier entity must be saved BEFORE Store entity (FK constraint)
+   - Wallet automatically created for supplier
 
 **Admin:**
 - Created by SUPER_ADMIN only via admin dashboard
@@ -214,13 +242,24 @@ Managed via Keycloak with Spring Security OAuth2 Resource Server:
 - **WalletService**: Supplier wallet management with commission deduction
 - **InAppNotificationService**: Real-time notification system for order updates
 - **AutomatedSuspensionService**: Customer violation tracking and automated suspension
+- **ChatService**: WebSocket + REST chat implementation (Customer ↔ Supplier, Customer ↔ Admin, Supplier ↔ Admin)
+- **ReturnRequestService**: Product return request management
+- **ReviewService**: Customer reviews with supplier reply functionality
 
 ### Database Configuration
 
-- **Production**: AWS RDS MySQL (primary)
+- **Production**: AWS RDS MySQL (foodsave.cbqgwoyam2lh.ap-southeast-2.rds.amazonaws.com)
 - **Development**: PostgreSQL/MySQL (configurable)
-- **Testing**: H2 in-memory database
-- **OTP & Caching**: Redis (local or hosted)
+- **Testing**: H2 in-memory database (`jdbc:h2:mem:testdb`)
+- **OTP & Caching**: Redis (localhost:6379)
+- **Keycloak Database**: AWS RDS MySQL (keycloak-db.cbqgwoyam2lh.ap-southeast-2.rds.amazonaws.com)
+
+**Transaction Configuration**:
+- Default isolation: REPEATABLE_READ
+- Checkout operations: SERIALIZABLE (prevent race conditions)
+- Optimistic locking: @Version on entities
+- Pessimistic locking: @Lock(PESSIMISTIC_WRITE) for promotion usage
+- Connection pooling: HikariCP (max 10, min 5)
 
 Connection details in `application.properties` use environment variables for sensitive data.
 
@@ -262,6 +301,11 @@ export default new SupplierService();
 - `fileStorageService.ts` - File uploads to Cloudinary
 - `partnerPerformanceService.ts` - Partner metrics and analytics
 - `storeUpdateService.ts` - Store pending update approvals
+- `chatService.ts` - WebSocket + REST chat (backend complete, UI components pending)
+- `orderService.ts` - Order management and tracking
+- `cartService.ts` - Shopping cart operations
+- `walletService.ts` - Wallet and transaction management
+- `reviewService.ts` - Customer reviews and ratings
 
 ### Axios Configuration (`app/config/axios.tsx`)
 
@@ -401,6 +445,23 @@ File-based routing via React Router 7. Routes defined in `app/routes.ts`:
 **14. Enum Values:**
 - PaymentProvider: VNPAY, MOMO, ZALOPAY, SHOPEEPAY, INTERNAL (use INTERNAL for bank transfers and COD)
 - ShipmentStatus: PREPARING, SHIPPING, DELIVERED, FAILED, CANCELED (use SHIPPING for in-transit)
+
+**15. Scheduled Tasks:**
+- **CleanupScheduler**: Database cleanup (pending users, expired OTPs, old notifications)
+- **NotificationScheduler**: Email notification queue processing
+- **PasswordResetTokenCleanupScheduler**: Remove expired reset tokens
+- **ProductStatusScheduler**: Auto-update product status (SOLD_OUT/EXPIRED → INACTIVE after 1 day)
+- **PromotionStatusScheduler**: Auto-activate/expire promotions based on dates
+- **ViolationCheckScheduler**: Automated customer suspension based on violation counts
+
+**16. WebSocket Chat System:**
+- **Connection**: STOMP over SockJS at `/ws` endpoint
+- **Authentication**: JWT token in connection header
+- **Channels**: `/topic/chat/{conversationId}`, `/user/queue/messages`
+- **Message Types**: TEXT, IMAGE, FILE, SYSTEM
+- **Status Tracking**: SENT → DELIVERED → READ
+- **Backend**: 100% complete with REST fallback
+- **Frontend**: Service layer ready, UI components pending implementation
 
 ### Frontend Rules
 
@@ -636,16 +697,30 @@ Currently no automated tests configured. Recommended approach:
 
 ## Key Documentation Files
 
+**Root Level:**
 - `README.md` - Project overview and setup
-- `backend/CLAUDE.md` - Backend-specific guidance
-- `backend/PARTNER_PERFORMANCE_API.md` - Partner performance reporting API
-- `backend/PRODUCT_CREATION_FLOW.md` - Product creation implementation
-- `backend/PROMOTION_VALIDATION_TRACKING_AND_CATEGORY_PROTECTION.md` - Promotion system
-- `backend/WALLET_SYSTEM_FLOW.md` - Wallet and payment system
-- `backend/ADMIN_BACKEND_API_REFERENCE.md` - Admin API documentation
-- `PARTNER_PERFORMANCE_INTEGRATION_GUIDE.md` - Frontend-backend integration guide
-- `DATABASE_SCHEMA_VIETNAMESE.md` - Database schema documentation
-- `BUSINESS_FUNCTIONS_BY_ROLE.md` - Business requirements by user role
+- `CLAUDE.md` - This file (project-level guidance)
+
+**Backend Documentation** (`backend/`):
+- `CLAUDE.md` - Backend-specific guidance
+- `PARTNER_PERFORMANCE_API.md` - Partner performance reporting API
+- `PRODUCT_CREATION_FLOW.md` - Product creation implementation
+- `PROMOTION_VALIDATION_TRACKING_AND_CATEGORY_PROTECTION.md` - Promotion system
+- `WALLET_SYSTEM_FLOW.md` - Wallet and payment system
+- `ADMIN_BACKEND_API_REFERENCE.md` - Admin API documentation
+
+**Technical Documentation** (`docs/`):
+- `COMMISSION_FLOW.md` - Wallet & commission system details
+- `CHAT_SYSTEM_IMPLEMENTATION.md` - WebSocket chat implementation guide
+- `WALLET_SYSTEM_STATUS.md` - Wallet feature completion status
+- `RETURN_REQUEST_API.md` - Product return flow
+- `SUPPLIER_ORDER_MANAGEMENT_FLOW.md` - Order fulfillment process
+- `ADMIN_FEATURES.md` - Admin capabilities reference
+- `CHAT_WITH_SUPPLIER_FROM_ORDER.md` - Chat integration from orders
+- `SUPPLIER_REPLY_REVIEW.md` - Review response feature
+- `BALANCE_RELEASE_IMPROVEMENTS.md` - 7-day balance hold implementation
+- `ENTITY_CONSOLIDATION_SUMMARY.md` - Database refactoring summary
+- `IMPROVEMENTS_SUMMARY.md` - System enhancements overview
 
 ---
 
@@ -689,12 +764,74 @@ VITE_API_BASE_URL=http://localhost:8080/api
 
 ---
 
+## Business Logic Highlights
+
+### Commission & Wallet System
+
+**Commission Flow** (10% default, configurable per supplier):
+```
+Order Total: 100,000 VND
+Commission (10%): -10,000 VND
+Supplier receives: 90,000 VND (pending balance)
+
+After 7 days: Moved to available balance (releasePendingBalance scheduler)
+```
+
+**Transaction Types**:
+- ORDER_COMPLETED: Credit to pending balance (after commission deduction)
+- COMMISSION_FEE: Platform fee deduction
+- ORDER_REFUND: Debit on cancellation
+- COMMISSION_REFUND: Platform returns commission on refund
+- WITHDRAWAL: Supplier payout to bank
+- MANUAL_ADJUSTMENT: Admin correction
+
+**Key Methods**:
+- `addPendingBalance(supplier, order)` - Auto-calculates commission, creates transactions
+- `refundOrder(order)` - Handles cancellation refunds
+- `withdraw(supplier, amount)` - Process withdrawal request
+- Never call `recordTransaction()` directly - use the helper methods above
+
+### Customer Tier System
+
+**Tiers** (based on spending & purchase history):
+- GENERAL: Default tier
+- BRONZE: ≥500,000 VND spent
+- SILVER: ≥1,000,000 VND spent
+- GOLD: ≥3,000,000 VND spent
+- PLATINUM: ≥5,000,000 VND spent
+- DIAMOND: ≥10,000,000 VND spent
+
+**Auto-upgrade**: Tier recalculated after each order completion
+**Benefits**: Access to tier-specific promotions, exclusive deals
+
+### Violation & Suspension System
+
+**Violation Types**:
+- EXCESSIVE_CANCELLATION: Cancel >3 orders in 30 days
+- SPAM_REVIEW: Multiple flagged reviews
+- PAYMENT_FRAUD: Payment issues
+- FAKE_ACCOUNT: Suspicious account activity
+- TERMS_VIOLATION: Policy violations
+
+**Severity Levels** → **Actions**:
+- WARNING (1-2 violations): Warning email
+- MINOR (3-4): 3-day suspension
+- MODERATE (5-6): 7-day suspension
+- MAJOR (7-9): 30-day suspension
+- CRITICAL (10+): Permanent ban
+
+**Automated**: ViolationCheckScheduler runs daily to apply suspensions
+
+---
+
 ## Useful Resources
 
 - **Backend API Docs**: http://localhost:8080/swagger-ui/index.html
-- **Keycloak Admin**: http://localhost:8081
+- **Keycloak Admin**: http://localhost:8081 (admin/admin)
 - **React Router 7 Docs**: https://reactrouter.com/
 - **Spring Boot Docs**: https://spring.io/projects/spring-boot
 - **Keycloak Docs**: https://www.keycloak.org/documentation
 - **MapStruct Docs**: https://mapstruct.org/
 - **TailwindCSS Docs**: https://tailwindcss.com/
+- **Cloudinary Docs**: https://cloudinary.com/documentation
+- **SendGrid Docs**: https://docs.sendgrid.com/

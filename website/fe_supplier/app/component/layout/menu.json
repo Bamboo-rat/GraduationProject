@@ -7,7 +7,6 @@
       "link": "/dashboard/overview",
       "subMenu": [
         { "title": "Tổng quan doanh thu", "link": "/dashboard/overview" },
-        { "title": "Đơn hàng gần đây", "link": "/dashboard/orders" },
         { "title": "Cảnh báo tồn kho", "link": "/dashboard/inventory" }
       ]
     },
@@ -38,8 +37,7 @@
       "link": "/finance/revenue",
       "subMenu": [
         { "title": "Doanh thu & Hoa hồng", "link": "/finance/revenue" },
-        { "title": "Giao dịch thanh toán", "link": "/finance/transactions" },
-        { "title": "Rút tiền / Đối soát", "link": "/finance/withdraw" }
+        { "title": "Giao dịch thanh toán", "link": "/finance/transactions" }
       ]
     },
     {

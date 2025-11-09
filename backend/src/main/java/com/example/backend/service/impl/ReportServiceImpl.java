@@ -48,11 +48,7 @@ public class ReportServiceImpl implements ReportService {
         Long cancelledOrders = toLong(summaryData[2]);
         Long totalOrders = toLong(summaryData[3]);
         BigDecimal avgOrderValue = toBigDecimal(summaryData[4]);
-
-        // Calculate commission (5% default)
-        Double commissionRate = getCommissionRate();
-        BigDecimal totalCommission = totalRevenue.multiply(BigDecimal.valueOf(commissionRate))
-                .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+        BigDecimal totalCommission = toBigDecimal(summaryData[5]); // Actual commission from query
         BigDecimal totalSupplierEarnings = totalRevenue.subtract(totalCommission);
 
         // Calculate daily average
@@ -75,6 +71,7 @@ public class ReportServiceImpl implements ReportService {
         List<Object[]> topCategories = orderDetailRepository.findRevenueByCategoryWithDateRange(startDate, endDate);
 
         String topSupplierName = topSuppliers.isEmpty() ? "N/A" : (String) topSuppliers.get(0)[1];
+        // row[4] = totalRevenue, row[5] = commission, row[6] = supplierEarnings
         BigDecimal topSupplierRevenue = topSuppliers.isEmpty() ? BigDecimal.ZERO : toBigDecimal(topSuppliers.get(0)[4]);
         String topCategoryName = topCategories.isEmpty() ? "N/A" : (String) topCategories.get(0)[1];
         BigDecimal topCategoryRevenue = topCategories.isEmpty() ? BigDecimal.ZERO : toBigDecimal(topCategories.get(0)[5]);
@@ -104,19 +101,20 @@ public class ReportServiceImpl implements ReportService {
         log.info("Generating revenue by supplier from {} to {}", startDate, endDate);
 
         List<Object[]> results = orderRepository.findRevenueBySupplier(startDate, endDate);
-        BigDecimal totalRevenue = results.stream()
-                .map(r -> toBigDecimal(r[4]))
+        
+        // Calculate total supplier earnings for percentage calculation
+        BigDecimal totalSupplierEarnings = results.stream()
+                .map(r -> toBigDecimal(r[6]))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        Double commissionRate = getCommissionRate();
-
         return results.stream().map(row -> {
-            BigDecimal revenue = toBigDecimal(row[4]);
-            BigDecimal commission = revenue.multiply(BigDecimal.valueOf(commissionRate))
-                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
-            BigDecimal earnings = revenue.subtract(commission);
-            Double revenuePercentage = totalRevenue.compareTo(BigDecimal.ZERO) > 0
-                    ? revenue.divide(totalRevenue, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100)).doubleValue()
+            // Query returns: totalRevenue, platformCommission, supplierEarnings
+            BigDecimal totalRevenue = toBigDecimal(row[4]);
+            BigDecimal platformCommission = toBigDecimal(row[5]);
+            BigDecimal supplierEarnings = toBigDecimal(row[6]);
+            
+            Double revenuePercentage = totalSupplierEarnings.compareTo(BigDecimal.ZERO) > 0
+                    ? supplierEarnings.divide(totalSupplierEarnings, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100)).doubleValue()
                     : 0.0;
 
             return RevenueBySupplierResponse.builder()
@@ -124,12 +122,12 @@ public class ReportServiceImpl implements ReportService {
                     .supplierName((String) row[1])
                     .avatarUrl((String) row[2])
                     .totalOrders(toLong(row[3]))
-                    .totalRevenue(revenue)
-                    .platformCommission(commission)
-                    .supplierEarnings(earnings)
+                    .totalRevenue(totalRevenue)
+                    .platformCommission(platformCommission)
+                    .supplierEarnings(supplierEarnings)
                     .revenuePercentage(revenuePercentage)
-                    .productCount(toLong(row[5]))
-                    .storeCount(toLong(row[6]))
+                    .productCount(toLong(row[7]))
+                    .storeCount(toLong(row[8]))
                     .build();
         }).collect(Collectors.toList());
     }
@@ -167,7 +165,6 @@ public class ReportServiceImpl implements ReportService {
         log.info("Generating revenue time series from {} to {}", startDate, endDate);
 
         List<Object[]> results = orderRepository.findRevenueTimeSeries(startDate, endDate);
-        Double commissionRate = getCommissionRate();
 
         // Get new vs returning customers per day
         Object[] customerData = orderRepository.findNewVsReturningCustomers(startDate, endDate);
@@ -177,15 +174,15 @@ public class ReportServiceImpl implements ReportService {
                     ? ((java.sql.Date) row[0]).toLocalDate()
                     : (LocalDate) row[0];
             BigDecimal revenue = toBigDecimal(row[2]);
-            BigDecimal commission = revenue.multiply(BigDecimal.valueOf(commissionRate))
-                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+            BigDecimal commission = toBigDecimal(row[3]); // Actual commission from query
+            BigDecimal avgOrderValue = toBigDecimal(row[4]);
 
             return RevenueTimeSeriesResponse.builder()
                     .date(date)
                     .orderCount(toLong(row[1]))
                     .revenue(revenue)
                     .platformCommission(commission)
-                    .averageOrderValue(toBigDecimal(row[3]))
+                    .averageOrderValue(avgOrderValue)
                     .newCustomers(0L) // Would need additional query per date
                     .returningCustomers(0L) // Would need additional query per date
                     .build();

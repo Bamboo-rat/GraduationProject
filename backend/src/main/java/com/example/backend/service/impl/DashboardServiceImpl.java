@@ -59,7 +59,7 @@ public class DashboardServiceImpl implements DashboardService {
         Long totalProducts = storeProductRepository.count();
         Long totalStores = storeRepository.count();
 
-        // Revenue metrics
+        // Revenue metrics - actual revenue (totalAmount - discount + shippingFee)
         Double totalRevenueDouble = orderDetailRepository.calculateRevenueByDateRange(
                 LocalDateTime.of(2000, 1, 1, 0, 0), now);
         Double todayRevenueDouble = orderDetailRepository.calculateRevenueByDateRange(todayStart, todayEnd);

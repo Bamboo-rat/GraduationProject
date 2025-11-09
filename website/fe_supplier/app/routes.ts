@@ -12,7 +12,6 @@ export default [
 
   // Dashboard routes
   route("dashboard/overview", "routes/dashboard/overview.tsx"),
-  route("dashboard/orders", "routes/dashboard/orders.tsx"),
   route("dashboard/inventory", "routes/dashboard/inventory.tsx"),
 
   // Products routes
@@ -29,7 +28,6 @@ export default [
   // Finance routes
   route("finance/revenue", "routes/finance/revenue.tsx"),
   route("finance/transactions", "routes/finance/transactions.tsx"),
-  route("finance/withdraw", "routes/finance/withdraw.tsx"),
 
   // Reports routes
   route("reports/revenue-over-time", "routes/reports/revenue-over-time.tsx"),

@@ -4,10 +4,7 @@ import com.example.backend.dto.request.AddToCartRequest;
 import com.example.backend.dto.request.UpdateCartItemRequest;
 import com.example.backend.dto.response.CartResponse;
 import com.example.backend.entity.*;
-import com.example.backend.entity.enums.CustomerTier;
-import com.example.backend.entity.enums.ProductStatus;
-import com.example.backend.entity.enums.PromotionStatus;
-import com.example.backend.entity.enums.PromotionTier;
+import com.example.backend.entity.enums.*;
 import com.example.backend.exception.ErrorCode;
 import com.example.backend.exception.custom.BadRequestException;
 import com.example.backend.exception.custom.NotFoundException;
@@ -684,12 +681,12 @@ public class CartServiceImpl implements CartService {
                 yield isBirthdayMonth;
             }
             case FIRST_TIME -> {
-                // First-time promotion: check if customer has any previous orders
-                long orderCount = orderRepository.countByCustomer(customer);
-                boolean isFirstTime = orderCount == 0;
+                
+                long completedOrderCount = orderRepository.countByCustomerAndStatus(customer, OrderStatus.DELIVERED);
+                boolean isFirstTime = completedOrderCount == 0;
                 if (!isFirstTime) {
-                    log.info("Customer {} has {} previous orders, cannot use FIRST_TIME promotion", 
-                            customer.getUserId(), orderCount);
+                    log.warn("Customer {} has {} completed orders, cannot use FIRST_TIME promotion", 
+                            customer.getUserId(), completedOrderCount);
                 }
                 yield isFirstTime;
             }

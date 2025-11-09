@@ -50,6 +50,8 @@ public interface OrderDetailRepository extends JpaRepository<OrderDetail, String
     /**
      * Find top products by revenue
      * Returns: productId, productName, categoryName, supplierName, totalSold, revenue, imageUrl
+     * Revenue = SUM(quantity * amount) from delivered orders
+     * Note: amount is the price at time of purchase (already includes item-level discounts)
      */
     @Query("SELECT p.productId, p.name, c.name, s.businessName, " +
            "SUM(od.quantity) as totalSold, " +
@@ -69,6 +71,8 @@ public interface OrderDetailRepository extends JpaRepository<OrderDetail, String
     /**
      * Find revenue by category
      * Returns: categoryId, categoryName, revenue, orderCount, productCount
+     * Revenue = SUM(quantity * amount) from delivered orders
+     * Note: amount is the price at time of purchase (already includes item-level discounts)
      */
     @Query("SELECT c.categoryId, c.name, " +
            "SUM(od.quantity * od.amount) as revenue, " +
@@ -87,18 +91,22 @@ public interface OrderDetailRepository extends JpaRepository<OrderDetail, String
 
     /**
      * Calculate total revenue from delivered orders within date range
+     * Revenue = SUM(totalAmount - discount + shippingFee) for all delivered orders
+     * This aggregates across all orders, not per-order
      */
-    @Query("SELECT SUM(od.quantity * od.amount) " +
-           "FROM OrderDetail od " +
-           "WHERE od.order.status = 'DELIVERED' " +
-           "AND od.order.createdAt BETWEEN :startDate AND :endDate")
+    @Query("SELECT COALESCE(SUM(o.totalAmount - o.discount + o.shippingFee), 0.0) " +
+           "FROM Order o " +
+           "WHERE o.status = 'DELIVERED' " +
+           "AND o.createdAt BETWEEN :startDate AND :endDate")
     Double calculateRevenueByDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
     // ==================== REVENUE REPORT QUERIES ====================
 
     /**
      * Find revenue by category with date range filter
-     * Returns: categoryId, categoryName, imageUrl, orderCount, productsSold, revenue
+     * Returns: categoryId, categoryName, imageUrl, orderCount, productsSold, revenue, avgOrderValue
+     * Revenue = SUM(quantity * amount) from delivered orders
+     * Note: amount is the price at time of purchase (already includes item-level discounts)
      */
     @Query("""
         SELECT
@@ -108,7 +116,7 @@ public interface OrderDetailRepository extends JpaRepository<OrderDetail, String
             COUNT(DISTINCT od.order.orderId) as orderCount,
             SUM(od.quantity) as productsSold,
             SUM(od.quantity * od.amount) as revenue,
-            AVG(od.order.totalAmount) as avgOrderValue
+            AVG(od.order.totalAmount - od.order.discount + od.order.shippingFee) as avgOrderValue
         FROM OrderDetail od
         JOIN od.storeProduct sp
         JOIN sp.variant v

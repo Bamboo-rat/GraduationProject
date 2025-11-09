@@ -372,6 +372,10 @@ public class OrderServiceImpl implements OrderService {
             handleDeliveryCompletion(order);
         }
 
+        if (newStatus == OrderStatus.RETURNED) {
+            handleOrderReturn(order);
+        }
+
         log.info("Order status updated: orderId={}, oldStatus={}, newStatus={}",
                 orderId, oldStatus, newStatus);
 
@@ -879,6 +883,44 @@ public class OrderServiceImpl implements OrderService {
         updateFavoriteStoreMetrics(customer.getUserId(), order.getStore().getStoreId());
 
         log.info("Delivery completion handled successfully: orderId={}", order.getOrderId());
+    }
+
+    /**
+     * Handle order return - refund supplier wallet
+     * CRITICAL: When order is RETURNED, supplier must refund the money back to platform
+     * 
+     * @param order The returned order
+     */
+    private void handleOrderReturn(Order order) {
+        log.info("Handling order return: orderId={}", order.getOrderId());
+
+        String supplierId = order.getStore().getSupplier().getUserId();
+        BigDecimal orderAmount = order.getTotalAmount();
+        boolean isPending = !order.isBalanceReleased();
+
+        // Refund will subtract from supplier wallet AND record commission refund for platform
+        walletService.refundOrder(supplierId, order, orderAmount, isPending);
+
+        log.info("Supplier wallet refunded for returned order: supplierId={}, orderId={}, amount={}, isPending={}", 
+                supplierId, order.getOrderId(), orderAmount, isPending);
+
+        // Return inventory back to store
+        for (OrderDetail detail : order.getOrderDetails()) {
+            StoreProduct storeProduct = detail.getStoreProduct();
+            storeProduct.setStockQuantity(storeProduct.getStockQuantity() + detail.getQuantity());
+            storeProductRepository.save(storeProduct);
+            log.info("Returned inventory: productId={}, quantity={}, newStock={}",
+                    storeProduct.getStoreProductId(), detail.getQuantity(), storeProduct.getStockQuantity());
+        }
+
+        // Refund customer payment if payment was successful
+        if (order.getPayment() != null &&
+                order.getPayment().getStatus() == PaymentStatus.SUCCESS &&
+                order.getPayment().getMethod() != PaymentMethod.COD) {
+            processRefund(order.getOrderId());
+        }
+
+        log.info("Order return handled successfully: orderId={}", order.getOrderId());
     }
 
     /**
