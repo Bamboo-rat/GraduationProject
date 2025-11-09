@@ -12,7 +12,8 @@ public enum TransactionType {
     // Chi phí
     ORDER_REFUND,               // Hoàn tiền cho khách hàng khi hủy đơn
     END_OF_MONTH_WITHDRAWAL,    // Cuối tháng: available → withdrawn (tự động)
-    COMMISSION_FEE,             // Phí hoa hồng hệ thống
+    COMMISSION_FEE,             // Phí hoa hồng hệ thống (trừ từ nhà cung cấp)
+    COMMISSION_REFUND,          // Hoàn hoa hồng khi hủy đơn (Platform mất tiền)
     PENALTY_FEE,                // Phí phạt (vi phạm quy định)
     ADMIN_DEDUCTION,            // Admin trừ tiền (xử phạt...)
     

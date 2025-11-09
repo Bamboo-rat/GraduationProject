@@ -178,8 +178,27 @@ public class WalletServiceImpl implements WalletService {
 
         transactionRepository.save(transaction);
 
-        log.info("Order refunded successfully. Wallet ID: {}, Net refunded: {}, From: {}", 
-                wallet.getWalletId(), netAmount, isStillPending ? "Pending" : "Available");
+
+        if (commissionAmount.compareTo(BigDecimal.ZERO) > 0) {
+            WalletTransaction platformCommissionRefund = new WalletTransaction();
+            platformCommissionRefund.setWallet(wallet);
+            platformCommissionRefund.setTransactionType(TransactionType.COMMISSION_REFUND);
+            platformCommissionRefund.setAmount(commissionAmount); // Positive value to show commission returned
+            platformCommissionRefund.setBalanceAfter(wallet.getAvailableBalance());
+            platformCommissionRefund.setPendingBalanceAfter(wallet.getPendingBalance());
+            platformCommissionRefund.setOrder(order);
+            platformCommissionRefund.setDescription("Hoàn hoa hồng " + supplier.getCommissionRate() +
+                    "% cho đơn hàng #" + order.getOrderCode() + " bị hủy" +
+                    " (Platform SaveFood mất " + formatMoney(commissionAmount) + ")");
+
+            transactionRepository.save(platformCommissionRefund);
+            
+            log.info("Platform commission refund recorded: orderId={}, commission={}", 
+                    order.getOrderId(), commissionAmount);
+        }
+
+        log.info("Order refunded successfully. Wallet ID: {}, Net refunded: {}, Commission refunded: {}, From: {}", 
+                wallet.getWalletId(), netAmount, commissionAmount, isStillPending ? "Pending" : "Available");
     }
 
     @Override

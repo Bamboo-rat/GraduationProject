@@ -545,6 +545,25 @@ public class OrderServiceImpl implements OrderService {
             processRefund(orderId);
         }
 
+
+        if (order.getStatus() == OrderStatus.DELIVERED || 
+            (order.getStatus() == OrderStatus.SHIPPING && order.isBalanceReleased())) {
+            
+            log.info("Cancelling delivered order, refunding supplier wallet: orderId={}", orderId);
+            
+            String supplierId = order.getStore().getSupplier().getUserId();
+            BigDecimal orderAmount = order.getTotalAmount();
+            
+            // Determine if balance is still pending or already released
+            boolean isPending = !order.isBalanceReleased();
+            
+            // Refund will subtract from supplier wallet AND record commission refund for platform
+            walletService.refundOrder(supplierId, order, orderAmount, isPending);
+            
+            log.info("Supplier wallet refunded: supplierId={}, amount={}, isPending={}", 
+                    supplierId, orderAmount, isPending);
+        }
+
         // Rollback promotions
         if (!order.getPromotionUsages().isEmpty()) {
             for (PromotionUsage usage : order.getPromotionUsages()) {
