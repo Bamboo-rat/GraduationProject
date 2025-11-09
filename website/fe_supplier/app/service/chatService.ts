@@ -36,7 +36,7 @@ class ChatService {
       this.stompClient = new Client({
         webSocketFactory: () => socket as any,
         connectHeaders: {
-          Authorization: `Bearer ${token}`,
+          token: token, // Use 'token' header instead of 'Authorization' for SockJS compatibility
         },
         debug: (str) => {
           console.log('STOMP:', str);
