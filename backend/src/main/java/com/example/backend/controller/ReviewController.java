@@ -126,33 +126,33 @@ public class ReviewController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/product/{productId}")
+    @GetMapping("/product/{productVariantId}")
     @Operation(
-            summary = "Get product reviews",
-            description = "Public endpoint to get all reviews for a product with optional rating filter"
+            summary = "Get product variant reviews",
+            description = "Public endpoint to get all reviews for a product variant with optional rating filter"
     )
     public ResponseEntity<Page<ReviewResponse>> getProductReviews(
-            @PathVariable String productId,
+            @PathVariable String productVariantId,
             @Parameter(description = "Filter by rating (1-5)") @RequestParam(required = false) Integer rating,
             @Parameter(description = "Page number (0-indexed)") @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Page size") @RequestParam(defaultValue = "10") int size
     ) {
-        log.info("Getting reviews by product: productId={}, rating={}, page={}, size={}", 
-                productId, rating, page, size);
+        log.info("Getting reviews by product variant: variantId={}, rating={}, page={}, size={}", 
+                productVariantId, rating, page, size);
         
-        Page<ReviewResponse> reviews = reviewService.getProductReviews(productId, rating, page, size);
+        Page<ReviewResponse> reviews = reviewService.getProductReviews(productVariantId, rating, page, size);
         return ResponseEntity.ok(reviews);
     }
 
-    @GetMapping("/product/{productId}/rating")
+    @GetMapping("/product/{productVariantId}/rating")
     @Operation(
-            summary = "Get product rating statistics",
-            description = "Public endpoint to get average rating and distribution for a product"
+            summary = "Get product variant rating statistics",
+            description = "Public endpoint to get average rating and distribution for a product variant"
     )
-    public ResponseEntity<ProductRatingResponse> getProductRating(@PathVariable String productId) {
-        log.info("Getting product rating: productId={}", productId);
+    public ResponseEntity<ProductRatingResponse> getProductRating(@PathVariable String productVariantId) {
+        log.info("Getting product variant rating: variantId={}", productVariantId);
         
-        ProductRatingResponse response = reviewService.getProductRating(productId);
+        ProductRatingResponse response = reviewService.getProductRating(productVariantId);
         return ResponseEntity.ok(response);
     }
 
@@ -172,21 +172,21 @@ public class ReviewController {
         return ResponseEntity.ok(reviews);
     }
 
-    @GetMapping("/product/{productId}/search")
+    @GetMapping("/product/{productVariantId}/search")
     @Operation(
             summary = "Search reviews by keyword",
-            description = "Public endpoint to search reviews for a product by comment keyword"
+            description = "Public endpoint to search reviews for a product variant by comment keyword"
     )
     public ResponseEntity<Page<ReviewResponse>> searchReviews(
-            @PathVariable String productId,
+            @PathVariable String productVariantId,
             @Parameter(description = "Search keyword in review comments") @RequestParam String keyword,
             @Parameter(description = "Page number (0-indexed)") @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Page size") @RequestParam(defaultValue = "10") int size
     ) {
-        log.info("Searching reviews: productId={}, keyword={}, page={}, size={}", 
-                productId, keyword, page, size);
+        log.info("Searching reviews: variantId={}, keyword={}, page={}, size={}", 
+                productVariantId, keyword, page, size);
         
-        Page<ReviewResponse> reviews = reviewService.searchReviews(productId, keyword, page, size);
+        Page<ReviewResponse> reviews = reviewService.searchReviews(productVariantId, keyword, page, size);
         return ResponseEntity.ok(reviews);
     }
 

@@ -15,6 +15,8 @@ export interface ReviewResponse {
   reviewId: string;
   customerId: string;
   customerName: string;
+  productVariantId: string;
+  productVariantName: string;
   productId: string;
   productName: string;
   productImage?: string;
@@ -67,23 +69,23 @@ export const reviewService = {
     return response.data;
   },
 
-  // Get product reviews
-  getProductReviews: async (productId: string, rating?: number, page: number = 0, size: number = 10): Promise<PageResponse<ReviewResponse>> => {
-    const response = await api.get(`/reviews/product/${productId}`, {
+  // Get product variant reviews
+  getProductReviews: async (productVariantId: string, rating?: number, page: number = 0, size: number = 10): Promise<PageResponse<ReviewResponse>> => {
+    const response = await api.get(`/reviews/product/${productVariantId}`, {
       params: { rating, page, size }
     });
     return response.data;
   },
 
-  // Get product rating statistics
-  getProductRating: async (productId: string): Promise<ProductRatingResponse> => {
-    const response = await api.get(`/reviews/product/${productId}/rating`);
+  // Get product variant rating statistics
+  getProductRating: async (productVariantId: string): Promise<ProductRatingResponse> => {
+    const response = await api.get(`/reviews/product/${productVariantId}/rating`);
     return response.data;
   },
 
-  // Search reviews by keyword
-  searchReviews: async (productId: string, keyword: string, page: number = 0, size: number = 10): Promise<PageResponse<ReviewResponse>> => {
-    const response = await api.get(`/reviews/product/${productId}/search`, {
+  // Search reviews by keyword for product variant
+  searchReviews: async (productVariantId: string, keyword: string, page: number = 0, size: number = 10): Promise<PageResponse<ReviewResponse>> => {
+    const response = await api.get(`/reviews/product/${productVariantId}/search`, {
       params: { keyword, page, size }
     });
     return response.data;

@@ -79,6 +79,9 @@ public class SecurityConfig {
 
                         // Public customer-facing endpoints 
                         .requestMatchers("/api/products/**", "/api/categories/**", "/api/stores/public", "/api/stores/top-stores", "/api/stores/*/products","/api/stores/nearby").permitAll()
+                        
+                        // Review endpoints (public read access)
+                        .requestMatchers("/api/reviews/**").permitAll()
 
                         // Partner/Promotion endpoints (temporary permitAll for development)
                         .requestMatchers("/api/partners/**", "/api/promotions/**").permitAll()

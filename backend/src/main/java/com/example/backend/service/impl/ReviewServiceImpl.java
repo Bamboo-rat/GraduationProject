@@ -36,6 +36,7 @@ public class ReviewServiceImpl implements ReviewService {
     private final ReviewRepository reviewRepository;
     private final CustomerRepository customerRepository;
     private final ProductRepository productRepository;
+    private final ProductVariantRepository productVariantRepository;
     private final OrderDetailRepository orderDetailRepository;
     private final PointTransactionRepository pointTransactionRepository;
     private final SystemConfigService systemConfigService;
@@ -79,10 +80,10 @@ public class ReviewServiceImpl implements ReviewService {
                     "Bạn đã đánh giá sản phẩm này rồi");
         }
 
-        // Create review
+        // Create review (now linked to ProductVariant instead of Product)
         Review review = new Review();
         review.setCustomer(customer);
-        review.setProduct(orderDetail.getStoreProduct().getVariant().getProduct());
+        review.setProductVariant(orderDetail.getStoreProduct().getVariant());
         review.setStore(orderDetail.getOrder().getStore());
         review.setOrderDetail(orderDetail);
         review.setRating(request.getRating());
@@ -123,7 +124,8 @@ public class ReviewServiceImpl implements ReviewService {
         pointTransaction.setTransactionType(PointTransactionType.BONUS);
         pointTransaction.setPointsChange(bonusPoints);
         
-        String reason = "Đánh giá sản phẩm " + review.getProduct().getName() +
+        String reason = "Đánh giá sản phẩm " + review.getProductVariant().getProduct().getName() +
+                " (" + review.getProductVariant().getName() + ")" +
                 " - Đơn hàng #" + orderDetail.getOrder().getOrderCode();
         if (hasImage) {
             reason += " (có ảnh minh họa)";
@@ -220,19 +222,20 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<ReviewResponse> getProductReviews(String productId, Integer rating, int page, int size) {
-        log.info("Getting reviews by product: productId={}, rating={}", productId, rating);
+    public Page<ReviewResponse> getProductReviews(String productVariantId, Integer rating, int page, int size) {
+        log.info("Getting reviews by product variant: variantId={}, rating={}", productVariantId, rating);
 
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND));
+        ProductVariant variant = productVariantRepository.findById(productVariantId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND,
+                        "Không tìm thấy biến thể sản phẩm"));
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
 
         Page<Review> reviews;
         if (rating != null) {
-            reviews = reviewRepository.findByProductAndRatingRange(product, rating, rating, pageable);
+            reviews = reviewRepository.findByProductVariantAndRatingRange(variant, rating, rating, pageable);
         } else {
-            reviews = reviewRepository.findByProductAndMarkedAsSpamFalseOrderByCreatedAtDesc(product, pageable);
+            reviews = reviewRepository.findByProductVariantAndMarkedAsSpamFalseOrderByCreatedAtDesc(variant, pageable);
         }
 
         return reviews.map(review -> mapToResponse(review, null));
@@ -254,15 +257,16 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Override
     @Transactional(readOnly = true)
-    public ProductRatingResponse getProductRating(String productId) {
-        log.info("Getting product rating: productId={}", productId);
+    public ProductRatingResponse getProductRating(String productVariantId) {
+        log.info("Getting product variant rating: variantId={}", productVariantId);
 
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND));
+        ProductVariant variant = productVariantRepository.findById(productVariantId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND,
+                        "Không tìm thấy biến thể sản phẩm"));
 
-        Double averageRating = reviewRepository.calculateAverageRating(product);
-        long totalReviews = reviewRepository.countReviewsByProduct(product);
-        List<Object[]> ratingDist = reviewRepository.getRatingDistribution(product);
+        Double averageRating = reviewRepository.calculateAverageRating(variant);
+        long totalReviews = reviewRepository.countReviewsByProductVariant(variant);
+        List<Object[]> ratingDist = reviewRepository.getRatingDistribution(variant);
 
         // Build rating distribution map
         Map<Integer, Long> ratingDistribution = new HashMap<>();
@@ -285,8 +289,8 @@ public class ReviewServiceImpl implements ReviewService {
         }
 
         return ProductRatingResponse.builder()
-                .productId(productId)
-                .productName(product.getName())
+                .productId(variant.getProduct().getProductId())
+                .productName(variant.getProduct().getName() + " - " + variant.getName())
                 .averageRating(averageRating != null ? Math.round(averageRating * 10.0) / 10.0 : 0.0)
                 .totalReviews(totalReviews)
                 .ratingDistribution(ratingDistribution)
@@ -323,14 +327,15 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<ReviewResponse> searchReviews(String productId, String keyword, int page, int size) {
-        log.info("Searching reviews: productId={}, keyword={}", productId, keyword);
+    public Page<ReviewResponse> searchReviews(String productVariantId, String keyword, int page, int size) {
+        log.info("Searching reviews: variantId={}, keyword={}", productVariantId, keyword);
 
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND));
+        ProductVariant variant = productVariantRepository.findById(productVariantId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND,
+                        "Không tìm thấy biến thể sản phẩm"));
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<Review> reviews = reviewRepository.searchByKeyword(product, keyword, pageable);
+        Page<Review> reviews = reviewRepository.searchByKeyword(variant, keyword, pageable);
 
         return reviews.map(review -> mapToResponse(review, null));
     }
@@ -338,10 +343,16 @@ public class ReviewServiceImpl implements ReviewService {
     // Helper methods
 
     private ReviewResponse mapToResponse(Review review, String currentCustomerId) {
-        Product product = review.getProduct();
-        String productImage = product.getImages().isEmpty()
-                ? null
-                : product.getImages().get(0).getImageUrl();
+        ProductVariant variant = review.getProductVariant();
+        Product product = variant.getProduct();
+        
+        // Try to get variant image first, fallback to product images
+        String productImage = null;
+        if (!variant.getVariantImages().isEmpty()) {
+            productImage = variant.getVariantImages().get(0).getImageUrl();
+        } else if (!product.getImages().isEmpty()) {
+            productImage = product.getImages().get(0).getImageUrl();
+        }
 
         boolean canEdit = false;
         boolean canDelete = false;
@@ -359,6 +370,8 @@ public class ReviewServiceImpl implements ReviewService {
                 .reviewId(review.getReviewId())
                 .customerId(review.getCustomer().getUserId())
                 .customerName(review.getCustomer().getFullName())
+                .productVariantId(variant.getVariantId())
+                .productVariantName(variant.getName())
                 .productId(product.getProductId())
                 .productName(product.getName())
                 .storeId(review.getStore().getStoreId())

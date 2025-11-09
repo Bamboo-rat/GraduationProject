@@ -16,8 +16,10 @@ public class ReviewResponse {
     private String reviewId;
     private String customerId;
     private String customerName;
-    private String productId;
-    private String productName;
+    private String productVariantId;
+    private String productVariantName;
+    private String productId;       // ID of parent product
+    private String productName;     // Name of parent product
     private String storeId;
     private String storeName;
     private String orderDetailId;
@@ -33,7 +35,7 @@ public class ReviewResponse {
     private LocalDateTime repliedAt;
     
     // Additional info
-    private String productImage;
+    private String productImage;    // Image of the variant
     private boolean canEdit;        // Customer can edit within X days
     private boolean canDelete;      // Customer can delete
     private boolean canReply;       // Supplier can reply

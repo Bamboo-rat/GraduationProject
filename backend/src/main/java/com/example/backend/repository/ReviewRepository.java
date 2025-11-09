@@ -2,7 +2,7 @@ package com.example.backend.repository;
 
 import com.example.backend.entity.Customer;
 import com.example.backend.entity.OrderDetail;
-import com.example.backend.entity.Product;
+import com.example.backend.entity.ProductVariant;
 import com.example.backend.entity.Review;
 import com.example.backend.entity.Store;
 import org.springframework.data.domain.Page;
@@ -29,9 +29,9 @@ public interface ReviewRepository extends JpaRepository<Review, String> {
     boolean existsByOrderDetail(OrderDetail orderDetail);
 
     /**
-     * Find all reviews by product
+     * Find all reviews by product variant
      */
-    Page<Review> findByProductAndMarkedAsSpamFalseOrderByCreatedAtDesc(Product product, Pageable pageable);
+    Page<Review> findByProductVariantAndMarkedAsSpamFalseOrderByCreatedAtDesc(ProductVariant productVariant, Pageable pageable);
 
     /**
      * Find all reviews by customer
@@ -54,16 +54,16 @@ public interface ReviewRepository extends JpaRepository<Review, String> {
     Page<Review> findByStoreAndMarkedAsSpamFalseOrderByCreatedAtDesc(Store store, Pageable pageable);
 
     /**
-     * Calculate average rating for product (excluding spam)
+     * Calculate average rating for product variant (excluding spam)
      */
-    @Query("SELECT AVG(r.rating) FROM Review r WHERE r.product = :product AND r.markedAsSpam = false")
-    Double calculateAverageRating(@Param("product") Product product);
+    @Query("SELECT AVG(r.rating) FROM Review r WHERE r.productVariant = :variant AND r.markedAsSpam = false")
+    Double calculateAverageRating(@Param("variant") ProductVariant variant);
 
     /**
-     * Count reviews for product (excluding spam)
+     * Count reviews for product variant (excluding spam)
      */
-    @Query("SELECT COUNT(r) FROM Review r WHERE r.product = :product AND r.markedAsSpam = false")
-    long countReviewsByProduct(@Param("product") Product product);
+    @Query("SELECT COUNT(r) FROM Review r WHERE r.productVariant = :variant AND r.markedAsSpam = false")
+    long countReviewsByProductVariant(@Param("variant") ProductVariant variant);
 
     /**
      * Calculate average rating for store (excluding spam)
@@ -72,26 +72,26 @@ public interface ReviewRepository extends JpaRepository<Review, String> {
     Double calculateStoreAverageRating(@Param("store") Store store);
 
     /**
-     * Find reviews by rating range
+     * Find reviews by rating range for product variant
      */
-    @Query("SELECT r FROM Review r WHERE r.product = :product " +
+    @Query("SELECT r FROM Review r WHERE r.productVariant = :variant " +
            "AND r.rating >= :minRating AND r.rating <= :maxRating " +
            "AND r.markedAsSpam = false " +
            "ORDER BY r.createdAt DESC")
-    Page<Review> findByProductAndRatingRange(
-            @Param("product") Product product,
+    Page<Review> findByProductVariantAndRatingRange(
+            @Param("variant") ProductVariant variant,
             @Param("minRating") int minRating,
             @Param("maxRating") int maxRating,
             Pageable pageable
     );
 
     /**
-     * Get rating distribution for product
+     * Get rating distribution for product variant
      */
     @Query("SELECT r.rating, COUNT(r) FROM Review r " +
-           "WHERE r.product = :product AND r.markedAsSpam = false " +
+           "WHERE r.productVariant = :variant AND r.markedAsSpam = false " +
            "GROUP BY r.rating ORDER BY r.rating DESC")
-    List<Object[]> getRatingDistribution(@Param("product") Product product);
+    List<Object[]> getRatingDistribution(@Param("variant") ProductVariant variant);
 
     /**
      * Find spam reviews (for admin moderation)
@@ -99,14 +99,14 @@ public interface ReviewRepository extends JpaRepository<Review, String> {
     Page<Review> findByMarkedAsSpamTrueOrderByCreatedAtDesc(Pageable pageable);
 
     /**
-     * Find reviews with comment containing keyword
+     * Find reviews with comment containing keyword for product variant
      */
-    @Query("SELECT r FROM Review r WHERE r.product = :product " +
+    @Query("SELECT r FROM Review r WHERE r.productVariant = :variant " +
            "AND r.markedAsSpam = false " +
            "AND LOWER(r.comment) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
            "ORDER BY r.createdAt DESC")
     Page<Review> searchByKeyword(
-            @Param("product") Product product,
+            @Param("variant") ProductVariant variant,
             @Param("keyword") String keyword,
             Pageable pageable
     );
