@@ -224,8 +224,9 @@ export default function SupportPartners() {
     return date.toLocaleDateString('vi-VN');
   };
 
-  const getMessageStatus = (message: ChatMessage, currentUserId: string | undefined) => {
-    if (message.sender.userId !== currentUserId) return null;
+  const getMessageStatus = (message: ChatMessage) => {
+    // Only show status for messages sent by current user (admin)
+    if (!currentUserId || message.sender.userId !== currentUserId) return null;
 
     switch (message.status) {
       case 'SENT':
@@ -326,18 +327,18 @@ export default function SupportPartners() {
 
       {/* Chat Area */}
       <div className="flex-1 flex flex-col">
-        {selectedConversation ? (
+        {selectedSupplier ? (
           <>
             {/* Chat Header */}
             <div className="p-4 border-b border-gray-200 flex items-center gap-3">
               <img
-                src={selectedConversation.otherUser.avatarUrl || '/default-avatar.png'}
-                alt={selectedConversation.otherUser.fullName}
+                src={selectedSupplier.avatarUrl || '/default-avatar.png'}
+                alt={selectedSupplier.businessName || selectedSupplier.fullName}
                 className="w-10 h-10 rounded-full object-cover"
               />
               <div>
-                <h3 className="font-medium">{selectedConversation.otherUser.fullName}</h3>
-                <p className="text-sm text-gray-500">{selectedConversation.otherUser.email}</p>
+                <h3 className="font-medium">{selectedSupplier.businessName || selectedSupplier.fullName}</h3>
+                <p className="text-sm text-gray-500">{selectedSupplier.email}</p>
               </div>
             </div>
 
@@ -353,8 +354,8 @@ export default function SupportPartners() {
                 </div>
               ) : (
                 <>
-                  {[...messages].reverse().map((message) => {
-                    const isOwn = message.sender.userId !== selectedConversation.otherUser.userId;
+                  {messages.map((message) => {
+                    const isOwn = message.sender.userId !== selectedSupplier.userId;
                     return (
                       <div
                         key={message.messageId}
@@ -377,7 +378,7 @@ export default function SupportPartners() {
                                 minute: '2-digit',
                               })}
                             </span>
-                            {getMessageStatus(message, message.sender.userId)}
+                            {getMessageStatus(message)}
                           </div>
                         </div>
                       </div>

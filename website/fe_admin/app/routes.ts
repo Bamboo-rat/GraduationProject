@@ -21,6 +21,7 @@ export default [
     route("partners/store-approval", "routes/partners/store-approval.tsx"),
     route("partners/business-updates", "routes/partners/business-updates.tsx"),
     route("partners/performance", "routes/partners/performance.tsx"),
+    route("partners/chat", "routes/partners/chat.tsx"),
     route("partners/:userId", "routes/partners/$userId.tsx"),
 
     // Products Management

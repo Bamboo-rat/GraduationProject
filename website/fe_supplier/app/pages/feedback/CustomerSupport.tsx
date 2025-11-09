@@ -46,7 +46,7 @@ export default function CustomerSupport() {
         if (selectedConversation &&
             (message.sender.userId === selectedConversation.otherUser.userId ||
              message.receiver.userId === selectedConversation.otherUser.userId)) {
-          setMessages(prev => [message, ...prev]);
+          setMessages(prev => [...prev, message]); // Append to end
           // Mark as read immediately
           chatService.markAsRead(message.messageId);
         }
@@ -86,12 +86,15 @@ export default function CustomerSupport() {
     setLoading(true);
     try {
       const data = await chatService.getConversation(otherUserId, 0, 50);
-      setMessages(data.content.reverse()); // Reverse to show oldest first
+      // Keep ascending order (oldest first)
+      setMessages(data.content.reverse());
       // Mark conversation as read
       await chatService.markConversationAsRead(otherUserId);
       loadConversations(); // Refresh conversations to update unread count
     } catch (error) {
       console.error('Failed to load messages:', error);
+      // If no conversation exists yet, just set empty messages
+      setMessages([]);
     } finally {
       setLoading(false);
     }
@@ -115,12 +118,13 @@ export default function CustomerSupport() {
       if (isConnected) {
         // Send via WebSocket for real-time delivery
         chatService.sendMessageViaWebSocket(request);
+        setMessageInput('');
       } else {
         // Fallback to REST API
         const message = await chatService.sendMessage(request);
-        setMessages(prev => [message, ...prev]);
+        setMessages(prev => [...prev, message]); // Append to end
+        setMessageInput('');
       }
-      setMessageInput('');
       loadConversations(); // Refresh conversations
     } catch (error) {
       console.error('Failed to send message:', error);
@@ -283,7 +287,7 @@ export default function CustomerSupport() {
                 </div>
               ) : (
                 <>
-                  {[...messages].reverse().map((message) => {
+                  {messages.map((message) => {
                     const isOwn = message.sender.userId !== selectedConversation.otherUser.userId;
                     return (
                       <div
