@@ -19,6 +19,7 @@ import com.example.backend.service.ChatService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -140,8 +141,10 @@ public class ChatServiceImpl implements ChatService {
                         .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND,
                                 "Partner user not found"));
 
-                // Get last message
-                ChatMessage lastMessage = chatMessageRepository.findLastMessageBetweenUsers(userId, partnerId);
+                // Get last message (use PageRequest to get top 1)
+                Pageable pageRequest = PageRequest.of(0, 1);
+                List<ChatMessage> lastMessages = chatMessageRepository.findLastMessageBetweenUsers(userId, partnerId, pageRequest);
+                ChatMessage lastMessage = lastMessages.isEmpty() ? null : lastMessages.get(0);
 
                 if (lastMessage != null) {
                     // Get unread count

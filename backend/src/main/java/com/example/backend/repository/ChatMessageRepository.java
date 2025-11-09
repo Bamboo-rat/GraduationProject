@@ -52,11 +52,11 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, String
     @Query("SELECT cm FROM ChatMessage cm " +
            "WHERE (cm.sender.userId = :userId1 AND cm.receiver.userId = :userId2) " +
            "OR (cm.sender.userId = :userId2 AND cm.receiver.userId = :userId1) " +
-           "ORDER BY cm.sendTime DESC " +
-           "LIMIT 1")
-    ChatMessage findLastMessageBetweenUsers(
+           "ORDER BY cm.sendTime DESC")
+    List<ChatMessage> findLastMessageBetweenUsers(
         @Param("userId1") String userId1,
-        @Param("userId2") String userId2
+        @Param("userId2") String userId2,
+        Pageable pageable
     );
 
     /**

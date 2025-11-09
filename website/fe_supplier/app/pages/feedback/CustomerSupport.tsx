@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Send, Search, MessageSquare, Circle, CheckCheck } from 'lucide-react';
 import chatService from '~/service/chatService';
 import type { ChatMessage, Conversation, ChatMessageRequest } from '~/service/types';
+import { MessageType } from '~/service/types';
 
 export default function CustomerSupport() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -107,7 +108,7 @@ export default function CustomerSupport() {
     const request: ChatMessageRequest = {
       content: messageInput.trim(),
       receiverId: selectedConversation.otherUser.userId,
-      type: 'TEXT',
+      type: MessageType.TEXT,
     };
 
     try {
