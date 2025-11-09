@@ -150,6 +150,33 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     @Transactional
+    public void markAsDelivered(String messageId, String userId) {
+        log.info("Marking message {} as delivered to user {}", messageId, userId);
+
+        // Get message
+        ChatMessage message = chatMessageRepository.findById(messageId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.MESSAGE_NOT_FOUND,
+                        "Message not found"));
+
+        // Verify user is the receiver
+        if (!message.getReceiver().getUserId().equals(userId)) {
+            throw new ForbiddenException(ErrorCode.UNAUTHORIZED_MESSAGE_ACCESS,
+                    "You can only mark your own messages as delivered");
+        }
+
+        // Only update if current status is SENT (prevent downgrade from READ to DELIVERED)
+        if (message.getStatus() == MessageStatus.SENT) {
+            message.setStatus(MessageStatus.DELIVERED);
+            chatMessageRepository.save(message);
+            log.info("Message {} marked as delivered", messageId);
+        } else {
+            log.debug("Message {} already has status {}, not updating to DELIVERED", 
+                    messageId, message.getStatus());
+        }
+    }
+
+    @Override
+    @Transactional
     public void markAsRead(String messageId, String userId) {
         log.info("Marking message {} as read by user {}", messageId, userId);
 
@@ -164,7 +191,7 @@ public class ChatServiceImpl implements ChatService {
                     "You can only mark your own messages as read");
         }
 
-        // Update status
+        // Update status to READ (can upgrade from both SENT and DELIVERED)
         message.setStatus(MessageStatus.READ);
         chatMessageRepository.save(message);
 

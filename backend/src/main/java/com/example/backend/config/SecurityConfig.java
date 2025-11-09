@@ -41,7 +41,8 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/api/demo/shipping/**",
                                 "/v3/api-docs/**",
-                                "/api/mobile/**"
+                                "/api/mobile/**",
+                                "/api/chat/**"
                         ).permitAll()
 
                         // Authenticated endpoints

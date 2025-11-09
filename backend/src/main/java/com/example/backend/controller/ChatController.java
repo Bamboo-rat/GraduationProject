@@ -93,10 +93,24 @@ public class ChatController {
         return ResponseEntity.ok(ApiResponse.success(messages));
     }
 
+    @PostMapping("/messages/{messageId}/delivered")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'SUPPLIER', 'SUPER_ADMIN', 'MODERATOR', 'STAFF')")
+    @Operation(summary = "Mark message as delivered",
+               description = "Mark a specific message as delivered when received via WebSocket (receiver only)")
+    public ResponseEntity<ApiResponse<Void>> markMessageAsDelivered(
+            Authentication authentication,
+            @PathVariable String messageId) {
+        String userId = getUserIdFromAuth(authentication);
+        log.info("POST /api/chat/messages/{}/delivered - User {} marking message as delivered", messageId, userId);
+
+        chatService.markAsDelivered(messageId, userId);
+        return ResponseEntity.ok(ApiResponse.success("Message marked as delivered"));
+    }
+
     @PostMapping("/messages/{messageId}/read")
     @PreAuthorize("hasAnyRole('CUSTOMER', 'SUPPLIER', 'SUPER_ADMIN', 'MODERATOR', 'STAFF')")
     @Operation(summary = "Mark message as read",
-               description = "Mark a specific message as read (receiver only)")
+               description = "Mark a specific message as read when user opens/views the conversation (receiver only)")
     public ResponseEntity<ApiResponse<Void>> markMessageAsRead(
             Authentication authentication,
             @PathVariable String messageId) {

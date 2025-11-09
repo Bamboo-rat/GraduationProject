@@ -1,8 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import DashboardLayout from '~/component/layout/DashboardLayout';
-import customerService, { type CustomerResponse } from '~/service/customerService';
+import customerService, {
+  type CustomerResponse,
+  type CustomerDetailResponse,
+  type ViolationsDiscipline,
+  type BehavioralStatistics,
+  type EvaluationRecommendation
+} from '~/service/customerService';
 import Toast, { type ToastType } from '~/component/common/Toast';
+import SuspendBanConfirmModal from '~/component/features/SuspendBanConfirmModal';
 
 export default function CustomersList() {
   const navigate = useNavigate();
@@ -22,7 +29,23 @@ export default function CustomersList() {
   const [tierFilter, setTierFilter] = useState<string | undefined>(undefined);
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
-  const [confirmModal, setConfirmModal] = useState<{ userId: string; currentActive: boolean } | null>(null);
+
+  // Suspend modal state
+  const [suspendModal, setSuspendModal] = useState<{
+    show: boolean;
+    action: 'suspend' | 'activate' | null;
+    userId: string | null;
+    customerName: string | null;
+    customerStatus: string | null;
+  }>({
+    show: false,
+    action: null,
+    userId: null,
+    customerName: null,
+    customerStatus: null,
+  });
+  const [customerDetail, setCustomerDetail] = useState<CustomerDetailResponse | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
 
   // Debounce search
   useEffect(() => {
@@ -95,22 +118,86 @@ export default function CustomersList() {
     );
   };
 
-  const handleToggleActive = async (userId: string, currentActive: boolean) => {
+  const handleOpenSuspendModal = async (customer: CustomerResponse) => {
+    const action = customer.status === 'SUSPENDED' ? 'activate' : 'suspend';
+
+    setSuspendModal({
+      show: true,
+      action,
+      userId: customer.userId,
+      customerName: customer.fullName || customer.username,
+      customerStatus: customer.status,
+    });
+
+    // Fetch customer details if suspending (to show violations)
+    if (action === 'suspend') {
+      try {
+        setLoadingDetail(true);
+        const detail = await customerService.getCustomerDetailForAdmin(customer.userId);
+        setCustomerDetail(detail);
+      } catch (err: any) {
+        console.error('Failed to fetch customer details:', err);
+        // Still allow suspend even if detail fetch fails
+        setCustomerDetail(null);
+      } finally {
+        setLoadingDetail(false);
+      }
+    } else {
+      setCustomerDetail(null);
+    }
+  };
+
+  const handleConfirmSuspend = async (reason?: string, durationDays?: number) => {
+    if (!suspendModal.userId || !suspendModal.action) return;
+
     try {
-      await customerService.setActiveStatus(userId, !currentActive);
-      setToast({
-        message: `Đã ${!currentActive ? 'kích hoạt' : 'tạm khóa'} tài khoản khách hàng thành công`,
-        type: 'success'
+      if (suspendModal.action === 'suspend') {
+        if (!reason) {
+          setToast({
+            message: 'Vui lòng nhập lý do khóa tài khoản',
+            type: 'error'
+          });
+          return;
+        }
+        await customerService.suspendCustomer(suspendModal.userId, reason, durationDays);
+        setToast({
+          message: 'Đã khóa tài khoản khách hàng thành công',
+          type: 'success'
+        });
+      } else if (suspendModal.action === 'activate') {
+        await customerService.unsuspendCustomer(suspendModal.userId);
+        setToast({
+          message: 'Đã kích hoạt lại tài khoản khách hàng thành công',
+          type: 'success'
+        });
+      }
+
+      setSuspendModal({
+        show: false,
+        action: null,
+        userId: null,
+        customerName: null,
+        customerStatus: null,
       });
-      setConfirmModal(null);
+      setCustomerDetail(null);
       fetchCustomers(); // Refresh list
     } catch (err: any) {
       setToast({
-        message: err.message || 'Không thể cập nhật trạng thái',
+        message: err.response?.data?.message || err.message || 'Không thể cập nhật trạng thái',
         type: 'error'
       });
-      setConfirmModal(null);
     }
+  };
+
+  const handleCancelSuspend = () => {
+    setSuspendModal({
+      show: false,
+      action: null,
+      userId: null,
+      customerName: null,
+      customerStatus: null,
+    });
+    setCustomerDetail(null);
   };
 
   const handleViewDetail = (userId: string) => {
@@ -300,14 +387,14 @@ export default function CustomersList() {
                           Chi tiết
                         </button>
                         <button
-                          onClick={() => setConfirmModal({ userId: customer.userId, currentActive: customer.active })}
+                          onClick={() => handleOpenSuspendModal(customer)}
                           className={`${
-                            customer.active
-                              ? 'text-red-600 hover:text-red-900'
-                              : 'text-green-600 hover:text-green-900'
+                            customer.status === 'SUSPENDED'
+                              ? 'text-green-600 hover:text-green-900'
+                              : 'text-red-600 hover:text-red-900'
                           }`}
                         >
-                          {customer.active ? 'Tạm khóa' : 'Kích hoạt'}
+                          {customer.status === 'SUSPENDED' ? 'Kích hoạt lại' : 'Khóa tài khoản'}
                         </button>
                       </td>
                     </tr>
@@ -390,39 +477,30 @@ export default function CustomersList() {
           )}
         </div>
       </div>
-      
-      {/* Confirmation Modal */}
-      {confirmModal && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center w-full h-full z-50 p-4 animate-fadeIn">
-          <div className="bg-white rounded-lg shadow-xl p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-              Xác nhận {confirmModal.currentActive ? 'tạm khóa' : 'kích hoạt'}
-            </h3>
-            <p className="text-gray-600 mb-6">
-              Bạn có chắc muốn {confirmModal.currentActive ? 'tạm khóa' : 'kích hoạt'} khách hàng này?
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setConfirmModal(null)}
-                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={() => handleToggleActive(confirmModal.userId, confirmModal.currentActive)}
-                className={`px-4 py-2 text-white rounded-lg font-medium transition-colors ${
-                  confirmModal.currentActive
-                    ? 'bg-red-600 hover:bg-red-700'
-                    : 'bg-green-600 hover:bg-green-700'
-                }`}
-              >
-                {confirmModal.currentActive ? 'Tạm khóa' : 'Kích hoạt'}
-              </button>
+
+      {/* Suspend/Activate Modal with Violation Details */}
+      {suspendModal.show && (
+        loadingDetail ? (
+          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center w-full h-full z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full mx-4 text-center">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+              <p className="text-gray-600">Đang tải thông tin khách hàng...</p>
             </div>
           </div>
-        </div>
+        ) : (
+          <SuspendBanConfirmModal
+            show={suspendModal.show}
+            action={suspendModal.action}
+            customerName={suspendModal.customerName || ''}
+            violations={customerDetail?.violationsDiscipline || null}
+            statistics={customerDetail?.behavioralStatistics || null}
+            recommendation={customerDetail?.evaluationRecommendation || null}
+            onConfirm={handleConfirmSuspend}
+            onCancel={handleCancelSuspend}
+          />
+        )
       )}
-      
+
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </DashboardLayout>
   );

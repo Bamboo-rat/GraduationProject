@@ -10,6 +10,7 @@ interface ProfileFormData {
   email: string;
   fullName: string;
   phoneNumber: string;
+  gender?: string;
   role: string;
   status: string;
   avatarUrl?: string;
@@ -24,6 +25,7 @@ const Profile: React.FC = () => {
     email: '',
     fullName: '',
     phoneNumber: '',
+    gender: undefined,
     role: '',
     status: '',
   });
@@ -36,6 +38,7 @@ const Profile: React.FC = () => {
         email: user.email || '',
         fullName: user.fullName || '',
         phoneNumber: user.phoneNumber || '',
+        gender: user.gender || undefined,
         role: user.roles?.[0] || '',
         status: user.status || '',
         avatarUrl: user.avatarUrl || undefined,
@@ -43,7 +46,7 @@ const Profile: React.FC = () => {
     }
   }, [user]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -68,6 +71,7 @@ const Profile: React.FC = () => {
         fullName: formData.fullName || undefined,
         email: formData.email || undefined,
         phoneNumber: formData.phoneNumber || undefined,
+        gender: formData.gender || undefined,
         avatarUrl: formData.avatarUrl || undefined,
       });
 
@@ -93,6 +97,7 @@ const Profile: React.FC = () => {
         email: user.email || '',
         fullName: user.fullName || '',
         phoneNumber: user.phoneNumber || '',
+        gender: user.gender || undefined,
         role: user.roles?.[0] || '',
         status: user.status || '',
         avatarUrl: user.avatarUrl || undefined,
@@ -268,6 +273,32 @@ const Profile: React.FC = () => {
                     }`}
                     placeholder="0123456789"
                   />
+                </div>
+              </div>
+
+              {/* Gender */}
+              <div>
+                <label className="block text-sm font-semibold text-[#2D2D2D] mb-2">
+                  Giới tính
+                </label>
+                <div className="relative">
+                  <Icons.Users className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#6B6B6B]" />
+                  <select
+                    name="gender"
+                    value={formData.gender || ''}
+                    onChange={handleInputChange}
+                    disabled={!isEditing}
+                    className={`w-full pl-10 pr-4 py-3 border rounded-xl transition-all ${
+                      isEditing
+                        ? 'input-field'
+                        : 'border-[#B7E4C7] bg-[#F5EDE6] cursor-not-allowed text-[#6B6B6B]'
+                    }`}
+                  >
+                    <option value="">Chọn giới tính</option>
+                    <option value="MALE">Nam</option>
+                    <option value="FEMALE">Nữ</option>
+                    <option value="OTHER">Khác</option>
+                  </select>
                 </div>
               </div>
 

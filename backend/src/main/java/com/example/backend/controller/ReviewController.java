@@ -226,6 +226,64 @@ public class ReviewController {
         return ResponseEntity.ok(reviews);
     }
 
+    // ==================== SUPPLIER ENDPOINTS ====================
+
+    @PostMapping("/{reviewId}/reply")
+    @PreAuthorize("hasRole('SUPPLIER')")
+    @Operation(
+            summary = "Supplier replies to a review",
+            description = "Supplier adds a reply to a customer review for their store's product",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<ReviewResponse> replyToReview(
+            Authentication authentication,
+            @PathVariable String reviewId,
+            @Valid @RequestBody com.example.backend.dto.request.ReplyReviewRequest request
+    ) {
+        String supplierId = authentication.getName();
+        log.info("Supplier replying to review: supplierId={}, reviewId={}", supplierId, reviewId);
+        
+        ReviewResponse response = reviewService.replyToReview(supplierId, reviewId, request.getReply());
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{reviewId}/reply")
+    @PreAuthorize("hasRole('SUPPLIER')")
+    @Operation(
+            summary = "Supplier updates their reply",
+            description = "Supplier updates their reply to a review (within 7 days)",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<ReviewResponse> updateReply(
+            Authentication authentication,
+            @PathVariable String reviewId,
+            @Valid @RequestBody com.example.backend.dto.request.ReplyReviewRequest request
+    ) {
+        String supplierId = authentication.getName();
+        log.info("Supplier updating reply: supplierId={}, reviewId={}", supplierId, reviewId);
+        
+        ReviewResponse response = reviewService.updateReply(supplierId, reviewId, request.getReply());
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{reviewId}/reply")
+    @PreAuthorize("hasRole('SUPPLIER')")
+    @Operation(
+            summary = "Supplier deletes their reply",
+            description = "Supplier removes their reply from a review",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<Void> deleteReply(
+            Authentication authentication,
+            @PathVariable String reviewId
+    ) {
+        String supplierId = authentication.getName();
+        log.info("Supplier deleting reply: supplierId={}, reviewId={}", supplierId, reviewId);
+        
+        reviewService.deleteReply(supplierId, reviewId);
+        return ResponseEntity.noContent().build();
+    }
+
     // ==================== FILE UPLOAD ENDPOINT ====================
 
     @PostMapping(value = "/upload-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

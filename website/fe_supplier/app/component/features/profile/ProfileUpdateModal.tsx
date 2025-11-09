@@ -20,6 +20,7 @@ export default function ProfileUpdateModal({ isOpen, onClose, onSuccess, current
   const [formData, setFormData] = useState<SupplierProfileUpdateRequest>({
     fullName: currentSupplier.fullName || '',
     phoneNumber: currentSupplier.phoneNumber || '',
+    gender: currentSupplier.gender || '',
     avatarUrl: currentSupplier.avatarUrl || '',
     businessAddress: currentSupplier.businessAddress || '',
   });
@@ -29,13 +30,14 @@ export default function ProfileUpdateModal({ isOpen, onClose, onSuccess, current
       setFormData({
         fullName: currentSupplier.fullName || '',
         phoneNumber: currentSupplier.phoneNumber || '',
+        gender: currentSupplier.gender || '',
         avatarUrl: currentSupplier.avatarUrl || '',
         businessAddress: currentSupplier.businessAddress || '',
       });
     }
   }, [isOpen, currentSupplier]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -100,6 +102,7 @@ export default function ProfileUpdateModal({ isOpen, onClose, onSuccess, current
       const updateData: SupplierProfileUpdateRequest = {};
       if (formData.fullName) updateData.fullName = formData.fullName;
       if (formData.phoneNumber) updateData.phoneNumber = formData.phoneNumber;
+      if (formData.gender) updateData.gender = formData.gender;
       if (formData.avatarUrl) updateData.avatarUrl = formData.avatarUrl;
       if (formData.businessAddress) updateData.businessAddress = formData.businessAddress;
 
@@ -225,6 +228,24 @@ export default function ProfileUpdateModal({ isOpen, onClose, onSuccess, current
                       placeholder="0912345678"
                     />
                   </div>
+                </div>
+
+                {/* Gender */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Giới tính
+                  </label>
+                  <select
+                    name="gender"
+                    value={formData.gender || ''}
+                    onChange={handleChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  >
+                    <option value="">Chọn giới tính</option>
+                    <option value="MALE">Nam</option>
+                    <option value="FEMALE">Nữ</option>
+                    <option value="OTHER">Khác</option>
+                  </select>
                 </div>
 
                 {/* Business Address */}

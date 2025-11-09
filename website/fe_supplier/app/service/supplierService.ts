@@ -6,6 +6,7 @@ import type { ApiResponse } from './authService';
 export interface SupplierProfileUpdateRequest {
   fullName?: string;
   phoneNumber?: string;
+  gender?: string;
   avatarUrl?: string;
   businessAddress?: string;
 }
@@ -87,6 +88,7 @@ export interface SupplierResponse {
   email: string;
   phoneNumber: string;
   fullName: string;
+  gender?: string;
   avatarUrl: string;
   active: boolean;
 

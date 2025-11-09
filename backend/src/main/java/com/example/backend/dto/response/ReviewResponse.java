@@ -28,8 +28,14 @@ public class ReviewResponse {
     private boolean markedAsSpam;
     private LocalDateTime createdAt;
     
+    // Supplier reply
+    private String supplierReply;
+    private LocalDateTime repliedAt;
+    
     // Additional info
     private String productImage;
     private boolean canEdit;        // Customer can edit within X days
     private boolean canDelete;      // Customer can delete
+    private boolean canReply;       // Supplier can reply
+    private boolean canEditReply;   // Supplier can edit reply within X days
 }

@@ -62,4 +62,19 @@ public interface ReviewService {
      * Search reviews by keyword
      */
     Page<ReviewResponse> searchReviews(String productId, String keyword, int page, int size);
+
+    /**
+     * Supplier replies to a review
+     */
+    ReviewResponse replyToReview(String supplierId, String reviewId, String reply);
+
+    /**
+     * Supplier updates their reply
+     */
+    ReviewResponse updateReply(String supplierId, String reviewId, String reply);
+
+    /**
+     * Supplier deletes their reply
+     */
+    void deleteReply(String supplierId, String reviewId);
 }

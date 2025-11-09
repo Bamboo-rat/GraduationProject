@@ -255,6 +255,30 @@ class CustomerService {
     );
     return response.data.data;
   }
+
+  /**
+   * Suspend customer account (admin only)
+   */
+  async suspendCustomer(userId: string, reason: string, durationDays?: number): Promise<CustomerResponse> {
+    const response = await axiosInstance.post<ApiResponse<CustomerResponse>>(
+      `/customers/${userId}/suspend`,
+      {
+        reason,
+        durationDays,
+      }
+    );
+    return response.data.data;
+  }
+
+  /**
+   * Unsuspend customer account (admin only)
+   */
+  async unsuspendCustomer(userId: string): Promise<CustomerResponse> {
+    const response = await axiosInstance.post<ApiResponse<CustomerResponse>>(
+      `/customers/${userId}/unsuspend`
+    );
+    return response.data.data;
+  }
 }
 
 export default new CustomerService();

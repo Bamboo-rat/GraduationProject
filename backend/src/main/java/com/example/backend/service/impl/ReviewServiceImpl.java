@@ -13,6 +13,7 @@ import com.example.backend.exception.custom.NotFoundException;
 import com.example.backend.repository.*;
 import com.example.backend.service.ReviewService;
 import com.example.backend.service.SystemConfigService;
+import com.example.backend.repository.SupplierRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -38,6 +39,7 @@ public class ReviewServiceImpl implements ReviewService {
     private final OrderDetailRepository orderDetailRepository;
     private final PointTransactionRepository pointTransactionRepository;
     private final SystemConfigService systemConfigService;
+    private final SupplierRepository supplierRepository;
 
     private static final String CONFIG_KEY_REVIEW_BONUS_POINTS = "points.review.bonus";
     private static final String CONFIG_KEY_REVIEW_IMAGE_BONUS_POINTS = "points.review.image.bonus";
@@ -350,6 +352,9 @@ public class ReviewServiceImpl implements ReviewService {
             canDelete = true;
         }
 
+        boolean canReply = false;
+        boolean canEditReply = false;
+
         return ReviewResponse.builder()
                 .reviewId(review.getReviewId())
                 .customerId(review.getCustomer().getUserId())
@@ -363,11 +368,125 @@ public class ReviewServiceImpl implements ReviewService {
                 .rating(review.getRating())
                 .comment(review.getComment())
                 .imageUrl(review.getImageUrl())
+                .supplierReply(review.getSupplierReply())
+                .repliedAt(review.getRepliedAt())
                 .markedAsSpam(review.isMarkedAsSpam())
                 .createdAt(review.getCreatedAt())
                 .productImage(productImage)
                 .canEdit(canEdit)
                 .canDelete(canDelete)
+                .canReply(canReply)
+                .canEditReply(canEditReply)
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public ReviewResponse replyToReview(String supplierId, String reviewId, String reply) {
+        log.info("Supplier replying to review: supplierId={}, reviewId={}", supplierId, reviewId);
+
+        // Get supplier
+        Supplier supplier = supplierRepository.findById(supplierId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+
+        // Get review
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND,
+                        "Không tìm thấy đánh giá"));
+
+        // Validate: Supplier must own this store
+        if (!review.getStore().getSupplier().getUserId().equals(supplierId)) {
+            throw new BadRequestException(ErrorCode.UNAUTHORIZED_ACCESS,
+                    "Bạn không có quyền trả lời đánh giá của cửa hàng khác");
+        }
+
+        // Validate: Cannot reply twice
+        if (review.getSupplierReply() != null) {
+            throw new BadRequestException(ErrorCode.RESOURCE_ALREADY_EXISTS,
+                    "Bạn đã trả lời đánh giá này rồi. Vui lòng sử dụng chức năng sửa phản hồi");
+        }
+
+        // Add reply
+        review.setSupplierReply(reply);
+        review.setRepliedAt(LocalDateTime.now());
+        review = reviewRepository.save(review);
+
+        log.info("Supplier replied to review successfully: reviewId={}", reviewId);
+        return mapToResponse(review, null);
+    }
+
+    @Override
+    @Transactional
+    public ReviewResponse updateReply(String supplierId, String reviewId, String reply) {
+        log.info("Supplier updating reply: supplierId={}, reviewId={}", supplierId, reviewId);
+
+        // Get supplier
+        Supplier supplier = supplierRepository.findById(supplierId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+
+        // Get review
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND,
+                        "Không tìm thấy đánh giá"));
+
+        // Validate: Supplier must own this store
+        if (!review.getStore().getSupplier().getUserId().equals(supplierId)) {
+            throw new BadRequestException(ErrorCode.UNAUTHORIZED_ACCESS,
+                    "Bạn không có quyền sửa phản hồi của cửa hàng khác");
+        }
+
+        // Validate: Must have existing reply
+        if (review.getSupplierReply() == null) {
+            throw new BadRequestException(ErrorCode.RESOURCE_NOT_FOUND,
+                    "Chưa có phản hồi để sửa");
+        }
+
+        // Check edit window (7 days from reply date)
+        LocalDateTime editDeadline = review.getRepliedAt().plusDays(REVIEW_EDIT_WINDOW_DAYS);
+        if (LocalDateTime.now().isAfter(editDeadline)) {
+            throw new BadRequestException(ErrorCode.OPERATION_NOT_ALLOWED,
+                    "Đã quá thời hạn chỉnh sửa phản hồi (7 ngày)");
+        }
+
+        // Update reply
+        review.setSupplierReply(reply);
+        review = reviewRepository.save(review);
+
+        log.info("Supplier reply updated successfully: reviewId={}", reviewId);
+        return mapToResponse(review, null);
+    }
+
+    @Override
+    @Transactional
+    public void deleteReply(String supplierId, String reviewId) {
+        log.info("Supplier deleting reply: supplierId={}, reviewId={}", supplierId, reviewId);
+
+        // Get supplier
+        Supplier supplier = supplierRepository.findById(supplierId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+
+        // Get review
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND,
+                        "Không tìm thấy đánh giá"));
+
+        // Validate: Supplier must own this store
+        if (!review.getStore().getSupplier().getUserId().equals(supplierId)) {
+            throw new BadRequestException(ErrorCode.UNAUTHORIZED_ACCESS,
+                    "Bạn không có quyền xóa phản hồi của cửa hàng khác");
+        }
+
+        // Validate: Must have existing reply
+        if (review.getSupplierReply() == null) {
+            throw new BadRequestException(ErrorCode.RESOURCE_NOT_FOUND,
+                    "Không có phản hồi để xóa");
+        }
+
+        // Delete reply
+        review.setSupplierReply(null);
+        review.setRepliedAt(null);
+        reviewRepository.save(review);
+
+        log.info("Supplier reply deleted successfully: reviewId={}", reviewId);
     }
 }

@@ -32,6 +32,11 @@ public class Review {
     @Column(nullable = false)
     private boolean markedAsSpam = false;
 
+    @Column(nullable = true, length = 1000)
+    private String supplierReply;
+
+    private LocalDateTime repliedAt;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

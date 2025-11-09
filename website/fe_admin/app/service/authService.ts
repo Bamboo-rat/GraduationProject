@@ -22,6 +22,7 @@ export interface UserInfo {
   email: string;
   phoneNumber?: string;
   fullName?: string;
+  gender?: string;
   avatarUrl?: string;
   roles: string[];
   status: string;

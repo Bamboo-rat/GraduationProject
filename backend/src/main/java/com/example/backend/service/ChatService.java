@@ -47,6 +47,15 @@ public interface ChatService {
     List<ConversationResponse> getConversations(String userId);
 
     /**
+     * Mark a specific message as delivered
+     * Called when receiver receives the message via WebSocket
+     *
+     * @param messageId ID of the message to mark as delivered
+     * @param userId    ID of the user receiving the message (must be receiver)
+     */
+    void markAsDelivered(String messageId, String userId);
+
+    /**
      * Mark a specific message as read
      *
      * @param messageId ID of the message to mark as read

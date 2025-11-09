@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import type { ViolationsDiscipline, BehavioralStatistics, EvaluationRecommendation } from '~/service/customerService';
 
 interface SuspendBanConfirmModalProps {
@@ -8,7 +8,7 @@ interface SuspendBanConfirmModalProps {
   violations: ViolationsDiscipline | null;
   statistics: BehavioralStatistics | null;
   recommendation: EvaluationRecommendation | null;
-  onConfirm: () => void;
+  onConfirm: (reason?: string, durationDays?: number) => void;
   onCancel: () => void;
 }
 
@@ -22,6 +22,19 @@ export default function SuspendBanConfirmModal({
   onConfirm,
   onCancel,
 }: SuspendBanConfirmModalProps) {
+  const [reason, setReason] = useState('');
+  const [durationDays, setDurationDays] = useState<number | undefined>(undefined);
+  const [durationOption, setDurationOption] = useState<'temporary' | 'indefinite'>('temporary');
+
+  // Reset form when modal opens
+  useEffect(() => {
+    if (show && action === 'suspend') {
+      setReason('');
+      setDurationDays(7);
+      setDurationOption('temporary');
+    }
+  }, [show, action]);
+
   if (!show || !action) return null;
 
   const getActionConfig = () => {
@@ -258,6 +271,112 @@ export default function SuspendBanConfirmModal({
               )}
             </div>
           )}
+
+          {/* Suspension Form (only for suspend action) */}
+          {action === 'suspend' && (
+            <div className="border border-gray-200 rounded-lg p-4">
+              <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                <span className="text-xl">📝</span>
+                Thông tin khóa tài khoản
+              </h3>
+
+              {/* Reason Input */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Lý do khóa tài khoản <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="Nhập lý do khóa tài khoản..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+                  rows={3}
+                  required
+                />
+                {!reason && (
+                  <p className="text-xs text-gray-500 mt-1">Vui lòng nhập lý do để tiếp tục</p>
+                )}
+              </div>
+
+              {/* Duration Options */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Thời gian khóa
+                </label>
+                <div className="space-y-3">
+                  <div className="flex items-center">
+                    <input
+                      type="radio"
+                      id="temporary"
+                      name="duration"
+                      checked={durationOption === 'temporary'}
+                      onChange={() => {
+                        setDurationOption('temporary');
+                        setDurationDays(7);
+                      }}
+                      className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300"
+                    />
+                    <label htmlFor="temporary" className="ml-3 block text-sm text-gray-700">
+                      Tạm thời
+                    </label>
+                  </div>
+                  {durationOption === 'temporary' && (
+                    <div className="ml-7 flex items-center gap-3">
+                      <input
+                        type="number"
+                        min="1"
+                        max="365"
+                        value={durationDays || ''}
+                        onChange={(e) => setDurationDays(parseInt(e.target.value) || undefined)}
+                        className="w-24 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        placeholder="Số ngày"
+                      />
+                      <span className="text-sm text-gray-600">ngày</span>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setDurationDays(7)}
+                          className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
+                        >
+                          7 ngày
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDurationDays(30)}
+                          className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
+                        >
+                          30 ngày
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDurationDays(90)}
+                          className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
+                        >
+                          90 ngày
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex items-center">
+                    <input
+                      type="radio"
+                      id="indefinite"
+                      name="duration"
+                      checked={durationOption === 'indefinite'}
+                      onChange={() => {
+                        setDurationOption('indefinite');
+                        setDurationDays(undefined);
+                      }}
+                      className="h-4 w-4 text-orange-600 focus:ring-orange-500 border-gray-300"
+                    />
+                    <label htmlFor="indefinite" className="ml-3 block text-sm text-gray-700">
+                      Vô thời hạn (cho đến khi được kích hoạt lại)
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer Actions */}
@@ -269,8 +388,19 @@ export default function SuspendBanConfirmModal({
             Hủy bỏ
           </button>
           <button
-            onClick={onConfirm}
-            className={`px-6 py-2 text-white rounded-lg font-medium transition-colors ${config.buttonClass}`}
+            onClick={() => {
+              if (action === 'suspend') {
+                if (!reason.trim()) {
+                  alert('Vui lòng nhập lý do khóa tài khoản');
+                  return;
+                }
+                onConfirm(reason, durationOption === 'temporary' ? durationDays : undefined);
+              } else {
+                onConfirm();
+              }
+            }}
+            disabled={action === 'suspend' && !reason.trim()}
+            className={`px-6 py-2 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${config.buttonClass}`}
           >
             {config.buttonText}
           </button>

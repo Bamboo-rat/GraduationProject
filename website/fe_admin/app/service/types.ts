@@ -74,6 +74,7 @@ export interface UserInfo {
   email: string;
   phoneNumber: string;
   fullName: string;
+  gender?: string;
   avatarUrl: string;
   active: boolean;
   userType: 'CUSTOMER' | 'SUPPLIER' | 'ADMIN';

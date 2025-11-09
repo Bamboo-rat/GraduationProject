@@ -6,6 +6,7 @@ export interface UpdateProfileRequest {
   fullName?: string;
   email?: string;
   phoneNumber?: string;
+  gender?: string;
   avatarUrl?: string;
 }
 

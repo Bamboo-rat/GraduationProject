@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import supplierService from '~/service/supplierService';
 import type { SupplierResponse } from '~/service/supplierService';
-import { Building2, Mail, Phone, MapPin, Briefcase, CreditCard, Store, Package, TrendingUp, Edit, FileText, User as UserIcon, Calendar, DollarSign } from 'lucide-react';
+import { Building2, Mail, Phone, MapPin, Briefcase, CreditCard, Store, Package, TrendingUp, Edit, FileText, User as UserIcon, Calendar, DollarSign, PauseCircle, PlayCircle } from 'lucide-react';
 import AvatarUpload from '~/component/common/AvatarUpload';
 import ProfileUpdateModal from '~/component/features/profile/ProfileUpdateModal';
 import BusinessInfoUpdateModal from '~/component/features/profile/BusinessInfoUpdateModal';
@@ -14,10 +14,14 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: ToastType; message: string } | null>(null);
-  
+
   // Modal states
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isBusinessModalOpen, setIsBusinessModalOpen] = useState(false);
+  const [isPauseModalOpen, setIsPauseModalOpen] = useState(false);
+  const [isResumeModalOpen, setIsResumeModalOpen] = useState(false);
+  const [pauseReason, setPauseReason] = useState('');
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
     fetchSupplierInfo();
@@ -50,6 +54,40 @@ export default function Profile() {
     }
   };
 
+  const handlePauseOperations = async () => {
+    if (!pauseReason.trim()) {
+      setToast({ type: 'error', message: 'Vui lòng nhập lý do tạm dừng' });
+      return;
+    }
+
+    try {
+      setActionLoading(true);
+      await supplierService.pauseOperations(pauseReason);
+      setToast({ type: 'success', message: 'Đã tạm dừng hoạt động thành công!' });
+      setIsPauseModalOpen(false);
+      setPauseReason('');
+      await fetchSupplierInfo();
+    } catch (err: any) {
+      setToast({ type: 'error', message: err.message || 'Không thể tạm dừng hoạt động' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleResumeOperations = async () => {
+    try {
+      setActionLoading(true);
+      await supplierService.resumeOperations();
+      setToast({ type: 'success', message: 'Đã tiếp tục hoạt động thành công!' });
+      setIsResumeModalOpen(false);
+      await fetchSupplierInfo();
+    } catch (err: any) {
+      setToast({ type: 'error', message: err.message || 'Không thể tiếp tục hoạt động' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
@@ -69,7 +107,8 @@ export default function Profile() {
     const statusConfig: Record<string, { label: string; class: string }> = {
       ACTIVE: { label: 'Hoạt động', class: 'badge-success' },
       PENDING_APPROVAL: { label: 'Chờ duyệt', class: 'badge-warning' },
-      SUSPENDED: { label: 'Tạm ngừng', class: 'badge-error' },
+      SUSPENDED: { label: 'Bị đình chỉ', class: 'badge-error' },
+      PAUSE: { label: 'Tạm dừng', class: 'badge-warning' },
       REJECTED: { label: 'Bị từ chối', class: 'badge-neutral' },
     };
     const config = statusConfig[status] || { label: status, class: 'badge-neutral' };
@@ -135,7 +174,7 @@ export default function Profile() {
         </div>
         
         {/* Action Buttons */}
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-wrap">
           <button
             onClick={() => navigate('/store/update-history')}
             className="btn-secondary flex items-center gap-2"
@@ -143,6 +182,29 @@ export default function Profile() {
             <FileText size={18} />
             Lịch sử cập nhật
           </button>
+
+          {/* Pause/Resume Operations Button */}
+          {supplier.status === 'ACTIVE' && (
+            <button
+              onClick={() => setIsPauseModalOpen(true)}
+              className="btn-warning flex items-center gap-2"
+              disabled={actionLoading}
+            >
+              <PauseCircle size={18} />
+              Tạm dừng hoạt động
+            </button>
+          )}
+
+          {supplier.status === 'PAUSE' && (
+            <button
+              onClick={() => setIsResumeModalOpen(true)}
+              className="btn-success flex items-center gap-2"
+              disabled={actionLoading}
+            >
+              <PlayCircle size={18} />
+              Tiếp tục hoạt động
+            </button>
+          )}
         </div>
       </div>
 
@@ -440,7 +502,111 @@ export default function Profile() {
           />
         </>
       )}
-      
+
+      {/* Pause Operations Modal */}
+      {isPauseModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Xác nhận tạm dừng hoạt động</h3>
+
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+              <div className="flex items-start gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-yellow-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <div className="text-sm text-yellow-800">
+                  <p className="font-medium mb-1">Khi tạm dừng hoạt động:</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>Cửa hàng sẽ bị ẩn khỏi tìm kiếm công khai</li>
+                    <li>Không nhận đơn hàng mới</li>
+                    <li>Vẫn có quyền truy cập backend để chuẩn bị dữ liệu</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Lý do tạm dừng <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+                rows={4}
+                placeholder="Nhập lý do tạm dừng (ví dụ: Chuẩn bị hàng hóa, Nghỉ lễ, Nâng cấp cơ sở...)"
+                value={pauseReason}
+                onChange={(e) => setPauseReason(e.target.value)}
+              />
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setIsPauseModalOpen(false);
+                  setPauseReason('');
+                }}
+                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+                disabled={actionLoading}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handlePauseOperations}
+                className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={actionLoading || !pauseReason.trim()}
+              >
+                {actionLoading ? 'Đang xử lý...' : 'Xác nhận tạm dừng'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Resume Operations Modal */}
+      {isResumeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Xác nhận tiếp tục hoạt động</h3>
+
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+              <div className="flex items-start gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div className="text-sm text-green-800">
+                  <p className="font-medium mb-1">Khi tiếp tục hoạt động:</p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>Cửa hàng và sản phẩm sẽ được hiển thị trở lại ngay lập tức</li>
+                    <li>Bắt đầu nhận đơn hàng mới</li>
+                    <li>Tất cả chức năng được kích hoạt lại</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-gray-600 mb-6">
+              Bạn có chắc chắn muốn tiếp tục hoạt động kinh doanh?
+            </p>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setIsResumeModalOpen(false)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
+                disabled={actionLoading}
+              >
+                Hủy
+              </button>
+              <button
+                onClick={handleResumeOperations}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={actionLoading}
+              >
+                {actionLoading ? 'Đang xử lý...' : 'Xác nhận tiếp tục'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Toast notification */}
       {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToast(null)} />}
     </div>

@@ -47,5 +47,15 @@ public enum EmailNotificationType {
     /**
      * Generic email notification
      */
-    GENERAL_EMAIL
+    GENERAL_EMAIL,
+
+    /**
+     * OTP (One-Time Password) email for email verification/login
+     */
+    OTP_EMAIL,
+
+    /**
+     * Password reset OTP email
+     */
+    PASSWORD_RESET_OTP
 }
