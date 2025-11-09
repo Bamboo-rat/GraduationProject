@@ -53,6 +53,10 @@ public class ProductVariant {
     @OneToMany(mappedBy = "variant", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private List<ProductImage> variantImages = new ArrayList<>();
 
+    // Reviews for this specific variant
+    @OneToMany(mappedBy = "productVariant", fetch = FetchType.LAZY)
+    private List<Review> reviews = new ArrayList<>();
+
     /**
      * Get total stock quantity across all stores for this variant
      * @return total stock quantity

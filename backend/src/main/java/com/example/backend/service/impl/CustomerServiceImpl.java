@@ -759,9 +759,14 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     private CustomerDetailResponse.ReviewSummary mapToReviewSummary(Review review) {
+        ProductVariant variant = review.getProductVariant();
+        String productName = variant != null 
+                ? variant.getProduct().getName() + " - " + variant.getName() 
+                : "Unknown";
+        
         return CustomerDetailResponse.ReviewSummary.builder()
                 .reviewId(review.getReviewId())
-                .productName(review.getProduct() != null ? review.getProduct().getName() : "Unknown")
+                .productName(productName)
                 .storeName(review.getStore() != null ? review.getStore().getStoreName() : "Unknown")
                 .rating(review.getRating())
                 .comment(review.getComment())
@@ -1036,18 +1041,23 @@ public class CustomerServiceImpl implements CustomerService {
 
         Page<Review> reviewsPage = reviewRepository.findByCustomerOrderByCreatedAtDesc(customer, pageable);
 
-        return reviewsPage.map(review -> ReviewResponse.builder()
-                .reviewId(review.getReviewId())
-                .productId(review.getProduct() != null ? review.getProduct().getProductId() : null)
-                .productName(review.getProduct() != null ? review.getProduct().getName() : "Unknown")
-                .storeId(review.getStore() != null ? review.getStore().getStoreId() : null)
-                .storeName(review.getStore() != null ? review.getStore().getStoreName() : "Unknown")
-                .rating(review.getRating())
-                .comment(review.getComment())
-                .imageUrl(review.getImageUrl())
-                .markedAsSpam(review.isMarkedAsSpam())
-                .createdAt(review.getCreatedAt())
-                .build());
+        return reviewsPage.map(review -> {
+            ProductVariant variant = review.getProductVariant();
+            return ReviewResponse.builder()
+                    .reviewId(review.getReviewId())
+                    .productVariantId(variant != null ? variant.getVariantId() : null)
+                    .productVariantName(variant != null ? variant.getName() : "Unknown")
+                    .productId(variant != null ? variant.getProduct().getProductId() : null)
+                    .productName(variant != null ? variant.getProduct().getName() : "Unknown")
+                    .storeId(review.getStore() != null ? review.getStore().getStoreId() : null)
+                    .storeName(review.getStore() != null ? review.getStore().getStoreName() : "Unknown")
+                    .rating(review.getRating())
+                    .comment(review.getComment())
+                    .imageUrl(review.getImageUrl())
+                    .markedAsSpam(review.isMarkedAsSpam())
+                    .createdAt(review.getCreatedAt())
+                    .build();
+        });
     }
 
     @Override
