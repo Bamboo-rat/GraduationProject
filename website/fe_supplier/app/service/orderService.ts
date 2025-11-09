@@ -100,7 +100,6 @@ export interface OrderStats {
 }
 
 export interface ConfirmOrderRequest {
-  estimatedDeliveryDate?: string;
   note?: string;
 }
 

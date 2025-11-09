@@ -5,6 +5,7 @@ import com.example.backend.dto.response.ApiResponse;
 import com.example.backend.dto.response.ChatMessageResponse;
 import com.example.backend.dto.response.ConversationResponse;
 import com.example.backend.service.ChatService;
+import com.example.backend.utils.JwtUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -41,11 +42,12 @@ public class ChatController {
     private final ChatService chatService;
 
     /**
-     * Get user ID from JWT authentication
+     * Get internal user ID from JWT authentication
+     * Resolves Keycloak ID to internal user ID for suppliers/admins
      */
     private String getUserIdFromAuth(Authentication authentication) {
         Jwt jwt = (Jwt) authentication.getPrincipal();
-        return jwt.getSubject();
+        return JwtUtils.resolveInternalUserId(jwt);
     }
 
     @PostMapping("/send")

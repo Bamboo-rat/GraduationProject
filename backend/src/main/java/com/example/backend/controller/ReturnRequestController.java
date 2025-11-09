@@ -132,10 +132,26 @@ public class ReturnRequestController {
     public ResponseEntity<Page<ReturnRequestResponse>> getAllPendingRequests(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        
+
         log.info("Getting all pending return requests");
-        
+
         Page<ReturnRequestResponse> responses = returnRequestService.getAllPendingReturnRequests(page, size);
+        return ResponseEntity.ok(responses);
+    }
+
+    @Operation(summary = "Get supplier's return requests", description = "Supplier gets all return requests for all their stores")
+    @GetMapping("/my-stores-requests")
+    @PreAuthorize("hasRole('SUPPLIER')")
+    public ResponseEntity<Page<ReturnRequestResponse>> getMyStoresRequests(
+            Authentication authentication,
+            @RequestParam(defaultValue = "false") boolean pending,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        String supplierId = authentication.getName();
+        log.info("Getting supplier's return requests: supplierId={}, pending={}", supplierId, pending);
+
+        Page<ReturnRequestResponse> responses = returnRequestService.getSupplierReturnRequests(supplierId, pending, page, size);
         return ResponseEntity.ok(responses);
     }
 }

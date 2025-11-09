@@ -22,7 +22,6 @@ public class BannerResponse {
     private String imageUrl;
     private String title;
     private String description;
-    private String linkUrl;
     private String status; // ACTIVE or INACTIVE
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

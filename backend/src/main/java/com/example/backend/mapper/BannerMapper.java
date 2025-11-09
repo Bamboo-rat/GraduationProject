@@ -24,7 +24,6 @@ public class BannerMapper {
                 .imageUrl(banner.getImageUrl())
                 .title(banner.getTitle())
                 .description(banner.getDescription())
-                .linkUrl(banner.getLinkUrl())
                 .status(banner.getStatus() != null ? banner.getStatus().name() : null)
                 .createdAt(banner.getCreatedAt())
                 .updatedAt(banner.getUpdatedAt())
@@ -43,7 +42,6 @@ public class BannerMapper {
         banner.setImageUrl(request.getImageUrl());
         banner.setTitle(request.getTitle());
         banner.setDescription(request.getDescription());
-        banner.setLinkUrl(request.getLinkUrl());
         banner.setStatus(request.getStatus());
 
         return banner;
@@ -60,7 +58,6 @@ public class BannerMapper {
         banner.setImageUrl(request.getImageUrl());
         banner.setTitle(request.getTitle());
         banner.setDescription(request.getDescription());
-        banner.setLinkUrl(request.getLinkUrl());
         banner.setStatus(request.getStatus());
     }
 }

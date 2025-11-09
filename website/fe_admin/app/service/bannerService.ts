@@ -6,7 +6,6 @@ export interface BannerResponse {
   imageUrl: string;
   title?: string;
   description?: string;
-  linkUrl?: string;
   status: 'ACTIVE' | 'INACTIVE';
   createdAt: string;
   updatedAt: string;
@@ -16,7 +15,6 @@ export interface BannerRequest {
   imageUrl: string;
   title?: string;
   description?: string;
-  linkUrl?: string;
   status: 'ACTIVE' | 'INACTIVE';
 }
 

@@ -3,7 +3,7 @@ import DashboardLayout from '~/component/layout/DashboardLayout';
 import bannerService from '~/service/bannerService';
 import fileStorageService from '~/service/fileStorageService';
 import type { BannerResponse, BannerRequest } from '~/service/bannerService';
-import { PlusCircle, Search, Filter, Eye, Edit2, ToggleLeft, ToggleRight, Upload, Image as ImageIcon } from 'lucide-react';
+import { PlusCircle, Search, Filter, Edit2, ToggleLeft, ToggleRight, Upload, Image as ImageIcon } from 'lucide-react';
 
 export default function BannerManagement() {
   const [banners, setBanners] = useState<BannerResponse[]>([]);
@@ -30,7 +30,6 @@ export default function BannerManagement() {
     imageUrl: '',
     title: '',
     description: '',
-    linkUrl: '',
     status: 'ACTIVE',
   });
   const [uploading, setUploading] = useState(false);
@@ -144,7 +143,6 @@ export default function BannerManagement() {
       imageUrl: banner.imageUrl,
       title: banner.title || '',
       description: banner.description || '',
-      linkUrl: banner.linkUrl || '',
       status: banner.status,
     });
     setShowEditModal(true);
@@ -155,7 +153,6 @@ export default function BannerManagement() {
       imageUrl: '',
       title: '',
       description: '',
-      linkUrl: '',
       status: 'ACTIVE',
     });
     setSelectedBanner(null);
@@ -255,9 +252,6 @@ export default function BannerManagement() {
                         Mô tả
                       </th>
                       <th className="px-6 py-4 text-left text-sm font-semibold text-text uppercase tracking-wider">
-                        Link
-                      </th>
-                      <th className="px-6 py-4 text-left text-sm font-semibold text-text uppercase tracking-wider">
                         Trạng thái
                       </th>
                       <th className="px-6 py-4 text-left text-sm font-semibold text-text uppercase tracking-wider">
@@ -287,21 +281,6 @@ export default function BannerManagement() {
                           <div className="text-sm text-muted max-w-xs line-clamp-2">
                             {banner.description || '-'}
                           </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          {banner.linkUrl ? (
-                            <a
-                              href={banner.linkUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm text-secondary hover:underline flex items-center gap-1"
-                            >
-                              <Eye size={14} />
-                              Xem link
-                            </a>
-                          ) : (
-                            <span className="text-sm text-light">-</span>
-                          )}
                         </td>
                         <td className="px-6 py-4">
                           {getStatusBadge(banner.status)}
@@ -462,17 +441,6 @@ export default function BannerManagement() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-text mb-2">Link URL</label>
-                  <input
-                    type="url"
-                    value={formData.linkUrl}
-                    onChange={(e) => setFormData({ ...formData, linkUrl: e.target.value })}
-                    className="input-field w-full"
-                    placeholder="https://..."
-                  />
-                </div>
-
-                <div>
                   <label className="block text-sm font-medium text-text mb-2">Trạng thái</label>
                   <select
                     value={formData.status}
@@ -577,17 +545,6 @@ export default function BannerManagement() {
                     className="input-field w-full resize-none"
                     placeholder="Nhập mô tả banner"
                     maxLength={1000}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-text mb-2">Link URL</label>
-                  <input
-                    type="url"
-                    value={formData.linkUrl}
-                    onChange={(e) => setFormData({ ...formData, linkUrl: e.target.value })}
-                    className="input-field w-full"
-                    placeholder="https://..."
                   />
                 </div>
 

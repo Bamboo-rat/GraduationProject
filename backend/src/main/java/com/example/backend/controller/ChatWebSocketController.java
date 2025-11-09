@@ -3,6 +3,7 @@ package com.example.backend.controller;
 import com.example.backend.dto.request.ChatMessageRequest;
 import com.example.backend.dto.response.ChatMessageResponse;
 import com.example.backend.service.ChatService;
+import com.example.backend.utils.JwtUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -35,9 +36,9 @@ public class ChatWebSocketController {
     @MessageMapping("/chat/send")
     public void sendMessage(@Payload ChatMessageRequest request, Authentication authentication) {
         try {
-            // Extract sender ID from JWT
+            // Extract sender ID from JWT and resolve to internal user ID
             Jwt jwt = (Jwt) authentication.getPrincipal();
-            String senderId = jwt.getSubject();
+            String senderId = JwtUtils.resolveInternalUserId(jwt);
 
             log.info("WebSocket message received from user {} to user {}", senderId, request.getReceiverId());
 
@@ -65,14 +66,18 @@ public class ChatWebSocketController {
             log.error("Error sending WebSocket message: {}", e.getMessage(), e);
 
             // Send error message back to sender
-            Jwt jwt = (Jwt) authentication.getPrincipal();
-            String senderId = jwt.getSubject();
+            try {
+                Jwt jwt = (Jwt) authentication.getPrincipal();
+                String senderId = JwtUtils.resolveInternalUserId(jwt);
 
-            messagingTemplate.convertAndSendToUser(
-                    senderId,
-                    "/queue/errors",
-                    "Failed to send message: " + e.getMessage()
-            );
+                messagingTemplate.convertAndSendToUser(
+                        senderId,
+                        "/queue/errors",
+                        "Failed to send message: " + e.getMessage()
+                );
+            } catch (Exception ex) {
+                log.error("Error sending error message to sender: {}", ex.getMessage(), ex);
+            }
         }
     }
 
@@ -86,9 +91,9 @@ public class ChatWebSocketController {
     @MessageMapping("/chat/read")
     public void markMessageAsRead(@Payload String messageId, Authentication authentication) {
         try {
-            // Extract user ID from JWT
+            // Extract user ID from JWT and resolve to internal user ID
             Jwt jwt = (Jwt) authentication.getPrincipal();
-            String userId = jwt.getSubject();
+            String userId = JwtUtils.resolveInternalUserId(jwt);
 
             log.info("WebSocket read receipt for message {} by user {}", messageId, userId);
 
@@ -122,9 +127,9 @@ public class ChatWebSocketController {
     @MessageMapping("/chat/typing")
     public void sendTypingIndicator(@Payload String receiverId, Authentication authentication) {
         try {
-            // Extract sender ID from JWT
+            // Extract sender ID from JWT and resolve to internal user ID
             Jwt jwt = (Jwt) authentication.getPrincipal();
-            String senderId = jwt.getSubject();
+            String senderId = JwtUtils.resolveInternalUserId(jwt);
 
             log.debug("Typing indicator from user {} to user {}", senderId, receiverId);
 

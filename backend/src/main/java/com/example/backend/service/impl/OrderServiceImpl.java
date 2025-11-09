@@ -443,25 +443,33 @@ public class OrderServiceImpl implements OrderService {
         // Generate unique tracking number
         String trackingNumber = generateTrackingNumber(order);
         
+        
+        int deliveryMinutes = 20 + (int) (Math.random() * 11); 
+        LocalDateTime estimatedDelivery = LocalDateTime.now().plusMinutes(deliveryMinutes);
+        
         // Create shipment record with fixed shipping provider
         Shipment shipment = new Shipment();
         shipment.setOrder(order);
         shipment.setTrackingNumber(trackingNumber);
         shipment.setShippingProvider("Giao Hàng Nhanh"); // Fixed provider name
         shipment.setStatus(ShipmentStatus.SHIPPING);
-        shipment.setEstimatedDeliveryDate(LocalDateTime.now().plusDays(3)); // Default 3 days
+        shipment.setEstimatedDeliveryDate(estimatedDelivery);
         shipmentRepository.save(shipment);
 
         order.setStatus(OrderStatus.SHIPPING);
         order.setShippedAt(LocalDateTime.now());
+        order.setEstimatedDelivery(estimatedDelivery); // Set estimated delivery on order
         order.setShipment(shipment);
         order = orderRepository.save(order);
 
+        // Format estimated delivery time for notification
+        String estimatedTimeStr = estimatedDelivery.format(DateTimeFormatter.ofPattern("HH:mm"));
         sendOrderNotification(order,
-                String.format("Đơn hàng #%s đang được giao đến bạn. Mã vận đơn: %s - Giao Hàng Nhanh",
-                        order.getOrderCode(), trackingNumber));
+                String.format("Đơn hàng #%s đang được giao đến bạn. Mã vận đơn: %s - Giao Hàng Nhanh. Dự kiến giao lúc %s (%d phút)",
+                        order.getOrderCode(), trackingNumber, estimatedTimeStr, deliveryMinutes));
 
-        log.info("Order shipment started: orderId={}, trackingNumber={}", orderId, trackingNumber);
+        log.info("Order shipment started: orderId={}, trackingNumber={}, estimatedDelivery={}", 
+                orderId, trackingNumber, estimatedDelivery);
         return mapToOrderResponse(order);
     }
     

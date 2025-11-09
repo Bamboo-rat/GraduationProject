@@ -1,5 +1,6 @@
 package com.example.backend.utils;
 
+import com.example.backend.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -19,10 +20,16 @@ import java.util.Map;
 public class JwtUtils {
 
     private static JwtDecoder jwtDecoder;
+    private static UserRepository userRepository;
 
     @Autowired
     public void setJwtDecoder(JwtDecoder jwtDecoder) {
         JwtUtils.jwtDecoder = jwtDecoder;
+    }
+
+    @Autowired
+    public void setUserRepository(UserRepository userRepository) {
+        JwtUtils.userRepository = userRepository;
     }
 
     /**
@@ -211,5 +218,39 @@ public class JwtUtils {
             }
         }
         return false;
+    }
+
+    /**
+     * Resolve internal user ID from JWT token
+     * For Keycloak-authenticated users (suppliers, admins), the subject is their Keycloak ID,
+     * so we look up the user by keycloakId to get the internal userId.
+     * For customers (legacy JWT), the subject is already the internal userId.
+     *
+     * @param jwt JWT token
+     * @return Internal user ID from the users table
+     * @throws IllegalArgumentException if user not found
+     */
+    public static String resolveInternalUserId(Jwt jwt) {
+        String subject = jwt.getSubject();
+        
+        if (subject == null || subject.isEmpty()) {
+            throw new IllegalArgumentException("JWT subject cannot be null or empty");
+        }
+
+        // First try to find by keycloakId (for suppliers/admins)
+        return userRepository.findByKeycloakId(subject)
+                .map(user -> {
+                    log.debug("Resolved keycloakId {} to internal userId {}", subject, user.getUserId());
+                    return user.getUserId();
+                })
+                // Fall back to checking if subject is already an internal userId (for customers)
+                .orElseGet(() -> {
+                    if (userRepository.existsById(subject)) {
+                        log.debug("Subject {} is already an internal userId", subject);
+                        return subject;
+                    }
+                    log.error("User not found for subject: {}", subject);
+                    throw new IllegalArgumentException("User not found for subject: " + subject);
+                });
     }
 }

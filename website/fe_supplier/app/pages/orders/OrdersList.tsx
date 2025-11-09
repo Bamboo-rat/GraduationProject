@@ -21,7 +21,6 @@ export default function OrdersList() {
   const [showShipModal, setShowShipModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
-  const [estimatedDelivery, setEstimatedDelivery] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -80,12 +79,9 @@ export default function OrdersList() {
     
     try {
       setSubmitting(true);
-      await orderService.confirmOrder(selectedOrder.id, {
-        estimatedDeliveryDate: estimatedDelivery || undefined,
-      });
+      await orderService.confirmOrder(selectedOrder.id, {});
       alert('Xác nhận đơn hàng thành công!');
       setShowConfirmModal(false);
-      setEstimatedDelivery('');
       loadOrders();
     } catch (err: any) {
       alert(err.message || 'Không thể xác nhận đơn hàng');
@@ -544,16 +540,19 @@ export default function OrdersList() {
             <h3 className="text-xl font-bold text-[#2D2D2D] mb-2">Xác nhận đơn hàng</h3>
             <p className="text-muted mb-4">Đơn hàng: #{selectedOrder.orderCode}</p>
             
-            <div className="mb-6">
-              <label className="block text-sm font-semibold text-[#2D2D2D] mb-3">
-                Ngày giao hàng dự kiến (không bắt buộc)
-              </label>
-              <input
-                type="date"
-                value={estimatedDelivery}
-                onChange={(e) => setEstimatedDelivery(e.target.value)}
-                className="input-field w-full"
-              />
+            <div className="bg-[#E8FFED] border border-[#B7E4C7] rounded-lg p-4 mb-6">
+              <div className="flex items-start gap-3">
+                <svg className="w-5 h-5 text-[#2F855A] mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <p className="text-sm font-semibold text-[#2F855A]">Xác nhận đơn hàng</p>
+                  <p className="text-xs text-[#2F855A] mt-1">
+                    Sau khi xác nhận, bạn có thể bắt đầu chuẩn bị đơn hàng. 
+                    Thời gian giao hàng dự kiến sẽ được tự động tính khi bắt đầu giao hàng (20-30 phút).
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="flex gap-3">
@@ -565,7 +564,7 @@ export default function OrdersList() {
                 {submitting ? 'Đang xử lý...' : 'Xác nhận đơn hàng'}
               </button>
               <button
-                onClick={() => { setShowConfirmModal(false); setEstimatedDelivery(''); }}
+                onClick={() => setShowConfirmModal(false)}
                 className="btn-secondary"
               >
                 Hủy

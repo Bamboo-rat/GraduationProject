@@ -91,4 +91,30 @@ public interface OrderCancelRequestRepository extends JpaRepository<OrderCancelR
      * Find by request type and status
      */
     Page<OrderCancelRequest> findByRequestTypeAndStatus(OrderRequestType requestType, CancelRequestStatus status, Pageable pageable);
+
+    /**
+     * Find return requests by supplier (across all their stores)
+     */
+    @Query("SELECT r FROM OrderCancelRequest r " +
+           "WHERE r.order.store.supplier.userId = :supplierId " +
+           "AND r.requestType = :requestType " +
+           "ORDER BY r.requestedAt DESC")
+    Page<OrderCancelRequest> findBySupplierAndRequestType(
+            @Param("supplierId") String supplierId,
+            @Param("requestType") OrderRequestType requestType,
+            Pageable pageable);
+
+    /**
+     * Find pending return requests by supplier
+     */
+    @Query("SELECT r FROM OrderCancelRequest r " +
+           "WHERE r.order.store.supplier.userId = :supplierId " +
+           "AND r.requestType = :requestType " +
+           "AND r.status = :status " +
+           "ORDER BY r.requestedAt ASC")
+    Page<OrderCancelRequest> findBySupplierAndRequestTypeAndStatus(
+            @Param("supplierId") String supplierId,
+            @Param("requestType") OrderRequestType requestType,
+            @Param("status") CancelRequestStatus status,
+            Pageable pageable);
 }

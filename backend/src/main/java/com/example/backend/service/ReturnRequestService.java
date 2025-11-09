@@ -46,4 +46,9 @@ public interface ReturnRequestService {
      * Get all pending return requests (for admin)
      */
     Page<ReturnRequestResponse> getAllPendingReturnRequests(int page, int size);
+
+    /**
+     * Get supplier's return requests across all their stores
+     */
+    Page<ReturnRequestResponse> getSupplierReturnRequests(String supplierId, Boolean pending, int page, int size);
 }

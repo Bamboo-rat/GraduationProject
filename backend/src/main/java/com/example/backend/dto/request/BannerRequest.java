@@ -28,9 +28,6 @@ public class BannerRequest {
     @Size(max = 1000, message = "Description must not exceed 1000 characters")
     private String description;
 
-    @Size(max = 500, message = "Link URL must not exceed 500 characters")
-    private String linkUrl;
-
     @NotNull(message = "Status is required")
     private BannerStatus status;
 }

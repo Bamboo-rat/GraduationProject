@@ -35,9 +35,6 @@ public class Banner {
     @Column(length = 1000)
     private String description; // Mô tả banner (optional)
 
-    @Column(length = 500)
-    private String linkUrl; // URL khi click vào banner (optional)
-
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private BannerStatus status = BannerStatus.ACTIVE; // ACTIVE or INACTIVE

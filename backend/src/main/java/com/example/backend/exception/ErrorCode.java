@@ -97,9 +97,10 @@ public enum ErrorCode {
     ORDER_NOT_DELIVERED("5021", "Order has not been delivered yet", "Đơn hàng chưa được giao, không thể tạo yêu cầu trả hàng", HttpStatus.BAD_REQUEST),
     CANCEL_REQUEST_NOT_FOUND("5022", "Cancel request not found", "Không tìm thấy yêu cầu hủy đơn", HttpStatus.NOT_FOUND),
     CANCEL_REQUEST_ALREADY_EXISTS("5023", "Cancel request already exists for this order", "Đơn hàng này đã có yêu cầu hủy", HttpStatus.CONFLICT),
-
-
     SHIPMENT_NOT_FOUND("5024", "Shipment not found", "Không tìm thấy thông tin vận chuyển", HttpStatus.NOT_FOUND),
+    ORDER_ALREADY_RETURNED("5025", "Order has already been returned", "Đơn hàng đã được trả hàng", HttpStatus.BAD_REQUEST),
+    REFUND_PROCESSING_FAILED("5026", "Refund processing failed", "Xử lý hoàn tiền thất bại", HttpStatus.INTERNAL_SERVER_ERROR),
+    INVENTORY_RESTORATION_FAILED("5027", "Failed to restore inventory", "Khôi phục tồn kho thất bại", HttpStatus.INTERNAL_SERVER_ERROR),
 
     // ===== 6xxx: Wallet Errors =====
     WALLET_NOT_FOUND("6001", "Wallet not found", "Không tìm thấy ví tiền", HttpStatus.NOT_FOUND),
