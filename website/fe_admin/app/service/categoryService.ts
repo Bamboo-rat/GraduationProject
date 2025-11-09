@@ -128,20 +128,6 @@ class CategoryService {
   }
 
   /**
-   * Delete category (soft delete)
-   */
-  async deleteCategory(categoryId: string): Promise<void> {
-    try {
-      await axiosInstance.delete<ApiResponse<void>>(
-        `${this.baseUrl}/${categoryId}`
-      );
-    } catch (error: any) {
-      console.error('Error deleting category:', error);
-      throw new Error(error.response?.data?.message || 'Không thể xóa danh mục');
-    }
-  }
-
-  /**
    * Toggle category active status
    */
   async toggleActive(categoryId: string, active: boolean): Promise<Category> {

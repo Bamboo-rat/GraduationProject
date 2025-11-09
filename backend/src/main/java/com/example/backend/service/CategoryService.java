@@ -48,12 +48,6 @@ public interface CategoryService {
     );
 
     /**
-     * Soft delete a category
-     * @param categoryId Category ID
-     */
-    void deleteCategory(String categoryId);
-
-    /**
      * Toggle category active status
      * @param categoryId Category ID
      * @param active Active status

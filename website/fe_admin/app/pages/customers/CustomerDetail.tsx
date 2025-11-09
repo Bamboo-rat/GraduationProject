@@ -204,13 +204,18 @@ export default function CustomerDetail() {
                 </button>
               </>
             )}
-            {(basicInfo.status === 'SUSPENDED' || basicInfo.status === 'BANNED') && (
+            {basicInfo.status === 'SUSPENDED' && (
               <button
                 onClick={() => handleActionClick('activate')}
                 className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium"
               >
                 Kích hoạt lại
               </button>
+            )}
+            {basicInfo.status === 'BANNED' && (
+              <div className="px-4 py-2 bg-red-100 text-red-800 rounded-lg font-medium text-center">
+                Tài khoản đã bị cấm vĩnh viễn
+              </div>
             )}
           </div>
         </div>

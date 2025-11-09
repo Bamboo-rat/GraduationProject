@@ -405,6 +405,7 @@ public class SupplierServiceImpl implements SupplierService {
             supplier.setPhoneNumber(request.getPhoneNumber());
         }
         if (request.getGender() != null) {
+            log.info("Updating supplier gender from {} to {}", supplier.getGender(), request.getGender());
             supplier.setGender(request.getGender());
         }
         if (request.getAvatarUrl() != null) {

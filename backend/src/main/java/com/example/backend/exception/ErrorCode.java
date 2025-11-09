@@ -65,6 +65,7 @@ public enum ErrorCode {
     INVALID_EXPIRY_DATE("4004", "Invalid expiry date", "Ngày hết hạn của sản phẩm không hợp lệ", HttpStatus.BAD_REQUEST),
     CATEGORY_NAME_ALREADY_EXISTS("4005", "Category name already exists", "Tên danh mục này đã tồn tại", HttpStatus.CONFLICT),
     CATEGORY_HAS_PRODUCTS("4006", "Category has products", "Không thể xóa danh mục đang chứa sản phẩm. Vui lòng xóa hoặc chuyển sản phẩm sang danh mục khác trước", HttpStatus.CONFLICT),
+    CATEGORY_HAS_ACTIVE_PRODUCTS("4006", "Category has active products", "Không thể ẩn danh mục vì còn sản phẩm đang hoạt động. Vui lòng ẩn hoặc xóa tất cả sản phẩm trước", HttpStatus.CONFLICT),
     CATEGORY_ALREADY_EXISTS("4007", "Category already exists", "Danh mục này đã tồn tại", HttpStatus.CONFLICT),
     STORE_NOT_FOUND("4008", "Store not found", "Không tìm thấy cửa hàng", HttpStatus.NOT_FOUND),
     STORE_NAME_ALREADY_EXISTS("4009", "Store name already exists", "Tên cửa hàng này đã tồn tại cho nhà cung cấp", HttpStatus.CONFLICT),

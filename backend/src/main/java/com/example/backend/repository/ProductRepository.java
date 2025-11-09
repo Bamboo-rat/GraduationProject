@@ -66,4 +66,8 @@ public interface ProductRepository extends JpaRepository<Product, String>, JpaSp
             @Param("status") ProductStatus status,
             @Param("categoryId") String categoryId,
             Pageable pageable);
+
+    // Count products by category and status
+    @Query("SELECT COUNT(p) FROM Product p WHERE p.category.categoryId = :categoryId AND p.status = :status")
+    long countByCategoryIdAndStatus(@Param("categoryId") String categoryId, @Param("status") ProductStatus status);
 }

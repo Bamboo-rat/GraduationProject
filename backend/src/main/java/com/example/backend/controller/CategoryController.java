@@ -85,18 +85,6 @@ public class CategoryController {
         return ResponseEntity.ok(ApiResponse.success(categories));
     }
 
-    @DeleteMapping("/{categoryId}")
-    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR')")
-    @SecurityRequirement(name = "Bearer Authentication")
-    @Operation(summary = "Delete category",
-               description = "Soft delete a category (admin only)")
-    public ResponseEntity<ApiResponse<Void>> deleteCategory(@PathVariable String categoryId) {
-        log.info("DELETE /api/categories/{} - Soft deleting category", categoryId);
-
-        categoryService.deleteCategory(categoryId);
-        return ResponseEntity.ok(ApiResponse.success("Category deleted successfully", null));
-    }
-
     @PatchMapping("/{categoryId}/toggle-active")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF')")
     @SecurityRequirement(name = "Bearer Authentication")

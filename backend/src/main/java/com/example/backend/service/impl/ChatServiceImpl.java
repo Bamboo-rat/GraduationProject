@@ -46,10 +46,27 @@ public class ChatServiceImpl implements ChatService {
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND,
                         "Sender not found"));
 
-        // Validate receiver exists
-        User receiver = userRepository.findById(request.getReceiverId())
-                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND,
-                        "Receiver not found"));
+        User receiver;
+        Store store = null;
+
+        // Check if this is a customer-store conversation
+        if (request.getStoreId() != null && !request.getStoreId().isEmpty()) {
+            // Validate store exists
+            store = storeRepository.findById(request.getStoreId())
+                    .orElseThrow(() -> new NotFoundException(ErrorCode.STORE_NOT_FOUND,
+                            "Store not found"));
+            
+            // Get the supplier (store owner) as the receiver
+
+            receiver = store.getSupplier();
+            log.info("Customer-store conversation: storeId={}, supplierId={}", 
+                    request.getStoreId(), receiver.getUserId());
+        } else {
+            // Regular user-to-user conversation
+            receiver = userRepository.findById(request.getReceiverId())
+                    .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND,
+                            "Receiver not found"));
+        }
 
         // Create chat message entity
         ChatMessage chatMessage = new ChatMessage();
@@ -59,13 +76,9 @@ public class ChatServiceImpl implements ChatService {
         chatMessage.setType(request.getType());
         chatMessage.setStatus(MessageStatus.SENT);
 
-        // Set store context if provided (customer-store conversation)
-        if (request.getStoreId() != null && !request.getStoreId().isEmpty()) {
-            Store store = storeRepository.findById(request.getStoreId())
-                    .orElseThrow(() -> new NotFoundException(ErrorCode.STORE_NOT_FOUND,
-                            "Store not found"));
+        // Set store context if this is customer-store conversation
+        if (store != null) {
             chatMessage.setStore(store);
-            log.info("Message is part of customer-store conversation: storeId={}", request.getStoreId());
         }
 
         // Save message

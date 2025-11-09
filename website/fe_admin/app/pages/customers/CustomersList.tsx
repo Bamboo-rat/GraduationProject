@@ -481,7 +481,7 @@ export default function CustomersList() {
       {/* Suspend/Activate Modal with Violation Details */}
       {suspendModal.show && (
         loadingDetail ? (
-          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center w-full h-full z-50 p-4">
+          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center w-full h-full z-50 p-4 animate-fadeIn">
             <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full mx-4 text-center">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
               <p className="text-gray-600">Đang tải thông tin khách hàng...</p>

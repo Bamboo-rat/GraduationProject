@@ -176,6 +176,7 @@ public class AdminServiceImpl implements AdminService {
             admin.setPhoneNumber(request.getPhoneNumber());
         }
         if (request.getGender() != null) {
+            log.info("Updating admin gender from {} to {}", admin.getGender(), request.getGender());
             admin.setGender(request.getGender());
         }
         if (request.getAvatarUrl() != null) {

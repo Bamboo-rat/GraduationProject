@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import DashboardLayout from '~/component/layout/DashboardLayout';
 import categoryService, { type Category, type CategoryRequest } from '~/service/categoryService';
 import fileStorageService from '~/service/fileStorageService';
-import { PlusCircle, Search, Filter, Edit2, ToggleLeft, ToggleRight, Trash2, Upload, Image as ImageIcon } from 'lucide-react';
+import { PlusCircle, Search, Filter, Edit2, ToggleLeft, ToggleRight, Upload, Image as ImageIcon } from 'lucide-react';
 
 export default function CategoriesManagement() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -23,8 +23,6 @@ export default function CategoriesManagement() {
   // Modal states
   const [showModal, setShowModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
 
   // Form state
   const [formData, setFormData] = useState<CategoryRequest>({
@@ -123,24 +121,6 @@ export default function CategoriesManagement() {
     setShowModal(true);
   };
 
-  const handleDelete = async () => {
-    if (!categoryToDelete) return;
-
-    try {
-      setLoading(true);
-      setError(null);
-      await categoryService.deleteCategory(categoryToDelete.categoryId);
-      setSuccess('Xóa danh mục thành công');
-      setShowDeleteModal(false);
-      setCategoryToDelete(null);
-      fetchCategories();
-    } catch (err: any) {
-      setError(err.message || 'Không thể xóa danh mục');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleToggleActive = async (category: Category) => {
     try {
       setLoading(true);
@@ -168,11 +148,6 @@ export default function CategoriesManagement() {
   const openCreateModal = () => {
     resetForm();
     setShowModal(true);
-  };
-
-  const openDeleteModal = (category: Category) => {
-    setCategoryToDelete(category);
-    setShowDeleteModal(true);
   };
 
   const getStatusBadge = (active: boolean) => {
@@ -333,13 +308,6 @@ export default function CategoriesManagement() {
                               title={category.active ? 'Vô hiệu hóa' : 'Kích hoạt'}
                             >
                               {category.active ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
-                            </button>
-                            <button
-                              onClick={() => openDeleteModal(category)}
-                              className="text-text hover:text-accent-red transition-colors p-1"
-                              title="Xóa"
-                            >
-                              <Trash2 size={18} />
                             </button>
                           </div>
                         </td>
@@ -525,50 +493,6 @@ export default function CategoriesManagement() {
                   </button>
                 </div>
               </form>
-            </div>
-          </div>
-        )}
-
-        {/* Delete Confirmation Modal */}
-        {showDeleteModal && categoryToDelete && (
-          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center w-full h-full z-50 p-4 animate-fadeIn">
-            <div className="bg-surface rounded-lg p-6 w-96 mx-4 card-hover">
-              <div className="text-center">
-                <h3 className="heading-secondary mb-2">Xác nhận xóa</h3>
-                <div className="mt-2 px-2 py-3">
-                  <p className="text-sm text-muted">
-                    Bạn có chắc chắn muốn xóa danh mục "
-                    <strong className="text-text">{categoryToDelete.name}</strong>"?
-                    <br />
-                    Hành động này không thể hoàn tác.
-                  </p>
-                </div>
-                <div className="flex justify-center space-x-3 px-4 py-3">
-                  <button
-                    onClick={() => {
-                      setShowDeleteModal(false);
-                      setCategoryToDelete(null);
-                    }}
-                    className="btn-secondary px-4 py-2"
-                  >
-                    Hủy
-                  </button>
-                  <button
-                    onClick={handleDelete}
-                    disabled={loading}
-                    className="btn-primary bg-accent-red hover:bg-red-600 px-4 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {loading ? (
-                      <span className="flex items-center gap-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-surface border-t-transparent"></div>
-                        Đang xóa...
-                      </span>
-                    ) : (
-                      'Xóa'
-                    )}
-                  </button>
-                </div>
-              </div>
             </div>
           </div>
         )}

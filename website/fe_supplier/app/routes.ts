@@ -26,10 +26,6 @@ export default [
   route("orders/:orderId", "routes/orders/$orderId.tsx"),
   route("orders/returns", "routes/orders/returns.tsx"),
 
-  // Delivery routes
-  route("delivery/assign", "routes/delivery/assign.tsx"),
-  route("delivery/tracking", "routes/delivery/tracking.tsx"),
-
   // Finance routes
   route("finance/revenue", "routes/finance/revenue.tsx"),
   route("finance/transactions", "routes/finance/transactions.tsx"),

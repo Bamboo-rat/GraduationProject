@@ -12,25 +12,26 @@
     },
     {
       "id": 2,
-      "title": "Quản lý Đối tác",
+      "title": "Quản lý đối tác",
       "icon": "store",
       "link": "/partners/list-partners",
       "subMenu": [
-        { "title": "Danh sách Đối tác", "link": "/partners/list-partners", "icon": "list" },
-        { "title": "Duyệt Đối tác", "link": "/partners/pending", "icon": "clock" },
-        { "title": "Duyệt Cửa hàng mới", "link": "/partners/store-approval", "icon": "store" },
-        { "title": "Duyệt thông tin cập nhật đối tác", "link": "/partners/business-updates", "icon": "file-text" },
-        { "title": "Báo cáo Hiệu suất", "link": "/partners/performance", "icon": "trending-up" }
+        { "title": "Danh sách đối tác", "link": "/partners/list-partners", "icon": "list" },
+        { "title": "Duyệt đối tác", "link": "/partners/pending", "icon": "clock" },
+        { "title": "Duyệt cửa hàng mới", "link": "/partners/store-approval", "icon": "store" },
+        { "title": "Duyệt thông tin cập nhật", "link": "/partners/business-updates", "icon": "file-text" },
+        { "title": "Báo cáo hiệu suất", "link": "/partners/performance", "icon": "trending-up" },
+        { "title": "Hỗ trợ nhà cung cấp", "link": "/partners/chat", "icon": "chat" }
       ]
     },
     {
       "id": 3,
-      "title": "Quản lý Sản phẩm",
+      "title": "Quản lý sản phẩm",
       "icon": "shopping-bag",
       "link": "/products/list-products",
       "subMenu": [
-        { "title": "Tất cả Sản phẩm", "link": "/products/list-products", "icon": "package" },
-        { "title": "Quản lý Danh mục", "link": "/products/categories", "icon": "tags" },
+        { "title": "Tất cả sản phẩm", "link": "/products/list-products", "icon": "package" },
+        { "title": "Quản lý danh mục", "link": "/products/categories", "icon": "tags" },
         { "title": "Phê duyệt danh mục", "link": "/products/category-suggestions", "icon": "folder-plus" }
       ]
     },
@@ -40,7 +41,7 @@
       "icon": "percent",
       "link": "/marketing/promotions",
       "subMenu": [
-        { "title": "Quản lý Khuyến mãi", "link": "/marketing/promotions", "icon": "ticket" },
+        { "title": "Quản lý khuyến mãi", "link": "/marketing/promotions", "icon": "ticket" },
         { "title": "Banner", "link": "/marketing/banners", "icon": "megaphone" }
       ]
     },
@@ -50,8 +51,8 @@
       "icon": "users",
       "link": "/customers/list-customers",
       "subMenu": [
-        { "title": "Danh sách Khách hàng", "link": "/customers/list-customers", "icon": "user-check" },
-        { "title": "Hỗ trợ & Khiếu nại", "link": "/support/tickets", "icon": "message-circle" }
+        { "title": "Danh sách khách hàng", "link": "/customers/list-customers", "icon": "user-check" },
+        { "title": "Hỗ trợ & khiếu nại", "link": "/support/tickets", "icon": "message-circle" }
       ]
     },
     {
@@ -60,8 +61,8 @@
       "icon": "wallet",
       "link": "/finance/reconciliation",
       "subMenu": [
-        { "title": "Đối soát & Hoa hồng", "link": "/finance/reconciliation", "icon": "receipt" },
-        { "title": "Lịch sử Giao dịch", "link": "/finance/transactions", "icon": "credit-card" }
+        { "title": "Đối soát & hoa hồng", "link": "/finance/reconciliation", "icon": "receipt" },
+        { "title": "Lịch sử giao dịch", "link": "/finance/transactions", "icon": "credit-card" }
       ]
     },
     {
@@ -79,9 +80,9 @@
       "icon": "bar-chart-3",
       "link": "/reports/revenue",
       "subMenu": [
-        { "title": "Báo cáo Doanh thu", "link": "/reports/revenue", "icon": "dollar-sign" },
-        { "title": "Phân tích Khách hàng", "link": "/reports/behavior", "icon": "pie-chart" },
-        { "title": "Báo cáo Lãng phí", "link": "/reports/waste", "icon": "trash-2" }
+        { "title": "Báo cáo doanh thu", "link": "/reports/revenue", "icon": "dollar-sign" },
+        { "title": "Phân tích khách hàng", "link": "/reports/behavior", "icon": "pie-chart" },
+        { "title": "Báo cáo lãng phí", "link": "/reports/waste", "icon": "trash-2" }
       ]
     },
     {
