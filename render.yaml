@@ -8,7 +8,7 @@ services:
     runtime: docker
     dockerfilePath: ./redis/Dockerfile
     dockerContext: ./redis
-    plan: starter
+    plan: free
     region: singapore
     envVars:
       - key: REDIS_PASSWORD
@@ -24,7 +24,7 @@ services:
     runtime: docker
     dockerfilePath: ./keycloak/Dockerfile
     dockerContext: ./keycloak
-    plan: standard
+    plan: free
     region: singapore
     envVars:
       - key: KEYCLOAK_ADMIN
@@ -50,8 +50,11 @@ services:
     runtime: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
-    plan: starter
+    plan: free
     region: singapore
+    dependsOn:
+      - graduation-project-redis
+      - graduation-project-keycloak
     envVars:
       - key: DB_URL
         sync: false
@@ -115,8 +118,10 @@ services:
     runtime: docker
     dockerfilePath: ./website/fe_admin/Dockerfile
     dockerContext: ./website/fe_admin
-    plan: starter
+    plan: free
     region: singapore
+    dependsOn:
+      - graduation-project-backend
     envVars:
       - key: VITE_API_URL
         value: https://graduation-project-backend.onrender.com
@@ -129,8 +134,10 @@ services:
     runtime: docker
     dockerfilePath: ./website/fe_supplier/Dockerfile
     dockerContext: ./website/fe_supplier
-    plan: starter
+    plan: free
     region: singapore
+    dependsOn:
+      - graduation-project-backend
     envVars:
       - key: VITE_API_URL
         value: https://graduation-project-backend.onrender.com
