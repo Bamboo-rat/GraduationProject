@@ -74,4 +74,12 @@ public interface AuthService {
      * @return Response with success message
      */
     ResetPasswordResponse resetPassword(String resetToken, String newPassword, String confirmPassword);
+
+    /**
+     * Change password for authenticated user
+     * @param keycloakId Keycloak user ID from JWT
+     * @param currentPassword Current password
+     * @param newPassword New password
+     */
+    void changePassword(String keycloakId, String currentPassword, String newPassword);
 }

@@ -4,6 +4,7 @@ import profileService from '../../service/profileService';
 import * as Icons from 'lucide-react';
 import DashboardLayout from '~/component/layout/DashboardLayout';
 import AvatarUpload from '~/component/common/AvatarUpload';
+import Toast from '~/component/common/Toast';
 
 interface ProfileFormData {
   username: string;
@@ -29,6 +30,23 @@ const Profile: React.FC = () => {
     role: '',
     status: '',
   });
+
+  // Change password modal state
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false,
+  });
+
+  // Toast state
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' | 'info' } | null>(null);
 
   // Load user data
   useEffect(() => {
@@ -80,13 +98,111 @@ const Profile: React.FC = () => {
 
       setIsEditing(false);
       // Show success notification
-      alert('Cập nhật thông tin thành công!');
+      setToast({ message: 'Cập nhật thông tin thành công!', type: 'success' });
     } catch (error: any) {
       console.error('Failed to update profile:', error);
-      alert(error.message || 'Cập nhật thông tin thất bại!');
+      setToast({ message: error.message || 'Cập nhật thông tin thất bại!', type: 'error' });
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handlePasswordInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setPasswordForm(prev => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  const togglePasswordVisibility = (field: 'current' | 'new' | 'confirm') => {
+    setShowPasswords(prev => ({
+      ...prev,
+      [field]: !prev[field],
+    }));
+  };
+
+  const validatePasswordForm = (): boolean => {
+    if (!passwordForm.currentPassword) {
+      setToast({ message: 'Vui lòng nhập mật khẩu hiện tại', type: 'warning' });
+      return false;
+    }
+
+    if (!passwordForm.newPassword) {
+      setToast({ message: 'Vui lòng nhập mật khẩu mới', type: 'warning' });
+      return false;
+    }
+
+    if (passwordForm.newPassword.length < 8) {
+      setToast({ message: 'Mật khẩu mới phải có ít nhất 8 ký tự', type: 'warning' });
+      return false;
+    }
+
+    if (passwordForm.newPassword === passwordForm.currentPassword) {
+      setToast({ message: 'Mật khẩu mới phải khác mật khẩu hiện tại', type: 'warning' });
+      return false;
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setToast({ message: 'Mật khẩu xác nhận không khớp', type: 'warning' });
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!validatePasswordForm()) {
+      return;
+    }
+
+    setIsChangingPassword(true);
+
+    try {
+      await profileService.changePassword(
+        passwordForm.currentPassword,
+        passwordForm.newPassword
+      );
+
+      // Reset form and close modal
+      setPasswordForm({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+      setShowPasswords({
+        current: false,
+        new: false,
+        confirm: false,
+      });
+      setShowChangePasswordModal(false);
+
+      setToast({ message: 'Đổi mật khẩu thành công!', type: 'success' });
+    } catch (error: any) {
+      console.error('Failed to change password:', error);
+      setToast({ 
+        message: error.message || 'Đổi mật khẩu thất bại!', 
+        type: 'error' 
+      });
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  const handleCancelChangePassword = () => {
+    setPasswordForm({
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
+    });
+    setShowPasswords({
+      current: false,
+      new: false,
+      confirm: false,
+    });
+    setShowChangePasswordModal(false);
   };
 
   const handleCancel = () => {
@@ -364,7 +480,10 @@ const Profile: React.FC = () => {
 
         {/* Quick Actions */}
         <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-5">
-          <button className="group flex items-center space-x-4 p-5 bg-[#FFFEFA] rounded-xl border-2 border-[#B7E4C7] hover:border-[#A4C3A2] hover:shadow-lg transition-all">
+          <button 
+            onClick={() => setShowChangePasswordModal(true)}
+            className="group flex items-center space-x-4 p-5 bg-[#FFFEFA] rounded-xl border-2 border-[#B7E4C7] hover:border-[#A4C3A2] hover:shadow-lg transition-all"
+          >
             <div className="w-12 h-12 bg-[#E8FFED] group-hover:bg-[#A4C3A2] rounded-xl flex items-center justify-center transition-colors">
               <Icons.Lock className="w-6 h-6 text-[#2F855A] group-hover:text-white transition-colors" />
             </div>
@@ -398,6 +517,170 @@ const Profile: React.FC = () => {
             </div>
           </button>
         </div>
+
+        {/* Change Password Modal */}
+        {showChangePasswordModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+              {/* Modal Header */}
+              <div className="bg-gradient-to-r from-[#A4C3A2] to-[#2F855A] p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                      <Icons.Lock className="w-5 h-5 text-white" />
+                    </div>
+                    <h2 className="text-xl font-bold text-white">Đổi mật khẩu</h2>
+                  </div>
+                  <button
+                    onClick={handleCancelChangePassword}
+                    disabled={isChangingPassword}
+                    className="text-white/80 hover:text-white transition-colors disabled:opacity-50"
+                  >
+                    <Icons.X className="w-6 h-6" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Body */}
+              <form onSubmit={handleChangePassword} className="p-6 space-y-5">
+                {/* Current Password */}
+                <div>
+                  <label className="block text-sm font-semibold text-[#2D2D2D] mb-2">
+                    Mật khẩu hiện tại <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <Icons.KeyRound className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#6B6B6B]" />
+                    <input
+                      type={showPasswords.current ? 'text' : 'password'}
+                      name="currentPassword"
+                      value={passwordForm.currentPassword}
+                      onChange={handlePasswordInputChange}
+                      disabled={isChangingPassword}
+                      className="w-full pl-10 pr-12 py-3 border border-[#B7E4C7] rounded-xl focus:ring-2 focus:ring-[#A4C3A2] focus:border-transparent transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      placeholder="Nhập mật khẩu hiện tại"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => togglePasswordVisibility('current')}
+                      disabled={isChangingPassword}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#6B6B6B] hover:text-[#2F855A] transition-colors disabled:opacity-50"
+                    >
+                      {showPasswords.current ? (
+                        <Icons.EyeOff className="w-5 h-5" />
+                      ) : (
+                        <Icons.Eye className="w-5 h-5" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* New Password */}
+                <div>
+                  <label className="block text-sm font-semibold text-[#2D2D2D] mb-2">
+                    Mật khẩu mới <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <Icons.Key className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#6B6B6B]" />
+                    <input
+                      type={showPasswords.new ? 'text' : 'password'}
+                      name="newPassword"
+                      value={passwordForm.newPassword}
+                      onChange={handlePasswordInputChange}
+                      disabled={isChangingPassword}
+                      className="w-full pl-10 pr-12 py-3 border border-[#B7E4C7] rounded-xl focus:ring-2 focus:ring-[#A4C3A2] focus:border-transparent transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      placeholder="Nhập mật khẩu mới (tối thiểu 8 ký tự)"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => togglePasswordVisibility('new')}
+                      disabled={isChangingPassword}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#6B6B6B] hover:text-[#2F855A] transition-colors disabled:opacity-50"
+                    >
+                      {showPasswords.new ? (
+                        <Icons.EyeOff className="w-5 h-5" />
+                      ) : (
+                        <Icons.Eye className="w-5 h-5" />
+                      )}
+                    </button>
+                  </div>
+                  <p className="text-xs text-light mt-1.5 flex items-center">
+                    <Icons.Info className="w-3 h-3 mr-1" />
+                    Mật khẩu phải có ít nhất 8 ký tự
+                  </p>
+                </div>
+
+                {/* Confirm New Password */}
+                <div>
+                  <label className="block text-sm font-semibold text-[#2D2D2D] mb-2">
+                    Xác nhận mật khẩu mới <span className="text-red-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <Icons.ShieldCheck className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-[#6B6B6B]" />
+                    <input
+                      type={showPasswords.confirm ? 'text' : 'password'}
+                      name="confirmPassword"
+                      value={passwordForm.confirmPassword}
+                      onChange={handlePasswordInputChange}
+                      disabled={isChangingPassword}
+                      className="w-full pl-10 pr-12 py-3 border border-[#B7E4C7] rounded-xl focus:ring-2 focus:ring-[#A4C3A2] focus:border-transparent transition-all disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      placeholder="Nhập lại mật khẩu mới"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => togglePasswordVisibility('confirm')}
+                      disabled={isChangingPassword}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-[#6B6B6B] hover:text-[#2F855A] transition-colors disabled:opacity-50"
+                    >
+                      {showPasswords.confirm ? (
+                        <Icons.EyeOff className="w-5 h-5" />
+                      ) : (
+                        <Icons.Eye className="w-5 h-5" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={handleCancelChangePassword}
+                    disabled={isChangingPassword}
+                    className="flex-1 px-6 py-3 border-2 border-[#B7E4C7] text-[#2F855A] rounded-xl hover:bg-[#F8FFF9] hover:border-[#A4C3A2] transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                  >
+                    Hủy bỏ
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isChangingPassword}
+                    className="flex-1 px-6 py-3 bg-gradient-to-r from-[#A4C3A2] to-[#2F855A] text-white rounded-xl hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed font-semibold flex items-center justify-center space-x-2"
+                  >
+                    {isChangingPassword ? (
+                      <>
+                        <Icons.Loader2 className="w-5 h-5 animate-spin" />
+                        <span>Đang xử lý...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Icons.Check className="w-5 h-5" />
+                        <span>Xác nhận</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Toast Notification */}
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+          />
+        )}
       </div>
     </DashboardLayout>
   );

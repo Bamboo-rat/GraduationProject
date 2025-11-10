@@ -15,12 +15,20 @@ import storeService from '~/service/storeService';
 import type { StoreResponse } from '~/service/storeService';
 import fileStorageService from '~/service/fileStorageService';
 import { PlusCircle, Trash2, Upload, Image as ImageIcon, ArrowLeft } from 'lucide-react';
+import Toast, { type ToastType } from '~/component/common/Toast';
 
 export default function CreateProduct() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [stores, setStores] = useState<StoreResponse[]>([]);
+
+  // Toast notification
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+
+  const showToast = (message: string, type: ToastType) => {
+    setToast({ message, type });
+  };
 
   // Form data matching backend CreateProductRequest
   const [productInfo, setProductInfo] = useState<ProductInfoRequest>({
@@ -63,7 +71,7 @@ export default function CreateProduct() {
     } catch (error) {
       console.error('Error loading categories:', error);
       setCategories([]); // Set to empty array on error
-      alert('Không thể tải danh mục');
+      showToast('Không thể tải danh mục', 'error');
     }
   };
 
@@ -80,7 +88,7 @@ export default function CreateProduct() {
     } catch (error) {
       console.error('Error loading stores:', error);
       setStores([]); // Set to empty array on error
-      alert('Không thể tải danh sách cửa hàng');
+      showToast('Không thể tải danh sách cửa hàng', 'error');
     }
   };
 
@@ -219,7 +227,7 @@ export default function CreateProduct() {
 
   const removeVariant = (index: number) => {
     if (variants.length === 1) {
-      alert('Phải có ít nhất 1 biến thể');
+      showToast('Phải có ít nhất 1 biến thể', 'warning');
       return;
     }
     setVariants(variants.filter((_, i) => i !== index));
@@ -440,7 +448,7 @@ export default function CreateProduct() {
       for (const file of Array.from(files)) {
         const validation = fileStorageService.validateFile(file, 5, ['image/jpeg', 'image/png', 'image/jpg']);
         if (!validation.valid) {
-          alert(validation.error);
+          showToast(validation.error || 'File không hợp lệ', 'error');
           continue;
         }
 
@@ -455,7 +463,7 @@ export default function CreateProduct() {
       }
     } catch (error: any) {
       console.error('Error uploading images:', error);
-      alert('Lỗi khi tải ảnh: ' + error.message);
+      showToast('Lỗi khi tải ảnh: ' + error.message, 'error');
     } finally {
       setUploadingImages(null);
     }
@@ -489,7 +497,7 @@ export default function CreateProduct() {
       for (const file of Array.from(files)) {
         const validation = fileStorageService.validateFile(file, 5, ['image/jpeg', 'image/png', 'image/jpg']);
         if (!validation.valid) {
-          alert(validation.error);
+          showToast(validation.error || 'File không hợp lệ', 'error');
           continue;
         }
 
@@ -514,7 +522,7 @@ export default function CreateProduct() {
       });
     } catch (error: any) {
       console.error('Error uploading variant images:', error);
-      alert('Lỗi khi tải ảnh: ' + error.message);
+      showToast('Lỗi khi tải ảnh: ' + error.message, 'error');
     } finally {
       setUploadingImages(null);
     }
@@ -696,37 +704,37 @@ export default function CreateProduct() {
   const validateForm = () => {
     // Validate product info
     if (!productInfo.name.trim()) {
-      alert('Vui lòng nhập tên sản phẩm');
+      showToast('Vui lòng nhập tên sản phẩm', 'warning');
       return false;
     }
     if (!productInfo.categoryId) {
-      alert('Vui lòng chọn danh mục');
+      showToast('Vui lòng chọn danh mục', 'warning');
       return false;
     }
 
     // Validate variants
     if (variants.length === 0) {
-      alert('Phải có ít nhất 1 biến thể');
+      showToast('Phải có ít nhất 1 biến thể', 'warning');
       return false;
     }
 
     for (const variant of variants) {
       if (!variant.name.trim()) {
-        alert('Vui lòng nhập tên cho tất cả biến thể');
+        showToast('Vui lòng nhập tên cho tất cả biến thể', 'warning');
         return false;
       }
       if (variant.originalPrice <= 0) {
-        alert('Giá gốc phải lớn hơn 0');
+        showToast('Giá gốc phải lớn hơn 0', 'warning');
         return false;
       }
       if (!variant.expiryDate) {
-        alert('Vui lòng nhập hạn sử dụng cho tất cả biến thể');
+        showToast('Vui lòng nhập hạn sử dụng cho tất cả biến thể', 'warning');
         return false;
       }
       // Check expiry date is in the future
       const expiryDate = new Date(variant.expiryDate);
       if (expiryDate <= new Date()) {
-        alert('Hạn sử dụng phải là ngày trong tương lai');
+        showToast('Hạn sử dụng phải là ngày trong tương lai', 'warning');
         return false;
       }
     }
@@ -768,11 +776,11 @@ export default function CreateProduct() {
       };
 
       await productService.createProduct(request);
-      alert('Tạo sản phẩm thành công! Sản phẩm đã được kích hoạt.');
-      navigate('/products/list');
+      showToast('Tạo sản phẩm thành công! Sản phẩm đã được kích hoạt.', 'success');
+      setTimeout(() => navigate('/products/list'), 1500);
     } catch (error: any) {
       console.error('Error creating product:', error);
-      alert('Lỗi khi tạo sản phẩm: ' + (error.response?.data?.message || error.message));
+      showToast('Lỗi khi tạo sản phẩm: ' + (error.response?.data?.message || error.message), 'error');
     } finally {
       setLoading(false);
     }
@@ -861,6 +869,15 @@ export default function CreateProduct() {
           </div>
         </div>
       </form>
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 }

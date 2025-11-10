@@ -3,6 +3,7 @@ import orderService from '~/service/orderService';
 import storeService from '~/service/storeService';
 import type { Order, OrderStatus } from '~/service/orderService';
 import type { StoreResponse } from '~/service/storeService';
+import Toast, { type ToastType } from '~/component/common/Toast';
 
 export default function OrdersList() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -22,6 +23,13 @@ export default function OrdersList() {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Toast notification
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+
+  const showToast = (message: string, type: ToastType) => {
+    setToast({ message, type });
+  };
 
   useEffect(() => {
     loadStores();
@@ -48,12 +56,13 @@ export default function OrdersList() {
     }
   };
 
-  const loadOrders = async () => {
+  const loadOrders = async (overridePage?: number) => {
     try {
       setLoading(true);
+      const currentPage = overridePage !== undefined ? overridePage : page;
       const data = await orderService.getStoreOrders({
         storeId: selectedStoreId || undefined,
-        page,
+        page: currentPage,
         size: 10,
         status: status || undefined,
         searchTerm: searchTerm || undefined,
@@ -62,6 +71,10 @@ export default function OrdersList() {
       });
       setOrders(data.content);
       setTotalPages(data.totalPages);
+      // Update page state if override was used
+      if (overridePage !== undefined && overridePage !== page) {
+        setPage(overridePage);
+      }
     } catch (err) {
       console.error('Failed to load orders:', err);
     } finally {
@@ -70,8 +83,7 @@ export default function OrdersList() {
   };
 
   const handleSearch = () => {
-    setPage(0);
-    loadOrders();
+    loadOrders(0); // Pass page 0 directly to avoid race condition
   };
 
   const handleConfirmOrder = async () => {
@@ -80,11 +92,11 @@ export default function OrdersList() {
     try {
       setSubmitting(true);
       await orderService.confirmOrder(selectedOrder.id, {});
-      alert('Xác nhận đơn hàng thành công!');
+      showToast('Xác nhận đơn hàng thành công!', 'success');
       setShowConfirmModal(false);
-      loadOrders();
+      await loadOrders();
     } catch (err: any) {
-      alert(err.message || 'Không thể xác nhận đơn hàng');
+      showToast(err.message || 'Không thể xác nhận đơn hàng', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -95,61 +107,44 @@ export default function OrdersList() {
     
     try {
       await orderService.prepareOrder(orderId);
-      alert('Đơn hàng đã chuyển sang trạng thái chuẩn bị!');
-      loadOrders();
+      showToast('Đơn hàng đã chuyển sang trạng thái chuẩn bị!', 'success');
+      await loadOrders();
     } catch (err: any) {
-      alert(err.message || 'Không thể cập nhật trạng thái');
+      showToast(err.message || 'Không thể cập nhật trạng thái', 'error');
     }
   };
 
   const handleShipOrder = async () => {
     if (!selectedOrder) return;
 
-    if (!confirm('Bắt đầu giao hàng đơn này? Hệ thống sẽ tự động tạo mã vận đơn.')) return;
-
     try {
       setSubmitting(true);
       await orderService.shipOrder(selectedOrder.id);
-      alert('Đơn hàng đã chuyển sang trạng thái giao hàng qua Giao Hàng Nhanh!');
+      showToast('Đơn hàng đã chuyển sang trạng thái giao hàng qua Giao Hàng Nhanh!', 'success');
       setShowShipModal(false);
-      loadOrders();
+      await loadOrders();
     } catch (err: any) {
-      alert(err.message || 'Không thể cập nhật trạng thái');
+      showToast(err.message || 'Không thể cập nhật trạng thái', 'error');
     } finally {
       setSubmitting(false);
     }
   };
 
-  // REMOVED: handleDeliverOrder function
-  // Suppliers should not be able to mark orders as delivered when status is SHIPPING
-  // Only shippers can update to DELIVERED status through their system
-  // const handleDeliverOrder = async (orderId: string) => {
-  //   if (!confirm('Xác nhận đơn hàng đã được giao thành công?')) return;
-  //   
-  //   try {
-  //     await orderService.deliverOrder(orderId);
-  //     alert('Xác nhận giao hàng thành công!');
-  //     loadOrders();
-  //   } catch (err: any) {
-  //     alert(err.message || 'Không thể cập nhật trạng thái');
-  //   }
-  // };
-
   const handleCancelOrder = async () => {
     if (!selectedOrder || !cancelReason.trim()) {
-      alert('Vui lòng nhập lý do hủy đơn');
+      showToast('Vui lòng nhập lý do hủy đơn', 'warning');
       return;
     }
     
     try {
       setSubmitting(true);
       await orderService.cancelOrder(selectedOrder.id, { cancelReason });
-      alert('Hủy đơn hàng thành công!');
+      showToast('Hủy đơn hàng thành công!', 'success');
       setShowCancelModal(false);
       setCancelReason('');
-      loadOrders();
+      await loadOrders();
     } catch (err: any) {
-      alert(err.message || 'Không thể hủy đơn hàng');
+      showToast(err.message || 'Không thể hủy đơn hàng', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -172,7 +167,7 @@ export default function OrdersList() {
             <p className="text-muted">Theo dõi và quản lý tất cả đơn hàng của bạn</p>
           </div>
           <button
-            onClick={loadOrders}
+            onClick={() => loadOrders()}
             className="btn-primary"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -187,31 +182,24 @@ export default function OrdersList() {
       <div className="card p-6 mb-6">
         <div className="flex overflow-x-auto pb-2 gap-1">
           {[
-            { value: '', label: 'Tất cả', count: orders.length },
-            { value: 'PENDING', label: 'Chờ xác nhận', count: orders.filter(o => o.status === 'PENDING').length },
-            { value: 'CONFIRMED', label: 'Đã xác nhận', count: orders.filter(o => o.status === 'CONFIRMED').length },
-            { value: 'PREPARING', label: 'Đang chuẩn bị', count: orders.filter(o => o.status === 'PREPARING').length },
-            { value: 'SHIPPING', label: 'Đang giao', count: orders.filter(o => o.status === 'SHIPPING').length },
-            { value: 'DELIVERED', label: 'Đã giao', count: orders.filter(o => o.status === 'DELIVERED').length },
-            { value: 'CANCELED', label: 'Đã hủy', count: orders.filter(o => o.status === 'CANCELED').length },
+            { value: '', label: 'Tất cả' },
+            { value: 'PENDING', label: 'Chờ xác nhận' },
+            { value: 'CONFIRMED', label: 'Đã xác nhận' },
+            { value: 'PREPARING', label: 'Đang chuẩn bị' },
+            { value: 'SHIPPING', label: 'Đang giao' },
+            { value: 'DELIVERED', label: 'Đã giao' },
+            { value: 'CANCELED', label: 'Đã hủy' },
           ].map((tab) => (
             <button
               key={tab.value}
               onClick={() => { setStatus(tab.value as OrderStatus | ''); setPage(0); }}
-              className={`px-6 py-3 font-medium whitespace-nowrap rounded-lg transition-all duration-200 flex items-center gap-2 ${
+              className={`px-6 py-3 font-medium whitespace-nowrap rounded-lg transition-all duration-200 ${
                 status === tab.value
                   ? 'tab-active bg-[#A4C3A2] bg-opacity-10'
                   : 'tab-inactive bg-[#F5EDE6] hover:bg-[#DDC6B6]'
               }`}
             >
               {tab.label}
-              <span className={`px-2 py-1 rounded-full text-xs ${
-                status === tab.value 
-                  ? 'bg-[#A4C3A2] text-[#2D2D2D]' 
-                  : 'bg-[#DDC6B6] text-[#6B6B6B]'
-              }`}>
-                {tab.count}
-              </span>
             </button>
           ))}
         </div>
@@ -667,6 +655,15 @@ export default function OrdersList() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
       )}
     </div>
   );

@@ -39,6 +39,10 @@ public interface ProductRepository extends JpaRepository<Product, String>, JpaSp
     @Query("SELECT p FROM Product p WHERE p.supplier.userId = :supplierId AND LOWER(p.name) LIKE LOWER(CONCAT('%', :name, '%'))")
     Page<Product> searchProductsByName(@Param("supplierId") String supplierId, @Param("name") String name, Pageable pageable);
 
+    // Search products by name and status
+    @Query("SELECT p FROM Product p WHERE p.supplier.userId = :supplierId AND p.status = :status AND LOWER(p.name) LIKE LOWER(CONCAT('%', :name, '%'))")
+    Page<Product> searchProductsByNameAndStatus(@Param("supplierId") String supplierId, @Param("name") String name, @Param("status") ProductStatus status, Pageable pageable);
+
     // Check if product belongs to supplier
     @Query("SELECT CASE WHEN COUNT(p) > 0 THEN true ELSE false END FROM Product p WHERE p.productId = :productId AND p.supplier.userId = :supplierId")
     boolean existsByProductIdAndSupplierId(@Param("productId") String productId, @Param("supplierId") String supplierId);

@@ -97,7 +97,24 @@ export default function CustomerSupport() {
         if (belongsToSelectedStore && current &&
             (message.sender.userId === current.otherUser.userId ||
              message.receiver.userId === current.otherUser.userId)) {
-          setMessages(prev => [...prev, message]); // Append to end
+          
+          setMessages(prev => {
+            // Check if this is a duplicate of an optimistic message
+            const hasOptimistic = prev.some((m: any) => m._isOptimistic && 
+              m.content === message.content &&
+              Math.abs(new Date(m.sendTime).getTime() - new Date(message.sendTime).getTime()) < 5000
+            );
+            
+            if (hasOptimistic) {
+              // Replace optimistic message with real message from server
+              return prev.map((m: any) => 
+                m._isOptimistic && m.content === message.content ? message : m
+              );
+            } else {
+              // New message from other user, append to end
+              return [...prev, message];
+            }
+          });
           
           // Only mark as read if we are the receiver (not sender)
           if (message.receiver.userId === currentUserId) {
@@ -172,27 +189,59 @@ export default function CustomerSupport() {
   const handleSendMessage = async () => {
     if (!messageInput.trim() || !selectedConversation || !selectedStoreId) return;
 
+    const messageContent = messageInput.trim();
+    const tempMessageId = `temp-${Date.now()}`;
+
     const request: ChatMessageRequest = {
-      content: messageInput.trim(),
+      content: messageContent,
       receiverId: selectedConversation.otherUser.userId,
       type: MessageType.TEXT,
       storeId: selectedStoreId, // Include store context
     };
 
+    // Create optimistic message for immediate UI update
+    const optimisticMessage: any = {
+      messageId: tempMessageId,
+      sender: {
+        userId: currentUserId || '',
+        username: user?.username || '',
+        fullName: user?.fullName || user?.username || '',
+        userType: 'SUPPLIER'
+      },
+      receiver: selectedConversation.otherUser,
+      content: messageContent,
+      type: MessageType.TEXT,
+      sendTime: new Date().toISOString(),
+      status: 'DELIVERED',
+      storeId: selectedStoreId,
+      _isOptimistic: true // Flag for optimistic messages
+    };
+
     try {
+      setMessageInput(''); // Clear input immediately
+      setMessages(prev => [...prev, optimisticMessage]); // Add optimistic message
+
       if (isConnected) {
         // Send via WebSocket for real-time delivery
         chatService.sendMessageViaWebSocket(request);
-        setMessageInput('');
+        // WebSocket callback will replace optimistic message with real one
       } else {
         // Fallback to REST API
-        const message = await chatService.sendMessage(request);
-        setMessages(prev => [...prev, message]); // Append to end
-        setMessageInput('');
+        const realMessage = await chatService.sendMessage(request);
+        // Replace optimistic with real message
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.messageId === tempMessageId ? realMessage : msg
+          )
+        );
       }
       loadConversations(); // Refresh conversations
     } catch (error) {
       console.error('Failed to send message:', error);
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(msg => msg.messageId !== tempMessageId));
+      // Restore input
+      setMessageInput(messageContent);
     }
   };
 
@@ -232,8 +281,13 @@ export default function CustomerSupport() {
     return date.toLocaleDateString('vi-VN');
   };
 
-  const getMessageStatus = (message: ChatMessage, currentUserId: string | undefined) => {
+  const getMessageStatus = (message: any, currentUserId: string | undefined) => {
     if (message.sender.userId !== currentUserId) return null;
+
+    // Show sending indicator for optimistic messages
+    if (message._isOptimistic) {
+      return <span className="text-gray-400 animate-pulse text-xs">⏱</span>;
+    }
 
     switch (message.status) {
       case 'SENT':

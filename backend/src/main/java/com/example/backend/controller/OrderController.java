@@ -108,25 +108,29 @@ public class OrderController {
     @GetMapping("/store/me")
     @PreAuthorize("hasRole('SUPPLIER')")
     @Operation(summary = "Get my store orders", 
-               description = "Get all orders for current supplier's stores with pagination and filters. " +
-                           "Can filter by specific storeId or get all stores' orders")
+               description = "Get all orders for current supplier's stores with pagination, search and filters. " +
+                           "Can filter by specific storeId or get all stores' orders. " +
+                           "Supports search by order code and shipping address, custom sorting.")
     public ResponseEntity<ApiResponse<Page<OrderResponse>>> getMyStoreOrders(
             @RequestParam(required = false) String storeId,
             @RequestParam(required = false) OrderStatus status,
+            @RequestParam(required = false) String searchTerm,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "DESC") String sortDir,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             Authentication authentication) {
         String userId = extractUserId(authentication);
-        log.info("GET /api/orders/store/me - Getting supplier's store orders: userId={}, storeId={}, status={}", 
-                userId, storeId, status);
+        log.info("GET /api/orders/store/me - Getting supplier's store orders: userId={}, storeId={}, status={}, search={}, sortBy={}", 
+                userId, storeId, status, searchTerm, sortBy);
 
         Page<OrderResponse> response;
         if (storeId != null && !storeId.isEmpty()) {
             // Filter by specific store (validate ownership)
-            response = orderService.getSupplierStoreOrders(userId, storeId, status, page, size);
+            response = orderService.getSupplierStoreOrders(userId, storeId, status, searchTerm, sortBy, sortDir, page, size);
         } else {
             // Get all stores' orders
-            response = orderService.getSupplierOrders(userId, status, page, size);
+            response = orderService.getSupplierOrders(userId, status, searchTerm, sortBy, sortDir, page, size);
         }
         
         return ResponseEntity.ok(ApiResponse.success("Lấy danh sách đơn hàng thành công", response));

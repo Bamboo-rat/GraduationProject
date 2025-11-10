@@ -63,9 +63,17 @@ public class CategorySuggestionController {
     )
     public ResponseEntity<ApiResponse<Page<CategorySuggestionResponse>>> getAllSuggestions(
             @RequestParam(required = false) SuggestionStatus status,
-            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sort,
+            @RequestParam(defaultValue = "DESC") String direction) {
 
-        log.info("GET /api/category-suggestions - Admin viewing suggestions. Status filter: {}", status);
+        log.info("GET /api/category-suggestions - Admin viewing suggestions. Status: {}, Page: {}, Size: {}", 
+                status, page, size);
+
+        // Create Pageable manually from request params
+        Sort.Direction sortDirection = "ASC".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, Sort.by(sortDirection, sort));
 
         Page<CategorySuggestionResponse> suggestions = suggestionService.getAllSuggestions(status, pageable);
 
@@ -80,14 +88,21 @@ public class CategorySuggestionController {
     )
     public ResponseEntity<ApiResponse<Page<CategorySuggestionResponse>>> getMySuggestions(
             @RequestParam(required = false) SuggestionStatus status,
-            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sort,
+            @RequestParam(defaultValue = "DESC") String direction,
             Authentication authentication) {
 
         Jwt jwt = (Jwt) authentication.getPrincipal();
         String keycloakId = JwtUtils.extractKeycloakId(jwt);
 
-        log.info("GET /api/category-suggestions/my-suggestions - Supplier: {}, Status filter: {}", 
-                keycloakId, status);
+        log.info("GET /api/category-suggestions/my-suggestions - Supplier: {}, Status: {}, Page: {}, Size: {}", 
+                keycloakId, status, page, size);
+
+        // Create Pageable manually from request params
+        Sort.Direction sortDirection = "ASC".equalsIgnoreCase(direction) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, Sort.by(sortDirection, sort));
 
         Page<CategorySuggestionResponse> suggestions = suggestionService.getMySuggestions(keycloakId, status, pageable);
 

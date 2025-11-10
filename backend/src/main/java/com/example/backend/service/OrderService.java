@@ -88,14 +88,16 @@ public interface OrderService {
     Page<OrderResponse> getCustomerOrders(String customerId, OrderStatus status, int page, int size);
 
     /**
-     * Get supplier's store orders with pagination and filters (all stores)
+     * Get all orders for supplier's stores with search and sorting
      */
-    Page<OrderResponse> getSupplierOrders(String supplierId, OrderStatus status, int page, int size);
+    Page<OrderResponse> getSupplierOrders(String supplierId, OrderStatus status, String searchTerm, 
+                                          String sortBy, String sortDir, int page, int size);
 
     /**
-     * Get supplier's specific store orders with ownership validation
+     * Get supplier's specific store orders with ownership validation, search and sorting
      */
-    Page<OrderResponse> getSupplierStoreOrders(String supplierId, String storeId, OrderStatus status, int page, int size);
+    Page<OrderResponse> getSupplierStoreOrders(String supplierId, String storeId, OrderStatus status, 
+                                                String searchTerm, String sortBy, String sortDir, int page, int size);
 
     /**
      * Get store orders with pagination and filters

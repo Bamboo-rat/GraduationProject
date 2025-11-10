@@ -8,6 +8,7 @@ import storeService from '~/service/storeService';
 import type { StoreResponse } from '~/service/storeService';
 import StockUpdateModal from '~/component/features/product/StockUpdateModal';
 import { ArrowLeft, Package, Image, Layers, Tag, Store, Calendar, AlertCircle, Edit3 } from 'lucide-react';
+import Toast, { type ToastType } from '~/component/common/Toast';
 
 export default function EditProduct() {
   const navigate = useNavigate();
@@ -17,6 +18,13 @@ export default function EditProduct() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [product, setProduct] = useState<ProductResponse | null>(null);
   const [stores, setStores] = useState<StoreResponse[]>([]);
+
+  // Toast notification
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+
+  const showToast = (message: string, type: ToastType) => {
+    setToast({ message, type });
+  };
 
   // Stock update modal state
   const [stockModalOpen, setStockModalOpen] = useState(false);
@@ -54,8 +62,8 @@ export default function EditProduct() {
       });
     } catch (error: any) {
       console.error('Error loading product:', error);
-      alert('Không thể tải thông tin sản phẩm: ' + (error.response?.data?.message || error.message));
-      navigate('/products/list');
+      showToast('Không thể tải thông tin sản phẩm: ' + (error.response?.data?.message || error.message), 'error');
+      setTimeout(() => navigate('/products/list'), 1500);
     } finally {
       setLoadingData(false);
     }
@@ -95,23 +103,23 @@ export default function EditProduct() {
     e.preventDefault();
 
     if (!formData.name.trim()) {
-      alert('Vui lòng nhập tên sản phẩm');
+      showToast('Vui lòng nhập tên sản phẩm', 'warning');
       return;
     }
 
     if (!formData.categoryId) {
-      alert('Vui lòng chọn danh mục');
+      showToast('Vui lòng chọn danh mục', 'warning');
       return;
     }
 
     setLoading(true);
     try {
       await productService.updateProduct(productId!, formData);
-      alert('Cập nhật sản phẩm thành công!');
-      navigate('/products/list');
+      showToast('Cập nhật sản phẩm thành công!', 'success');
+      setTimeout(() => navigate('/products/list'), 1500);
     } catch (error: any) {
       console.error('Error updating product:', error);
-      alert('Lỗi khi cập nhật sản phẩm: ' + (error.response?.data?.message || error.message));
+      showToast('Lỗi khi cập nhật sản phẩm: ' + (error.response?.data?.message || error.message), 'error');
     } finally {
       setLoading(false);
     }
@@ -137,7 +145,7 @@ export default function EditProduct() {
       );
       
       setProduct(updatedProduct);
-      alert('Cập nhật tồn kho thành công!');
+      showToast('Cập nhật tồn kho thành công!', 'success');
     } catch (error: any) {
       console.error('Error updating stock:', error);
       throw new Error(error.response?.data?.message || 'Cập nhật tồn kho thất bại');
@@ -523,6 +531,15 @@ export default function EditProduct() {
           storeName={selectedStock.store.storeName}
           variantName={selectedStock.variantName}
           currentStock={selectedStock.store.stockQuantity}
+        />
+      )}
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
         />
       )}
     </div>

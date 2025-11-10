@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Lightbulb, 
   Filter, 
@@ -17,6 +17,10 @@ import categorySuggestionService from '~/service/categorySuggestionService';
 import type { CategorySuggestion, CategorySuggestionListParams } from '~/service/categorySuggestionService';
 import Toast, {type ToastType } from '~/component/common/Toast';
 
+// Simple cache with 5 minute TTL
+const cache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 export default function CategorySuggestionList() {
   const [suggestions, setSuggestions] = useState<CategorySuggestion[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,6 +37,9 @@ export default function CategorySuggestionList() {
     type: 'info'
   });
 
+  // Debounce timer ref
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
   const showToast = (message: string, type: ToastType = 'info') => {
     setToast({ show: true, message, type });
   };
@@ -41,7 +48,7 @@ export default function CategorySuggestionList() {
     setToast({ ...toast, show: false });
   };
 
-  const fetchSuggestions = async () => {
+  const fetchSuggestions = async (skipCache = false) => {
     try {
       setLoading(true);
       const params: CategorySuggestionListParams = {
@@ -51,6 +58,23 @@ export default function CategorySuggestionList() {
 
       if (statusFilter) {
         params.status = statusFilter;
+      }
+
+      // Create cache key
+      const cacheKey = JSON.stringify({ ...params, endpoint: 'my-suggestions' });
+
+      // Check cache first (unless explicitly skipping)
+      if (!skipCache) {
+        const cached = cache.get(cacheKey);
+        if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+          console.log('Using cached data for:', cacheKey);
+          const { content, page } = cached.data;
+          setSuggestions(content);
+          setTotalPages(page.totalPages ?? 0);
+          setTotalElements(page.totalElements ?? 0);
+          setLoading(false);
+          return;
+        }
       }
 
       const response: any = await categorySuggestionService.getMySuggestions(params);
@@ -63,6 +87,12 @@ export default function CategorySuggestionList() {
         number: response?.number ?? currentPage,
       };
 
+      // Update cache
+      cache.set(cacheKey, {
+        data: { content, page },
+        timestamp: Date.now()
+      });
+
       setSuggestions(content);
       setTotalPages(page.totalPages ?? 0);
       setTotalElements(page.totalElements ?? 0);
@@ -74,8 +104,24 @@ export default function CategorySuggestionList() {
     }
   };
 
+  // Debounced fetch effect
   useEffect(() => {
-    fetchSuggestions();
+    // Clear previous timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    // Set new timer (300ms debounce)
+    debounceTimerRef.current = setTimeout(() => {
+      fetchSuggestions();
+    }, 300);
+
+    // Cleanup
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
   }, [currentPage, statusFilter]);
 
   const handleCreateSuggestion = async () => {
@@ -98,8 +144,11 @@ export default function CategorySuggestionList() {
       setShowCreateModal(false);
       setNewName('');
       setReason('');
+      
+      // Clear cache and force refresh
+      cache.clear();
       setCurrentPage(0);
-      fetchSuggestions();
+      fetchSuggestions(true); // Skip cache for fresh data
     } catch (error) {
       console.error('Error creating suggestion:', error);
       showToast('Lỗi khi gửi đề xuất', 'error');
@@ -139,10 +188,53 @@ export default function CategorySuggestionList() {
     );
   };
 
+  // Skeleton Loading Component
+  const SkeletonCard = () => (
+    <div className="card p-6 animate-pulse">
+      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+        <div className="flex-1 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+            <div className="flex-1 space-y-2">
+              <div className="h-6 bg-[#F5EDE6] rounded w-3/4"></div>
+              <div className="h-4 bg-[#F5EDE6] rounded w-full"></div>
+              <div className="h-4 bg-[#F5EDE6] rounded w-5/6"></div>
+            </div>
+            <div className="h-8 bg-[#F5EDE6] rounded-full w-24"></div>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="h-4 bg-[#F5EDE6] rounded w-32"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-[#6B6B6B] animate-pulse">Đang tải danh sách đề xuất...</div>
+      <div className="p-6 animate-fade-in">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-2">
+            <Lightbulb className="text-[#A4C3A2]" size={32} />
+            <div>
+              <h1 className="text-3xl font-bold text-[#2D2D2D]">Đề xuất danh mục</h1>
+              <p className="text-[#6B6B6B] mt-1">Gửi đề xuất danh mục mới và theo dõi trạng thái</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Controls Skeleton */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="h-10 bg-[#F5EDE6] rounded-lg w-40 animate-pulse"></div>
+          <div className="h-10 bg-[#F5EDE6] rounded-lg w-32 animate-pulse sm:ml-auto"></div>
+        </div>
+
+        {/* Skeleton Cards */}
+        <div className="space-y-4">
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
       </div>
     );
   }
@@ -197,9 +289,17 @@ export default function CategorySuggestionList() {
         </button>
       </div>
 
+      {/* Loading Indicator for Page Changes */}
+      {loading && suggestions.length > 0 && (
+        <div className="fixed top-20 right-6 z-50 bg-white shadow-lg rounded-lg px-4 py-3 flex items-center gap-3 border border-[#A4C3A2]">
+          <div className="animate-spin rounded-full h-4 w-4 border-2 border-[#A4C3A2] border-t-transparent"></div>
+          <span className="text-sm text-[#6B6B6B]">Đang tải...</span>
+        </div>
+      )}
+
       {/* Suggestions List */}
       <div className="space-y-4">
-        {suggestions.length === 0 ? (
+        {!loading && suggestions.length === 0 ? (
           <div className="card text-center py-16">
             <Lightbulb size={64} className="text-[#DDC6B6] mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-[#2D2D2D] mb-3">Chưa có đề xuất nào</h3>

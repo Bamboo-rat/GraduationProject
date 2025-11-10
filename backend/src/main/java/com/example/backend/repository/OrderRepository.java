@@ -35,6 +35,29 @@ public interface OrderRepository extends JpaRepository<Order, String> {
     Page<Order> findByStoreStoreIdInAndStatus(List<String> storeIds, OrderStatus status, Pageable pageable);
     Page<Order> findByStatus(OrderStatus status, Pageable pageable);
 
+    // Search orders by order code or shipping address
+    @Query("SELECT o FROM Order o WHERE o.store.storeId = :storeId " +
+           "AND (LOWER(o.orderCode) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(o.shippingAddress) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<Order> searchStoreOrders(@Param("storeId") String storeId, @Param("search") String search, Pageable pageable);
+
+    @Query("SELECT o FROM Order o WHERE o.store.storeId = :storeId AND o.status = :status " +
+           "AND (LOWER(o.orderCode) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(o.shippingAddress) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<Order> searchStoreOrdersByStatus(@Param("storeId") String storeId, @Param("status") OrderStatus status, 
+                                          @Param("search") String search, Pageable pageable);
+
+    @Query("SELECT o FROM Order o WHERE o.store.storeId IN :storeIds " +
+           "AND (LOWER(o.orderCode) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(o.shippingAddress) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<Order> searchStoreOrdersIn(@Param("storeIds") List<String> storeIds, @Param("search") String search, Pageable pageable);
+
+    @Query("SELECT o FROM Order o WHERE o.store.storeId IN :storeIds AND o.status = :status " +
+           "AND (LOWER(o.orderCode) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(o.shippingAddress) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<Order> searchStoreOrdersInByStatus(@Param("storeIds") List<String> storeIds, @Param("status") OrderStatus status,
+                                            @Param("search") String search, Pageable pageable);
+
     @Query("SELECT o FROM Order o WHERE o.customer.userId = :customerId ORDER BY o.createdAt DESC")
     List<Order> findByCustomerId(@Param("customerId") String customerId);
 

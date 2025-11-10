@@ -1,5 +1,6 @@
 package com.example.backend.controller;
 
+import com.example.backend.dto.request.ChangePasswordRequest;
 import com.example.backend.dto.request.LoginRequest;
 import com.example.backend.dto.request.PhoneAuthStep1Request;
 import com.example.backend.dto.request.PhoneAuthStep2Request;
@@ -183,5 +184,23 @@ public class AuthController {
         com.example.backend.dto.response.ResetPasswordResponse response =
                 authService.resetPassword(request.getToken(), request.getNewPassword(), request.getConfirmPassword());
         return ResponseEntity.ok(ApiResponse.success("Password reset successfully. You can now login with your new password.", response));
+    }
+
+    // ===== AUTHENTICATED USER OPERATIONS =====
+
+    @PostMapping("/change-password")
+    @Operation(summary = "Change password for authenticated user",
+               description = "Change password for currently authenticated user. Requires authentication. User must provide current password and new password (min 8 characters).")
+    public ResponseEntity<ApiResponse<Void>> changePassword(
+            @Valid @RequestBody com.example.backend.dto.request.ChangePasswordRequest request,
+            Authentication authentication) {
+        log.info("POST /api/auth/change-password - Changing password for authenticated user");
+        
+        // Extract keycloakId from JWT
+        Jwt jwt = (Jwt) authentication.getPrincipal();
+        String keycloakId = jwt.getSubject();
+        
+        authService.changePassword(keycloakId, request.getCurrentPassword(), request.getNewPassword());
+        return ResponseEntity.ok(ApiResponse.success("Đổi mật khẩu thành công"));
     }
 }

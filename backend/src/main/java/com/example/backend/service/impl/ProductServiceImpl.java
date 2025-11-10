@@ -244,9 +244,24 @@ public class ProductServiceImpl implements ProductService {
     public Page<ProductResponse> getAllProducts(ProductStatus status, String categoryId, String supplierId, String search, Pageable pageable) {
         Page<Product> products;
 
+        // When search is provided, use Specification for dynamic filtering
+        String trimmedSearch = search != null ? search.trim() : "";
+        boolean hasSearch = !trimmedSearch.isEmpty();
+        
+        if (hasSearch) {
+            // Use Specification to combine search with other filters
+            ProductFilterRequest filter = new ProductFilterRequest();
+            filter.setStatus(status);
+            filter.setCategoryId(categoryId);
+            filter.setSupplierId(supplierId);
+            filter.setSearch(trimmedSearch);
+            
+            Specification<Product> spec = ProductSpecification.buildSpecification(filter);
+            products = productRepository.findAll(spec, pageable);
+        }
         // CRITICAL FIX: Only show products from ACTIVE suppliers
         // When supplier is paused/suspended, their products must be hidden from customers
-        if (status != null && categoryId != null) {
+        else if (status != null && categoryId != null) {
             products = productRepository.findByStatusAndCategoryFromActiveSuppliers(status, categoryId, pageable);
         } else if (status != null) {
             products = productRepository.findByStatusFromActiveSuppliers(status, pageable);
@@ -293,10 +308,25 @@ public class ProductServiceImpl implements ProductService {
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
         
         Page<Product> products;
-        if (status != null) {
-            products = productRepository.findBySupplierUserIdAndStatus(supplier.getUserId(), status, pageable);
+        String supplierId = supplier.getUserId();
+        
+        // Handle combination of search and status filters
+        String trimmedSearch = search != null ? search.trim() : "";
+        boolean hasSearch = !trimmedSearch.isEmpty();
+        boolean hasStatus = status != null;
+        
+        if (hasSearch && hasStatus) {
+            // Both search and status filter
+            products = productRepository.searchProductsByNameAndStatus(supplierId, trimmedSearch, status, pageable);
+        } else if (hasSearch) {
+            // Search only (all statuses)
+            products = productRepository.searchProductsByName(supplierId, trimmedSearch, pageable);
+        } else if (hasStatus) {
+            // Status filter only
+            products = productRepository.findBySupplierUserIdAndStatus(supplierId, status, pageable);
         } else {
-            products = productRepository.findBySupplierUserId(supplier.getUserId(), pageable);
+            // No filters - get all products
+            products = productRepository.findBySupplierUserId(supplierId, pageable);
         }
         
         return products.map(productMapper::toResponse);

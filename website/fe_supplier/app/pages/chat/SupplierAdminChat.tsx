@@ -26,6 +26,11 @@ export default function SupplierAdminChat() {
     selectedConversationRef.current = selectedConversation;
   }, [selectedConversation]);
 
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
   useEffect(() => {
     initializeChat();
     return () => {
@@ -50,7 +55,24 @@ export default function SupplierAdminChat() {
         if (current && 
             (message.sender.userId === current.otherUser.userId || 
              message.receiver.userId === current.otherUser.userId)) {
-          setMessages(prev => [...prev, message]); // Append to end
+          
+          setMessages(prev => {
+            // Check if this is a duplicate of an optimistic message
+            const hasOptimistic = prev.some((m: any) => m._isOptimistic && 
+              m.content === message.content &&
+              Math.abs(new Date(m.sendTime).getTime() - new Date(message.sendTime).getTime()) < 5000
+            );
+            
+            if (hasOptimistic) {
+              // Replace optimistic message with real message from server
+              return prev.map((m: any) => 
+                m._isOptimistic && m.content === message.content ? message : m
+              );
+            } else {
+              // New message from other user, append to end
+              return [...prev, message];
+            }
+          });
           
           // Only mark as read if we are the receiver (not sender)
           if (message.receiver.userId === currentUserId) {
@@ -122,27 +144,63 @@ export default function SupplierAdminChat() {
     
     if (!messageInput.trim() || !selectedConversation || sending) return;
 
+    const messageContent = messageInput.trim();
+    const tempMessageId = `temp-${Date.now()}`; // Temporary ID for optimistic UI
+
     const request: ChatMessageRequest = {
       receiverId: selectedConversation.otherUser.userId,
-      content: messageInput.trim(),
+      content: messageContent,
       type: MessageType.TEXT
+    };
+
+    // Create optimistic message for immediate UI update (will be replaced by real message)
+    const optimisticMessage: any = {
+      messageId: tempMessageId,
+      sender: {
+        userId: currentUserId || '',
+        username: user?.username || '',
+        fullName: user?.fullName || user?.username || '',
+        userType: 'SUPPLIER'
+      },
+      receiver: selectedConversation.otherUser,
+      content: messageContent,
+      type: MessageType.TEXT,
+      sendTime: new Date().toISOString(),
+      status: 'DELIVERED', // Optimistic status
+      _isOptimistic: true // Flag to identify optimistic messages
     };
 
     try {
       setSending(true);
+      setMessageInput(''); // Clear input immediately for better UX
+      
+      // Add optimistic message to UI
+      setMessages(prev => [...prev, optimisticMessage]);
       
       // Try WebSocket first, fallback to REST API
       try {
         chatService.sendMessageViaWebSocket(request);
-      } catch {
-        const message = await chatService.sendMessage(request);
-        setMessages(prev => [...prev, message]);
+        // WebSocket will trigger onMessage callback with real message from server
+      } catch (wsError) {
+        console.log('WebSocket send failed, falling back to REST API');
+        const realMessage = await chatService.sendMessage(request);
+        
+        // Replace optimistic message with real message from server
+        setMessages(prev => 
+          prev.map(msg => 
+            msg.messageId === tempMessageId ? realMessage : msg
+          )
+        );
       }
-      
-      setMessageInput('');
-      scrollToBottom();
     } catch (error) {
       console.error('Error sending message:', error);
+      
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(msg => msg.messageId !== tempMessageId));
+      
+      // Restore message input
+      setMessageInput(messageContent);
+      
       alert('Không thể gửi tin nhắn. Vui lòng thử lại.');
     } finally {
       setSending(false);
@@ -320,7 +378,7 @@ export default function SupplierAdminChat() {
                             isOwn
                               ? 'bg-green-600 text-white rounded-br-none'
                               : 'bg-white text-gray-800 rounded-bl-none shadow-sm'
-                          }`}
+                          } ${(message as any)._isOptimistic ? 'opacity-70' : ''}`}
                         >
                           <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
                         </div>
@@ -328,7 +386,15 @@ export default function SupplierAdminChat() {
                           <span className="text-xs text-gray-500">{formatTime(message.sendTime)}</span>
                           {isOwn && (
                             <span className="text-xs text-gray-500">
-                              {message.status === 'READ' ? '✓✓' : message.status === 'DELIVERED' ? '✓✓' : '✓'}
+                              {(message as any)._isOptimistic ? (
+                                <span className="animate-pulse">⏱</span>
+                              ) : message.status === 'READ' ? (
+                                <span className="text-blue-500">✓✓</span>
+                              ) : message.status === 'DELIVERED' ? (
+                                '✓✓'
+                              ) : (
+                                '✓'
+                              )}
                             </span>
                           )}
                         </div>

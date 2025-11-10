@@ -466,4 +466,52 @@ public class AuthServiceImpl implements AuthService {
                 .userType(tokenEntity.getUserType())
                 .build();
     }
+
+    @Override
+    @Transactional
+    public void changePassword(String keycloakId, String currentPassword, String newPassword) {
+        log.info("Changing password for user with keycloakId: {}", keycloakId);
+
+        // Find user in database
+        User user = userRepository.findByKeycloakId(keycloakId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND,
+                        "Không tìm thấy người dùng"));
+
+        // Get username
+        String username = user.getUsername();
+
+        // Verify current password by attempting to authenticate with Keycloak
+        try {
+            LoginRequest loginRequest = new LoginRequest();
+            loginRequest.setUsername(username);
+            loginRequest.setPassword(currentPassword);
+            keycloakService.authenticateUser(loginRequest);
+        } catch (Exception e) {
+            log.error("Current password verification failed for user: {}", username);
+            throw new BadRequestException(ErrorCode.KEYCLOAK_AUTHENTICATION_FAILED, 
+                    "Mật khẩu hiện tại không đúng");
+        }
+
+        // Validate new password strength (minimum 8 characters)
+        if (newPassword.length() < 8) {
+            throw new BadRequestException(ErrorCode.INVALID_INPUT,
+                    "Mật khẩu mới phải có ít nhất 8 ký tự");
+        }
+
+        // Check if new password is same as current password
+        if (currentPassword.equals(newPassword)) {
+            throw new BadRequestException(ErrorCode.INVALID_INPUT,
+                    "Mật khẩu mới phải khác mật khẩu hiện tại");
+        }
+
+        // Update password in Keycloak
+        try {
+            keycloakService.updateUserPassword(keycloakId, newPassword);
+            log.info("Password updated successfully for user: {}", username);
+        } catch (Exception e) {
+            log.error("Failed to update password in Keycloak for user: {}", username, e);
+            throw new BadRequestException(ErrorCode.KEYCLOAK_PASSWORD_UPDATE_FAILED,
+                    "Không thể cập nhật mật khẩu. Vui lòng thử lại sau.");
+        }
+    }
 }

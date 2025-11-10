@@ -651,8 +651,9 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<OrderResponse> getSupplierOrders(String supplierId, OrderStatus status, int page, int size) {
-        log.info("Getting orders for supplier: supplierId={}, status={}", supplierId, status);
+    public Page<OrderResponse> getSupplierOrders(String supplierId, OrderStatus status, String searchTerm, 
+                                                  String sortBy, String sortDir, int page, int size) {
+        log.info("Getting orders for supplier: supplierId={}, status={}, search={}", supplierId, status, searchTerm);
 
         // Get all supplier's stores
         List<Store> stores = storeRepository.findBySupplierUserId(supplierId);
@@ -660,7 +661,7 @@ public class OrderServiceImpl implements OrderService {
         // If supplier has no stores, return empty page instead of throwing exception
         if (stores.isEmpty()) {
             log.warn("Supplier has no stores yet: supplierId={}", supplierId);
-            Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+            Pageable pageable = createPageable(page, size, sortBy, sortDir);
             return Page.empty(pageable);
         }
 
@@ -669,10 +670,17 @@ public class OrderServiceImpl implements OrderService {
                 .map(Store::getStoreId)
                 .collect(Collectors.toList());
 
-        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Pageable pageable = createPageable(page, size, sortBy, sortDir);
 
         Page<Order> orders;
-        if (status != null) {
+        String trimmedSearch = searchTerm != null ? searchTerm.trim() : "";
+        boolean hasSearch = !trimmedSearch.isEmpty();
+        
+        if (hasSearch && status != null) {
+            orders = orderRepository.searchStoreOrdersInByStatus(storeIds, status, trimmedSearch, pageable);
+        } else if (hasSearch) {
+            orders = orderRepository.searchStoreOrdersIn(storeIds, trimmedSearch, pageable);
+        } else if (status != null) {
             orders = orderRepository.findByStoreStoreIdInAndStatus(storeIds, status, pageable);
         } else {
             orders = orderRepository.findByStoreStoreIdIn(storeIds, pageable);
@@ -683,10 +691,11 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<OrderResponse> getSupplierStoreOrders(String supplierId, String storeId, OrderStatus status, int page,
-            int size) {
-        log.info("Getting orders for supplier's specific store: supplierId={}, storeId={}, status={}",
-                supplierId, storeId, status);
+    public Page<OrderResponse> getSupplierStoreOrders(String supplierId, String storeId, OrderStatus status, 
+                                                       String searchTerm, String sortBy, String sortDir, 
+                                                       int page, int size) {
+        log.info("Getting orders for supplier's specific store: supplierId={}, storeId={}, status={}, search={}",
+                supplierId, storeId, status, searchTerm);
 
         // Validate store ownership
         List<Store> stores = storeRepository.findBySupplierUserId(supplierId);
@@ -698,8 +707,24 @@ public class OrderServiceImpl implements OrderService {
                     "Bạn không có quyền truy cập đơn hàng của cửa hàng này");
         }
 
-        // Get orders for this specific store
-        return getStoreOrders(storeId, status, page, size);
+        // Get orders for this specific store with search and sorting
+        Pageable pageable = createPageable(page, size, sortBy, sortDir);
+        
+        Page<Order> orders;
+        String trimmedSearch = searchTerm != null ? searchTerm.trim() : "";
+        boolean hasSearch = !trimmedSearch.isEmpty();
+        
+        if (hasSearch && status != null) {
+            orders = orderRepository.searchStoreOrdersByStatus(storeId, status, trimmedSearch, pageable);
+        } else if (hasSearch) {
+            orders = orderRepository.searchStoreOrders(storeId, trimmedSearch, pageable);
+        } else if (status != null) {
+            orders = orderRepository.findByStoreStoreIdAndStatus(storeId, status, pageable);
+        } else {
+            orders = orderRepository.findByStoreStoreId(storeId, pageable);
+        }
+
+        return orders.map(this::mapToOrderResponse);
     }
 
     @Override
@@ -1259,6 +1284,34 @@ public class OrderServiceImpl implements OrderService {
                         order.getOrderCode(), pointsAwarded));
 
         return mapToOrderResponse(order);
+    }
+
+    /**
+     * Helper method to create Pageable with dynamic sorting
+     */
+    private Pageable createPageable(int page, int size, String sortBy, String sortDir) {
+        // Validate and sanitize sortBy field
+        String validatedSortBy = validateSortField(sortBy);
+        Sort.Direction direction = "ASC".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        return PageRequest.of(page, size, Sort.by(direction, validatedSortBy));
+    }
+
+    /**
+     * Validate and sanitize sort field to prevent injection
+     */
+    private String validateSortField(String sortBy) {
+        if (sortBy == null || sortBy.trim().isEmpty()) {
+            return "createdAt";
+        }
+        return switch (sortBy.toLowerCase()) {
+            case "ordercode" -> "orderCode";
+            case "createdat" -> "createdAt";
+            case "updatedat" -> "updatedAt";
+            case "totalamount" -> "totalAmount";
+            case "status" -> "status";
+            case "paymentmethod" -> "paymentMethod";
+            default -> "createdAt"; // Default to createdAt
+        };
     }
 
     private OrderResponse mapToOrderResponse(Order order) {
