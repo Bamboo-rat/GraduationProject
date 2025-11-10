@@ -42,10 +42,7 @@ services:
       - key: SPRING_DATASOURCE_PASSWORD
         sync: false
       - key: KEYCLOAK_AUTH_SERVER_URL
-        fromService:
-          type: web
-          name: graduation-project-keycloak
-          envVarKey: URL
+        sync: false
       - key: KEYCLOAK_REALM
         value: SaveFood
       - key: KEYCLOAK_RESOURCE
