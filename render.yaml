@@ -2,22 +2,6 @@
 # Đặt file này ở root của repository
 
 services:
-  # Redis - Private Service
-  - type: pserv
-    name: graduation-project-redis
-    runtime: docker
-    dockerfilePath: ./redis/Dockerfile
-    dockerContext: ./redis
-    plan: free
-    region: singapore
-    envVars:
-      - key: REDIS_PASSWORD
-        generateValue: true
-    disk:
-      name: redis-data
-      mountPath: /data
-      sizeGB: 1
-
   # Keycloak - Web Service
   - type: web
     name: graduation-project-keycloak
@@ -91,20 +75,13 @@ services:
       - key: CLOUDINARY_API_SECRET
         sync: false
       - key: REDIS_HOST
-        fromService:
-          type: pserv
-          name: graduation-project-redis
-          property: host
+        sync: false
       - key: REDIS_PORT
-        fromService:
-          type: pserv
-          name: graduation-project-redis
-          property: port
+        sync: false
       - key: REDIS_PASSWORD
-        fromService:
-          type: pserv
-          name: graduation-project-redis
-          envVarKey: REDIS_PASSWORD
+        sync: false
+      - key: REDIS_SSL
+        value: "true"
       - key: JWT_SECRET
         sync: false
     healthCheckPath: /actuator/health
