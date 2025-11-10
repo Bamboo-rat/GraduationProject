@@ -15,7 +15,6 @@ const ForgotPassword = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Step 1: Send OTP to email
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -40,7 +39,6 @@ const ForgotPassword = () => {
     }
   };
 
-  // Step 2: Verify OTP and reset password
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -58,7 +56,6 @@ const ForgotPassword = () => {
     setError('');
 
     try {
-      // Step 2a: Verify OTP
       const verifyResponse = await axiosInstance.post('/auth/verify-reset-otp', {
         email,
         otp
@@ -67,7 +64,6 @@ const ForgotPassword = () => {
       if (verifyResponse.data.success || verifyResponse.data.code === 200) {
         const resetToken = verifyResponse.data.data.resetToken;
 
-        // Step 2b: Reset password with token
         const resetResponse = await axiosInstance.post('/auth/reset-password', {
           token: resetToken,
           newPassword,
@@ -91,7 +87,6 @@ const ForgotPassword = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#D9FFDF] via-[#E8FFED] to-[#F0FFF4] p-4">
       <div className="w-full max-w-md">
-        {/* Logo/Header Section */}
         <div className="text-center mb-8">
           <div className="inline-block p-4 bg-white rounded-full shadow-lg mb-4">
             <img
@@ -115,7 +110,6 @@ const ForgotPassword = () => {
         {/* Form Card */}
         <div className="bg-white rounded-2xl shadow-xl p-8 border border-green-100">
           {step === 'success' ? (
-            // Success Message
             <div className="text-center">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
                 <svg

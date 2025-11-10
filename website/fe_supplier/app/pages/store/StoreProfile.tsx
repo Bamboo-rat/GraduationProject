@@ -256,25 +256,6 @@ export default function StoreProfile() {
               <p className="text-gray-900">{store.supplierName}</p>
             </div>
           )}
-
-          {/* Quick Actions */}
-          <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-xl border border-green-200 p-6">
-            <h2 className="text-lg font-bold text-gray-800 mb-4">Thao tác nhanh</h2>
-            <div className="space-y-2">
-              <button
-                onClick={() => navigate('/store/update-history')}
-                className="w-full px-4 py-2 bg-white hover:bg-green-50 text-gray-800 rounded-lg font-medium transition-colors border border-green-200"
-              >
-                Lịch sử cập nhật
-              </button>
-              <button
-                onClick={() => navigate('/products/list')}
-                className="w-full px-4 py-2 bg-white hover:bg-green-50 text-gray-800 rounded-lg font-medium transition-colors border border-green-200"
-              >
-                Sản phẩm của cửa hàng
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     </div>

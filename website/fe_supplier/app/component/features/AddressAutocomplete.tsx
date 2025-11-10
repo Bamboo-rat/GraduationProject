@@ -272,12 +272,6 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
         </div>
       )}
 
-      {/* Hint */}
-      <p className="mt-1 text-xs text-[#6B6B6B] flex items-center">
-        <span className="mr-1">💡</span>
-        Gõ ít nhất 3 ký tự để tìm kiếm địa chỉ
-      </p>
-
       {/* Powered by Goong */}
       <p className="mt-1 text-xs text-gray-400 flex items-center">
         <span className="mr-1">🗺️</span>

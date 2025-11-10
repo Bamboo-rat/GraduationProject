@@ -346,9 +346,15 @@ public class WalletServiceImpl implements WalletService {
 
         BigDecimal totalBalance = wallet.getAvailableBalance().add(wallet.getPendingBalance());
         Double commissionRate = supplier.getCommissionRate() != null ? supplier.getCommissionRate() : 0.0;
-        BigDecimal estimatedCommission = wallet.getMonthlyEarnings()
-                .multiply(BigDecimal.valueOf(commissionRate))
-                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal estimatedCommission = BigDecimal.ZERO;
+
+        if (commissionRate > 0 && commissionRate < 1) {
+            BigDecimal rate = BigDecimal.valueOf(commissionRate);
+            BigDecimal oneMinusRate = BigDecimal.ONE.subtract(rate);
+            estimatedCommission = wallet.getMonthlyEarnings()
+                    .multiply(rate)
+                    .divide(oneMinusRate, 2, RoundingMode.HALF_UP);
+        }
 
         return WalletSummaryResponse.builder()
                 .availableBalance(wallet.getAvailableBalance())

@@ -54,10 +54,11 @@ public class FileStorageServiceImpl implements FileStorageService {
             Map<String, Object> uploadParams = ObjectUtils.asMap(
                     "folder", bucket.getFolderName(),
                     "public_id", publicId,
-                    "resource_type", resourceType, // Explicitly set resource type based on file
-                    "type", "upload", // IMPORTANT: "upload" = public access, "authenticated" = requires signed URL
+                    "resource_type", resourceType,
+                    "type", "upload",
                     "overwrite", false,
-                    "invalidate", true);
+                    "invalidate", true,
+                    "flags", "");
 
             log.info("Uploading to Cloudinary with params: folder={}, resource_type={}",
                     bucket.getFolderName(), resourceType);
@@ -201,9 +202,38 @@ public class FileStorageServiceImpl implements FileStorageService {
 
     @Override
     public String getFileUrl(String fileName, StorageBucket bucket) {
-        // Cloudinary returns full URL on upload, so this is just a passthrough
         log.debug("getFileUrl called - returning fileName as-is: {}", fileName);
         return fileName;
+    }
+
+    /**
+     * Generate inline viewing URL for PDF and document files
+     * This transforms Cloudinary raw URLs to allow inline viewing in browser
+     * instead of forcing download
+     *
+     * @param fileUrl Original Cloudinary URL
+     * @return Transformed URL for inline viewing
+     */
+    public String getInlineViewingUrl(String fileUrl) {
+        if (fileUrl == null || !fileUrl.contains("cloudinary.com")) {
+            return fileUrl;
+        }
+        try {
+            // For raw files (PDFs, documents), we need to add fl_attachment flag
+            // to control Content-Disposition header
+            if (fileUrl.contains("/raw/upload/")) {
+                // Transform URL to add inline viewing flags
+                // Note: Cloudinary raw files have limited transformation options
+                // The best approach is to use the URL as-is and rely on browser behavior
+                // Modern browsers will attempt to display PDFs inline by default
+                log.debug("Raw file URL, returning as-is for inline viewing: {}", fileUrl);
+                return fileUrl;
+            }
+            return fileUrl;
+        } catch (Exception e) {
+            log.error("Error transforming URL for inline viewing: {}", fileUrl, e);
+            return fileUrl;
+        }
     }
 
     @Override

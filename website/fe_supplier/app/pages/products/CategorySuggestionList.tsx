@@ -1,8 +1,21 @@
 import { useState, useEffect } from 'react';
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { 
+  Lightbulb, 
+  Filter, 
+  Plus, 
+  Calendar, 
+  MessageSquare,
+  User,
+  Clock,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight
+} from 'lucide-react';
 import categorySuggestionService from '~/service/categorySuggestionService';
 import type { CategorySuggestion, CategorySuggestionListParams } from '~/service/categorySuggestionService';
+import Toast, {type ToastType } from '~/component/common/Toast';
 
 export default function CategorySuggestionList() {
   const [suggestions, setSuggestions] = useState<CategorySuggestion[]>([]);
@@ -14,6 +27,19 @@ export default function CategorySuggestionList() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newName, setNewName] = useState('');
   const [reason, setReason] = useState('');
+  const [toast, setToast] = useState<{ show: boolean; message: string; type: ToastType }>({
+    show: false,
+    message: '',
+    type: 'info'
+  });
+
+  const showToast = (message: string, type: ToastType = 'info') => {
+    setToast({ show: true, message, type });
+  };
+
+  const hideToast = () => {
+    setToast({ ...toast, show: false });
+  };
 
   const fetchSuggestions = async () => {
     try {
@@ -29,7 +55,6 @@ export default function CategorySuggestionList() {
 
       const response: any = await categorySuggestionService.getMySuggestions(params);
 
-      // Defensive handling for different pagination shapes
       const content = response?.content ?? [];
       const page = response?.page ?? {
         totalPages: response?.totalPages ?? 0,
@@ -43,7 +68,7 @@ export default function CategorySuggestionList() {
       setTotalElements(page.totalElements ?? 0);
     } catch (error) {
       console.error('Error fetching suggestions:', error);
-  toast.error('Lỗi khi tải danh sách đề xuất');
+      showToast('Lỗi khi tải danh sách đề xuất', 'error');
     } finally {
       setLoading(false);
     }
@@ -54,8 +79,13 @@ export default function CategorySuggestionList() {
   }, [currentPage, statusFilter]);
 
   const handleCreateSuggestion = async () => {
-    if (!newName.trim() || !reason.trim()) {
-      toast.warn('Vui lòng nhập đầy đủ thông tin');
+    if (!newName.trim()) {
+      showToast('Vui lòng nhập tên danh mục', 'warning');
+      return;
+    }
+
+    if (!reason.trim()) {
+      showToast('Vui lòng nhập lý do đề xuất', 'warning');
       return;
     }
 
@@ -64,7 +94,7 @@ export default function CategorySuggestionList() {
         name: newName.trim(),
         reason: reason.trim(),
       });
-      toast.success('Gửi đề xuất thành công');
+      showToast('Gửi đề xuất thành công', 'success');
       setShowCreateModal(false);
       setNewName('');
       setReason('');
@@ -72,20 +102,38 @@ export default function CategorySuggestionList() {
       fetchSuggestions();
     } catch (error) {
       console.error('Error creating suggestion:', error);
-  toast.error('Lỗi khi tạo đề xuất');
+      showToast('Lỗi khi gửi đề xuất', 'error');
     }
   };
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      PENDING: { label: 'Chờ duyệt', class: 'badge-warning' },
-      APPROVED: { label: 'Đã duyệt', class: 'badge-success' },
-      REJECTED: { label: 'Bị từ chối', class: 'badge-error' },
+      PENDING: { 
+        label: 'Chờ duyệt', 
+        class: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+        icon: <Clock size={14} />
+      },
+      APPROVED: { 
+        label: 'Đã duyệt', 
+        class: 'bg-green-50 text-green-700 border-green-200',
+        icon: <CheckCircle size={14} />
+      },
+      REJECTED: { 
+        label: 'Bị từ chối', 
+        class: 'bg-red-50 text-red-700 border-red-200',
+        icon: <XCircle size={14} />
+      },
     };
 
-    const config = statusConfig[status as keyof typeof statusConfig] || { label: status, class: 'badge-neutral' };
+    const config = statusConfig[status as keyof typeof statusConfig] || { 
+      label: status, 
+      class: 'bg-gray-50 text-gray-700 border-gray-200',
+      icon: <AlertCircle size={14} />
+    };
+    
     return (
-      <span className={`px-3 py-1 rounded-full text-sm font-medium ${config.class}`}>
+      <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium border ${config.class}`}>
+        {config.icon}
         {config.label}
       </span>
     );
@@ -94,237 +142,218 @@ export default function CategorySuggestionList() {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="text-muted animate-pulse">Đang tải danh sách đề xuất...</div>
+        <div className="text-[#6B6B6B] animate-pulse">Đang tải danh sách đề xuất...</div>
       </div>
     );
   }
 
   return (
     <div className="p-6 animate-fade-in">
-      <ToastContainer position="top-right" autoClose={3000} hideProgressBar={false} newestOnTop closeOnClick pauseOnFocusLoss draggable pauseOnHover />
-      <div className="mb-6">
-        <h1 className="heading-primary mb-2">Đề xuất danh mục sản phẩm</h1>
-        <p className="text-muted mb-6">Gửi đề xuất danh mục mới và theo dõi trạng thái</p>
+      {/* Toast Notification */}
+      {toast.show && (
+        <Toast 
+          message={toast.message} 
+          type={toast.type} 
+          onClose={hideToast}
+        />
+      )}
 
-        {/* Filters */}
-        <div className="flex flex-col lg:flex-row gap-4 mb-6">
-          {/* Status Filter Buttons */}
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setStatusFilter('')}
-              className={`px-4 py-2 rounded-lg transition-colors font-medium ${
-                !statusFilter ? 'btn-primary' : 'btn-secondary'
-              }`}
-            >
-              Tất cả
-            </button>
-            <button
-              onClick={() => setStatusFilter('PENDING')}
-              className={`px-4 py-2 rounded-lg transition-colors font-medium ${
-                statusFilter === 'PENDING' ? 'btn-primary' : 'bg-surface border-default border text-text hover:bg-surface-light'
-              }`}
-            >
-              Chờ duyệt
-            </button>
-            <button
-              onClick={() => setStatusFilter('APPROVED')}
-              className={`px-4 py-2 rounded-lg transition-colors font-medium ${
-                statusFilter === 'APPROVED' ? 'btn-primary' : 'bg-surface border-default border text-text hover:bg-surface-light'
-              }`}
-            >
-              Đã duyệt
-            </button>
-            <button
-              onClick={() => setStatusFilter('REJECTED')}
-              className={`px-4 py-2 rounded-lg transition-colors font-medium ${
-                statusFilter === 'REJECTED' ? 'btn-primary' : 'bg-surface border-default border text-text hover:bg-surface-light'
-              }`}
-            >
-              Bị từ chối
-            </button>
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-2">
+          <Lightbulb className="text-[#A4C3A2]" size={32} />
+          <div>
+            <h1 className="text-3xl font-bold text-[#2D2D2D]">Đề xuất danh mục</h1>
+            <p className="text-[#6B6B6B] mt-1">Gửi đề xuất danh mục mới và theo dõi trạng thái</p>
           </div>
-
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="btn-secondary lg:ml-auto whitespace-nowrap"
-          >
-            + Đề xuất danh mục mới
-          </button>
         </div>
       </div>
 
-      {/* Suggestions Table */}
-      <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-surface-light">
-              <tr>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-text uppercase tracking-wider">
-                  Tên danh mục
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-text uppercase tracking-wider">
-                  Lý do đề xuất
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-text uppercase tracking-wider">
-                  Ngày gửi
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-text uppercase tracking-wider">
-                  Trạng thái
-                </th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-text uppercase tracking-wider">
-                  Phản hồi Admin
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-surface divide-y divide-gray-200">
-              {suggestions.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-muted">
-                    <div className="flex flex-col items-center justify-center">
-                      <div className="text-lg mb-2">💡</div>
-                      <p>Chưa có đề xuất nào</p>
-                      <p className="text-sm text-light mt-1">
-                        Hãy tạo đề xuất đầu tiên để đề xuất danh mục mới
-                      </p>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                suggestions.map((suggestion) => (
-                  <tr key={suggestion.id} className="hover:bg-surface-light transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-semibold text-text">{suggestion.name}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-muted max-w-xs">{suggestion.reason}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-muted">
-                      {new Date(suggestion.createdAt).toLocaleDateString('vi-VN')}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {getStatusBadge(suggestion.status)}
-                    </td>
-                    <td className="px-6 py-4">
-                      {suggestion.adminNotes ? (
-                        <div className="text-sm text-text">
-                          <div className="font-medium mb-1">📝 Phản hồi:</div>
-                          <div className="text-muted bg-surface-light p-3 rounded-lg border border-default">
-                            {suggestion.adminNotes}
-                          </div>
-                          {suggestion.processorName && (
-                            <div className="text-xs text-light mt-2">
-                              Xử lý bởi: <span className="font-medium">{suggestion.processorName}</span> -{' '}
-                              {suggestion.processedAt &&
-                                new Date(suggestion.processedAt).toLocaleString('vi-VN')}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-sm text-light italic">Chưa có phản hồi</span>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+      {/* Controls */}
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <div className="flex items-center gap-3">
+          {/* Status Filter */}
+          <div className="flex items-center gap-2">
+            <Filter size={16} className="text-[#6B6B6B]" />
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as any)}
+              className="input-field min-w-[160px]"
+            >
+              <option value="">Tất cả trạng thái</option>
+              <option value="PENDING">Chờ duyệt</option>
+              <option value="APPROVED">Đã duyệt</option>
+              <option value="REJECTED">Bị từ chối</option>
+            </select>
+          </div>
         </div>
 
-        {/* Pagination */}
-        {totalPages > 0 && (
-          <div className="bg-surface-light px-6 py-4 flex items-center justify-between border-t border-default">
-            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm text-muted">
-                  Hiển thị <span className="font-semibold text-text">{currentPage * 10 + 1}</span> đến{' '}
-                  <span className="font-semibold text-text">
-                    {Math.min((currentPage + 1) * 10, totalElements)}
-                  </span>{' '}
-                  trong tổng số <span className="font-semibold text-text">{totalElements}</span> đề xuất
-                </p>
-              </div>
-              <div>
-                <nav className="relative z-0 inline-flex rounded-lg shadow-sm -space-x-px">
-                  <button
-                    onClick={() => setCurrentPage((prev) => Math.max(0, prev - 1))}
-                    disabled={currentPage === 0}
-                    className="btn-secondary rounded-l-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    ← Trước
-                  </button>
-                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setCurrentPage(i)}
-                      className={`px-4 py-2 border text-sm font-medium transition-colors ${
-                        currentPage === i
-                          ? 'bg-primary text-surface border-primary-dark z-10'
-                          : 'bg-surface border-default text-text hover:bg-surface-light'
-                      } ${i === 0 ? 'rounded-l-lg' : ''} ${i === Math.min(totalPages, 5) - 1 ? 'rounded-r-lg' : ''}`}
-                    >
-                      {i + 1}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => setCurrentPage((prev) => Math.min(totalPages - 1, prev + 1))}
-                    disabled={currentPage >= totalPages - 1}
-                    className="btn-secondary rounded-r-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Sau →
-                  </button>
-                </nav>
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="btn-secondary whitespace-nowrap flex items-center gap-2 sm:ml-auto"
+        >
+          <Plus size={16} />
+          Đề xuất mới
+        </button>
+      </div>
+
+      {/* Suggestions List */}
+      <div className="space-y-4">
+        {suggestions.length === 0 ? (
+          <div className="card text-center py-16">
+            <Lightbulb size={64} className="text-[#DDC6B6] mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-[#2D2D2D] mb-3">Chưa có đề xuất nào</h3>
+            <p className="text-[#6B6B6B] mb-6 max-w-md mx-auto">
+              Bạn chưa gửi đề xuất danh mục nào. Hãy tạo đề xuất đầu tiên để đề xuất danh mục mới cho hệ thống.
+            </p>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="btn-primary inline-flex items-center gap-2 px-6 py-3"
+            >
+              <Plus size={18} />
+              Tạo đề xuất đầu tiên
+            </button>
+          </div>
+        ) : (
+          suggestions.map((suggestion) => (
+            <div key={suggestion.id} className="card card-hover p-6">
+              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                {/* Main Content */}
+                <div className="flex-1 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-[#2D2D2D] text-lg mb-2">
+                        {suggestion.name}
+                      </h3>
+                      <p className="text-[#6B6B6B] leading-relaxed">
+                        {suggestion.reason}
+                      </p>
+                    </div>
+                    <div className="flex-shrink-0">
+                      {getStatusBadge(suggestion.status)}
+                    </div>
+                  </div>
+
+                  {/* Meta Info */}
+                  <div className="flex items-center gap-4 text-sm text-[#8B8B8B]">
+                    <div className="flex items-center gap-1">
+                      <Calendar size={14} />
+                      Gửi ngày: {new Date(suggestion.createdAt).toLocaleDateString('vi-VN')}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Admin Notes */}
+                {suggestion.adminNotes && (
+                  <div className="lg:w-80 bg-[#F8FFF9] border border-[#E8FFED] rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <MessageSquare size={16} className="text-[#2F855A]" />
+                      <span className="font-medium text-[#2D2D2D]">Phản hồi từ quản trị viên</span>
+                    </div>
+                    <p className="text-[#6B6B6B] text-sm mb-3 leading-relaxed">{suggestion.adminNotes}</p>
+                    {suggestion.processorName && (
+                      <div className="flex items-center gap-2 text-xs text-[#8B8B8B]">
+                        <User size={12} />
+                        <span>Xử lý bởi: {suggestion.processorName}</span>
+                        {suggestion.processedAt && (
+                          <span>• {new Date(suggestion.processedAt).toLocaleString('vi-VN')}</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
-          </div>
+          ))
         )}
       </div>
 
-      {/* Create Modal */}
+      {/* Simplified Pagination */}
+      {totalPages > 1 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-8 pt-6 border-t border-[#DDC6B6]">
+          <div className="text-sm text-[#6B6B6B]">
+            Hiển thị {Math.min((currentPage * 10) + 1, totalElements)} -{' '}
+            {Math.min((currentPage + 1) * 10, totalElements)} của {totalElements} đề xuất
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
+              disabled={currentPage === 0}
+              className="p-2 rounded-lg border border-[#DDC6B6] bg-white hover:bg-[#F8FFF9] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            
+            <div className="flex items-center gap-1">
+              <span className="px-3 py-1 text-sm font-medium text-[#2D2D2D]">
+                Trang {currentPage + 1} / {totalPages}
+              </span>
+            </div>
+            
+            <button
+              onClick={() => setCurrentPage(prev => Math.min(totalPages - 1, prev + 1))}
+              disabled={currentPage >= totalPages - 1}
+              className="p-2 rounded-lg border border-[#DDC6B6] bg-white hover:bg-[#F8FFF9] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Create Suggestion Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center w-full h-full z-50 p-4 animate-fadeIn">
-          <div className="bg-surface rounded-lg p-6 w-full max-w-md mx-4 card-hover">
-            <h2 className="heading-secondary mb-4">Đề xuất danh mục mới</h2>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-text mb-2">
-                Tên danh mục <span className="text-accent-red">*</span>
-              </label>
-              <input
-                type="text"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                placeholder="Ví dụ: Thực phẩm hữu cơ, Đồ uống tự nhiên..."
-                className="input-field w-full"
-              />
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center w-full h-full z-50 p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4 shadow-2xl border border-[#DDC6B6]">
+            <div className="flex items-center gap-2 mb-6">
+              <Lightbulb className="text-[#A4C3A2]" size={24} />
+              <h2 className="text-xl font-bold text-[#2D2D2D]">Đề xuất danh mục mới</h2>
             </div>
 
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-text mb-2">
-                Lý do đề xuất <span className="text-accent-red">*</span>
-              </label>
-              <textarea
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="Mô tả lý do tại sao nên thêm danh mục này, lợi ích mang lại..."
-                rows={4}
-                className="input-field w-full resize-none"
-              />
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-[#2D2D2D] mb-2">
+                  Tên danh mục *
+                </label>
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="Ví dụ: Thực phẩm hữu cơ, Đồ uống tự nhiên..."
+                  className="input-field w-full"
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#2D2D2D] mb-2">
+                  Lý do đề xuất *
+                </label>
+                <textarea
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="Mô tả lý do tại sao nên thêm danh mục này, lợi ích mang lại..."
+                  rows={4}
+                  className="input-field w-full resize-none"
+                />
+              </div>
             </div>
 
-            <div className="flex gap-3 justify-end">
+            <div className="flex gap-3 justify-end mt-6 pt-4 border-t border-[#DDC6B6]">
               <button
                 onClick={() => {
                   setShowCreateModal(false);
                   setNewName('');
                   setReason('');
                 }}
-                className="btn-secondary px-4 py-2"
+                className="px-4 py-2 text-[#6B6B6B] hover:text-[#2D2D2D] transition-colors font-medium"
               >
                 Hủy
               </button>
               <button
                 onClick={handleCreateSuggestion}
-                className="btn-primary px-4 py-2"
+                className="btn-primary px-6 py-2"
               >
                 Gửi đề xuất
               </button>

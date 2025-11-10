@@ -39,10 +39,6 @@ export default [
     route("customers/:userId", "routes/customers/$userId.tsx"),
     route("support/tickets", "routes/customers/supportTickets.tsx"),
 
-    // Operations
-    route("orders/list-orders", "routes/orders/list-orders.tsx"),
-    route("orders/:orderId", "routes/orders/order-detail.tsx"),
-
     // Finance
     route("finance/reconciliation", "routes/finance/reconciliation.tsx"),
     route("finance/transactions", "routes/finance/transactions.tsx"),

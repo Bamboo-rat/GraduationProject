@@ -28,7 +28,6 @@ const ResetPassword = () => {
     hasSpecialChar: false,
   });
 
-  // Validate token on mount
   useEffect(() => {
     if (!token) {
       setError('Link không hợp lệ. Vui lòng yêu cầu link mới.');
@@ -39,7 +38,6 @@ const ResetPassword = () => {
     validateToken();
   }, [token]);
 
-  // Check password strength
   useEffect(() => {
     setPasswordStrength({
       hasMinLength: newPassword.length >= 8,
@@ -74,13 +72,11 @@ const ResetPassword = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Check if passwords match
     if (newPassword !== confirmPassword) {
       setError('Mật khẩu xác nhận không khớp');
       return;
     }
 
-    // Check password strength
     const isStrong = Object.values(passwordStrength).every(v => v);
     if (!isStrong) {
       setError('Mật khẩu chưa đủ mạnh. Vui lòng đáp ứng tất cả yêu cầu.');
@@ -110,7 +106,6 @@ const ResetPassword = () => {
     }
   };
 
-  // Loading state
   if (isValidating) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#D9FFDF] via-[#E8FFED] to-[#F0FFF4]">

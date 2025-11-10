@@ -1,4 +1,16 @@
 import { useState, useEffect } from 'react';
+import { 
+  Search, 
+  Plus, 
+  Package, 
+  Eye, 
+  Edit3, 
+  EyeOff, 
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  MoreHorizontal
+} from 'lucide-react';
 import productService from '~/service/productService';
 import type { ProductResponse, ProductStatus, ProductListParams } from '~/service/productService';
 import ProductDetailModal from '~/component/features/product/ProductDetailModal';
@@ -174,16 +186,18 @@ export default function ProductList() {
               />
               <button
                 onClick={handleSearch}
-                className="btn-primary whitespace-nowrap"
+                className="btn-primary whitespace-nowrap flex items-center gap-2"
               >
+                <Search size={16} />
                 Tìm kiếm
               </button>
             </div>
             <a
               href="/products/create"
-              className="btn-secondary whitespace-nowrap text-center"
+              className="btn-secondary whitespace-nowrap text-center flex items-center justify-center gap-2"
             >
-              + Thêm sản phẩm
+              <Plus size={16} />
+              Thêm sản phẩm
             </a>
           </div>
         </div>
@@ -218,21 +232,19 @@ export default function ProductList() {
             <tbody className="bg-surface divide-y divide-gray-200">
               {products.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-muted">
+                  <td colSpan={6} className="px-6 py-12 text-center text-muted">
                     <div className="flex flex-col items-center justify-center">
-                      <div className="text-lg mb-2">📦</div>
-                      <p>Không tìm thấy sản phẩm nào</p>
-                      <p className="text-sm text-light mt-1">Hãy thử thay đổi bộ lọc hoặc thêm sản phẩm mới</p>
+                      <Package size={48} className="text-light mb-3" />
+                      <p className="text-lg mb-2">Không tìm thấy sản phẩm nào</p>
+                      <p className="text-sm text-light">Hãy thử thay đổi bộ lọc hoặc thêm sản phẩm mới</p>
                     </div>
                   </td>
                 </tr>
               ) : (
                 products.map((product) => {
-                  // Find primary image with fallback for both isPrimary and primary fields
-                  // Also handle case where images array might be null/undefined
                   const primaryImage = product.images?.find((img: any) =>
                     img.isPrimary === true || img.primary === true
-                  ) || product.images?.[0]; // Fallback to first image if no primary
+                  ) || product.images?.[0];
 
                   return (
                     <tr key={product.productId} className="hover:bg-surface-light transition-colors">
@@ -243,27 +255,28 @@ export default function ProductList() {
                             alt={product.name}
                             className="h-12 w-12 object-cover rounded-lg border border-default"
                             onError={(e) => {
-                              // Handle broken image
                               e.currentTarget.style.display = 'none';
                               e.currentTarget.nextElementSibling?.classList.remove('hidden');
                             }}
                           />
                         ) : null}
                         <div className={`h-12 w-12 bg-surface-light rounded-lg border border-default flex items-center justify-center ${primaryImage?.imageUrl ? 'hidden' : ''}`}>
-                          <span className="text-light text-xs">📦</span>
+                          <Package size={20} className="text-light" />
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm font-semibold text-text">{product.name}</div>
                         {product.suspensionReason && (
-                          <div className="text-xs text-accent-red mt-1">
-                            ⚠️ Lý do tạm ngưng: {product.suspensionReason}
+                          <div className="text-xs text-accent-red mt-1 flex items-center gap-1">
+                            <MoreHorizontal size={12} />
+                            Lý do tạm ngưng: {product.suspensionReason}
                           </div>
                         )}
                         {/* Stock Info */}
                         {product.totalInventory !== undefined && (
-                          <div className="text-xs text-muted mt-1">
-                            📦 Tồn kho: <span className="font-semibold text-secondary">{product.totalInventory}</span>
+                          <div className="text-xs text-muted mt-1 flex items-center gap-1">
+                            <Package size={12} />
+                            Tồn kho: <span className="font-semibold text-secondary">{product.totalInventory}</span>
                             {product.availableVariantCount !== undefined && product.totalVariantCount !== undefined && (
                               <span className="ml-2">
                                 ({product.availableVariantCount}/{product.totalVariantCount} biến thể khả dụng)
@@ -285,29 +298,33 @@ export default function ProductList() {
                         <div className="flex gap-3">
                           <button
                             onClick={() => setSelectedProduct(product)}
-                            className="text-primary hover:text-primary-dark transition-colors font-medium"
+                            className="text-primary hover:text-primary-dark transition-colors font-medium flex items-center gap-1"
                           >
+                            <Eye size={16} />
                             Chi tiết
                           </button>
                           <a
                             href={`/products/edit/${product.productId}`}
-                            className="text-secondary hover:text-primary-dark transition-colors font-medium"
+                            className="text-secondary hover:text-primary-dark transition-colors font-medium flex items-center gap-1"
                           >
+                            <Edit3 size={16} />
                             Sửa
                           </a>
                           {(product.status === 'ACTIVE' || product.status === 'INACTIVE') && (
                             <button
                               onClick={() => handleToggleStatus(product.productId, product.status)}
-                              className="text-accent-warm hover:text-orange-600 transition-colors font-medium"
+                              className="text-accent-warm hover:text-orange-600 transition-colors font-medium flex items-center gap-1"
                             >
+                              {product.status === 'ACTIVE' ? <EyeOff size={16} /> : <Eye size={16} />}
                               {product.status === 'ACTIVE' ? 'Ẩn' : 'Hiện'}
                             </button>
                           )}
                           {product.status !== 'DELETED' && product.status !== 'SUSPENDED' && (
                             <button
                               onClick={() => handleDelete(product.productId)}
-                              className="text-accent-red hover:text-red-700 transition-colors font-medium"
+                              className="text-accent-red hover:text-red-700 transition-colors font-medium flex items-center gap-1"
                             >
+                              <Trash2 size={16} />
                               Xóa
                             </button>
                           )}
@@ -321,66 +338,37 @@ export default function ProductList() {
           </table>
         </div>
 
-        {/* Pagination */}
-        {totalPages > 0 && (
+        {/* Simplified Pagination */}
+        {totalPages > 1 && (
           <div className="bg-surface-light px-6 py-4 flex items-center justify-between border-t border-default">
-            <div className="flex-1 flex justify-between sm:hidden">
-              <button
-                onClick={() => setCurrentPage((prev) => Math.max(0, prev - 1))}
-                disabled={currentPage === 0}
-                className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Trước
-              </button>
-              <button
-                onClick={() => setCurrentPage((prev) => Math.min(totalPages - 1, prev + 1))}
-                disabled={currentPage >= totalPages - 1}
-                className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Sau
-              </button>
+            <div className="text-sm text-muted">
+              Hiển thị <span className="font-semibold text-text">{Math.min((currentPage * 10) + 1, totalElements)}</span>-
+              <span className="font-semibold text-text">{Math.min((currentPage + 1) * 10, totalElements)}</span> của{' '}
+              <span className="font-semibold text-text">{totalElements}</span> sản phẩm
             </div>
-            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm text-muted">
-                  Hiển thị <span className="font-semibold text-text">{currentPage * 10 + 1}</span> đến{' '}
-                  <span className="font-semibold text-text">
-                    {Math.min((currentPage + 1) * 10, totalElements)}
-                  </span>{' '}
-                  trong tổng số <span className="font-semibold text-text">{totalElements}</span> sản phẩm
-                </p>
+            
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
+                disabled={currentPage === 0}
+                className="p-2 rounded-lg border border-default bg-surface hover:bg-surface-light disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              
+              <div className="flex items-center gap-1">
+                <span className="px-3 py-1 text-sm font-medium text-text">
+                  Trang {currentPage + 1} / {totalPages}
+                </span>
               </div>
-              <div>
-                <nav className="relative z-0 inline-flex rounded-lg shadow-sm -space-x-px">
-                  <button
-                    onClick={() => setCurrentPage((prev) => Math.max(0, prev - 1))}
-                    disabled={currentPage === 0}
-                    className="btn-secondary rounded-l-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    ← Trước
-                  </button>
-                  {Array.from({ length: totalPages }, (_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setCurrentPage(i)}
-                      className={`px-4 py-2 border text-sm font-medium transition-colors ${
-                        currentPage === i
-                          ? 'bg-primary text-surface border-primary-dark z-10'
-                          : 'bg-surface border-default text-text hover:bg-surface-light'
-                      } ${i === 0 ? 'rounded-l-lg' : ''} ${i === totalPages - 1 ? 'rounded-r-lg' : ''}`}
-                    >
-                      {i + 1}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => setCurrentPage((prev) => Math.min(totalPages - 1, prev + 1))}
-                    disabled={currentPage >= totalPages - 1}
-                    className="btn-secondary rounded-r-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Sau →
-                  </button>
-                </nav>
-              </div>
+              
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(totalPages - 1, prev + 1))}
+                disabled={currentPage >= totalPages - 1}
+                className="p-2 rounded-lg border border-default bg-surface hover:bg-surface-light disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronRight size={16} />
+              </button>
             </div>
           </div>
         )}

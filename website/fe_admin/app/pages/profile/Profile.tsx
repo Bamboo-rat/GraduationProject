@@ -329,62 +329,6 @@ const Profile: React.FC = () => {
               </div>
             </div>
 
-            {/* Account Info Section */}
-            <div className="mt-8 pt-8 border-t border-[#B7E4C7]">
-              <h3 className="text-base font-bold text-[#2D2D2D] mb-5 flex items-center">
-                <div className="w-8 h-8 bg-[#E8FFED] rounded-lg flex items-center justify-center mr-3">
-                  <Icons.Info className="w-4 h-4 text-[#2F855A]" />
-                </div>
-                Thông tin tài khoản
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className="flex items-center space-x-3 p-3 bg-[#F8FFF9] rounded-xl border border-[#B7E4C7]">
-                  <div className="w-9 h-9 bg-[#E8FFED] rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Icons.Calendar className="w-4 h-4 text-[#2F855A]" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-light font-medium">Ngày tạo</p>
-                    <p className="text-sm text-[#2D2D2D] font-semibold">
-                      {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('vi-VN') : 'N/A'}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3 p-3 bg-[#F8FFF9] rounded-xl border border-[#B7E4C7]">
-                  <div className="w-9 h-9 bg-[#E8FFED] rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Icons.Clock className="w-4 h-4 text-[#2F855A]" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-light font-medium">Cập nhật</p>
-                    <p className="text-sm text-[#2D2D2D] font-semibold">
-                      {user?.updatedAt ? new Date(user.updatedAt).toLocaleDateString('vi-VN') : 'N/A'}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3 p-3 bg-[#F8FFF9] rounded-xl border border-[#B7E4C7]">
-                  <div className="w-9 h-9 bg-[#E8FFED] rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Icons.Key className="w-4 h-4 text-[#2F855A]" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-light font-medium">User ID</p>
-                    <p className="text-sm text-[#2D2D2D] font-semibold font-mono">
-                      {user?.userId || 'N/A'}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3 p-3 bg-[#F8FFF9] rounded-xl border border-[#B7E4C7]">
-                  <div className="w-9 h-9 bg-[#E8FFED] rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Icons.Database className="w-4 h-4 text-[#2F855A]" />
-                  </div>
-                  <div className="overflow-hidden">
-                    <p className="text-xs text-light font-medium">Keycloak ID</p>
-                    <p className="text-sm text-[#2D2D2D] font-semibold font-mono truncate">
-                      {user?.keycloakId?.substring(0, 16) || 'N/A'}...
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {/* Action Buttons */}
             {isEditing && (
               <div className="mt-8 pt-8 border-t border-[#B7E4C7] flex justify-end space-x-4">

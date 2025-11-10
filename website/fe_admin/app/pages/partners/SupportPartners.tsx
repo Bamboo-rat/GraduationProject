@@ -28,6 +28,8 @@ export default function SupportPartners() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const selectedSupplierRef = useRef<SupplierWithUnread | null>(null);
+  const typingIndicatorSentRef = useRef<boolean>(false);
+  const typingDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   // Keep ref in sync with state
   useEffect(() => {
@@ -175,12 +177,14 @@ export default function SupportPartners() {
       const data = await chatService.getConversation(supplierId, 0, 50);
       // Keep ascending order (oldest first)
       setMessages(data.content.reverse());
-      
+
       // Mark conversation as read
       await chatService.markConversationAsRead(supplierId);
+      // Update local state to reset unread count instead of reloading all suppliers
+      setSuppliers(prev => prev.map(s =>
+        s.userId === supplierId ? { ...s, unreadCount: 0 } : s
+      ));
       
-      // Refresh suppliers to update unread count
-      loadSuppliers();
     } catch (error) {
       console.error('Failed to load messages:', error);
       // If no conversation exists yet, just set empty messages
@@ -216,8 +220,12 @@ export default function SupportPartners() {
         setMessageInput('');
       }
       
-      // Refresh suppliers to update last message time
-      loadSuppliers();
+      setSuppliers(prev => prev.map(s =>
+        s.userId === selectedSupplier.userId
+          ? { ...s, lastMessageTime: new Date().toISOString() }
+          : s
+      ));
+      
     } catch (error) {
       console.error('Failed to send message:', error);
     }
@@ -226,9 +234,14 @@ export default function SupportPartners() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setMessageInput(e.target.value);
 
-    // Send typing indicator
-    if (selectedSupplier && isConnected) {
+    if (selectedSupplier && isConnected && !typingIndicatorSentRef.current) {
       chatService.sendTypingIndicator(selectedSupplier.userId);
+      typingIndicatorSentRef.current = true;
+ 
+      if (typingDebounceRef.current) clearTimeout(typingDebounceRef.current);
+      typingDebounceRef.current = setTimeout(() => {
+        typingIndicatorSentRef.current = false;
+      }, 2000);
     }
   };
 

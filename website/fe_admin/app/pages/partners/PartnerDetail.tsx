@@ -210,7 +210,7 @@ export default function PartnerDetail() {
               <ArrowLeft className="w-6 h-6" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-800">Chi tiết Đối tác</h1>
+              <h1 className="text-2xl font-bold text-gray-800">Chi tiết đối tác</h1>
               <p className="text-gray-600 mt-1">{supplier.businessName}</p>
             </div>
           </div>

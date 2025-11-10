@@ -1,5 +1,15 @@
 import React from 'react';
 import { useNavigate } from 'react-router';
+import { 
+  Store, 
+  TrendingUp, 
+  Users, 
+  DollarSign, 
+  Smartphone, 
+  Package, 
+  Star,
+  Sparkles
+} from 'lucide-react';
 import logo from '../assets/image/logo.png';
 
 const Welcome = () => {
@@ -47,10 +57,9 @@ const Welcome = () => {
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Left Content */}
             <div className="space-y-8 animate-fade-in-up">
-              <div className="inline-block">
-                <span className="px-4 py-2 bg-[#E8FFED] text-[#2F855A] rounded-full text-sm font-semibold border border-[#B7E4C7]">
-                  🌟 Nền tảng kết nối thực phẩm thông minh
-                </span>
+              <div className="inline-flex items-center space-x-2 px-4 py-2 bg-[#E8FFED] text-[#2F855A] rounded-full text-sm font-semibold border border-[#B7E4C7]">
+                <Sparkles size={16} />
+                <span>Nền tảng kết nối thực phẩm thông minh</span>
               </div>
               
               <h1 className="text-5xl lg:text-6xl font-bold text-[#2D2D2D] leading-tight">
@@ -67,17 +76,22 @@ const Welcome = () => {
               {/* Features */}
               <div className="space-y-4">
                 {[
-                  { icon: '📱', text: 'Quản lý cửa hàng dễ dàng' },
-                  { icon: '📊', text: 'Theo dõi doanh thu trực tuyến' },
-                  { icon: '🚀', text: 'Tiếp cận hàng nghìn khách hàng' },
-                  { icon: '💰', text: 'Giảm lãng phí, tăng lợi nhuận' },
+                  { icon: Smartphone, text: 'Quản lý cửa hàng dễ dàng' },
+                  { icon: TrendingUp, text: 'Theo dõi doanh thu trực tuyến' },
+                  { icon: Users, text: 'Tiếp cận hàng nghìn khách hàng' },
+                  { icon: DollarSign, text: 'Giảm lãng phí, tăng lợi nhuận' },
                 ].map((feature, index) => (
                   <div 
                     key={index}
                     className="flex items-center space-x-3 group cursor-pointer"
                     style={{ animationDelay: `${index * 100}ms` }}
                   >
-                    <span className="text-2xl group-hover:scale-110 transition-transform">{feature.icon}</span>
+                    <div className="p-2 bg-[#E8FFED] rounded-lg group-hover:bg-[#B7E4C7] transition-colors">
+                      <feature.icon 
+                        size={20} 
+                        className="text-[#2F855A] group-hover:scale-110 transition-transform" 
+                      />
+                    </div>
                     <span className="text-[#2D2D2D] font-medium group-hover:text-[#2F855A] transition-colors">
                       {feature.text}
                     </span>
@@ -139,10 +153,10 @@ const Welcome = () => {
 
                 {/* Floating Elements */}
                 <div className="absolute -top-4 -right-4 w-20 h-20 bg-[#DDC6B6] rounded-full flex items-center justify-center shadow-xl animate-bounce-slow">
-                  <span className="text-3xl">🎉</span>
+                  <Sparkles size={32} className="text-[#2F855A]" />
                 </div>
                 <div className="absolute -bottom-4 -left-4 w-16 h-16 bg-[#B7E4C7] rounded-full flex items-center justify-center shadow-xl animate-bounce-slow animation-delay-1000">
-                  <span className="text-2xl">⭐</span>
+                  <Star size={24} className="text-[#2F855A]" fill="#2F855A" />
                 </div>
               </div>
             </div>
@@ -153,16 +167,21 @@ const Welcome = () => {
         <div className="container mx-auto px-6 py-16">
           <div className="grid md:grid-cols-4 gap-8">
             {[
-              { number: '1000+', label: 'Nhà bán lẻ', icon: '🏪' },
-              { number: '50K+', label: 'Đơn hàng/tháng', icon: '📦' },
-              { number: '10K+', label: 'Khách hàng', icon: '👥' },
-              { number: '95%', label: 'Hài lòng', icon: '⭐' },
+              { number: '1000+', label: 'Nhà bán lẻ', icon: Store },
+              { number: '50K+', label: 'Đơn hàng/tháng', icon: Package },
+              { number: '10K+', label: 'Khách hàng', icon: Users },
+              { number: '95%', label: 'Hài lòng', icon: Star },
             ].map((stat, index) => (
               <div
                 key={index}
                 className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transform hover:-translate-y-2 transition-all duration-300 text-center border border-[#E8FFED]"
               >
-                <div className="text-4xl mb-3">{stat.icon}</div>
+                <div className="flex justify-center mb-3">
+                  <stat.icon 
+                    size={32} 
+                    className="text-[#2F855A]" 
+                  />
+                </div>
                 <div className="text-3xl font-bold bg-gradient-to-r from-[#A4C3A2] to-[#2F855A] bg-clip-text text-transparent mb-2">
                   {stat.number}
                 </div>
