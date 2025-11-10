@@ -70,7 +70,8 @@ export default function ProductsList() {
       if (categoryFilter) params.categoryId = categoryFilter;
       if (debouncedSearch) params.search = debouncedSearch;
 
-      const response = await productService.getAllProducts(params);
+      // Use lightweight summary endpoint for better performance
+      const response = await productService.getProductsSummary(params);
       const pageData = response?.data;
 
       if (!pageData) {

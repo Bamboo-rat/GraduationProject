@@ -48,10 +48,20 @@ public interface OrderDetailRepository extends JpaRepository<OrderDetail, String
     List<Object[]> findBestSellingProducts(Pageable pageable);
 
     /**
-     * Find top products by revenue
+     * Find top products by revenue (product-level revenue only)
      * Returns: productId, productName, categoryName, supplierName, totalSold, revenue, imageUrl
-     * Revenue = SUM(quantity * amount) from delivered orders
-     * Note: amount is the price at time of purchase (already includes item-level discounts)
+     * 
+     * ⚠️ IMPORTANT: Revenue here is PRODUCT-LEVEL ONLY (quantity × amount)
+     * This does NOT include:
+     * - Order-level discounts (promotion codes)
+     * - Shipping fees
+     * 
+     * This is intentional because:
+     * 1. Order discounts apply to entire cart, not individual products
+     * 2. Shipping fees are per-order, not per-product
+     * 3. Product-level revenue helps identify best-selling items accurately
+     * 
+     * For total order revenue including discounts/shipping, see Order.totalAmount
      */
     @Query("SELECT p.productId, p.name, c.name, s.businessName, " +
            "SUM(od.quantity) as totalSold, " +
@@ -69,10 +79,12 @@ public interface OrderDetailRepository extends JpaRepository<OrderDetail, String
     List<Object[]> findTopProductsByRevenue(Pageable pageable);
 
     /**
-     * Find revenue by category
+     * Find revenue by category (product-level revenue only)
      * Returns: categoryId, categoryName, revenue, orderCount, productCount
-     * Revenue = SUM(quantity * amount) from delivered orders
-     * Note: amount is the price at time of purchase (already includes item-level discounts)
+     * 
+     * ⚠️ IMPORTANT: Revenue here is PRODUCT-LEVEL ONLY (quantity × amount)
+     * This does NOT include order-level discounts or shipping fees.
+     * See findTopProductsByRevenue() for detailed explanation.
      */
     @Query("SELECT c.categoryId, c.name, " +
            "SUM(od.quantity * od.amount) as revenue, " +
@@ -91,10 +103,11 @@ public interface OrderDetailRepository extends JpaRepository<OrderDetail, String
 
     /**
      * Calculate total revenue from delivered orders within date range
-     * Revenue = SUM(totalAmount - discount + shippingFee) for all delivered orders
-     * This aggregates across all orders, not per-order
+     * Revenue = SUM(totalAmount) - Total amount customer actually paid
+     * Note: totalAmount already includes shipping fee and has discount applied
+     * Formula: totalAmount = subtotal - discount + shippingFee
      */
-    @Query("SELECT COALESCE(SUM(o.totalAmount - o.discount + o.shippingFee), 0.0) " +
+    @Query("SELECT COALESCE(SUM(o.totalAmount), 0.0) " +
            "FROM Order o " +
            "WHERE o.status = 'DELIVERED' " +
            "AND o.createdAt BETWEEN :startDate AND :endDate")
@@ -105,8 +118,10 @@ public interface OrderDetailRepository extends JpaRepository<OrderDetail, String
     /**
      * Find revenue by category with date range filter
      * Returns: categoryId, categoryName, imageUrl, orderCount, productsSold, revenue, avgOrderValue
-     * Revenue = SUM(quantity * amount) from delivered orders
-     * Note: amount is the price at time of purchase (already includes item-level discounts)
+     * 
+     * ⚠️ IMPORTANT: 
+     * - revenue = Product-level revenue only (quantity × amount), excludes order discounts/shipping
+     * - avgOrderValue = Actual order total (totalAmount) customers paid, includes discounts/shipping
      */
     @Query("""
         SELECT
@@ -116,7 +131,7 @@ public interface OrderDetailRepository extends JpaRepository<OrderDetail, String
             COUNT(DISTINCT od.order.orderId) as orderCount,
             SUM(od.quantity) as productsSold,
             SUM(od.quantity * od.amount) as revenue,
-            AVG(od.order.totalAmount - od.order.discount + od.order.shippingFee) as avgOrderValue
+            AVG(od.order.totalAmount) as avgOrderValue
         FROM OrderDetail od
         JOIN od.storeProduct sp
         JOIN sp.variant v
@@ -135,7 +150,8 @@ public interface OrderDetailRepository extends JpaRepository<OrderDetail, String
     /**
      * Find top products by revenue for a specific supplier
      * Returns: productId, productName, categoryName, totalSold, revenue, imageUrl
-     * Revenue = SUM(quantity * amount) from delivered orders
+     * 
+     * ⚠️ Revenue is product-level only (quantity × amount), excludes order discounts/shipping
      */
     @Query("SELECT p.productId, p.name, c.name, " +
            "SUM(od.quantity) as totalSold, " +
@@ -155,6 +171,10 @@ public interface OrderDetailRepository extends JpaRepository<OrderDetail, String
     /**
      * Find revenue by category for a specific supplier
      * Returns: categoryId, categoryName, imageUrl, orderCount, productsSold, revenue, avgOrderValue
+     * 
+     * ⚠️ IMPORTANT:
+     * - revenue = Product-level revenue only (quantity × amount)
+     * - avgOrderValue = Actual order total (totalAmount) customers paid
      */
     @Query("""
         SELECT
@@ -164,7 +184,7 @@ public interface OrderDetailRepository extends JpaRepository<OrderDetail, String
             COUNT(DISTINCT od.order.orderId) as orderCount,
             SUM(od.quantity) as productsSold,
             SUM(od.quantity * od.amount) as revenue,
-            AVG(od.order.totalAmount - od.order.discount + od.order.shippingFee) as avgOrderValue
+            AVG(od.order.totalAmount) as avgOrderValue
         FROM OrderDetail od
         JOIN od.storeProduct sp
         JOIN sp.variant v

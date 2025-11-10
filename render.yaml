@@ -1,0 +1,140 @@
+# Render Blueprint - Deploy toàn bộ dự án
+# Đặt file này ở root của repository
+
+services:
+  # Redis - Private Service
+  - type: pserv
+    name: graduation-project-redis
+    runtime: docker
+    dockerfilePath: ./redis/Dockerfile
+    dockerContext: ./redis
+    plan: starter
+    region: singapore
+    envVars:
+      - key: REDIS_PASSWORD
+        generateValue: true
+    disk:
+      name: redis-data
+      mountPath: /data
+      sizeGB: 1
+
+  # Keycloak - Web Service
+  - type: web
+    name: graduation-project-keycloak
+    runtime: docker
+    dockerfilePath: ./keycloak/Dockerfile
+    dockerContext: ./keycloak
+    plan: standard
+    region: singapore
+    envVars:
+      - key: KEYCLOAK_ADMIN
+        value: admin
+      - key: KEYCLOAK_ADMIN_PASSWORD
+        sync: false
+      - key: KC_DB
+        value: mysql
+      - key: KC_DB_URL
+        value: jdbc:mysql://keycloak-db.cbqgwoyam2lh.ap-southeast-2.rds.amazonaws.com:3306/keycloakdb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      - key: KC_DB_USERNAME
+        value: admin
+      - key: KC_DB_PASSWORD
+        sync: false
+      - key: KC_HTTP_ENABLED
+        value: "true"
+      - key: KC_HOSTNAME_STRICT
+        value: "false"
+
+  # Backend API
+  - type: web
+    name: graduation-project-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: starter
+    region: singapore
+    envVars:
+      - key: DB_URL
+        sync: false
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+      - key: KEYCLOAK_AUTH_SERVER_URL
+        fromService:
+          type: web
+          name: graduation-project-keycloak
+          envVarKey: URL
+      - key: KEYCLOAK_REALM
+        value: SaveFood
+      - key: KEYCLOAK_RESOURCE
+        value: savefood-client
+      - key: KEYCLOAK_CLIENT_SECRET
+        sync: false
+      - key: KEYCLOAK_ADMIN_USERNAME
+        value: admin
+      - key: KEYCLOAK_ADMIN_PASSWORD
+        sync: false
+      - key: KEYCLOAK_ADMIN_CLIENT_ID
+        value: admin-cli
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: SENDGRID_FROM_EMAIL
+        sync: false
+      - key: SENDGRID_FROM_NAME
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: REDIS_HOST
+        fromService:
+          type: pserv
+          name: graduation-project-redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          type: pserv
+          name: graduation-project-redis
+          property: port
+      - key: REDIS_PASSWORD
+        fromService:
+          type: pserv
+          name: graduation-project-redis
+          envVarKey: REDIS_PASSWORD
+      - key: JWT_SECRET
+        sync: false
+    healthCheckPath: /actuator/health
+
+  # Frontend Admin
+  - type: web
+    name: graduation-project-admin
+    runtime: docker
+    dockerfilePath: ./website/fe_admin/Dockerfile
+    dockerContext: ./website/fe_admin
+    plan: starter
+    region: singapore
+    envVars:
+      - key: VITE_API_URL
+        value: https://graduation-project-backend.onrender.com
+      - key: NODE_ENV
+        value: production
+
+  # Frontend Supplier
+  - type: web
+    name: graduation-project-supplier
+    runtime: docker
+    dockerfilePath: ./website/fe_supplier/Dockerfile
+    dockerContext: ./website/fe_supplier
+    plan: starter
+    region: singapore
+    envVars:
+      - key: VITE_API_URL
+        value: https://graduation-project-backend.onrender.com
+      - key: NODE_ENV
+        value: production
+
+# No external databases needed - using Docker containers

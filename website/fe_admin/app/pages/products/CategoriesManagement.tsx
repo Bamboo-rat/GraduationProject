@@ -19,6 +19,7 @@ export default function CategoriesManagement() {
   // Filters
   const [activeFilter, setActiveFilter] = useState<boolean | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
 
   // Modal states
   const [showModal, setShowModal] = useState(false);
@@ -33,9 +34,23 @@ export default function CategoriesManagement() {
   });
   const [uploadingImage, setUploadingImage] = useState(false);
 
+  // Debounce search query (500ms delay)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const trimmed = searchQuery.trim();
+      // Only reset page if search query actually changed (ignoring whitespace)
+      if (trimmed !== debouncedSearchQuery) {
+        setPage(0);
+      }
+      setDebouncedSearchQuery(trimmed);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   useEffect(() => {
     fetchCategories();
-  }, [page, activeFilter, searchQuery]);
+  }, [page, activeFilter, debouncedSearchQuery]);
 
   const fetchCategories = async () => {
     try {
@@ -45,7 +60,7 @@ export default function CategoriesManagement() {
         page,
         size,
         activeFilter,
-        searchQuery,
+        debouncedSearchQuery || undefined, // Convert empty string to undefined
         'name',
         'ASC'
       );
@@ -187,10 +202,7 @@ export default function CategoriesManagement() {
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setPage(0);
-                }}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Tìm theo tên danh mục..."
                 className="input-field w-full pl-10"
               />

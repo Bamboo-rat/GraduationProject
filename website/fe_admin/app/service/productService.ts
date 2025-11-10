@@ -50,6 +50,21 @@ export interface ProductListParams {
 class ProductService {
   private readonly BASE_URL = '/products';
 
+  /**
+   * Get lightweight products summary for list views (FAST)
+   * Use this for list/grid views to improve performance
+   */
+  async getProductsSummary(
+    params: ProductListParams = {}
+  ): Promise<ApiResponse<PaginatedResponse<Product> | PageResponse<Product>>> {
+    const response = await apiClient.get(`${this.BASE_URL}/summary`, { params });
+    return response.data;
+  }
+
+  /**
+   * Get full product details (SLOW - heavy payload)
+   * Use only when you need full variant/image/attribute details
+   */
   async getAllProducts(
     params: ProductListParams = {}
   ): Promise<ApiResponse<PaginatedResponse<Product> | PageResponse<Product>>> {

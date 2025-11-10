@@ -612,6 +612,22 @@ public class CustomerServiceImpl implements CustomerService {
                 .build();
     }
 
+    /**
+     * Build automated evaluation recommendation based on rule-based analysis.
+     * 
+     * NOTE: This is a RULE-BASED SYSTEM, not AI/ML model.
+     * The system analyzes customer behavior metrics (cancellation rate, return rate,
+     * violation points, order history, etc.) using predefined thresholds and rules
+     * to generate recommendations (ALLOW/WARN/SUSPEND/BAN).
+     * 
+     * The "confidence score" is calculated from risk/positive factor counts,
+     * not from a machine learning model prediction.
+     * 
+     * @param customer Customer entity
+     * @param stats Behavioral statistics
+     * @param violations Violation and discipline data
+     * @return Rule-based evaluation recommendation
+     */
     private CustomerDetailResponse.EvaluationRecommendation buildEvaluationRecommendation(
             Customer customer,
             CustomerDetailResponse.BehavioralStatistics stats,
@@ -622,7 +638,7 @@ public class CustomerServiceImpl implements CustomerService {
         int confidenceScore = 0;
         String recommendation = "ALLOW";
 
-        // Analyze risk factors
+        // Analyze risk factors (rule-based thresholds)
         if (stats.isHasHighCancellationRate()) {
             riskFactors.add(String.format("Tỷ lệ hủy đơn cao: %.1f%% (ngưỡng: 30%%)", stats.getCancellationRate()));
         }

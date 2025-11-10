@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import supplierService from '~/service/supplierService';
 import type { SupplierResponse } from '~/service/supplierService';
-import { Building2, Mail, Phone, MapPin, Briefcase, CreditCard, Store, Package, TrendingUp, Edit, FileText, User as UserIcon, Calendar, DollarSign, PauseCircle, PlayCircle } from 'lucide-react';
+import { Building2, Mail, Phone, MapPin, Briefcase, CreditCard, Store, Package, TrendingUp, Edit, FileText, User as UserIcon, Calendar, DollarSign, PauseCircle, PlayCircle, KeyRound } from 'lucide-react';
 import AvatarUpload from '~/component/common/AvatarUpload';
 import ProfileUpdateModal from '~/component/features/profile/ProfileUpdateModal';
 import BusinessInfoUpdateModal from '~/component/features/profile/BusinessInfoUpdateModal';
+import ChangePasswordModal from '~/component/features/profile/ChangePasswordModal';
 import Toast, { type ToastType } from '~/component/common/Toast';
 
 export default function Profile() {
@@ -18,6 +19,7 @@ export default function Profile() {
   // Modal states
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isBusinessModalOpen, setIsBusinessModalOpen] = useState(false);
+  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
   const [isPauseModalOpen, setIsPauseModalOpen] = useState(false);
   const [isResumeModalOpen, setIsResumeModalOpen] = useState(false);
   const [pauseReason, setPauseReason] = useState('');
@@ -272,13 +274,22 @@ export default function Profile() {
               <UserIcon size={20} className="text-primary" />
               Thông tin cá nhân
             </h2>
-            <button
-              onClick={() => setIsProfileModalOpen(true)}
-              className="btn-primary flex items-center gap-2 text-sm"
-            >
-              <Edit size={16} />
-              Cập nhật
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setIsChangePasswordModalOpen(true)}
+                className="btn-secondary flex items-center gap-2 text-sm"
+              >
+                <KeyRound size={16} />
+                Đổi mật khẩu
+              </button>
+              <button
+                onClick={() => setIsProfileModalOpen(true)}
+                className="btn-primary flex items-center gap-2 text-sm"
+              >
+                <Edit size={16} />
+                Cập nhật
+              </button>
+            </div>
           </div>
           <div className="space-y-4">
             <div className="flex items-start gap-3">
@@ -499,6 +510,13 @@ export default function Profile() {
             isOpen={isBusinessModalOpen}
             onClose={() => setIsBusinessModalOpen(false)}
             onSuccess={fetchSupplierInfo}
+          />
+          <ChangePasswordModal
+            isOpen={isChangePasswordModalOpen}
+            onClose={() => setIsChangePasswordModalOpen(false)}
+            onSuccess={() => {
+              setToast({ type: 'success', message: 'Đổi mật khẩu thành công!' });
+            }}
           />
         </>
       )}

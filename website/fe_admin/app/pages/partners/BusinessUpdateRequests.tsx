@@ -163,14 +163,18 @@ export default function BusinessUpdateRequests() {
     });
   };
 
-   const handleDownload = (fileUrl: string | null | undefined, filename?: string) => {
-    if (!fileUrl) return;
+   const handleDownload = async (fileUrl: string | null | undefined, filename?: string) => {
+    if (!fileUrl) {
+      setToast({ message: 'URL file không hợp lệ', type: 'error' });
+      return;
+    }
     try {
-      downloadFile(fileUrl, filename);
+      await downloadFile(fileUrl, filename);
       setToast({ message: 'File đang được tải xuống', type: 'success' });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error downloading file:', error);
-      setToast({ message: 'Không thể tải file', type: 'error' });
+      const errorMessage = error?.message || 'Không thể tải file. Vui lòng thử lại.';
+      setToast({ message: errorMessage, type: 'error' });
     }
   };
 

@@ -5,6 +5,7 @@ import com.example.backend.dto.request.ProductFilterRequest;
 import com.example.backend.dto.request.ProductStatusUpdateRequest;
 import com.example.backend.dto.request.ProductUpdateRequest;
 import com.example.backend.dto.response.ProductResponse;
+import com.example.backend.dto.response.ProductSummaryResponse;
 import com.example.backend.entity.enums.ProductStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -27,13 +28,25 @@ public interface ProductService {
     ProductResponse getProductById(String productId);
 
     /**
-     * Get all products with pagination and filtering
+     * Get products summary (lightweight for list views)
      * @param status Filter by status (optional)
      * @param categoryId Filter by category (optional)
      * @param supplierId Filter by supplier (optional)
      * @param search Search by name (optional)
      * @param pageable Pagination parameters
-     * @return Page of products
+     * @return Page of lightweight product summaries
+     */
+    Page<ProductSummaryResponse> getProductsSummary(ProductStatus status, String categoryId, String supplierId, String search, Pageable pageable);
+
+    /**
+     * Get all products with FULL details (pagination and filtering)
+     * ⚠️ Heavy payload with variants, images, attributes, and store inventory
+     * @param status Filter by status (optional)
+     * @param categoryId Filter by category (optional)
+     * @param supplierId Filter by supplier (optional)
+     * @param search Search by name (optional)
+     * @param pageable Pagination parameters
+     * @return Page of products with full details
      */
     Page<ProductResponse> getAllProducts(ProductStatus status, String categoryId, String supplierId, String search, Pageable pageable);
 

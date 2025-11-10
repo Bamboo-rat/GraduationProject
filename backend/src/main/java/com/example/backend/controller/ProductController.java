@@ -5,6 +5,7 @@ import com.example.backend.dto.request.ProductFilterRequest;
 import com.example.backend.dto.request.ProductUpdateRequest;
 import com.example.backend.dto.response.ApiResponse;
 import com.example.backend.dto.response.ProductResponse;
+import com.example.backend.dto.response.ProductSummaryResponse;
 import com.example.backend.entity.enums.ProductStatus;
 import com.example.backend.service.ProductService;
 import com.example.backend.utils.JwtUtils;
@@ -60,10 +61,38 @@ public class ProductController {
                 .body(ApiResponse.success("Product created successfully and is now active.", response));
     }
 
+    @GetMapping("/summary")
+    @Operation(
+            summary = "Get products summary (lightweight)",
+            description = "Get lightweight product list for grid/table views. Returns minimal data without full variant/image details. " +
+            "Much faster than /products endpoint. Use this for list views, use GET /products/{id} for details. " +
+            "Defaults to ACTIVE products when no status/supplier filter is provided."
+    )
+    public ResponseEntity<ApiResponse<Page<ProductSummaryResponse>>> getProductsSummary(
+            @RequestParam(required = false) ProductStatus status,
+            @RequestParam(required = false) String categoryId,
+            @RequestParam(required = false) String supplierId,
+            @RequestParam(required = false) String search,
+            @PageableDefault(size = 20, sort = "name", direction = Sort.Direction.ASC) Pageable pageable) {
+
+        ProductStatus effectiveStatus = status;
+        if (effectiveStatus == null && supplierId == null) {
+            effectiveStatus = ProductStatus.ACTIVE;
+        }
+
+        log.info("GET /api/products/summary - Filters: status={}, categoryId={}, supplierId={}, search={}",
+                effectiveStatus, categoryId, supplierId, search);
+
+        Page<ProductSummaryResponse> products = productService.getProductsSummary(effectiveStatus, categoryId, supplierId, search, pageable);
+
+        return ResponseEntity.ok(ApiResponse.success("Products summary retrieved successfully", products));
+    }
+
     @GetMapping
     @Operation(
-            summary = "Get all products",
-            description = "Get all products with optional filters (status, category, supplier, search). " +
+            summary = "Get all products (detailed)",
+            description = "Get all products with FULL details including variants, images, attributes, and store inventory. " +
+            "This endpoint returns heavy payload. Use GET /products/summary for list views. " +
             "Defaults to ACTIVE products when no status/supplier filter is provided (customer view)."
     )
     public ResponseEntity<ApiResponse<Page<ProductResponse>>> getAllProducts(

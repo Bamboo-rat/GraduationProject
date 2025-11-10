@@ -2,6 +2,7 @@ package com.example.backend.service.impl;
 
 import com.example.backend.dto.request.*;
 import com.example.backend.dto.response.ProductResponse;
+import com.example.backend.dto.response.ProductSummaryResponse;
 import com.example.backend.entity.*;
 import com.example.backend.entity.enums.ProductStatus;
 import com.example.backend.entity.enums.StorageBucket;
@@ -237,6 +238,41 @@ public class ProductServiceImpl implements ProductService {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND));
         return productMapper.toResponse(product);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<ProductSummaryResponse> getProductsSummary(ProductStatus status, String categoryId, String supplierId, String search, Pageable pageable) {
+        Page<Product> products;
+
+        // Use same filtering logic as getAllProducts but return lightweight summary
+        String trimmedSearch = search != null ? search.trim() : "";
+        boolean hasSearch = !trimmedSearch.isEmpty();
+        
+        if (hasSearch) {
+            ProductFilterRequest filter = new ProductFilterRequest();
+            filter.setStatus(status);
+            filter.setCategoryId(categoryId);
+            filter.setSupplierId(supplierId);
+            filter.setSearch(trimmedSearch);
+            
+            Specification<Product> spec = ProductSpecification.buildSpecification(filter);
+            products = productRepository.findAll(spec, pageable);
+        }
+        else if (status != null && categoryId != null) {
+            products = productRepository.findByStatusAndCategoryFromActiveSuppliers(status, categoryId, pageable);
+        } else if (status != null) {
+            products = productRepository.findByStatusFromActiveSuppliers(status, pageable);
+        } else if (categoryId != null) {
+            products = productRepository.findByCategoryFromActiveSuppliers(categoryId, pageable);
+        } else if (supplierId != null) {
+            products = productRepository.findBySupplierUserId(supplierId, pageable);
+        } else {
+            products = productRepository.findAllFromActiveSuppliers(pageable);
+        }
+
+        // Map to lightweight summary response
+        return products.map(this::mapToSummaryResponse);
     }
 
     @Override
@@ -771,5 +807,106 @@ public class ProductServiceImpl implements ProductService {
                 sanitizedPageable,
                 productResponses.size()
         );
+    }
+
+    /**
+     * Map Product entity to lightweight ProductSummaryResponse
+     * Only includes essential information for list views (no full variant/image/attribute details)
+     */
+    private ProductSummaryResponse mapToSummaryResponse(Product product) {
+        // Get first image as thumbnail
+        String thumbnailUrl = product.getImages().isEmpty() ? null : 
+                product.getImages().get(0).getImageUrl();
+        
+        // Calculate price range from variants
+        ProductSummaryResponse.PriceRange priceRange = calculatePriceRange(product);
+        
+        // Calculate inventory summary
+        int totalInventory = 0;
+        long availableVariantCount = 0;
+        long totalVariantCount = product.getVariants().size();
+        
+        for (ProductVariant variant : product.getVariants()) {
+            for (StoreProduct sp : variant.getStoreProducts()) {
+                totalInventory += sp.getStockQuantity();
+            }
+            
+            // Check if variant is available (has stock and not expired)
+            boolean hasStock = variant.getStoreProducts().stream()
+                    .anyMatch(sp -> sp.getStockQuantity() > 0);
+            boolean isExpired = variant.getExpiryDate() != null && 
+                    variant.getExpiryDate().isBefore(java.time.LocalDate.now());
+            
+            if (hasStock && !isExpired) {
+                availableVariantCount++;
+            }
+        }
+        
+        boolean hasStock = totalInventory > 0;
+        boolean hasDiscount = product.getVariants().stream()
+                .anyMatch(v -> v.getDiscountPrice() != null);
+        
+        return ProductSummaryResponse.builder()
+                .productId(product.getProductId())
+                .name(product.getName())
+                .description(product.getDescription())
+                .status(product.getStatus())
+                .categoryId(product.getCategory() != null ? product.getCategory().getCategoryId() : null)
+                .categoryName(product.getCategory() != null ? product.getCategory().getName() : null)
+                .supplierId(product.getSupplier().getUserId())
+                .supplierName(product.getSupplier().getBusinessName())
+                .suspensionReason(product.getSuspensionReason())
+                .thumbnailUrl(thumbnailUrl)
+                .priceRange(priceRange)
+                .totalInventory(totalInventory)
+                .availableVariantCount(availableVariantCount)
+                .totalVariantCount(totalVariantCount)
+                .hasStock(hasStock)
+                .hasDiscount(hasDiscount)
+                .build();
+    }
+    
+    /**
+     * Calculate price range from all variants of a product
+     */
+    private ProductSummaryResponse.PriceRange calculatePriceRange(Product product) {
+        if (product.getVariants().isEmpty()) {
+            return ProductSummaryResponse.PriceRange.builder().build();
+        }
+        
+        java.math.BigDecimal minPrice = null;
+        java.math.BigDecimal maxPrice = null;
+        java.math.BigDecimal minDiscountPrice = null;
+        java.math.BigDecimal maxDiscountPrice = null;
+        
+        for (ProductVariant variant : product.getVariants()) {
+            java.math.BigDecimal originalPrice = variant.getOriginalPrice();
+            java.math.BigDecimal discountPrice = variant.getDiscountPrice();
+            
+            // Update min/max original prices
+            if (minPrice == null || originalPrice.compareTo(minPrice) < 0) {
+                minPrice = originalPrice;
+            }
+            if (maxPrice == null || originalPrice.compareTo(maxPrice) > 0) {
+                maxPrice = originalPrice;
+            }
+            
+            // Update min/max discount prices (if exists)
+            if (discountPrice != null) {
+                if (minDiscountPrice == null || discountPrice.compareTo(minDiscountPrice) < 0) {
+                    minDiscountPrice = discountPrice;
+                }
+                if (maxDiscountPrice == null || discountPrice.compareTo(maxDiscountPrice) > 0) {
+                    maxDiscountPrice = discountPrice;
+                }
+            }
+        }
+        
+        return ProductSummaryResponse.PriceRange.builder()
+                .minPrice(minPrice)
+                .maxPrice(maxPrice)
+                .minDiscountPrice(minDiscountPrice)
+                .maxDiscountPrice(maxDiscountPrice)
+                .build();
     }
 }

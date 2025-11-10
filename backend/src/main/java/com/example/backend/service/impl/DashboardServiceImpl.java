@@ -59,7 +59,9 @@ public class DashboardServiceImpl implements DashboardService {
         Long totalProducts = storeProductRepository.count();
         Long totalStores = storeRepository.count();
 
-        // Revenue metrics - actual revenue (totalAmount - discount + shippingFee)
+        // Revenue metrics - TOTAL ORDER REVENUE (what customers actually paid)
+        // This uses Order.totalAmount which includes shipping and has discounts applied
+        // Note: This differs from product/category revenue which shows product-level revenue only
         Double totalRevenueDouble = orderDetailRepository.calculateRevenueByDateRange(
                 LocalDateTime.of(2000, 1, 1, 0, 0), now);
         Double todayRevenueDouble = orderDetailRepository.calculateRevenueByDateRange(todayStart, todayEnd);
@@ -157,7 +159,10 @@ public class DashboardServiceImpl implements DashboardService {
     @Transactional(readOnly = true)
     public List<TopProductResponse> getTopProducts(int limit) {
         log.info("Getting top {} products by revenue", limit);
-
+        
+        // Note: Revenue here is PRODUCT-LEVEL ONLY (quantity × amount)
+        // This excludes order-level discounts and shipping fees
+        // This is intentional to show pure product performance
         Pageable pageable = PageRequest.of(0, limit);
         List<Object[]> rawResults = orderDetailRepository.findTopProductsByRevenue(pageable);
 
@@ -191,7 +196,10 @@ public class DashboardServiceImpl implements DashboardService {
     @Transactional(readOnly = true)
     public List<CategoryRevenueResponse> getCategoryRevenue() {
         log.info("Getting revenue breakdown by category");
-
+        
+        // Note: Revenue here is PRODUCT-LEVEL ONLY (quantity × amount)
+        // This excludes order-level discounts and shipping fees
+        // This is intentional to show pure category performance
         List<Object[]> rawResults = orderDetailRepository.findRevenueByCategory();
 
         // Calculate total revenue for percentage calculation

@@ -47,16 +47,26 @@ public class PromotionStatusScheduler {
             }
 
             int deactivatedCount = 0;
+            int unhighlightedCount = 0;
             for (Promotion promotion : expiredPromotions) {
                 log.info("Deactivating expired promotion: {} (code: {}, endDate: {})",
                         promotion.getPromotionId(), promotion.getCode(), promotion.getEndDate());
 
                 promotion.setStatus(PromotionStatus.INACTIVE);
+                
+                // Automatically remove highlighted status when promotion expires
+                if (promotion.isHighlighted()) {
+                    promotion.setHighlighted(false);
+                    unhighlightedCount++;
+                    log.info("Removed highlighted status from expired promotion: {}", promotion.getCode());
+                }
+                
                 promotionRepository.save(promotion);
                 deactivatedCount++;
             }
 
-            log.info("Successfully deactivated {} expired promotions", deactivatedCount);
+            log.info("Successfully deactivated {} expired promotions (removed highlight from {})", 
+                    deactivatedCount, unhighlightedCount);
 
         } catch (Exception e) {
             log.error("Error during deactivation of expired promotions", e);

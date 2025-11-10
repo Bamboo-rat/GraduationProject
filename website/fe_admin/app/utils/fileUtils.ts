@@ -86,7 +86,33 @@ export async function downloadFile(url: string, filename?: string): Promise<void
     });
 
     if (!response.ok) {
-      throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+      console.error('Download request failed:', {
+        status: response.status,
+        statusText: response.statusText,
+        url: downloadUrl
+      });
+      
+      // Try to get error message from response body
+      let errorMessage = `Tải file thất bại (${response.status})`;
+      try {
+        const errorData = await response.json();
+        if (errorData?.message) {
+          errorMessage = errorData.message;
+        }
+      } catch {
+        // If response is not JSON, use status text
+        if (response.status === 401) {
+          errorMessage = 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.';
+        } else if (response.status === 403) {
+          errorMessage = 'Không có quyền tải file này.';
+        } else if (response.status === 404) {
+          errorMessage = 'File không tồn tại hoặc đã bị xóa.';
+        } else if (response.status >= 500) {
+          errorMessage = 'Lỗi máy chủ. Vui lòng thử lại sau.';
+        }
+      }
+      
+      throw new Error(errorMessage);
     }
 
     // Get the blob from response

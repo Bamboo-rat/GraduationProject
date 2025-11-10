@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import type { Supplier } from '~/service/supplierService';
 import { downloadFile, viewFile, fetchFileAsBlobUrl } from '~/utils/fileUtils';
 import PDFViewer from '~/component/common/PDFViewer';
+import Toast, { type ToastType } from '~/component/common/Toast';
 
 interface SupplierPendingDetailProps {
   show: boolean;
@@ -23,6 +24,7 @@ export default function SupplierPendingDetail({
   const [foodSafetyCertBlobUrl, setFoodSafetyCertBlobUrl] = useState<string | null>(null);
   const [showBusinessLicensePDF, setShowBusinessLicensePDF] = useState(false);
   const [showFoodSafetyCertPDF, setShowFoodSafetyCertPDF] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
 
   // Fetch files as blob URLs when supplier changes
   useEffect(() => {
@@ -69,23 +71,32 @@ export default function SupplierPendingDetail({
 
   // Handle file download
   const handleDownload = async (fileUrl: string | null | undefined, filename?: string) => {
-    if (!fileUrl) return;
+    if (!fileUrl) {
+      setToast({ message: 'URL file không hợp lệ', type: 'error' });
+      return;
+    }
     try {
       await downloadFile(fileUrl, filename);
-    } catch (error) {
+      setToast({ message: 'File đang được tải xuống', type: 'success' });
+    } catch (error: any) {
       console.error('Error downloading file:', error);
-      alert('Không thể tải file. Vui lòng thử lại.');
+      const errorMessage = error?.message || 'Không thể tải file. Vui lòng thử lại.';
+      setToast({ message: errorMessage, type: 'error' });
     }
   };
 
   // Handle file view
   const handleViewFile = async (fileUrl: string | null | undefined) => {
-    if (!fileUrl) return;
+    if (!fileUrl) {
+      setToast({ message: 'URL file không hợp lệ', type: 'error' });
+      return;
+    }
     try {
       await viewFile(fileUrl);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error viewing file:', error);
-      alert('Không thể xem file. Vui lòng thử lại.');
+      const errorMessage = error?.message || 'Không thể xem file. Vui lòng thử lại.';
+      setToast({ message: errorMessage, type: 'error' });
     }
   };
 
@@ -454,6 +465,15 @@ export default function SupplierPendingDetail({
           </div>
         </div>
       </div>
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 }

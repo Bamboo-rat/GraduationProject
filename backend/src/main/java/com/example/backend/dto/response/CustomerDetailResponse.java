@@ -238,8 +238,22 @@ public class CustomerDetailResponse {
 
     private BehavioralStatistics behavioralStatistics;
 
-    // ==================== EVALUATION RECOMMENDATION ====================
+    // ==================== AUTOMATED EVALUATION (RULE-BASED) ====================
 
+    /**
+     * Automated evaluation recommendation based on rule-based analysis.
+     * 
+     * IMPORTANT: This is NOT an AI/Machine Learning model.
+     * The system uses predefined business rules and thresholds to analyze:
+     * - Customer behavior metrics (cancellation rate, return rate, etc.)
+     * - Violation points and warning counts
+     * - Order history and spending patterns
+     * - Customer tier and loyalty status
+     * 
+     * The recommendation (ALLOW/WARN/SUSPEND/BAN) is determined by comparing
+     * these metrics against fixed thresholds, and the "confidence score" is
+     * calculated from risk/positive factor counts, not ML prediction confidence.
+     */
     @Data
     @Builder
     @NoArgsConstructor
@@ -247,7 +261,7 @@ public class CustomerDetailResponse {
     public static class EvaluationRecommendation {
         private String recommendation; // ALLOW, WARN, SUSPEND, BAN
         private String reason;
-        private int confidenceScore; // 0-100
+        private int confidenceScore; // 0-100 (calculated from factor counts, not ML confidence)
         private List<String> riskFactors;
         private List<String> positiveFactors;
     }

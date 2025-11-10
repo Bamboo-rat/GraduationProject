@@ -338,6 +338,19 @@ class AuthService {
     localStorage.removeItem('user_info');
   }
 
+  // ===== CHANGE PASSWORD =====
+
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    try {
+      await axiosInstance.post('/auth/change-password', {
+        currentPassword,
+        newPassword
+      });
+    } catch (error: any) {
+      throw this.handleError(error);
+    }
+  }
+
   // ===== ERROR HANDLING =====
 
   private handleError(error: any): Error {

@@ -76,11 +76,15 @@ public class CategoryController {
             @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "name") String sortBy,
             @RequestParam(defaultValue = "ASC") String sortDirection) {
+        
+        // Normalize search parameter: trim and convert empty/blank strings to null
+        String normalizedSearch = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+        
         log.info("GET /api/categories - Getting all categories (page: {}, size: {}, active: {}, search: {})",
-                page, size, active, search);
+                page, size, active, normalizedSearch);
 
         Page<CategoryResponse> categories = categoryService.getAllCategories(
-                page, size, active, search, sortBy, sortDirection);
+                page, size, active, normalizedSearch, sortBy, sortDirection);
 
         return ResponseEntity.ok(ApiResponse.success(categories));
     }
