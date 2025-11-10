@@ -52,9 +52,6 @@ services:
     dockerContext: ./backend
     plan: free
     region: singapore
-    dependsOn:
-      - graduation-project-redis
-      - graduation-project-keycloak
     envVars:
       - key: DB_URL
         sync: false
@@ -120,8 +117,6 @@ services:
     dockerContext: ./website/fe_admin
     plan: free
     region: singapore
-    dependsOn:
-      - graduation-project-backend
     envVars:
       - key: VITE_API_URL
         value: https://graduation-project-backend.onrender.com
@@ -136,8 +131,6 @@ services:
     dockerContext: ./website/fe_supplier
     plan: free
     region: singapore
-    dependsOn:
-      - graduation-project-backend
     envVars:
       - key: VITE_API_URL
         value: https://graduation-project-backend.onrender.com
