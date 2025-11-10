@@ -11,6 +11,7 @@ import com.example.backend.exception.ErrorCode;
 import com.example.backend.exception.custom.BadRequestException;
 import com.example.backend.exception.custom.NotFoundException;
 import com.example.backend.repository.*;
+import com.example.backend.service.InAppNotificationService;
 import com.example.backend.service.ReviewService;
 import com.example.backend.service.SystemConfigService;
 import com.example.backend.repository.SupplierRepository;
@@ -41,6 +42,7 @@ public class ReviewServiceImpl implements ReviewService {
     private final PointTransactionRepository pointTransactionRepository;
     private final SystemConfigService systemConfigService;
     private final SupplierRepository supplierRepository;
+    private final InAppNotificationService inAppNotificationService;
 
     private static final String CONFIG_KEY_REVIEW_BONUS_POINTS = "points.review.bonus";
     private static final String CONFIG_KEY_REVIEW_IMAGE_BONUS_POINTS = "points.review.image.bonus";
@@ -501,5 +503,62 @@ public class ReviewServiceImpl implements ReviewService {
         reviewRepository.save(review);
 
         log.info("Supplier reply deleted successfully: reviewId={}", reviewId);
+    }
+
+    @Override
+    @Transactional
+    public void reportReview(String supplierId, String reviewId, String reason) {
+        log.info("Supplier reporting review: supplierId={}, reviewId={}, reason={}", supplierId, reviewId, reason);
+
+        // Get supplier
+        Supplier supplier = supplierRepository.findById(supplierId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+
+        // Get review
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND,
+                        "Không tìm thấy đánh giá"));
+
+        // Validate: Supplier must own this store
+        if (!review.getStore().getSupplier().getUserId().equals(supplierId)) {
+            throw new BadRequestException(ErrorCode.UNAUTHORIZED_ACCESS,
+                    "Bạn chỉ có thể báo cáo đánh giá trên cửa hàng của mình");
+        }
+
+        // Validate: Cannot report if already marked as spam
+        if (review.isMarkedAsSpam()) {
+            throw new BadRequestException(ErrorCode.INVALID_REQUEST,
+                    "Đánh giá này đã được đánh dấu là spam");
+        }
+
+        // Automatically mark review as spam
+        review.setMarkedAsSpam(true);
+        reviewRepository.save(review);
+        
+        log.info("Review automatically marked as spam by supplier report: reviewId={}", reviewId);
+
+        // Send notification to admins for information (not for approval)
+        try {
+            String notificationContent = String.format(
+                    "Nhà cung cấp '%s' đã báo cáo và đánh dấu đánh giá vi phạm.\nLý do: %s\nĐánh giá: \"%s\"\nKhách hàng: %s",
+                    supplier.getBusinessName() != null ? supplier.getBusinessName() : supplier.getFullName(),
+                    reason,
+                    review.getComment(),
+                    review.getCustomer().getFullName()
+            );
+            
+            inAppNotificationService.createNotificationForAllAdmins(
+                    com.example.backend.entity.enums.NotificationType.REVIEW_REPORTED,
+                    notificationContent,
+                    "/admin/reviews/spam?reviewId=" + reviewId
+            );
+            
+            log.info("Review report notification sent to admins: reviewId={}", reviewId);
+        } catch (Exception e) {
+            log.error("Failed to send review report notification", e);
+            // Don't throw exception, report still recorded and spam marked
+        }
+
+        log.info("Review reported and marked as spam successfully: reviewId={}", reviewId);
     }
 }

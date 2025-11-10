@@ -215,4 +215,19 @@ public interface StoreService {
      * @return Store with nested categories and their products
      */
     StoreWithCategoriesResponse getStoreWithCategoriesAndProducts(String storeId, Integer productsPerCategory);
+
+    /**
+     * Supplier updates store operational status
+     * Allowed transitions for supplier:
+     * - ACTIVE <-> TEMPORARILY_CLOSED (temporary pause by supplier)
+     * - ACTIVE <-> UNDER_MAINTENANCE (maintenance mode)
+     * - ACTIVE -> PERMANENTLY_CLOSED (close business permanently)
+     * Admin-only statuses (PENDING, REJECTED, SUSPENDED) cannot be changed by supplier
+     * @param storeId Store ID
+     * @param newStatus New operational status
+     * @param keycloakId Supplier's Keycloak ID
+     * @param reason Optional reason for status change
+     * @return Updated store
+     */
+    StoreResponse updateStoreStatus(String storeId, StoreStatus newStatus, String keycloakId, String reason);
 }

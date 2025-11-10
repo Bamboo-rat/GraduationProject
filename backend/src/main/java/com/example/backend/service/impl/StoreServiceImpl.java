@@ -1140,4 +1140,103 @@ public class StoreServiceImpl implements StoreService {
                 .categories(categoryResponses)
                 .build();
     }
+
+    @Override
+    @Transactional
+    public StoreResponse updateStoreStatus(String storeId, StoreStatus newStatus, String keycloakId, String reason) {
+        log.info("Supplier updating store status - StoreId: {}, NewStatus: {}, SupplierId: {}", 
+                storeId, newStatus, keycloakId);
+
+        // Find store
+        Store store = storeRepository.findById(storeId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.STORE_NOT_FOUND,
+                        "Không tìm thấy cửa hàng"));
+
+        // Verify ownership
+        User user = userRepository.findByKeycloakId(keycloakId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND,
+                        "Không tìm thấy người dùng"));
+
+        if (!(user instanceof Supplier supplier)) {
+            throw new BadRequestException(ErrorCode.UNAUTHORIZED,
+                    "Chỉ nhà cung cấp mới có thể cập nhật trạng thái cửa hàng");
+        }
+
+        if (!store.getSupplier().getUserId().equals(supplier.getUserId())) {
+            throw new BadRequestException(ErrorCode.UNAUTHORIZED,
+                    "Bạn không có quyền cập nhật cửa hàng này");
+        }
+
+        StoreStatus currentStatus = store.getStatus();
+
+        // Define allowed status transitions for supplier
+        boolean isAllowedTransition = false;
+        String transitionMessage = "";
+
+        switch (currentStatus) {
+            case ACTIVE:
+                if (newStatus == StoreStatus.TEMPORARILY_CLOSED) {
+                    isAllowedTransition = true;
+                    transitionMessage = "Cửa hàng đã chuyển sang trạng thái tạm đóng cửa";
+                } else if (newStatus == StoreStatus.UNDER_MAINTENANCE) {
+                    isAllowedTransition = true;
+                    transitionMessage = "Cửa hàng đã chuyển sang trạng thái bảo trì";
+                } else if (newStatus == StoreStatus.PERMANENTLY_CLOSED) {
+                    isAllowedTransition = true;
+                    transitionMessage = "Cửa hàng đã đóng cửa vĩnh viễn";
+                }
+                break;
+
+            case TEMPORARILY_CLOSED:
+                if (newStatus == StoreStatus.ACTIVE) {
+                    isAllowedTransition = true;
+                    transitionMessage = "Cửa hàng đã mở cửa trở lại";
+                } else if (newStatus == StoreStatus.UNDER_MAINTENANCE) {
+                    isAllowedTransition = true;
+                    transitionMessage = "Cửa hàng đã chuyển sang trạng thái bảo trì";
+                } else if (newStatus == StoreStatus.PERMANENTLY_CLOSED) {
+                    isAllowedTransition = true;
+                    transitionMessage = "Cửa hàng đã đóng cửa vĩnh viễn";
+                }
+                break;
+
+            case UNDER_MAINTENANCE:
+                if (newStatus == StoreStatus.ACTIVE) {
+                    isAllowedTransition = true;
+                    transitionMessage = "Cửa hàng đã hoàn thành bảo trì và mở cửa trở lại";
+                } else if (newStatus == StoreStatus.TEMPORARILY_CLOSED) {
+                    isAllowedTransition = true;
+                    transitionMessage = "Cửa hàng đã chuyển sang trạng thái tạm đóng cửa";
+                }
+                break;
+
+            case PENDING:
+            case REJECTED:
+            case SUSPENDED:
+                throw new BadRequestException(ErrorCode.OPERATION_NOT_ALLOWED,
+                        String.format("Không thể thay đổi trạng thái khi cửa hàng đang ở trạng thái %s. " +
+                                "Chỉ admin mới có thể thay đổi trạng thái này.", currentStatus.getDisplayName()));
+
+            case PERMANENTLY_CLOSED:
+                throw new BadRequestException(ErrorCode.OPERATION_NOT_ALLOWED,
+                        "Không thể thay đổi trạng thái của cửa hàng đã đóng cửa vĩnh viễn");
+        }
+
+        if (!isAllowedTransition) {
+            throw new BadRequestException(ErrorCode.INVALID_STATUS_TRANSITION,
+                    String.format("Không thể chuyển từ trạng thái %s sang %s",
+                            currentStatus.getDisplayName(), newStatus.getDisplayName()));
+        }
+
+        // Update status
+        store.setStatus(newStatus);
+        store.setUpdatedAt(LocalDateTime.now());
+
+        Store updatedStore = storeRepository.save(store);
+
+        log.info("Store status updated successfully - StoreId: {}, OldStatus: {}, NewStatus: {}",
+                storeId, currentStatus, newStatus);
+
+        return storeMapper.toResponse(updatedStore);
+    }
 }

@@ -107,4 +107,11 @@ export const reviewService = {
   deleteReply: async (reviewId: string): Promise<void> => {
     await api.delete(`/reviews/${reviewId}/reply`);
   },
+
+  // Supplier reports an inappropriate review
+  reportReview: async (reviewId: string, reason: string): Promise<void> => {
+    await api.post(`/reviews/${reviewId}/report`, null, {
+      params: { reason }
+    });
+  },
 };

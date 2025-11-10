@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { MessageSquare, Edit2, Trash2, Image as ImageIcon } from 'lucide-react';
+import { MessageSquare, Edit2, Trash2, Image as ImageIcon, Flag } from 'lucide-react';
 import type { ReviewResponse } from '~/service/reviewService';
 
 interface ReviewCardProps {
@@ -7,9 +7,10 @@ interface ReviewCardProps {
   onReply: () => void;
   onEditReply: () => void;
   onDeleteReply: () => void;
+  onReport: () => void;
 }
 
-export default function ReviewCard({ review, onReply, onEditReply, onDeleteReply }: ReviewCardProps) {
+export default function ReviewCard({ review, onReply, onEditReply, onDeleteReply, onReport }: ReviewCardProps) {
   const [showImage, setShowImage] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -105,6 +106,19 @@ export default function ReviewCard({ review, onReply, onEditReply, onDeleteReply
                 className="w-32 h-32 object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
                 onClick={() => setShowImage(true)}
               />
+            </div>
+          )}
+
+          {/* Report Button */}
+          {!review.markedAsSpam && (
+            <div className="mt-3">
+              <button
+                onClick={onReport}
+                className="flex items-center gap-2 text-sm text-orange-600 hover:text-orange-700 transition-colors"
+              >
+                <Flag size={14} />
+                Báo cáo vi phạm
+              </button>
             </div>
           )}
 

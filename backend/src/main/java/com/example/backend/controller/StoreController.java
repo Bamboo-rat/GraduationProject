@@ -250,6 +250,34 @@ public class StoreController {
         return ResponseEntity.ok(ApiResponse.success("Store unsuspended successfully", store));
     }
 
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasRole('SUPPLIER')")
+    @Operation(
+            summary = "Update store operational status (Supplier only)",
+            description = "Supplier can update store operational status. " +
+                    "Allowed transitions: " +
+                    "ACTIVE <-> TEMPORARILY_CLOSED (temporary pause), " +
+                    "ACTIVE <-> UNDER_MAINTENANCE (maintenance mode), " +
+                    "ACTIVE/TEMPORARILY_CLOSED/UNDER_MAINTENANCE -> PERMANENTLY_CLOSED (close business). " +
+                    "Admin-controlled statuses (PENDING, REJECTED, SUSPENDED) cannot be changed by supplier."
+    )
+    public ResponseEntity<ApiResponse<StoreResponse>> updateStoreStatus(
+            @PathVariable String id,
+            @RequestParam StoreStatus newStatus,
+            @RequestParam(required = false) String reason,
+            Authentication authentication) {
+
+        Jwt jwt = (Jwt) authentication.getPrincipal();
+        String keycloakId = JwtUtils.extractKeycloakId(jwt);
+
+        log.info("PATCH /api/stores/{}/status - Supplier: {}, NewStatus: {}, Reason: {}",
+                id, keycloakId, newStatus, reason);
+
+        StoreResponse store = storeService.updateStoreStatus(id, newStatus, keycloakId, reason);
+
+        return ResponseEntity.ok(ApiResponse.success("Store status updated successfully", store));
+    }
+
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('SUPPLIER')")
     @Operation(

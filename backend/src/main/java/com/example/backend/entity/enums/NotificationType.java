@@ -35,6 +35,9 @@ public enum NotificationType {
     SUPPLIER_SUSPENDED("Tài khoản bị đình chỉ", "Supplier account suspended notification"),
     SUPPLIER_UNSUSPENDED("Tài khoản được kích hoạt lại", "Supplier account unsuspended notification"),
 
+    // Review related
+    REVIEW_REPORTED("Đánh giá vi phạm", "Review marked as spam by supplier"),
+
     // General
     PROMOTION("Khuyến mãi", "Promotion and discount notification"),
     NEW_MESSAGE("Tin nhắn mới", "New message notification"),

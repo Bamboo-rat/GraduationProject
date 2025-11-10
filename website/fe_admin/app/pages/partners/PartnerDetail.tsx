@@ -3,8 +3,7 @@ import { useParams, useNavigate } from 'react-router';
 import DashboardLayout from '~/component/layout/DashboardLayout';
 import supplierService, { type Supplier, type SupplierStatus } from '~/service/supplierService';
 import Toast from '~/component/common/Toast';
-import { downloadFile, viewFile, fetchFileAsBlobUrl } from '~/utils/fileUtils';
-import PDFViewer from '~/component/common/PDFViewer';
+import { downloadFile } from '~/utils/fileUtils';
 import {
   User,
   Building2,
@@ -18,8 +17,7 @@ import {
   ArrowLeft,
   Ban,
   CheckCircle,
-  Download,
-  Eye
+  Download
 } from 'lucide-react';
 
 export default function PartnerDetail() {
@@ -34,58 +32,11 @@ export default function PartnerDetail() {
   const [showUnsuspendModal, setShowUnsuspendModal] = useState(false);
   const [suspendReason, setSuspendReason] = useState('');
 
-  // PDF Viewer states
-  const [showBusinessLicensePDF, setShowBusinessLicensePDF] = useState(false);
-  const [showFoodSafetyCertPDF, setShowFoodSafetyCertPDF] = useState(false);
-  const [businessLicenseBlobUrl, setBusinessLicenseBlobUrl] = useState<string | null>(null);
-  const [foodSafetyCertBlobUrl, setFoodSafetyCertBlobUrl] = useState<string | null>(null);
-
   useEffect(() => {
     if (userId) {
       fetchSupplierDetail();
     }
   }, [userId]);
-
-  // Fetch PDF files as blob URLs when supplier changes
-  useEffect(() => {
-    const fetchPDFFiles = async () => {
-      // Reset blob URLs
-      setBusinessLicenseBlobUrl(null);
-      setFoodSafetyCertBlobUrl(null);
-
-      if (!supplier) return;
-
-      // Fetch business license if it's a PDF
-      if (supplier.businessLicenseUrl && isPdfFile(supplier.businessLicenseUrl)) {
-        const blobUrl = await fetchFileAsBlobUrl(supplier.businessLicenseUrl);
-        setBusinessLicenseBlobUrl(blobUrl);
-      }
-
-      // Fetch food safety certificate if it's a PDF
-      if (supplier.foodSafetyCertificateUrl && isPdfFile(supplier.foodSafetyCertificateUrl)) {
-        const blobUrl = await fetchFileAsBlobUrl(supplier.foodSafetyCertificateUrl);
-        setFoodSafetyCertBlobUrl(blobUrl);
-      }
-    };
-
-    fetchPDFFiles();
-
-    // Cleanup blob URLs on unmount
-    return () => {
-      if (businessLicenseBlobUrl) {
-        URL.revokeObjectURL(businessLicenseBlobUrl);
-      }
-      if (foodSafetyCertBlobUrl) {
-        URL.revokeObjectURL(foodSafetyCertBlobUrl);
-      }
-    };
-  }, [supplier]);
-
-  // Helper function to detect PDF files
-  const isPdfFile = (fileUrl: string | null | undefined): boolean => {
-  if (!fileUrl) return false;
-  return fileUrl.toLowerCase().endsWith('.pdf');
-};
 
   // Handle file download
   const handleDownload = (fileUrl: string | null | undefined, filename?: string) => {
@@ -297,51 +248,13 @@ export default function PartnerDetail() {
                 {supplier.businessLicenseUrl && (
                   <div className="md:col-span-2">
                     <label className="text-sm font-medium text-gray-500 block mb-2">File giấy phép</label>
-                    {isPdfFile(supplier.businessLicenseUrl) ? (
-                      !showBusinessLicensePDF ? (
-                        <button
-                          onClick={() => setShowBusinessLicensePDF(true)}
-                          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                        >
-                          <Eye className="w-4 h-4" />
-                          Xem file PDF
-                        </button>
-                      ) : businessLicenseBlobUrl ? (
-                        <div className="relative h-[500px] border-2 border-gray-200 rounded-xl overflow-hidden mt-2">
-                          <PDFViewer 
-                            fileUrl={businessLicenseBlobUrl}
-                            onDownload={() => handleDownload(supplier.businessLicenseUrl, 'giay-phep-kinh-doanh.pdf')}
-                          />
-                          <button
-                            onClick={() => setShowBusinessLicensePDF(false)}
-                            className="absolute top-2 right-2 bg-white hover:bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg shadow-md text-sm font-medium transition-colors z-10"
-                          >
-                            Đóng
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center h-32 bg-gray-50 border-2 border-gray-200 rounded-xl">
-                          <p className="text-gray-500">Đang tải PDF...</p>
-                        </div>
-                      )
-                    ) : (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => viewFile(supplier.businessLicenseUrl!)}
-                          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                        >
-                          <Eye className="w-4 h-4" />
-                          Xem file
-                        </button>
-                        <button
-                          onClick={() => handleDownload(supplier.businessLicenseUrl, 'giay-phep-kinh-doanh.pdf')}
-                          className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                        >
-                          <Download className="w-4 h-4" />
-                          Tải về
-                        </button>
-                      </div>
-                    )}
+                    <button
+                      onClick={() => handleDownload(supplier.businessLicenseUrl, 'giay-phep-kinh-doanh.pdf')}
+                      className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      <Download className="w-4 h-4" />
+                      Tải về
+                    </button>
                   </div>
                 )}
               </div>
@@ -373,51 +286,13 @@ export default function PartnerDetail() {
                   {supplier.foodSafetyCertificateUrl && (
                     <div className="md:col-span-2">
                       <label className="text-sm font-medium text-gray-500 block mb-2">File chứng nhận</label>
-                      {isPdfFile(supplier.foodSafetyCertificateUrl) ? (
-                        !showFoodSafetyCertPDF ? (
-                          <button
-                            onClick={() => setShowFoodSafetyCertPDF(true)}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                          >
-                            <Eye className="w-4 h-4" />
-                            Xem file PDF
-                          </button>
-                        ) : foodSafetyCertBlobUrl ? (
-                          <div className="relative h-[500px] border-2 border-gray-200 rounded-xl overflow-hidden mt-2">
-                            <PDFViewer 
-                              fileUrl={foodSafetyCertBlobUrl}
-                              onDownload={() => handleDownload(supplier.foodSafetyCertificateUrl, 'chung-nhan-attp.pdf')}
-                            />
-                            <button
-                              onClick={() => setShowFoodSafetyCertPDF(false)}
-                              className="absolute top-2 right-2 bg-white hover:bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg shadow-md text-sm font-medium transition-colors z-10"
-                            >
-                              Đóng
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-center h-32 bg-gray-50 border-2 border-gray-200 rounded-xl">
-                            <p className="text-gray-500">Đang tải PDF...</p>
-                          </div>
-                        )
-                      ) : (
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => viewFile(supplier.foodSafetyCertificateUrl!)}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                          >
-                            <Eye className="w-4 h-4" />
-                            Xem file
-                          </button>
-                          <button
-                            onClick={() => handleDownload(supplier.foodSafetyCertificateUrl, 'chung-nhan-attp.pdf')}
-                            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                          >
-                            <Download className="w-4 h-4" />
-                            Tải về
-                          </button>
-                        </div>
-                      )}
+                      <button
+                        onClick={() => handleDownload(supplier.foodSafetyCertificateUrl, 'chung-nhan-attp.pdf')}
+                        className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                      >
+                        <Download className="w-4 h-4" />
+                        Tải về
+                      </button>
                     </div>
                   )}
                 </div>

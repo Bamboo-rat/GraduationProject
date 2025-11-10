@@ -4,6 +4,7 @@ import { reviewService, type ReviewResponse } from '~/service/reviewService';
 import { storeService } from '~/service/storeService';
 import ReviewCard from '~/component/features/review/ReviewCard';
 import ReplyModal from '~/component/features/review/ReplyModal';
+import ReportReviewModal from '~/component/features/review/ReportReviewModal';
 
 export default function CustomerReviews() {
   const [reviews, setReviews] = useState<ReviewResponse[]>([]);
@@ -22,6 +23,7 @@ export default function CustomerReviews() {
   
   // Modal
   const [replyModalOpen, setReplyModalOpen] = useState(false);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
   const [selectedReview, setSelectedReview] = useState<ReviewResponse | null>(null);
   const [isEditingReply, setIsEditingReply] = useState(false);
 
@@ -131,6 +133,26 @@ export default function CustomerReviews() {
       await fetchReviews();
     } catch (err: any) {
       alert(err.response?.data?.message || 'Không thể xóa phản hồi');
+    }
+  };
+
+  const handleReport = (review: ReviewResponse) => {
+    setSelectedReview(review);
+    setReportModalOpen(true);
+  };
+
+  const handleSubmitReport = async (reason: string) => {
+    if (!selectedReview) return;
+
+    try {
+      await reviewService.reportReview(selectedReview.reviewId, reason);
+      setReportModalOpen(false);
+      setSelectedReview(null);
+      // Refresh reviews to update UI
+      await fetchReviews();
+      alert('Đánh giá đã được đánh dấu vi phạm và ẩn khỏi hiển thị thành công.');
+    } catch (err: any) {
+      throw err;
     }
   };
 
@@ -264,6 +286,7 @@ export default function CustomerReviews() {
                 onReply={() => handleReply(review)}
                 onEditReply={() => handleEditReply(review)}
                 onDeleteReply={() => handleDeleteReply(review.reviewId)}
+                onReport={() => handleReport(review)}
               />
             ))}
           </div>
@@ -317,6 +340,23 @@ export default function CustomerReviews() {
           }}
           onSubmit={handleSubmitReply}
           existingReply={isEditingReply ? selectedReview.supplierReply : undefined}
+          reviewContent={{
+            customerName: selectedReview.customerName,
+            rating: selectedReview.rating,
+            comment: selectedReview.comment,
+          }}
+        />
+      )}
+
+      {/* Report Review Modal */}
+      {selectedReview && (
+        <ReportReviewModal
+          isOpen={reportModalOpen}
+          onClose={() => {
+            setReportModalOpen(false);
+            setSelectedReview(null);
+          }}
+          onSubmit={handleSubmitReport}
           reviewContent={{
             customerName: selectedReview.customerName,
             rating: selectedReview.rating,

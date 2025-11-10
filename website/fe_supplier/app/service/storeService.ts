@@ -4,7 +4,7 @@ import type { ProductImageResponse } from './productService';
 
 // ============= TYPES =============
 
-export type StoreStatus = 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'REJECTED';
+export type StoreStatus = 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'REJECTED' | 'TEMPORARILY_CLOSED' | 'PERMANENTLY_CLOSED' | 'UNDER_MAINTENANCE';
 
 export interface StoreResponse {
   storeId: string;
@@ -249,6 +249,33 @@ class StoreService {
   }
 
   /**
+   * Update store operational status (Supplier only)
+   * Endpoint: PATCH /api/stores/{id}/status
+   * Allowed transitions:
+   * - ACTIVE <-> TEMPORARILY_CLOSED (temporary pause)
+   * - ACTIVE <-> UNDER_MAINTENANCE (maintenance mode)
+   * - ACTIVE/TEMPORARILY_CLOSED/UNDER_MAINTENANCE -> PERMANENTLY_CLOSED (close business)
+   */
+  async updateStoreStatus(storeId: string, newStatus: StoreStatus, reason?: string): Promise<StoreResponse> {
+    try {
+      const response = await apiClient.patch<ApiResponse<StoreResponse>>(
+        `${this.BASE_URL}/${storeId}/status`,
+        null,
+        {
+          params: {
+            newStatus,
+            reason,
+          },
+        }
+      );
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Error updating store status:', error);
+      throw new Error(error.response?.data?.message || 'Không thể cập nhật trạng thái cửa hàng');
+    }
+  }
+
+  /**
    * Get pending updates for a specific store
    * Endpoint: GET /api/stores/{storeId}/pending-updates
    */
@@ -395,8 +422,11 @@ class StoreService {
     const labels: Record<StoreStatus, string> = {
       PENDING: 'Chờ duyệt',
       ACTIVE: 'Hoạt động',
-      SUSPENDED: 'Tạm ngừng',
+      SUSPENDED: 'Bị cấm',
       REJECTED: 'Bị từ chối',
+      TEMPORARILY_CLOSED: 'Tạm đóng cửa',
+      PERMANENTLY_CLOSED: 'Đóng cửa vĩnh viễn',
+      UNDER_MAINTENANCE: 'Đang bảo trì',
     };
     return labels[status] || status;
   }
@@ -410,6 +440,9 @@ class StoreService {
       ACTIVE: 'bg-green-100 text-green-800',
       SUSPENDED: 'bg-red-100 text-red-800',
       REJECTED: 'bg-gray-100 text-gray-800',
+      TEMPORARILY_CLOSED: 'bg-orange-100 text-orange-800',
+      PERMANENTLY_CLOSED: 'bg-gray-900 text-white',
+      UNDER_MAINTENANCE: 'bg-blue-100 text-blue-800',
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
   }

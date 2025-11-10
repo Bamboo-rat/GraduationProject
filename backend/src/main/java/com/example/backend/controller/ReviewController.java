@@ -284,6 +284,28 @@ public class ReviewController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/{reviewId}/report")
+    @PreAuthorize("hasRole('SUPPLIER')")
+    @Operation(
+            summary = "Supplier reports a review",
+            description = "Supplier reports a review as spam, inappropriate, or violating guidelines. Review will be automatically marked as spam.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<Map<String, String>> reportReview(
+            Authentication authentication,
+            @PathVariable String reviewId,
+            @Parameter(description = "Reason for reporting") @RequestParam String reason
+    ) {
+        String supplierId = authentication.getName();
+        log.info("Supplier reporting review: supplierId={}, reviewId={}, reason={}", supplierId, reviewId, reason);
+        
+        reviewService.reportReview(supplierId, reviewId, reason);
+        
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Đánh giá đã được đánh dấu là vi phạm và ẩn khỏi hiển thị.");
+        return ResponseEntity.ok(response);
+    }
+
     // ==================== FILE UPLOAD ENDPOINT ====================
 
     @PostMapping(value = "/upload-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

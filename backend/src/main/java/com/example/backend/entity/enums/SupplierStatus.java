@@ -21,7 +21,7 @@ SupplierStatus {
     PENDING_STORE_INFO("Chờ thông tin cửa hàng", "Supplier is pending store information"),
     PENDING_APPROVAL("Chờ phê duyệt", "Supplier is pending admin approval"),
     ACTIVE("Đang hoạt động", "Supplier is active and can sell products"),
-    SUSPENDED("Tạm ngưng", "Supplier is suspended due to violations"),
+    SUSPENDED("Cấm hoạt động", "Supplier is suspended due to violations"),
     PAUSE("Tạm dừng", "Supplier has paused operations temporarily"),
     REJECTED("Từ chối", "Supplier application was rejected by admin");
 

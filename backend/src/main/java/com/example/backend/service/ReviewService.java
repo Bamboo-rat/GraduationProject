@@ -77,4 +77,9 @@ public interface ReviewService {
      * Supplier deletes their reply
      */
     void deleteReply(String supplierId, String reviewId);
+
+    /**
+     * Supplier reports a review as inappropriate
+     */
+    void reportReview(String supplierId, String reviewId, String reason);
 }
