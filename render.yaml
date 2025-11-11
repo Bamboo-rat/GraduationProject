@@ -1,0 +1,109 @@
+services:
+  # Keycloak Service
+  - type: web
+    name: graduation-project-keycloak
+    runtime: docker
+    plan: free
+    dockerfilePath: ./keycloak/Dockerfile
+    dockerContext: ./keycloak
+    envVars:
+      - key: KEYCLOAK_ADMIN
+        value: admin
+      - key: KEYCLOAK_ADMIN_PASSWORD
+        generateValue: true
+      - key: KC_HOSTNAME_STRICT
+        value: false
+      - key: KC_PROXY
+        value: edge
+      - key: KC_HTTP_ENABLED
+        value: true
+      - key: KC_DB
+        value: mysql
+      - key: KC_DB_URL
+        value: jdbc:mysql://keycloak-db.cbqgwoyam2lh.ap-southeast-2.rds.amazonaws.com:3306/keycloakdb
+      - key: KC_DB_USERNAME
+        value: admin
+      - key: KC_DB_PASSWORD
+        sync: false
+
+  # Backend Service
+  - type: web
+    name: graduation-project-backend
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/actuator/health
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: DB_URL
+        value: jdbc:mysql://foodsave.cbqgwoyam2lh.ap-southeast-2.rds.amazonaws.com:3306/foodsave?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&zeroDateTimeBehavior=convertToNull
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+      - key: KEYCLOAK_AUTH_SERVER_URL
+        value: https://graduation-project-keycloak-hmcg.onrender.com
+      - key: KEYCLOAK_REALM
+        value: savefood
+      - key: KEYCLOAK_RESOURCE
+        value: savefood-client
+      - key: KEYCLOAK_CLIENT_SECRET
+        sync: false
+      - key: KEYCLOAK_ADMIN_USERNAME
+        sync: false
+      - key: KEYCLOAK_ADMIN_PASSWORD
+        sync: false
+      - key: KEYCLOAK_ADMIN_CLIENT_ID
+        value: admin-cli
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: SENDGRID_FROM_EMAIL
+        sync: false
+      - key: SENDGRID_FROM_NAME
+        value: SaveFood
+      - key: FRONTEND_URL
+        value: https://graduation-project-fe-admin.onrender.com
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://graduation-project-fe-admin.onrender.com,https://graduation-project-fe-supplier.onrender.com
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: REDIS_HOST
+        sync: false
+      - key: REDIS_PORT
+        value: 6379
+      - key: REDIS_PASSWORD
+        sync: false
+      - key: REDIS_SSL
+        value: true
+      - key: JWT_SECRET
+        generateValue: true
+
+  # Frontend Admin
+  - type: web
+    name: graduation-project-fe-admin
+    runtime: docker
+    plan: free
+    dockerfilePath: ./website/fe_admin/Dockerfile
+    dockerContext: ./website/fe_admin
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: VITE_API_URL
+        value: https://graduation-project-backend-hmcg.onrender.com/api
+
+  # Frontend Supplier
+  - type: web
+    name: graduation-project-fe-supplier
+    runtime: docker
+    plan: free
+    dockerfilePath: ./website/fe_supplier/Dockerfile
+    dockerContext: ./website/fe_supplier
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: VITE_API_URL
+        value: https://graduation-project-backend-hmcg.onrender.com/api
