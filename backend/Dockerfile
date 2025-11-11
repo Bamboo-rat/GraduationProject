@@ -20,5 +20,10 @@ COPY --from=build /app/target/*.jar app.jar
 # Expose port
 EXPOSE 8080
 
-# Run the application
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Run the application with proper memory settings and logging
+ENTRYPOINT ["java", \
+    "-Xmx450m", \
+    "-Xms256m", \
+    "-XX:+UseContainerSupport", \
+    "-Djava.security.egd=file:/dev/./urandom", \
+    "-jar", "app.jar"]
