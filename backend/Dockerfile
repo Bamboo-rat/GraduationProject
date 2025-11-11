@@ -22,9 +22,11 @@ EXPOSE 8080
 
 # Run the application with optimized memory settings for 512MB container
 ENTRYPOINT ["java", \
-    "-Xmx384m", \
+    "-Xmx320m", \
     "-Xms128m", \
     "-XX:MaxMetaspaceSize=128m", \
+    "-XX:MaxDirectMemorySize=64m", \
+    "-XX:ReservedCodeCacheSize=64m", \
     "-XX:+UseSerialGC", \
     "-XX:+UseContainerSupport", \
     "-Djava.security.egd=file:/dev/./urandom", \

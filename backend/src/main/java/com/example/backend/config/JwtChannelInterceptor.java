@@ -25,6 +25,7 @@ public class JwtChannelInterceptor implements ChannelInterceptor {
     private final JwtDecoder jwtDecoder;
     private final HybridJwtAuthenticationConverter jwtAuthenticationConverter;
 
+    
     /**
      * Intercept messages before they are sent to the channel
      * Extract and validate JWT token from STOMP headers
