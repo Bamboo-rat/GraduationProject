@@ -5,13 +5,13 @@ import com.example.backend.entity.CategorySuggestion;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", nullValuePropertyMappingStrategy = org.mapstruct.NullValuePropertyMappingStrategy.IGNORE)
 public interface CategorySuggestionMapper {
 
     @Mapping(target = "supplierId", source = "supplier.userId")
     @Mapping(target = "supplierName", source = "supplier.fullName")
     @Mapping(target = "supplierBusinessName", source = "supplier.businessName")
-    @Mapping(target = "adminId", source = "admin.userId")
-    @Mapping(target = "adminName", source = "admin.fullName")
+    @Mapping(target = "adminId", source = "admin.userId", defaultValue = "")
+    @Mapping(target = "adminName", source = "admin.fullName", defaultValue = "")
     CategorySuggestionResponse toResponse(CategorySuggestion suggestion);
 }
