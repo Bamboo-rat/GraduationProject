@@ -251,13 +251,13 @@ export default function CustomerBehavior() {
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={segmentation}
+                  data={segmentation as any[]}
                   dataKey="customerCount"
                   nameKey="tier"
                   cx="50%"
                   cy="50%"
                   outerRadius={100}
-                  label={(entry) => `${entry.tier}: ${reportService.formatPercentage(entry.customerPercentage)}`}
+                  label={(entry: any) => `${entry.tier}: ${reportService.formatPercentage(entry.customerPercentage)}`}
                 >
                   {segmentation.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={TIER_COLORS[entry.tier as keyof typeof TIER_COLORS] || '#999'} />
@@ -272,10 +272,10 @@ export default function CustomerBehavior() {
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-lg font-semibold text-gray-800 mb-4">Doanh thu theo Hạng</h2>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={segmentation}>
+              <BarChart data={segmentation as any[]}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="tier" />
-                <YAxis tickFormatter={(value) => `${(value / 1000000).toFixed(0)}M`} />
+                <YAxis tickFormatter={(value: unknown) => `${(Number(value) / 1000000).toFixed(0)}M`} />
                 <Tooltip formatter={(value: any) => reportService.formatCurrency(value)} />
                 <Legend />
                 <Bar dataKey="totalRevenue" fill="#3B82F6" name="Doanh thu" />

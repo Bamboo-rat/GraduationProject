@@ -243,10 +243,10 @@ export default function RevenueReport() {
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">Xu hướng Doanh thu</h2>
           <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={timeSeriesData}>
+            <LineChart data={timeSeriesData as any[]}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" />
-              <YAxis tickFormatter={(value) => `${(value / 1000000).toFixed(0)}M`} />
+              <YAxis tickFormatter={(value: unknown) => `${(Number(value) / 1000000).toFixed(0)}M`} />
               <Tooltip formatter={(value: any) => reportService.formatCurrency(value)} />
               <Legend />
               <Line type="monotone" dataKey="revenue" stroke="#3B82F6" strokeWidth={2} name="Doanh thu" />
@@ -285,13 +285,13 @@ export default function RevenueReport() {
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={categoryData.slice(0, 8)}
+                  data={categoryData.slice(0, 8) as any[]}
                   dataKey="totalRevenue"
                   nameKey="categoryName"
                   cx="50%"
                   cy="50%"
                   outerRadius={100}
-                  label={(entry) => `${entry.categoryName}: ${reportService.formatPercentage(entry.revenuePercentage)}`}
+                  label={(entry: any) => `${entry.categoryName}: ${reportService.formatPercentage(entry.revenuePercentage)}`}
                 >
                   {categoryData.slice(0, 8).map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />

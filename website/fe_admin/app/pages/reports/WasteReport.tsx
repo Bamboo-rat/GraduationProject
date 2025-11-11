@@ -246,10 +246,10 @@ export default function WasteReport() {
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">Lãng phí theo Danh mục</h2>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={categoryData.slice(0, 8)}>
+            <BarChart data={categoryData.slice(0, 8) as any[]}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="categoryName" angle={-45} textAnchor="end" height={100} />
-              <YAxis tickFormatter={(value) => `${value.toFixed(0)}%`} />
+              <YAxis tickFormatter={(value: unknown) => `${Number(value).toFixed(0)}%`} />
               <Tooltip
                 formatter={(value: any, name: string) => {
                   if (name === 'wasteIndex') return [`${value.toFixed(2)}%`, 'Chỉ số lãng phí'];
