@@ -242,7 +242,7 @@ export async function fetchFileAsBlobUrl(url: string): Promise<string | null> {
   }
 
   try {
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://graduationproject-ewk9.onrender.com/api';
     const encodedUrl = encodeURIComponent(url);
     const fetchUrl = `${API_BASE_URL}/files/download?url=${encodedUrl}&inline=true`;
 
