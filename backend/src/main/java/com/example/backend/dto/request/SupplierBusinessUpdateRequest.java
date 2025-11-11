@@ -23,13 +23,13 @@ public class SupplierBusinessUpdateRequest {
     @Length(max = 50, message = "Số giấy phép kinh doanh không được vượt quá 50 ký tự")
     private String businessLicense;
 
-    @Length(max = 255, message = "URL giấy phép kinh doanh không được vượt quá 255 ký tự")
+    @Length(max = 500, message = "URL giấy phép kinh doanh không được vượt quá 500 ký tự")
     private String businessLicenseUrl;
 
     @Length(max = 50, message = "Số giấy chứng nhận an toàn thực phẩm không được vượt quá 50 ký tự")
     private String foodSafetyCertificate;
 
-    @Length(max = 255, message = "URL giấy chứng nhận an toàn thực phẩm không được vượt quá 255 ký tự")
+    @Length(max = 500, message = "URL giấy chứng nhận an toàn thực phẩm không được vượt quá 500 ký tự")
     private String foodSafetyCertificateUrl;
 
     @Length(max = 500, message = "Ghi chú không được vượt quá 500 ký tự")

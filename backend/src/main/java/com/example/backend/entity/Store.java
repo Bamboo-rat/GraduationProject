@@ -65,6 +65,8 @@ public class Store {
 
     private String phoneNumber;
     private String description;
+
+    @Column(length = 500)
     private String imageUrl;
 
     @DecimalMin(value = "0.0", message = "Rating must be positive")

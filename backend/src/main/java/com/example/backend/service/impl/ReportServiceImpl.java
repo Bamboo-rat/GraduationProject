@@ -387,7 +387,9 @@ public class ReportServiceImpl implements ReportService {
     public WasteSummaryResponse getWasteSummary() {
         log.info("Generating waste summary");
 
-        Object[] data = storeProductRepository.findWasteSummary();
+        LocalDate nearExpiryDate = LocalDate.now().plusDays(7);
+
+        Object[] data = storeProductRepository.findWasteSummary(nearExpiryDate);
 
         Long totalProducts = toLong(data[0]);
         Long activeProducts = toLong(data[1]);
@@ -412,7 +414,7 @@ public class ReportServiceImpl implements ReportService {
         Double overallWasteIndex = (wasteRate + expiryRate) / 2;
 
         // Get top waste contributors
-        List<Object[]> categoryWaste = storeProductRepository.findWasteByCategory();
+        List<Object[]> categoryWaste = storeProductRepository.findWasteByCategory(nearExpiryDate);
         List<Object[]> supplierWaste = storeProductRepository.findWasteBySupplier();
 
         String topWasteCategory = categoryWaste.isEmpty() ? "N/A" : (String) categoryWaste.get(0)[1];
@@ -510,7 +512,9 @@ public class ReportServiceImpl implements ReportService {
     public List<WasteByCategoryResponse> getWasteByCategory() {
         log.info("Generating waste by category report");
 
-        List<Object[]> results = storeProductRepository.findWasteByCategory();
+        LocalDate nearExpiryDate = LocalDate.now().plusDays(7);
+
+        List<Object[]> results = storeProductRepository.findWasteByCategory(nearExpiryDate);
 
         return results.stream().map(row -> {
             Long totalProducts = toLong(row[3]);

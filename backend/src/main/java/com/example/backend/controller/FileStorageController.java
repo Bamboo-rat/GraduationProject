@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
+import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -228,7 +229,18 @@ public class FileStorageController {
     ) {
         log.info("GET /api/files/download - Proxying {} for: {}", inline ? "view" : "download", fileUrl);
 
-        String urlToFetch = fileUrl;
+        String urlToFetch;
+        try {
+            urlToFetch = URLDecoder.decode(fileUrl, StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException e) {
+            log.error("Failed to decode file URL: {}", fileUrl, e);
+            return ResponseEntity.badRequest().build();
+        }
+
+        if (!urlToFetch.startsWith("http")) {
+            log.error("Invalid file URL provided: {}", urlToFetch);
+            return ResponseEntity.badRequest().build();
+        }
 
         try {
             // Try to open connection to Cloudinary URL

@@ -25,9 +25,11 @@ public class Supplier extends User {
     private String businessName; // Tên doanh nghiệp/thương hiệu
     
     private String businessLicense; // Số giấy phép kinh doanh
+    @Column(length = 500)
     private String businessLicenseUrl; // URL trỏ tới file ảnh/PDF của giấy phép kinh doanh
     
     private String foodSafetyCertificate; // Số giấy chứng nhận an toàn vệ sinh thực phẩm
+    @Column(length = 500)
     private String foodSafetyCertificateUrl; // URL file giấy chứng nhận ATTP
     
     private String taxCode; // Mã số thuế

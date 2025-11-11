@@ -2,7 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import authService from '../../service/authService';
 import locationService from '../../service/locationService';
-import { MapPin } from 'lucide-react';
+import { 
+  MapPin, 
+  Mail, 
+  Upload, 
+  FileText, 
+  Image, 
+  X, 
+  Check, 
+  Building, 
+  Store,
+  User,
+  Phone,
+  Lock,
+  ArrowLeft,
+  AlertCircle
+} from 'lucide-react';
 import type {
   SupplierRegisterStep1Request,
   SupplierRegisterStep2Request,
@@ -178,7 +193,6 @@ const Registration: React.FC = () => {
       });
       setCurrentStep(2);
     } catch (err: any) {
-      // Hiển thị lỗi cụ thể từ backend (VD: username đã tồn tại, email đã được sử dụng...)
       const errorMessage = err.response?.data?.vietnameseMessage || 
                           err.response?.data?.message || 
                           err.message || 
@@ -220,7 +234,6 @@ const Registration: React.FC = () => {
       });
       setCurrentStep(3);
     } catch (err: any) {
-      // Hiển thị lỗi cụ thể từ backend (VD: OTP không đúng, OTP hết hạn...)
       const errorMessage = err.response?.data?.vietnameseMessage || 
                           err.response?.data?.message || 
                           err.message || 
@@ -249,7 +262,6 @@ const Registration: React.FC = () => {
         message: 'Mã OTP mới đã được gửi đến email của bạn!'
       });
     } catch (err: any) {
-      // Hiển thị lỗi cụ thể từ backend
       const errorMessage = err.response?.data?.vietnameseMessage || 
                           err.response?.data?.message || 
                           err.message || 
@@ -266,7 +278,6 @@ const Registration: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file
     const validation = fileStorageService.validateFile(file, 5, ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf']);
     if (!validation.valid) {
       setError(validation.error || 'File không hợp lệ');
@@ -325,21 +336,16 @@ const Registration: React.FC = () => {
 
     setLoading(true);
     try {
-      // Upload business license
       const licenseUrl = await fileStorageService.uploadBusinessLicense(step3Data.businessLicenseFile);
-
-      // Upload food safety certificate
       const certUrl = await fileStorageService.uploadFoodSafetyCertificate(step3Data.foodSafetyCertificateFile);
 
-      // Upload avatar if provided
       let avatarUrl = '';
       if (step3Data.avatarFile) {
         avatarUrl = await fileStorageService.uploadSupplierLogo(step3Data.avatarFile);
       }
 
-      // Submit step 3 with URLs
       const request: SupplierRegisterStep3Request = {
-        supplierId: supplierId,  // ✅ THÊM supplierId
+        supplierId: supplierId,
         email: step1Data.email,
         businessLicense: step3Data.businessLicense,
         businessLicenseUrl: licenseUrl,
@@ -356,7 +362,6 @@ const Registration: React.FC = () => {
       });
       setCurrentStep(4);
     } catch (err: any) {
-      // Hiển thị lỗi cụ thể từ backend (VD: file quá lớn, định dạng không hợp lệ...)
       const errorMessage = err.response?.data?.vietnameseMessage || 
                           err.response?.data?.message || 
                           err.message || 
@@ -382,7 +387,7 @@ const Registration: React.FC = () => {
     try {
       const request: SupplierRegisterStep4Request = {
         ...step4Data,
-        supplierId: supplierId,  // ✅ THÊM supplierId
+        supplierId: supplierId,
         email: step1Data.email,
       };
 
@@ -396,7 +401,6 @@ const Registration: React.FC = () => {
         navigate('/login');
       }, 3000);
     } catch (err: any) {
-      // Hiển thị lỗi cụ thể từ backend (VD: thông tin không hợp lệ, thiếu trường bắt buộc...)
       const errorMessage = err.response?.data?.vietnameseMessage || 
                           err.response?.data?.message || 
                           err.message || 
@@ -411,10 +415,10 @@ const Registration: React.FC = () => {
   // ===== RENDER STEP PROGRESS =====
   const renderStepProgress = () => {
     const steps = [
-      { number: 1, title: 'Tài khoản', icon: '👤' },
-      { number: 2, title: 'Xác thực OTP', icon: '📧' },
-      { number: 3, title: 'Giấy tờ', icon: '📄' },
-      { number: 4, title: 'Thông tin', icon: '🏪' },
+      { number: 1, title: 'Tài khoản', icon: <User className="w-5 h-5" /> },
+      { number: 2, title: 'Xác thực OTP', icon: <Mail className="w-5 h-5" /> },
+      { number: 3, title: 'Giấy tờ', icon: <FileText className="w-5 h-5" /> },
+      { number: 4, title: 'Thông tin', icon: <Store className="w-5 h-5" /> },
     ];
 
     return (
@@ -423,20 +427,23 @@ const Registration: React.FC = () => {
           {steps.map((step, index) => (
             <React.Fragment key={step.number}>
               <div className="flex flex-col items-center">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg transition-all ${currentStep >= step.number
-                  ? 'bg-[#2F855A] text-white shadow-lg'
-                  : 'bg-gray-200 text-gray-500'
-                  }`}>
-                  {currentStep > step.number ? '✓' : step.icon}
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg transition-all ${
+                  currentStep >= step.number
+                    ? 'bg-[#2F855A] text-white shadow-lg'
+                    : 'bg-gray-200 text-gray-500'
+                }`}>
+                  {currentStep > step.number ? <Check className="w-5 h-5" /> : step.icon}
                 </div>
-                <span className={`text-xs mt-2 font-medium ${currentStep >= step.number ? 'text-[#2F855A]' : 'text-gray-500'
-                  }`}>
+                <span className={`text-xs mt-2 font-medium ${
+                  currentStep >= step.number ? 'text-[#2F855A]' : 'text-gray-500'
+                }`}>
                   {step.title}
                 </span>
               </div>
               {index < steps.length - 1 && (
-                <div className={`flex-1 h-1 mx-4 rounded transition-all ${currentStep > step.number ? 'bg-[#2F855A]' : 'bg-gray-200'
-                  }`} />
+                <div className={`flex-1 h-1 mx-4 rounded transition-all ${
+                  currentStep > step.number ? 'bg-[#2F855A]' : 'bg-gray-200'
+                }`} />
               )}
             </React.Fragment>
           ))}
@@ -474,9 +481,7 @@ const Registration: React.FC = () => {
           {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700">
               <div className="flex items-start space-x-2">
-                <svg className="w-5 h-5 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
+                <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
                 <span>{error}</span>
               </div>
             </div>
@@ -583,16 +588,18 @@ const Registration: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => navigate('/')}
-                  className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 font-semibold transition-all"
+                  className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 font-semibold transition-all flex items-center justify-center gap-2"
                 >
+                  <ArrowLeft className="w-4 h-4" />
                   Hủy
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-[#A4C3A2] to-[#2F855A] text-white rounded-xl hover:from-[#8FB491] hover:to-[#2F855A] font-semibold shadow-lg disabled:opacity-50 transition-all"
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-[#A4C3A2] to-[#2F855A] text-white rounded-xl hover:from-[#8FB491] hover:to-[#2F855A] font-semibold shadow-lg disabled:opacity-50 transition-all flex items-center justify-center gap-2"
                 >
                   {loading ? 'Đang xử lý...' : 'Tiếp theo'}
+                  {!loading && <Check className="w-4 h-4" />}
                 </button>
               </div>
             </form>
@@ -603,9 +610,7 @@ const Registration: React.FC = () => {
             <form onSubmit={handleStep2Submit} className="space-y-6">
               <div className="text-center mb-6">
                 <div className="w-16 h-16 bg-[#E8FFED] rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg className="w-8 h-8 text-[#2F855A]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                  </svg>
+                  <Mail className="w-8 h-8 text-[#2F855A]" />
                 </div>
                 <p className="text-gray-600">
                   Mã OTP đã được gửi đến email:<br />
@@ -634,8 +639,9 @@ const Registration: React.FC = () => {
                   type="button"
                   onClick={handleResendOtp}
                   disabled={loading}
-                  className="text-[#2F855A] hover:text-[#8FB491] font-semibold text-sm disabled:opacity-50"
+                  className="text-[#2F855A] hover:text-[#8FB491] font-semibold text-sm disabled:opacity-50 flex items-center justify-center gap-1 mx-auto"
                 >
+                  <Mail className="w-4 h-4" />
                   Gửi lại mã OTP
                 </button>
               </div>
@@ -644,16 +650,18 @@ const Registration: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setCurrentStep(1)}
-                  className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 font-semibold transition-all"
+                  className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 font-semibold transition-all flex items-center justify-center gap-2"
                 >
+                  <ArrowLeft className="w-4 h-4" />
                   Quay lại
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-[#A4C3A2] to-[#2F855A] text-white rounded-xl hover:from-[#8FB491] hover:to-[#2F855A] font-semibold shadow-lg disabled:opacity-50 transition-all"
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-[#A4C3A2] to-[#2F855A] text-white rounded-xl hover:from-[#8FB491] hover:to-[#2F855A] font-semibold shadow-lg disabled:opacity-50 transition-all flex items-center justify-center gap-2"
                 >
                   {loading ? 'Đang xác thực...' : 'Xác thực'}
+                  {!loading && <Check className="w-4 h-4" />}
                 </button>
               </div>
             </form>
@@ -696,9 +704,7 @@ const Registration: React.FC = () => {
                   >
                     <div className="flex flex-col items-center">
                       <div className="w-16 h-16 bg-[#E8FFED] rounded-full flex items-center justify-center mb-3 group-hover:bg-[#B7E4C7] transition-colors">
-                        <svg className="w-8 h-8 text-[#2F855A]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                        </svg>
+                        <Upload className="w-8 h-8 text-[#2F855A]" />
                       </div>
                       <p className="text-sm text-[#2F855A] font-semibold mb-1">Click để upload GPKD</p>
                       <p className="text-xs text-gray-500">JPG, PNG hoặc PDF (tối đa 5MB)</p>
@@ -709,9 +715,7 @@ const Registration: React.FC = () => {
                     {step3Data.businessLicenseFile?.type === 'application/pdf' ? (
                       <div className="h-full flex flex-col items-center justify-center">
                         <div className="w-16 h-16 bg-[#E8FFED] rounded-lg flex items-center justify-center mb-2">
-                          <svg className="w-8 h-8 text-[#E63946]" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-                          </svg>
+                          <FileText className="w-8 h-8 text-[#E63946]" />
                         </div>
                         <p className="text-sm font-medium text-[#2D2D2D] mb-1">PDF Document</p>
                         <p className="text-xs text-gray-600 px-4 text-center truncate max-w-full">{licenseFileName}</p>
@@ -719,7 +723,6 @@ const Registration: React.FC = () => {
                     ) : (
                       <img src={licensePreview} alt="Preview" className="h-full w-full object-contain p-2" />
                     )}
-                    {/* Overlay with filename and remove button */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
                       <div className="absolute bottom-0 left-0 right-0 p-3">
                         <p className="text-white text-xs font-medium truncate mb-2">{licenseFileName}</p>
@@ -728,18 +731,13 @@ const Registration: React.FC = () => {
                           onClick={() => handleRemoveFile('license')}
                           className="w-full bg-red-500 hover:bg-red-600 text-white text-sm py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
+                          <X className="w-4 h-4" />
                           Xóa file
                         </button>
                       </div>
                     </div>
-                    {/* Success badge */}
                     <div className="absolute top-2 right-2 bg-[#2F855A] text-white px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1">
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
+                      <Check className="w-3 h-3" />
                       Đã tải lên
                     </div>
                   </div>
@@ -780,9 +778,7 @@ const Registration: React.FC = () => {
                   >
                     <div className="flex flex-col items-center">
                       <div className="w-16 h-16 bg-[#E8FFED] rounded-full flex items-center justify-center mb-3 group-hover:bg-[#B7E4C7] transition-colors">
-                        <svg className="w-8 h-8 text-[#2F855A]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
+                        <FileText className="w-8 h-8 text-[#2F855A]" />
                       </div>
                       <p className="text-sm text-[#2F855A] font-semibold mb-1">Click để upload chứng nhận ATTP</p>
                       <p className="text-xs text-gray-500">JPG, PNG hoặc PDF (tối đa 5MB)</p>
@@ -793,9 +789,7 @@ const Registration: React.FC = () => {
                     {step3Data.foodSafetyCertificateFile?.type === 'application/pdf' ? (
                       <div className="h-full flex flex-col items-center justify-center">
                         <div className="w-16 h-16 bg-[#E8FFED] rounded-lg flex items-center justify-center mb-2">
-                          <svg className="w-8 h-8 text-[#E63946]" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-                          </svg>
+                          <FileText className="w-8 h-8 text-[#E63946]" />
                         </div>
                         <p className="text-sm font-medium text-[#2D2D2D] mb-1">PDF Document</p>
                         <p className="text-xs text-gray-600 px-4 text-center truncate max-w-full">{certFileName}</p>
@@ -811,17 +805,13 @@ const Registration: React.FC = () => {
                           onClick={() => handleRemoveFile('cert')}
                           className="w-full bg-red-500 hover:bg-red-600 text-white text-sm py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
+                          <X className="w-4 h-4" />
                           Xóa file
                         </button>
                       </div>
                     </div>
                     <div className="absolute top-2 right-2 bg-[#2F855A] text-white px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1">
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
+                      <Check className="w-3 h-3" />
                       Đã tải lên
                     </div>
                   </div>
@@ -846,9 +836,7 @@ const Registration: React.FC = () => {
                   >
                     <div className="flex flex-col items-center">
                       <div className="w-16 h-16 bg-[#E8FFED] rounded-full flex items-center justify-center mb-3 group-hover:bg-[#B7E4C7] transition-colors">
-                        <svg className="w-8 h-8 text-[#2F855A]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
+                        <Image className="w-8 h-8 text-[#2F855A]" />
                       </div>
                       <p className="text-sm text-[#2F855A] font-semibold mb-1">Click để upload logo</p>
                       <p className="text-xs text-gray-500">JPG hoặc PNG (tối đa 5MB)</p>
@@ -865,35 +853,35 @@ const Registration: React.FC = () => {
                           onClick={() => handleRemoveFile('avatar')}
                           className="w-full bg-red-500 hover:bg-red-600 text-white text-sm py-1.5 rounded-lg transition-colors flex items-center justify-center gap-1"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
+                          <X className="w-4 h-4" />
                           Xóa file
                         </button>
                       </div>
                     </div>
                     <div className="absolute top-2 right-2 bg-[#2F855A] text-white px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1">
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
+                      <Check className="w-3 h-3" />
                       Đã tải lên
                     </div>
                   </div>
                 )}
-              </div>              <div className="flex gap-3 pt-4">
+              </div>
+
+              <div className="flex gap-3 pt-4">
                 <button
                   type="button"
                   onClick={() => setCurrentStep(2)}
-                  className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 font-semibold transition-all"
+                  className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 font-semibold transition-all flex items-center justify-center gap-2"
                 >
+                  <ArrowLeft className="w-4 h-4" />
                   Quay lại
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-[#A4C3A2] to-[#2F855A] text-white rounded-xl hover:from-[#8FB491] hover:to-[#2F855A] font-semibold shadow-lg disabled:opacity-50 transition-all"
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-[#A4C3A2] to-[#2F855A] text-white rounded-xl hover:from-[#8FB491] hover:to-[#2F855A] font-semibold shadow-lg disabled:opacity-50 transition-all flex items-center justify-center gap-2"
                 >
                   {loading ? 'Đang tải lên...' : 'Tiếp theo'}
+                  {!loading && <Check className="w-4 h-4" />}
                 </button>
               </div>
             </form>
@@ -904,9 +892,7 @@ const Registration: React.FC = () => {
             <form onSubmit={handleStep4Submit} className="space-y-4">
               <div className="bg-gradient-to-r from-[#E8FFED] to-[#B7E4C7] rounded-xl p-4 mb-6">
                 <h3 className="text-lg font-bold text-[#2D2D2D] flex items-center">
-                  <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 110 2h-3a1 1 0 01-1-1v-2a1 1 0 00-1-1H9a1 1 0 00-1 1v2a1 1 0 01-1 1H4a1 1 0 110-2V4zm3 1h2v2H7V5zm2 4H7v2h2V9zm2-4h2v2h-2V5zm2 4h-2v2h2V9z" clipRule="evenodd" />
-                  </svg>
+                  <Building className="w-5 h-5 mr-2" />
                   Thông tin doanh nghiệp
                 </h3>
               </div>
@@ -979,13 +965,10 @@ const Registration: React.FC = () => {
 
               <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl p-4 my-6">
                 <h3 className="text-lg font-bold text-blue-900 flex items-center">
-                  <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
-                  </svg>
+                  <Store className="w-5 h-5 mr-2" />
                   Thông tin cửa hàng đầu tiên
                 </h3>
               </div>
-
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -1148,29 +1131,6 @@ const Registration: React.FC = () => {
                 />
               </div>
 
-              {/* Latitude & Longitude - Hidden but data still saved */}
-              <input type="hidden" value={step4Data.latitude} required />
-              <input type="hidden" value={step4Data.longitude} required />
-
-              {step4Data.latitude && step4Data.longitude && (
-                <div className="p-4 bg-[#E8FFED] border border-[#B7E4C7] rounded-xl">
-                  <p className="text-sm text-[#2F855A] flex items-center">
-                    <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    <strong>Vị trí đã được xác định!</strong>
-                  </p>
-                  <a
-                    href={`https://www.google.com/maps?q=${step4Data.latitude},${step4Data.longitude}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-[#2F855A] hover:text-[#2F855A] underline ml-7 mt-1 inline-block"
-                  >
-                    📍 Xem trên Google Maps →
-                  </a>
-                </div>
-              )}
-
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Mô tả cửa hàng (Không bắt buộc)
@@ -1199,16 +1159,18 @@ const Registration: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setCurrentStep(3)}
-                  className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 font-semibold transition-all"
+                  className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 font-semibold transition-all flex items-center justify-center gap-2"
                 >
+                  <ArrowLeft className="w-4 h-4" />
                   Quay lại
                 </button>
                 <button
                   type="submit"
                   disabled={loading}
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-[#A4C3A2] to-[#2F855A] text-white rounded-xl hover:from-[#8FB491] hover:to-[#2F855A] font-semibold shadow-lg disabled:opacity-50 transition-all"
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-[#A4C3A2] to-[#2F855A] text-white rounded-xl hover:from-[#8FB491] hover:to-[#2F855A] font-semibold shadow-lg disabled:opacity-50 transition-all flex items-center justify-center gap-2"
                 >
                   {loading ? 'Đang hoàn tất...' : 'Hoàn tất đăng ký'}
+                  {!loading && <Check className="w-4 h-4" />}
                 </button>
               </div>
             </form>
