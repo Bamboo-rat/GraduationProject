@@ -330,8 +330,8 @@ export default function ProductsList() {
                   </thead>
                   <tbody className="bg-surface divide-y divide-[#B7E4C7]">
                     {products.map((product) => {
-                      const primaryImage = product.images.find(img => img.isPrimary) || product.images[0];
-                      const firstVariant = product.variants[0];
+                      const primaryImage = (product.images || []).find(img => img.isPrimary) || (product.images || [])[0];
+                      const firstVariant = (product.variants || [])[0];
 
                       return (
                         <tr key={product.productId} className="hover:bg-surface-light transition-colors group">
@@ -444,11 +444,10 @@ export default function ProductsList() {
                           <button
                             key={pageNumber}
                             onClick={() => setPage(pageNumber)}
-                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-colors ${
-                              pageNumber === page
+                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-colors ${pageNumber === page
                                 ? 'bg-[#2F855A] text-surface border-[#2F855A]'
                                 : 'bg-surface text-text border-default hover:bg-surface-light'
-                            }`}
+                              }`}
                           >
                             {pageNumber + 1}
                           </button>

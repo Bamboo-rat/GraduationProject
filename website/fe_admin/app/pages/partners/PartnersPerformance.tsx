@@ -94,7 +94,7 @@ export default function PartnersPerformance() {
         {/* Header */}
         <div className="mb-6 flex justify-between items-center">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">Báo cáo Hiệu suất Đối tác</h1>
+            <h1 className="text-2xl font-bold text-gray-800">Báo cáo hiệu suất đối tác</h1>
             <p className="text-gray-600 mt-1">
               Theo dõi và đánh giá hiệu suất hoạt động của các đối tác
             </p>
