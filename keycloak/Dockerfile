@@ -2,7 +2,8 @@
 FROM quay.io/keycloak/keycloak:25.0.6
 
 # Set environment variables
-ENV KC_DB=postgres
+# Use MySQL as the DB vendor so Keycloak loads the MySQL JDBC driver
+ENV KC_DB=mysql
 ENV KC_HEALTH_ENABLED=true
 ENV KC_METRICS_ENABLED=true
 
