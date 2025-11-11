@@ -32,12 +32,15 @@ EXPOSE 8080
 
 
 ENTRYPOINT ["java", \
-    "-Xmx1200m", \
-    "-Xms600m", \
-    "-XX:MaxMetaspaceSize=384m", \
+    "-Xmx1024m", \
+    "-Xms512m", \
+    "-XX:MaxMetaspaceSize=256m", \
     "-XX:+UseG1GC", \
-    "-XX:MaxGCPauseMillis=200", \
+    "-XX:G1HeapRegionSize=16m", \
+    "-XX:InitiatingHeapOccupancyPercent=45", \
     "-XX:+UseContainerSupport", \
+    "-XX:+TieredCompilation", \
+    "-XX:TieredStopAtLevel=1", \
     "-Djava.security.egd=file:/dev/./urandom", \
-    "-Dspring.jpa.hibernate.ddl-auto=update", \
+    "-Dspring.jpa.hibernate.ddl-auto=validate", \
     "-jar", "app.jar"]
