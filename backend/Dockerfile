@@ -30,16 +30,19 @@ COPY --from=build /app/target/*.jar app.jar
 # Expose port (Render will override with PORT env var)
 EXPOSE 8080
 
-# JVM memory optimization for 512MB container
-# Heap: 384MB max, 128MB initial
-# Metaspace: 128MB max
-# Use Serial GC for low memory footprint
+# JVM memory optimization for 512MB container - AGGRESSIVE
+# Heap: 256MB max, 128MB initial (reduced for free tier)
+# Metaspace: 96MB max
+# Use Serial GC for minimal memory footprint
 ENTRYPOINT ["java", \
-    "-Xmx384m", \
+    "-Xmx256m", \
     "-Xms128m", \
-    "-XX:MaxMetaspaceSize=128m", \
+    "-XX:MaxMetaspaceSize=96m", \
+    "-XX:CompressedClassSpaceSize=32m", \
+    "-XX:ReservedCodeCacheSize=32m", \
     "-XX:+UseSerialGC", \
     "-XX:+UseContainerSupport", \
+    "-XX:MaxRAMPercentage=75.0", \
     "-Djava.security.egd=file:/dev/./urandom", \
     "-Dspring.jpa.hibernate.ddl-auto=update", \
     "-jar", "app.jar"]
