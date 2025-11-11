@@ -86,11 +86,6 @@ public class WalletTransaction {
     private LocalDateTime createdAt;
 
     /**
-     * ID của admin thực hiện (nếu là giao dịch thủ công)
-     */
-    private String adminId;
-
-    /**
      * Ghi chú nội bộ của admin
      */
     @Column(length = 1000)

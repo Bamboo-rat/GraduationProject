@@ -377,7 +377,6 @@ public class WalletServiceImpl implements WalletService {
         @Override
         @Transactional
         public TransactionResponse markPayoutAsPaid(String walletId, BigDecimal amount, String externalReference, String adminNote) {
-                String adminId = SecurityUtil.getCurrentUserId();
                 SupplierWallet wallet = walletRepository.findById(walletId)
                                 .orElseThrow(() -> new NotFoundException(ErrorCode.WALLET_NOT_FOUND));
 
@@ -401,16 +400,15 @@ public class WalletServiceImpl implements WalletService {
                 transaction.setAmount(amount);
                 transaction.setBalanceAfter(wallet.getAvailableBalance());
                 transaction.setPendingBalanceAfter(wallet.getPendingBalance());
-                transaction.setAdminId(adminId);
                 transaction.setAdminNote(adminNote);
                 transaction.setExternalReference(externalReference);
                 transaction.setDescription("Payout marked as PAID by admin");
 
                 transaction = transactionRepository.save(transaction);
 
-                log.info("Admin {} marked payout paid for wallet {} amount {}", adminId, walletId, amount);
+                log.info("Marked payout paid for wallet {} amount {}", walletId, amount);
 
-                return mapToTransactionResponse(transaction, userRepository.findById(adminId).map(u -> u.getFullName()).orElse(null));
+                return mapToTransactionResponse(transaction, null);
         }
 
     @Override
@@ -719,7 +717,6 @@ public class WalletServiceImpl implements WalletService {
     @Override
     @Transactional
     public TransactionResponse createManualTransaction(ManualTransactionRequest request) {
-        String adminId = SecurityUtil.getCurrentUserId();
         SupplierWallet wallet = getWalletEntityBySupplierId(request.getSupplierId());
 
         TransactionType txnType = TransactionType.valueOf(request.getTransactionType());
@@ -752,8 +749,6 @@ public class WalletServiceImpl implements WalletService {
 
         wallet = walletRepository.save(wallet);
 
-        User admin = userRepository.findById(adminId).orElse(null);
-
         WalletTransaction transaction = new WalletTransaction();
         transaction.setWallet(wallet);
         transaction.setTransactionType(txnType);
@@ -761,7 +756,6 @@ public class WalletServiceImpl implements WalletService {
         transaction.setBalanceAfter(wallet.getAvailableBalance());
         transaction.setPendingBalanceAfter(wallet.getPendingBalance());
         transaction.setDescription(request.getDescription());
-        transaction.setAdminId(adminId);
         transaction.setAdminNote(request.getAdminNote());
         transaction.setExternalReference(request.getExternalReference());
 
@@ -770,7 +764,7 @@ public class WalletServiceImpl implements WalletService {
         log.info("Manual transaction created: txnId={}, type={}, amount={}, supplierId={}",
                 transaction.getTransactionId(), txnType, amount, request.getSupplierId());
 
-        return mapToTransactionResponse(transaction, admin != null ? admin.getFullName() : null);
+        return mapToTransactionResponse(transaction, null);
     }
 
     // ==================== HELPER METHODS ====================
@@ -858,8 +852,6 @@ public class WalletServiceImpl implements WalletService {
                 .orderId(txn.getOrder() != null ? txn.getOrder().getOrderId() : null)
                 .orderCode(txn.getOrder() != null ? txn.getOrder().getOrderCode() : null)
                 .externalReference(txn.getExternalReference())
-                .adminId(txn.getAdminId())
-                .adminName(adminName)
                 .adminNote(txn.getAdminNote())
                 .createdAt(txn.getCreatedAt())
                 .isIncome(isIncome)
