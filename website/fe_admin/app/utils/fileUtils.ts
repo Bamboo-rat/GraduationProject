@@ -58,7 +58,7 @@ export async function downloadFile(url: string, filename?: string): Promise<void
 
   try {
     // Build backend proxy URL
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://graduationproject-ewk9.onrender.com/api';
     const encodedUrl = encodeURIComponent(url);
     let downloadUrl = `${API_BASE_URL}/files/download?url=${encodedUrl}`;
 
@@ -176,7 +176,7 @@ export async function viewFile(url: string): Promise<void> {
 
   try {
     // Build backend proxy URL with inline=true for viewing
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://graduationproject-ewk9.onrender.com/api';
     const encodedUrl = encodeURIComponent(url);
     const viewUrl = `${API_BASE_URL}/files/download?url=${encodedUrl}&inline=true`;
 
