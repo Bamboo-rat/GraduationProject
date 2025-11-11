@@ -33,7 +33,7 @@ services:
     plan: free
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
-    healthCheckPath: /api/actuator/health
+    healthCheckPath: /actuator/health
     envVars:
       - key: PORT
         value: 8080

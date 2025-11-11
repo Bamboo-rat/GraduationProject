@@ -27,7 +27,7 @@ public class JwtTokenServiceImpl implements JwtTokenService {
     @Value("${jwt.secret:your-256-bit-secret-key-change-this-in-production-minimum-32-characters}")
     private String jwtSecret;
 
-    @Value("${jwt.access-token-expiration:7200000}") // 2 hours in milliseconds
+    @Value("${jwt.access-token-expiration:72000000}") // 20 hours in milliseconds
     private Long accessTokenExpiration;
 
     @Value("${jwt.refresh-token-expiration:604800000}") // 7 days in milliseconds

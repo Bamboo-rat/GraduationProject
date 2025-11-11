@@ -53,7 +53,7 @@ public interface FileStorageService {
      * This creates a temporary URL that can access files even if they are private
      *
      * @param fileUrl The original file URL from Cloudinary
-     * @param expirationSeconds Time in seconds until the URL expires (default: 7200 = 2 hours)
+     * @param expirationSeconds Time in seconds until the URL expires (default: 72000 = 20 hours)
      * @return Signed URL that can access the file temporarily
      */
     String generateSignedUrl(String fileUrl, int expirationSeconds);
