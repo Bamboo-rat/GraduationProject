@@ -14,12 +14,14 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
 import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -201,87 +203,96 @@ public class ReportServiceImpl implements ReportService {
     public CustomerBehaviorSummaryResponse getCustomerBehaviorSummary(LocalDateTime startDate, LocalDateTime endDate) {
         log.info("Generating customer behavior summary from {} to {}", startDate, endDate);
 
-    long totalCustomers = customerRepository.count();
+        long totalCustomers = customerRepository.count();
 
     // Get new vs returning customers
         Object[] customerData = orderRepository.findNewVsReturningCustomers(startDate, endDate);
         if (customerData == null) {
             customerData = new Object[]{0L, 0L};
         }
-    Long newCustomers = toLong(customerData[0]);
-    Long returningCustomers = toLong(customerData[1]);
-    Long activeCustomers = newCustomers + returningCustomers;
+        Long newCustomers = toLong(customerData[0]);
+        Long returningCustomers = toLong(customerData[1]);
+        Long activeCustomers = newCustomers + returningCustomers;
 
-    // Get segmentation data
-    List<Object[]> segmentationData = orderRepository.findCustomerSegmentation(startDate, endDate);
+        // Get segmentation data
+        List<Object[]> segmentationData = orderRepository.findCustomerSegmentation(startDate, endDate);
+        if (segmentationData == null) {
+            segmentationData = Collections.emptyList();
+        }
 
-    Long bronzeTier = 0L, silverTier = 0L, goldTier = 0L, platinumTier = 0L, diamondTier = 0L;
-    if (segmentationData != null) {
+        Long bronzeTier = 0L, silverTier = 0L, goldTier = 0L, platinumTier = 0L, diamondTier = 0L;
         for (Object[] row : segmentationData) {
-        CustomerTier tier = (CustomerTier) row[0];
-        Long count = toLong(row[1]);
-        switch (tier) {
-            case BRONZE -> bronzeTier = count;
-            case SILVER -> silverTier = count;
-            case GOLD -> goldTier = count;
-            case PLATINUM -> platinumTier = count;
-            case DIAMOND -> diamondTier = count;
+            CustomerTier tier = row[0] instanceof CustomerTier ? (CustomerTier) row[0] : null;
+            Long count = toLong(row[1]);
+
+            if (tier == null || tier == CustomerTier.BRONZE) {
+                bronzeTier += count;
+                continue;
+            }
+
+            switch (tier) {
+                case SILVER -> silverTier += count;
+                case GOLD -> goldTier += count;
+                case PLATINUM -> platinumTier += count;
+                case DIAMOND -> diamondTier += count;
+                default -> bronzeTier += count;
+            }
         }
+
+        // Calculate CLV metrics
+        List<Object[]> clvData = orderRepository.findCustomerLifetimeValue(Pageable.ofSize(1000));
+        if (clvData == null) {
+            clvData = new ArrayList<>();
         }
-    }
+        BigDecimal avgCLV = clvData.stream()
+                .map(row -> toBigDecimal(row[9]))
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .divide(BigDecimal.valueOf(Math.max(1, clvData.size())), 2, RoundingMode.HALF_UP);
 
-    // Calculate CLV metrics
-    List<Object[]> clvData = orderRepository.findCustomerLifetimeValue(Pageable.ofSize(1000));
-    if (clvData == null) clvData = new ArrayList<>();
-    BigDecimal avgCLV = clvData.stream()
-        .map(row -> toBigDecimal(row[9]))
-        .reduce(BigDecimal.ZERO, BigDecimal::add)
-        .divide(BigDecimal.valueOf(Math.max(1, clvData.size())), 2, RoundingMode.HALF_UP);
+        BigDecimal avgOrderValue = clvData.stream()
+                .map(row -> toBigDecimal(row[10]))
+                .filter(v -> v.compareTo(BigDecimal.ZERO) > 0)
+                .reduce(BigDecimal.ZERO, BigDecimal::add)
+                .divide(BigDecimal.valueOf(Math.max(1, clvData.size())), 2, RoundingMode.HALF_UP);
 
-    BigDecimal avgOrderValue = clvData.stream()
-        .map(row -> toBigDecimal(row[10]))
-        .filter(v -> v.compareTo(BigDecimal.ZERO) > 0)
-        .reduce(BigDecimal.ZERO, BigDecimal::add)
-        .divide(BigDecimal.valueOf(Math.max(1, clvData.size())), 2, RoundingMode.HALF_UP);
+        Double avgOrdersPerCustomer = clvData.stream()
+                .mapToLong(row -> toLong(row[6]))
+                .average()
+                .orElse(0.0);
 
-    Double avgOrdersPerCustomer = clvData.stream()
-        .mapToLong(row -> toLong(row[6]))
-        .average()
-        .orElse(0.0);
+        // Calculate rates
+        Double activeCustomerRate = totalCustomers > 0
+                ? (activeCustomers.doubleValue() / totalCustomers) * 100
+                : 0.0;
+        Double repeatPurchaseRate = activeCustomers > 0
+                ? (returningCustomers.doubleValue() / activeCustomers) * 100
+                : 0.0;
 
-    // Calculate rates
-    Double activeCustomerRate = totalCustomers > 0
-        ? (activeCustomers.doubleValue() / totalCustomers) * 100
-        : 0.0;
-    Double repeatPurchaseRate = activeCustomers > 0
-        ? (returningCustomers.doubleValue() / activeCustomers) * 100
-        : 0.0;
+        BigDecimal totalValue = clvData.stream()
+                .map(row -> toBigDecimal(row[9]))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-    BigDecimal totalValue = clvData.stream()
-        .map(row -> toBigDecimal(row[9]))
-        .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-    return CustomerBehaviorSummaryResponse.builder()
-        .startDate(startDate)
-        .endDate(endDate)
-        .totalCustomers(totalCustomers)
-        .activeCustomers(activeCustomers)
-        .newCustomers(newCustomers)
-        .returningCustomers(returningCustomers)
-        .activeCustomerRate(activeCustomerRate)
-        .repeatPurchaseRate(repeatPurchaseRate)
-        .customerRetentionRate(repeatPurchaseRate) // Simplified
-        .customerChurnRate(100.0 - repeatPurchaseRate)
-        .averageCustomerLifetimeValue(avgCLV)
-        .averageOrderValue(avgOrderValue)
-        .averageOrdersPerCustomer(avgOrdersPerCustomer)
-        .totalCustomerValue(totalValue)
-        .bronzeTierCount(bronzeTier)
-        .silverTierCount(silverTier)
-        .goldTierCount(goldTier)
-        .platinumTierCount(platinumTier)
-        .diamondTierCount(diamondTier)
-        .build();
+        return CustomerBehaviorSummaryResponse.builder()
+                .startDate(startDate)
+                .endDate(endDate)
+                .totalCustomers(totalCustomers)
+                .activeCustomers(activeCustomers)
+                .newCustomers(newCustomers)
+                .returningCustomers(returningCustomers)
+                .activeCustomerRate(activeCustomerRate)
+                .repeatPurchaseRate(repeatPurchaseRate)
+                .customerRetentionRate(repeatPurchaseRate) // Simplified
+                .customerChurnRate(100.0 - repeatPurchaseRate)
+                .averageCustomerLifetimeValue(avgCLV)
+                .averageOrderValue(avgOrderValue)
+                .averageOrdersPerCustomer(avgOrdersPerCustomer)
+                .totalCustomerValue(totalValue)
+                .bronzeTierCount(bronzeTier)
+                .silverTierCount(silverTier)
+                .goldTierCount(goldTier)
+                .platinumTierCount(platinumTier)
+                .diamondTierCount(diamondTier)
+                .build();
     }
 
     @Override
@@ -289,6 +300,10 @@ public class ReportServiceImpl implements ReportService {
         log.info("Generating customer segmentation from {} to {}", startDate, endDate);
 
         List<Object[]> results = orderRepository.findCustomerSegmentation(startDate, endDate);
+        if (results == null) {
+            results = Collections.emptyList();
+        }
+
         Long totalCustomers = results.stream().map(r -> toLong(r[1])).reduce(0L, Long::sum);
         BigDecimal totalRevenue = results.stream().map(r -> toBigDecimal(r[3])).reduce(BigDecimal.ZERO, BigDecimal::add);
 
@@ -325,6 +340,9 @@ public class ReportServiceImpl implements ReportService {
         log.info("Generating customer lifetime value analysis");
 
         List<Object[]> results = orderRepository.findCustomerLifetimeValue(pageable);
+        if (results == null) {
+            results = Collections.emptyList();
+        }
 
         List<CustomerLifetimeValueResponse> responses = results.stream().map(row -> {
             LocalDateTime registeredAt = (LocalDateTime) row[5];
@@ -402,6 +420,9 @@ public class ReportServiceImpl implements ReportService {
         LocalDate nearExpiryDate = LocalDate.now().plusDays(7);
 
         Object[] data = storeProductRepository.findWasteSummary(nearExpiryDate);
+        if (data == null || data.length < 13) {
+            data = defaultWasteSummary();
+        }
 
         Long totalProducts = toLong(data[0]);
         Long activeProducts = toLong(data[1]);
@@ -427,7 +448,13 @@ public class ReportServiceImpl implements ReportService {
 
         // Get top waste contributors
         List<Object[]> categoryWaste = storeProductRepository.findWasteByCategory(nearExpiryDate);
+        if (categoryWaste == null) {
+            categoryWaste = Collections.emptyList();
+        }
         List<Object[]> supplierWaste = storeProductRepository.findWasteBySupplier();
+        if (supplierWaste == null) {
+            supplierWaste = Collections.emptyList();
+        }
 
         String topWasteCategory = categoryWaste.isEmpty() ? "N/A" : (String) categoryWaste.get(0)[1];
         BigDecimal topCategoryWasteValue = categoryWaste.isEmpty() ? BigDecimal.ZERO : toBigDecimal(categoryWaste.get(0)[11]);
@@ -470,6 +497,9 @@ public class ReportServiceImpl implements ReportService {
         log.info("Generating unsold inventory report");
 
         List<Object[]> results = storeProductRepository.findUnsoldInventory();
+        if (results == null) {
+            results = Collections.emptyList();
+        }
 
         List<UnsoldInventoryResponse> responses = results.stream().map(row -> {
             Integer currentStock = (Integer) row[7];
@@ -709,12 +739,31 @@ public class ReportServiceImpl implements ReportService {
 
     // ==================== HELPER METHODS ====================
 
+    private Object[] defaultWasteSummary() {
+        return new Object[]{
+                0L, // totalProducts
+                0L, // activeProducts
+                0L, // soldOutProducts
+                0L, // expiredProducts
+                0L, // nearExpiryProducts
+                0L, // totalStock
+                0L, // soldQuantity
+                0L, // unsoldQuantity
+                0L, // expiredQuantity
+                BigDecimal.ZERO, // totalStockValue
+                BigDecimal.ZERO, // soldValue
+                BigDecimal.ZERO, // unsoldValue
+                BigDecimal.ZERO // wasteValue
+        };
+    }
+
     private BigDecimal toBigDecimal(Object value) {
         if (value == null) return BigDecimal.ZERO;
         if (value instanceof BigDecimal) return (BigDecimal) value;
         if (value instanceof Double) return BigDecimal.valueOf((Double) value);
         if (value instanceof Integer) return BigDecimal.valueOf((Integer) value);
         if (value instanceof Long) return BigDecimal.valueOf((Long) value);
+        if (value instanceof BigInteger) return new BigDecimal((BigInteger) value);
         return BigDecimal.ZERO;
     }
 
@@ -723,6 +772,7 @@ public class ReportServiceImpl implements ReportService {
         if (value instanceof Long) return (Long) value;
         if (value instanceof Integer) return ((Integer) value).longValue();
         if (value instanceof BigDecimal) return ((BigDecimal) value).longValue();
+        if (value instanceof BigInteger) return ((BigInteger) value).longValue();
         return 0L;
     }
 

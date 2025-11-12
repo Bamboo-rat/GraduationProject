@@ -31,7 +31,13 @@ class ChatService {
 
       // Create SockJS connection
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
-      const wsBaseUrl = apiBaseUrl ? apiBaseUrl.replace(/\/api\/?$/, '') : '';
+      const resolvedApiBaseUrl =
+        apiBaseUrl && apiBaseUrl !== 'undefined' && apiBaseUrl.trim().length > 0
+          ? apiBaseUrl
+          : typeof window !== 'undefined'
+            ? `${window.location.origin}/api`
+            : '';
+      const wsBaseUrl = resolvedApiBaseUrl.replace(/\/api\/?$/, '');
       const socket = new SockJS(`${wsBaseUrl}/ws/chat`);
 
       // Create STOMP client

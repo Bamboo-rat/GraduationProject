@@ -88,14 +88,14 @@ public interface OrderRepository extends JpaRepository<Order, String> {
     List<Object[]> findTopStoresByOrderCount(Pageable pageable);
 
     @Query("""
-        SELECT FUNCTION('DATE', o.createdAt), COUNT(o), 
-               SUM(o.totalAmount - o.discount + o.shippingFee), 
-               AVG(o.totalAmount - o.discount + o.shippingFee)
-        FROM Order o
-        WHERE o.status = 'DELIVERED'
-          AND o.deliveredAt BETWEEN :startDate AND :endDate
-        GROUP BY FUNCTION('DATE', o.createdAt)
-        ORDER BY FUNCTION('DATE', o.createdAt)
+                SELECT FUNCTION('DATE', o.deliveredAt), COUNT(o), 
+                             SUM(o.totalAmount), 
+                             AVG(o.totalAmount)
+                FROM Order o
+                WHERE o.status = 'DELIVERED'
+                    AND o.deliveredAt BETWEEN :startDate AND :endDate
+                GROUP BY FUNCTION('DATE', o.deliveredAt)
+                ORDER BY FUNCTION('DATE', o.deliveredAt)
     """)
     List<Object[]> findSalesTrendsByDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
@@ -146,73 +146,73 @@ public interface OrderRepository extends JpaRepository<Order, String> {
     // ==================== REVENUE REPORT QUERIES ====================
 
     @Query("""
-        SELECT
-            s.userId,
-            s.businessName,
-            s.avatarUrl,
-            COUNT(DISTINCT o.orderId),
-            SUM(o.totalAmount - o.discount + o.shippingFee),
-            SUM((o.totalAmount - o.discount + o.shippingFee) * s.commissionRate),
-            SUM((o.totalAmount - o.discount + o.shippingFee) * (1 - s.commissionRate)),
-            COUNT(DISTINCT sp.variant.product.productId),
-            COUNT(DISTINCT st.storeId)
-        FROM Order o
-        JOIN o.store st
-        JOIN st.supplier s
-        LEFT JOIN st.storeProducts sp
-        WHERE o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED
-          AND o.createdAt BETWEEN :startDate AND :endDate
-        GROUP BY s.userId, s.businessName, s.avatarUrl
-        ORDER BY SUM((o.totalAmount - o.discount + o.shippingFee) * (1 - s.commissionRate)) DESC
+                SELECT
+                        s.userId,
+                        s.businessName,
+                        s.avatarUrl,
+                        COUNT(DISTINCT o.orderId),
+                        SUM(o.totalAmount),
+                        SUM(o.totalAmount * s.commissionRate),
+                        SUM(o.totalAmount * (1 - s.commissionRate)),
+                        COUNT(DISTINCT sp.variant.product.productId),
+                        COUNT(DISTINCT st.storeId)
+                FROM Order o
+                JOIN o.store st
+                JOIN st.supplier s
+                LEFT JOIN st.storeProducts sp
+                WHERE o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED
+                    AND o.deliveredAt BETWEEN :startDate AND :endDate
+                GROUP BY s.userId, s.businessName, s.avatarUrl
+                ORDER BY SUM(o.totalAmount * (1 - s.commissionRate)) DESC
     """)
     List<Object[]> findRevenueBySupplier(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
     @Query("""
-        SELECT
-            FUNCTION('DATE', o.createdAt),
-            COUNT(DISTINCT o.orderId),
-            SUM(o.totalAmount - o.discount + o.shippingFee),
-            SUM((o.totalAmount - o.discount + o.shippingFee) * s.commissionRate),
-            AVG(o.totalAmount - o.discount + o.shippingFee)
-        FROM Order o
-        JOIN o.store st
-        JOIN st.supplier s
-        WHERE o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED
-          AND o.createdAt BETWEEN :startDate AND :endDate
-        GROUP BY FUNCTION('DATE', o.createdAt)
-        ORDER BY FUNCTION('DATE', o.createdAt) ASC
+                SELECT
+                        FUNCTION('DATE', o.deliveredAt),
+                        COUNT(DISTINCT o.orderId),
+                        SUM(o.totalAmount),
+                        SUM(o.totalAmount * s.commissionRate),
+                        AVG(o.totalAmount)
+                FROM Order o
+                JOIN o.store st
+                JOIN st.supplier s
+                WHERE o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED
+                    AND o.deliveredAt BETWEEN :startDate AND :endDate
+                GROUP BY FUNCTION('DATE', o.deliveredAt)
+                ORDER BY FUNCTION('DATE', o.deliveredAt) ASC
     """)
     List<Object[]> findRevenueTimeSeries(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
     @Query("""
         SELECT
-            COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN (o.totalAmount - o.discount + o.shippingFee) ELSE 0 END), 0),
+            COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN o.totalAmount ELSE 0 END), 0),
             SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN 1 ELSE 0 END),
             SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.CANCELED THEN 1 ELSE 0 END),
             COUNT(o),
-            COALESCE(AVG(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN (o.totalAmount - o.discount + o.shippingFee) ELSE NULL END), 0),
-            COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN (o.totalAmount - o.discount + o.shippingFee) * s.commissionRate ELSE 0 END), 0)
+            COALESCE(AVG(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN o.totalAmount ELSE NULL END), 0),
+            COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN o.totalAmount * s.commissionRate ELSE 0 END), 0)
         FROM Order o
         JOIN o.store st
         JOIN st.supplier s
-        WHERE o.createdAt BETWEEN :startDate AND :endDate
+        WHERE o.deliveredAt BETWEEN :startDate AND :endDate
     """)
     Object[] findRevenueSummary(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
     // ==================== CUSTOMER BEHAVIOR REPORT QUERIES ====================
 
     @Query("""
-        SELECT
-            c.tier,
-            COUNT(DISTINCT c.userId),
-            COUNT(DISTINCT o.orderId),
-            SUM(o.totalAmount - o.discount + o.shippingFee),
-            AVG(o.totalAmount - o.discount + o.shippingFee)
-        FROM Customer c
-        LEFT JOIN c.orders o
-        WHERE o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED
-          AND o.createdAt BETWEEN :startDate AND :endDate
-        GROUP BY c.tier
+                SELECT
+                        c.tier,
+                        COUNT(DISTINCT c.userId),
+                        COUNT(DISTINCT o.orderId),
+                        SUM(o.totalAmount),
+                        AVG(o.totalAmount)
+                FROM Customer c
+                LEFT JOIN c.orders o
+                WHERE o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED
+                    AND o.deliveredAt BETWEEN :startDate AND :endDate
+                GROUP BY c.tier
     """)
     List<Object[]> findCustomerSegmentation(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
@@ -227,13 +227,13 @@ public interface OrderRepository extends JpaRepository<Order, String> {
             COUNT(DISTINCT o.orderId),
             SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN 1 ELSE 0 END),
             SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.CANCELED THEN 1 ELSE 0 END),
-            COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN (o.totalAmount - o.discount + o.shippingFee) ELSE 0 END), 0),
-            COALESCE(AVG(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN (o.totalAmount - o.discount + o.shippingFee) ELSE NULL END), 0)
+            COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN o.totalAmount ELSE 0 END), 0),
+            COALESCE(AVG(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN o.totalAmount ELSE NULL END), 0)
         FROM Customer c
         LEFT JOIN c.orders o
         GROUP BY c.userId, c.fullName, c.email, c.phoneNumber, c.tier, c.createdAt
         HAVING COUNT(DISTINCT o.orderId) > 0
-        ORDER BY COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN (o.totalAmount - o.discount + o.shippingFee) ELSE 0 END), 0) DESC
+        ORDER BY COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN o.totalAmount ELSE 0 END), 0) DESC
     """)
     List<Object[]> findCustomerLifetimeValue(Pageable pageable);
 
