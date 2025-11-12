@@ -124,6 +124,16 @@ public interface OrderService {
      */
     void processRefund(String orderId);
 
+    /**
+     * Fix COD wallet balances (admin migration tool)
+     * - Updates payment status from PENDING to SUCCESS for delivered COD orders
+     * - Creates missing wallet transactions for orders that were delivered before the fix
+     * - Recalculates supplier wallet balances
+     * 
+     * @return Summary of fixed orders
+     */
+    String fixCodWalletBalances();
+
     // NOTE: Shipping partner demo methods moved to ShippingPartnerDemoService
     // to avoid duplication and maintain clear separation of concerns.
 }

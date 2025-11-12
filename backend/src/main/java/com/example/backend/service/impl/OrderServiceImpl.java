@@ -57,6 +57,7 @@ public class OrderServiceImpl implements OrderService {
     private final PointTransactionRepository pointTransactionRepository;
     private final FavoriteStoreRepository favoriteStoreRepository;
     private final AddressRepository addressRepository;
+    private final WalletTransactionRepository walletTransactionRepository;
 
     private static final String CONFIG_KEY_POINTS_PERCENTAGE = "points.reward.percentage";
     private static final BigDecimal DEFAULT_POINTS_PERCENTAGE = new BigDecimal("0.05"); // 5% default
@@ -1270,6 +1271,15 @@ public class OrderServiceImpl implements OrderService {
         order.setDeliveredAt(LocalDateTime.now());
         order.setActualDelivery(LocalDateTime.now());
         order.setBalanceReleased(false); // Will be released after 7-day hold period
+        
+        if (order.getPayment() != null && order.getPayment().getMethod() == PaymentMethod.COD) {
+            order.getPayment().setStatus(PaymentStatus.SUCCESS);
+            order.setPaymentStatus(PaymentStatus.SUCCESS);
+            paymentRepository.save(order.getPayment());
+            log.info("Updated COD payment status to SUCCESS: orderId={}, paymentId={}", 
+                    order.getOrderId(), order.getPayment().getPaymentId());
+        }
+        
         order = orderRepository.save(order);
 
         handleDeliveryCompletion(order);
@@ -1479,9 +1489,79 @@ public class OrderServiceImpl implements OrderService {
             }
         } catch (Exception e) {
             log.warn("Failed to parse shipping address: {}", shippingAddress, e);
-            // Return partial result or nulls
         }
+        
+        return result;
+    }
 
+    @Override
+    @Transactional
+    public String fixCodWalletBalances() {
+        log.info("Starting COD wallet balance fix process...");
+        
+        // Step 1: Find all DELIVERED orders with COD payment that have PENDING payment status
+        List<Order> problematicOrders = orderRepository.findAll().stream()
+                .filter(o -> o.getStatus() == OrderStatus.DELIVERED)
+                .filter(o -> o.getPayment() != null)
+                .filter(o -> o.getPayment().getMethod() == PaymentMethod.COD)
+                .filter(o -> o.getPayment().getStatus() == PaymentStatus.PENDING)
+                .toList();
+        
+        log.info("Found {} COD orders with PENDING payment status", problematicOrders.size());
+        
+        if (problematicOrders.isEmpty()) {
+            return "No orders need fixing. All COD delivered orders already have SUCCESS payment status.";
+        }
+        
+        int fixedPayments = 0;
+        int createdTransactions = 0;
+        BigDecimal totalAmountProcessed = BigDecimal.ZERO;
+        
+        // Step 2: Fix each order
+        for (Order order : problematicOrders) {
+            try {
+                log.info("Processing order: orderId={}, orderCode={}, amount={}", 
+                        order.getOrderId(), order.getOrderCode(), order.getTotalAmount());
+                
+                // Check if wallet transactions already exist for this order
+                List<WalletTransaction> existingTransactions = walletTransactionRepository.findByOrderId(order.getOrderId());
+                boolean hasTransactions = existingTransactions != null && !existingTransactions.isEmpty();
+                
+                // Update payment status to SUCCESS
+                order.getPayment().setStatus(PaymentStatus.SUCCESS);
+                order.setPaymentStatus(PaymentStatus.SUCCESS);
+                paymentRepository.save(order.getPayment());
+                fixedPayments++;
+                
+                // If no wallet transactions exist, create them
+                if (!hasTransactions) {
+                    log.info("Creating wallet transactions for order: {}", order.getOrderCode());
+                    handleDeliveryCompletion(order);
+                    createdTransactions++;
+                } else {
+                    log.info("Wallet transactions already exist for order: {}, skipping transaction creation", 
+                            order.getOrderCode());
+                }
+                
+                totalAmountProcessed = totalAmountProcessed.add(order.getTotalAmount());
+                
+                log.info("Successfully processed order: {}", order.getOrderCode());
+                
+            } catch (Exception e) {
+                log.error("Failed to process order: orderId={}, orderCode={}", 
+                        order.getOrderId(), order.getOrderCode(), e);
+            }
+        }
+        
+        String result = String.format(
+                "COD Wallet Fix Summary:\n" +
+                "- Total orders found: %d\n" +
+                "- Payment statuses fixed: %d\n" +
+                "- Wallet transactions created: %d\n" +
+                "- Total amount processed: %s VND",
+                problematicOrders.size(), fixedPayments, createdTransactions, totalAmountProcessed);
+        
+        log.info("COD wallet balance fix completed: {}", result);
         return result;
     }
 }

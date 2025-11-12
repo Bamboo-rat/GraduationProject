@@ -261,6 +261,18 @@ public class OrderController {
         return ResponseEntity.ok(ApiResponse.success("Hoàn tiền thành công"));
     }
 
+    @PostMapping("/admin/fix-cod-wallets")
+    @PreAuthorize("hasAnyRole('ADMIN', 'SUPER_ADMIN')")
+    @Operation(summary = "Fix COD wallet balances (Admin)", 
+               description = "Fixes payment status and recalculates wallet balances for delivered COD orders that are missing wallet transactions. " +
+                           "This is a one-time migration endpoint to fix historical data.")
+    public ResponseEntity<ApiResponse<String>> fixCodWalletBalances() {
+        log.info("POST /api/orders/admin/fix-cod-wallets - Fixing COD wallet balances");
+
+        String result = orderService.fixCodWalletBalances();
+        return ResponseEntity.ok(ApiResponse.success("Hoàn tất cập nhật ví COD", result));
+    }
+
     private String extractUserId(Authentication authentication) {
         return authenticationUtil.extractUserId(authentication);
     }
