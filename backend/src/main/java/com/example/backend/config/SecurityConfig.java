@@ -73,8 +73,11 @@ public class SecurityConfig {
 
                         // Admin endpoints
                         .requestMatchers("/api/admins/**").hasAnyRole("SUPER_ADMIN", "MODERATOR", "STAFF")
-
-                        // File storage endpoints (authenticated users)
+                        .requestMatchers(
+                        "/api/files/upload/business-license",
+                        "/api/files/upload/food-safety-certificate",
+                        "/api/files/upload/supplier-logo"
+                        ).permitAll()
                         .requestMatchers("/api/files/**").authenticated()
 
                         // Public customer-facing endpoints 
