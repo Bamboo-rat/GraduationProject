@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create axios instance with default config
 const axiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://graduationproject-ewk9.onrender.com/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://graduationproject-81or.onrender.com/api',
   timeout: 60000, // 60 seconds for registration flows that might take longer
   headers: {
     'Content-Type': 'application/json',

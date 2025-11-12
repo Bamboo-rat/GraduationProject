@@ -21,8 +21,8 @@ Get-Content .env | ForEach-Object {
 }
 
 Write-Host "`nStarting Spring Boot application..." -ForegroundColor Green
-Write-Host "Backend will be available at: https://graduationproject-ewk9.onrender.com" -ForegroundColor Yellow
-Write-Host "Swagger UI: https://graduationproject-ewk9.onrender.com/swagger-ui/index.html`n" -ForegroundColor Yellow
+Write-Host "Backend will be available at: https://graduationproject-81or.onrender.com" -ForegroundColor Yellow
+Write-Host "Swagger UI: https://graduationproject-81or.onrender.com/swagger-ui/index.html`n" -ForegroundColor Yellow
 
 # Run Maven Spring Boot
 ./mvnw spring-boot:run
