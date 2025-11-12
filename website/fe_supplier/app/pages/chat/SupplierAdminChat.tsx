@@ -28,7 +28,10 @@ export default function SupplierAdminChat() {
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
-    scrollToBottom();
+    // Use requestAnimationFrame to ensure DOM is updated before scrolling
+    requestAnimationFrame(() => {
+      scrollToBottom();
+    });
   }, [messages]);
 
   useEffect(() => {
@@ -127,8 +130,10 @@ export default function SupplierAdminChat() {
       // Mark conversation as read
       await chatService.markConversationAsRead(otherUserId);
       
-      // Scroll to bottom
-      setTimeout(scrollToBottom, 100);
+      // Scroll to bottom instantly (no animation for initial load)
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'instant', block: 'end' });
+      });
     } catch (error) {
       console.error('Error loading messages:', error);
     }
@@ -176,6 +181,11 @@ export default function SupplierAdminChat() {
       
       // Add optimistic message to UI
       setMessages(prev => [...prev, optimisticMessage]);
+      
+      // Scroll immediately after adding message
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      });
       
       // Try WebSocket first, fallback to REST API
       try {

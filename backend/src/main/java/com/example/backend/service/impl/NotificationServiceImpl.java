@@ -25,7 +25,7 @@ public class NotificationServiceImpl implements NotificationService {
     private final EmailService emailService;
 
     private static final int MAX_RETRIES = 3;
-    private static final int BASE_DELAY_MINUTES = 5; // Exponential backoff base
+    private static final int BASE_DELAY_MINUTES = 5; 
 
     @Override
     @Transactional

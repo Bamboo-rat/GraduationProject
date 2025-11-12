@@ -110,7 +110,7 @@ public interface OrderDetailRepository extends JpaRepository<OrderDetail, String
     @Query("SELECT COALESCE(SUM(o.totalAmount), 0.0) " +
            "FROM Order o " +
            "WHERE o.status = 'DELIVERED' " +
-           "AND o.createdAt BETWEEN :startDate AND :endDate")
+           "AND o.deliveredAt BETWEEN :startDate AND :endDate")
     Double calculateRevenueByDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
     // ==================== REVENUE REPORT QUERIES ====================

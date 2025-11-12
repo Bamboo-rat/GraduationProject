@@ -66,16 +66,14 @@ KeycloakServiceImpl implements KeycloakService {
             RealmResource realmResource = keycloak.realm(realm);
             UsersResource usersResource = realmResource.users();
 
-            // Create user representation
             UserRepresentation user = new UserRepresentation();
             user.setEnabled(true);
             user.setUsername(username);
             user.setEmail(email);
             user.setFirstName(firstName);
             user.setLastName(lastName);
-            user.setEmailVerified(true); // Set to true to allow immediate login
+            user.setEmailVerified(true);
 
-            // Create user
             Response response = usersResource.create(user);
 
             if (response.getStatus() != 201) {
@@ -84,11 +82,9 @@ KeycloakServiceImpl implements KeycloakService {
                 throw new KeycloakException(ErrorCode.KEYCLOAK_USER_CREATION_FAILED);
             }
 
-            // Get user ID from location header
             String locationPath = response.getLocation().getPath();
             String userId = locationPath.substring(locationPath.lastIndexOf('/') + 1);
 
-            // Set password
             CredentialRepresentation credential = new CredentialRepresentation();
             credential.setTemporary(false);
             credential.setType(CredentialRepresentation.PASSWORD);

@@ -29,9 +29,4 @@ public class ViolationCheckScheduler {
             log.error("Error processing expired suspensions", e);
         }
     }
-
-    /**
-     * Additional periodic checks can be added here as needed
-     * For example, daily violation summary reports, etc.
-     */
 }

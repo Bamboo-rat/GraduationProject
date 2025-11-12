@@ -35,11 +35,15 @@ services:
     plan: free
     dockerfilePath: ./website/fe_admin/Dockerfile
     dockerContext: ./website/fe_admin
+    dockerCommand: npm run start
     envVars:
       - key: PORT
         value: 3000
-      - key: VITE_API_URL
+      - key: VITE_API_BASE_URL
         value: https://graduationproject-81or.onrender.com/api
+    buildFilter:
+      paths:
+        - website/fe_admin/**
 
   # Frontend Supplier
   - type: web
@@ -48,11 +52,15 @@ services:
     plan: free
     dockerfilePath: ./website/fe_supplier/Dockerfile
     dockerContext: ./website/fe_supplier
+    dockerCommand: npm run start
     envVars:
       - key: PORT
         value: 3000
-      - key: VITE_API_URL
+      - key: VITE_API_BASE_URL
         value: https://graduationproject-81or.onrender.com/api
       - key: VITE_GOONG_API_KEY
         value: PQrW93KH2byinPvRY3oWF4IhG7sY0oP5vSf4Ci0h
+    buildFilter:
+      paths:
+        - website/fe_supplier/**
 

@@ -13,7 +13,7 @@ export default function FinanceTransactions() {
   const [supplierId, setSupplierId] = useState<string>('');
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionResponse | null>(null);
 
-  // Statistics
+
   const [stats, setStats] = useState({
     totalCommissionEarned: 0,
     totalPaidToSuppliers: 0,
@@ -23,7 +23,7 @@ export default function FinanceTransactions() {
 
   useEffect(() => {
     loadTransactions();
-    loadStats();
+    loadSystemStats(); // Load system-wide stats instead of page-specific
   }, [page, type, supplierId]);
 
   const loadTransactions = async () => {
@@ -44,29 +44,19 @@ export default function FinanceTransactions() {
     }
   };
 
-  const loadStats = async () => {
+  const loadSystemStats = async () => {
     try {
-      // Calculate stats from transactions
-      const commissionEarned = transactions
-        .filter(t => t.transactionType === 'COMMISSION_FEE')
-        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+      // Get system-wide statistics from summary endpoint
+      const summary = await walletService.getSystemSummary();
       
-      const paidToSuppliers = transactions
-        .filter(t => t.transactionType === 'ORDER_COMPLETED')
-        .reduce((sum, t) => sum + t.amount, 0);
-      
-      const refunded = transactions
-        .filter(t => t.transactionType === 'ORDER_REFUND' || t.transactionType === 'COMMISSION_REFUND')
-        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-
       setStats({
-        totalCommissionEarned: commissionEarned,
-        totalPaidToSuppliers: paidToSuppliers,
-        totalRefunded: refunded,
-        totalTransactions: transactions.length,
+        totalCommissionEarned: summary.totalCommissionEarned || 0,
+        totalPaidToSuppliers: summary.totalEarnings || 0, // Total earnings paid to suppliers
+        totalRefunded: summary.totalRefunded || 0,
+        totalTransactions: transactions.length, // Keep page-specific count for context
       });
     } catch (err) {
-      console.error('Failed to calculate stats:', err);
+      console.error('Failed to load system stats:', err);
     }
   };
 
@@ -151,7 +141,7 @@ export default function FinanceTransactions() {
                   <p className="text-purple-100 text-sm">Tổng GD</p>
                 </div>
                 <p className="text-2xl font-bold mt-1">{stats.totalTransactions}</p>
-                <p className="text-purple-100 text-xs mt-1">Giao dịch trên trang này</p>
+                <p className="text-purple-100 text-xs mt-1">Trên toàn hệ thống</p>
               </div>
               <div className="bg-purple-400 bg-opacity-30 p-3 rounded-full">
                 <FileText className="w-6 h-6" />

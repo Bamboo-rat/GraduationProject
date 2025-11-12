@@ -49,7 +49,7 @@ class ChatService {
         debug: (str) => {
           console.log('STOMP:', str);
         },
-        reconnectDelay: 5000,
+        reconnectDelay: 2000, // Reduced from 5000 to 2000ms for faster reconnection
         heartbeatIncoming: 4000,
         heartbeatOutgoing: 4000,
       });
@@ -65,6 +65,12 @@ class ChatService {
       this.stompClient.onStompError = (frame) => {
         console.error('STOMP error:', frame);
         reject(new Error('Failed to connect to WebSocket'));
+      };
+
+      // Handle disconnect
+      this.stompClient.onDisconnect = (frame) => {
+        console.log('WebSocket disconnected:', frame);
+        // Auto-reconnect will be handled by reconnectDelay setting
       };
 
       // Activate connection

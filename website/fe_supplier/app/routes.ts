@@ -32,7 +32,6 @@ export default [
   // Reports routes
   route("reports/revenue-over-time", "routes/reports/revenue-over-time.tsx"),
   route("reports/top-products", "routes/reports/top-products.tsx"),
-  route("reports/delivery", "routes/reports/delivery.tsx"),
   route("reports/reviews-analysis", "routes/reports/reviews-analysis.tsx"),
 
   // Store routes

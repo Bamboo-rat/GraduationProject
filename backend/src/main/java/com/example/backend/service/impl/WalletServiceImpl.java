@@ -632,7 +632,9 @@ public class WalletServiceImpl implements WalletService {
         LocalDateTime start = startDate.atStartOfDay();
         LocalDateTime end = endDate.atTime(23, 59, 59);
 
-        List<Order> orders = orderRepository.findByCreatedAtBetween(start, end);
+        // Get orders by DELIVERED date, not created date (financial reconciliation needs completed orders)
+        // Query already filters for DELIVERED status
+        List<Order> orders = orderRepository.findByDeliveredAtBetween(start, end);
 
         BigDecimal totalOrderValue = orders.stream()
                 .map(Order::getTotalAmount)
@@ -667,8 +669,9 @@ public class WalletServiceImpl implements WalletService {
                 .map(WalletTransaction::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal pendingPayments = walletRepository.getTotalPendingBalance()
-                .add(walletRepository.getTotalAvailableBalance());
+        // Fix: Pending payments should be ONLY pending balance, not pending + available
+        // Available balance is ready to withdraw, NOT "pending payment"
+        BigDecimal pendingPayments = walletRepository.getTotalPendingBalance();
 
         Map<String, List<WalletTransaction>> groupedBySupplier = transactions.stream()
                 .collect(Collectors.groupingBy(t -> t.getWallet().getSupplier().getUserId()));
