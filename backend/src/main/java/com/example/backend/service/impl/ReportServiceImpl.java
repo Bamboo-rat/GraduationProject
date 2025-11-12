@@ -42,6 +42,9 @@ public class ReportServiceImpl implements ReportService {
         log.info("Generating revenue summary from {} to {}", startDate, endDate);
 
         Object[] summaryData = orderRepository.findRevenueSummary(startDate, endDate);
+        if (summaryData == null) {
+            summaryData = new Object[]{BigDecimal.ZERO, 0L, 0L, 0L, BigDecimal.ZERO, BigDecimal.ZERO};
+        }
 
         BigDecimal totalRevenue = toBigDecimal(summaryData[0]);
         Long completedOrders = toLong(summaryData[1]);
@@ -59,6 +62,9 @@ public class ReportServiceImpl implements ReportService {
         LocalDateTime previousStartDate = startDate.minusDays(daysBetween);
         LocalDateTime previousEndDate = startDate;
         Object[] previousData = orderRepository.findRevenueSummary(previousStartDate, previousEndDate);
+        if (previousData == null) {
+            previousData = new Object[]{BigDecimal.ZERO, 0L, 0L, 0L, BigDecimal.ZERO, BigDecimal.ZERO};
+        }
 
         BigDecimal previousRevenue = toBigDecimal(previousData[0]);
         Long previousOrders = toLong(previousData[1]);
@@ -70,11 +76,11 @@ public class ReportServiceImpl implements ReportService {
         List<Object[]> topSuppliers = orderRepository.findRevenueBySupplier(startDate, endDate);
         List<Object[]> topCategories = orderDetailRepository.findRevenueByCategoryWithDateRange(startDate, endDate);
 
-        String topSupplierName = topSuppliers.isEmpty() ? "N/A" : (String) topSuppliers.get(0)[1];
+        String topSupplierName = (topSuppliers != null && !topSuppliers.isEmpty()) ? (String) topSuppliers.get(0)[1] : "N/A";
         // row[4] = totalRevenue, row[5] = commission, row[6] = supplierEarnings
-        BigDecimal topSupplierRevenue = topSuppliers.isEmpty() ? BigDecimal.ZERO : toBigDecimal(topSuppliers.get(0)[4]);
-        String topCategoryName = topCategories.isEmpty() ? "N/A" : (String) topCategories.get(0)[1];
-        BigDecimal topCategoryRevenue = topCategories.isEmpty() ? BigDecimal.ZERO : toBigDecimal(topCategories.get(0)[5]);
+        BigDecimal topSupplierRevenue = (topSuppliers != null && !topSuppliers.isEmpty()) ? toBigDecimal(topSuppliers.get(0)[4]) : BigDecimal.ZERO;
+        String topCategoryName = (topCategories != null && !topCategories.isEmpty()) ? (String) topCategories.get(0)[1] : "N/A";
+        BigDecimal topCategoryRevenue = (topCategories != null && !topCategories.isEmpty()) ? toBigDecimal(topCategories.get(0)[5]) : BigDecimal.ZERO;
 
         return RevenueSummaryResponse.builder()
                 .startDate(startDate)
@@ -195,81 +201,87 @@ public class ReportServiceImpl implements ReportService {
     public CustomerBehaviorSummaryResponse getCustomerBehaviorSummary(LocalDateTime startDate, LocalDateTime endDate) {
         log.info("Generating customer behavior summary from {} to {}", startDate, endDate);
 
-        long totalCustomers = customerRepository.count();
+    long totalCustomers = customerRepository.count();
 
-        // Get new vs returning customers
+    // Get new vs returning customers
         Object[] customerData = orderRepository.findNewVsReturningCustomers(startDate, endDate);
-        Long newCustomers = toLong(customerData[0]);
-        Long returningCustomers = toLong(customerData[1]);
-        Long activeCustomers = newCustomers + returningCustomers;
-
-        // Get segmentation data
-        List<Object[]> segmentationData = orderRepository.findCustomerSegmentation(startDate, endDate);
-
-        Long bronzeTier = 0L, silverTier = 0L, goldTier = 0L, platinumTier = 0L, diamondTier = 0L;
-        for (Object[] row : segmentationData) {
-            CustomerTier tier = (CustomerTier) row[0];
-            Long count = toLong(row[1]);
-            switch (tier) {
-                case BRONZE -> bronzeTier = count;
-                case SILVER -> silverTier = count;
-                case GOLD -> goldTier = count;
-                case PLATINUM -> platinumTier = count;
-                case DIAMOND -> diamondTier = count;
-            }
+        if (customerData == null) {
+            customerData = new Object[]{0L, 0L};
         }
+    Long newCustomers = toLong(customerData[0]);
+    Long returningCustomers = toLong(customerData[1]);
+    Long activeCustomers = newCustomers + returningCustomers;
 
-        // Calculate CLV metrics
-        List<Object[]> clvData = orderRepository.findCustomerLifetimeValue(Pageable.ofSize(1000));
-        BigDecimal avgCLV = clvData.stream()
-                .map(row -> toBigDecimal(row[9]))
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .divide(BigDecimal.valueOf(Math.max(1, clvData.size())), 2, RoundingMode.HALF_UP);
+    // Get segmentation data
+    List<Object[]> segmentationData = orderRepository.findCustomerSegmentation(startDate, endDate);
 
-        BigDecimal avgOrderValue = clvData.stream()
-                .map(row -> toBigDecimal(row[10]))
-                .filter(v -> v.compareTo(BigDecimal.ZERO) > 0)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .divide(BigDecimal.valueOf(Math.max(1, clvData.size())), 2, RoundingMode.HALF_UP);
+    Long bronzeTier = 0L, silverTier = 0L, goldTier = 0L, platinumTier = 0L, diamondTier = 0L;
+    if (segmentationData != null) {
+        for (Object[] row : segmentationData) {
+        CustomerTier tier = (CustomerTier) row[0];
+        Long count = toLong(row[1]);
+        switch (tier) {
+            case BRONZE -> bronzeTier = count;
+            case SILVER -> silverTier = count;
+            case GOLD -> goldTier = count;
+            case PLATINUM -> platinumTier = count;
+            case DIAMOND -> diamondTier = count;
+        }
+        }
+    }
 
-        Double avgOrdersPerCustomer = clvData.stream()
-                .mapToLong(row -> toLong(row[6]))
-                .average()
-                .orElse(0.0);
+    // Calculate CLV metrics
+    List<Object[]> clvData = orderRepository.findCustomerLifetimeValue(Pageable.ofSize(1000));
+    if (clvData == null) clvData = new ArrayList<>();
+    BigDecimal avgCLV = clvData.stream()
+        .map(row -> toBigDecimal(row[9]))
+        .reduce(BigDecimal.ZERO, BigDecimal::add)
+        .divide(BigDecimal.valueOf(Math.max(1, clvData.size())), 2, RoundingMode.HALF_UP);
 
-        // Calculate rates
-        Double activeCustomerRate = totalCustomers > 0
-                ? (activeCustomers.doubleValue() / totalCustomers) * 100
-                : 0.0;
-        Double repeatPurchaseRate = activeCustomers > 0
-                ? (returningCustomers.doubleValue() / activeCustomers) * 100
-                : 0.0;
+    BigDecimal avgOrderValue = clvData.stream()
+        .map(row -> toBigDecimal(row[10]))
+        .filter(v -> v.compareTo(BigDecimal.ZERO) > 0)
+        .reduce(BigDecimal.ZERO, BigDecimal::add)
+        .divide(BigDecimal.valueOf(Math.max(1, clvData.size())), 2, RoundingMode.HALF_UP);
 
-        BigDecimal totalValue = clvData.stream()
-                .map(row -> toBigDecimal(row[9]))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    Double avgOrdersPerCustomer = clvData.stream()
+        .mapToLong(row -> toLong(row[6]))
+        .average()
+        .orElse(0.0);
 
-        return CustomerBehaviorSummaryResponse.builder()
-                .startDate(startDate)
-                .endDate(endDate)
-                .totalCustomers(totalCustomers)
-                .activeCustomers(activeCustomers)
-                .newCustomers(newCustomers)
-                .returningCustomers(returningCustomers)
-                .activeCustomerRate(activeCustomerRate)
-                .repeatPurchaseRate(repeatPurchaseRate)
-                .customerRetentionRate(repeatPurchaseRate) // Simplified
-                .customerChurnRate(100.0 - repeatPurchaseRate)
-                .averageCustomerLifetimeValue(avgCLV)
-                .averageOrderValue(avgOrderValue)
-                .averageOrdersPerCustomer(avgOrdersPerCustomer)
-                .totalCustomerValue(totalValue)
-                .bronzeTierCount(bronzeTier)
-                .silverTierCount(silverTier)
-                .goldTierCount(goldTier)
-                .platinumTierCount(platinumTier)
-                .diamondTierCount(diamondTier)
-                .build();
+    // Calculate rates
+    Double activeCustomerRate = totalCustomers > 0
+        ? (activeCustomers.doubleValue() / totalCustomers) * 100
+        : 0.0;
+    Double repeatPurchaseRate = activeCustomers > 0
+        ? (returningCustomers.doubleValue() / activeCustomers) * 100
+        : 0.0;
+
+    BigDecimal totalValue = clvData.stream()
+        .map(row -> toBigDecimal(row[9]))
+        .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+    return CustomerBehaviorSummaryResponse.builder()
+        .startDate(startDate)
+        .endDate(endDate)
+        .totalCustomers(totalCustomers)
+        .activeCustomers(activeCustomers)
+        .newCustomers(newCustomers)
+        .returningCustomers(returningCustomers)
+        .activeCustomerRate(activeCustomerRate)
+        .repeatPurchaseRate(repeatPurchaseRate)
+        .customerRetentionRate(repeatPurchaseRate) // Simplified
+        .customerChurnRate(100.0 - repeatPurchaseRate)
+        .averageCustomerLifetimeValue(avgCLV)
+        .averageOrderValue(avgOrderValue)
+        .averageOrdersPerCustomer(avgOrdersPerCustomer)
+        .totalCustomerValue(totalValue)
+        .bronzeTierCount(bronzeTier)
+        .silverTierCount(silverTier)
+        .goldTierCount(goldTier)
+        .platinumTierCount(platinumTier)
+        .diamondTierCount(diamondTier)
+        .build();
     }
 
     @Override

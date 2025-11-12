@@ -93,7 +93,7 @@ public interface OrderRepository extends JpaRepository<Order, String> {
                AVG(o.totalAmount - o.discount + o.shippingFee)
         FROM Order o
         WHERE o.status = 'DELIVERED'
-          AND o.createdAt BETWEEN :startDate AND :endDate
+          AND o.deliveredAt BETWEEN :startDate AND :endDate
         GROUP BY FUNCTION('DATE', o.createdAt)
         ORDER BY FUNCTION('DATE', o.createdAt)
     """)
@@ -103,7 +103,7 @@ public interface OrderRepository extends JpaRepository<Order, String> {
         SELECT SUM(o.totalAmount)
         FROM Order o
         WHERE o.status = 'DELIVERED'
-          AND o.createdAt BETWEEN :startDate AND :endDate
+          AND o.deliveredAt BETWEEN :startDate AND :endDate
     """)
     Double calculateRevenueByDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
