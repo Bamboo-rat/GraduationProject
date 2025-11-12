@@ -1,7 +1,7 @@
 services:
   # Keycloak Service
   - type: web
-    name: graduation-project-keycloak
+    name: savefood-keycloak
     runtime: docker
     plan: free
     dockerfilePath: ./keycloak/Dockerfile
@@ -30,7 +30,7 @@ services:
 
   # Frontend Admin
   - type: web
-    name: graduation-project-fe-admin
+    name: savefood-admin
     runtime: docker
     plan: free
     dockerfilePath: ./website/fe_admin/Dockerfile
@@ -39,11 +39,11 @@ services:
       - key: PORT
         value: 3000
       - key: VITE_API_URL
-        value: https://graduation-project-backend-hmcg.onrender.com/api
+        value: https://graduationproject-81or.onrender.com/api
 
   # Frontend Supplier
   - type: web
-    name: graduation-project-fe-supplier
+    name: savefood-supplier
     runtime: docker
     plan: free
     dockerfilePath: ./website/fe_supplier/Dockerfile
@@ -52,4 +52,7 @@ services:
       - key: PORT
         value: 3000
       - key: VITE_API_URL
-        value: https://graduation-project-backend-hmcg.onrender.com/api
+        value: https://graduationproject-81or.onrender.com/api
+      - key: VITE_GOONG_API_KEY
+        value: PQrW93KH2byinPvRY3oWF4IhG7sY0oP5vSf4Ci0h
+
