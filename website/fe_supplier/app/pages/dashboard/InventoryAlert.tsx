@@ -190,9 +190,14 @@ export default function InventoryAlert() {
     <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-[#2D2D2D]">🏪 Quản Lý Tồn Kho</h1>
-          <p className="text-[#6B6B6B] mt-1">Theo dõi cảnh báo tồn kho thấp và sản phẩm sắp hết hạn</p>
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#2F855A] to-[#A4C3A2] flex items-center justify-center">
+            <Package className="w-7 h-7 text-white" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-[#2D2D2D]">Quản Lý Tồn Kho</h1>
+            <p className="text-[#6B6B6B] mt-1">Theo dõi cảnh báo tồn kho thấp và sản phẩm sắp hết hạn</p>
+          </div>
         </div>
         <button
           onClick={loadInventory}
@@ -221,7 +226,7 @@ export default function InventoryAlert() {
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-orange-900">
-                    ⚠️ {lowStockItems.length} SẢN PHẨM SẮP HẾT HÀNG
+                    {lowStockItems.length} SẢN PHẨM SẮP HẾT HÀNG
                   </h2>
                   <p className="text-sm text-orange-700">Ngưỡng cảnh báo: ≤ 10 đơn vị</p>
                 </div>
@@ -304,7 +309,7 @@ export default function InventoryAlert() {
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-yellow-900">
-                    🕐 {expiringItems.length} SẢN PHẨM SẮP HẾT HẠN
+                    {expiringItems.length} SẢN PHẨM SẮP HẾT HẠN
                   </h2>
                   <p className="text-sm text-yellow-700">Còn lại {'<'} 7 ngày</p>
                 </div>
@@ -400,7 +405,7 @@ export default function InventoryAlert() {
               <AlertTriangle className="w-6 h-6 text-blue-600" />
             </div>
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-blue-900 mb-2">💡 Khuyến nghị hành động</h3>
+              <h3 className="text-lg font-semibold text-blue-900 mb-2">Khuyến nghị hành động</h3>
               <ul className="text-blue-800 space-y-2">
                 {lowStockItems.length > 0 && (
                   <li className="flex items-start">

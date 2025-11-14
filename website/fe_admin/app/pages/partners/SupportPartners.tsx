@@ -5,6 +5,7 @@ import chatService from '~/service/chatService';
 import supplierService, { type Supplier } from '~/service/supplierService';
 import { useAuth } from '~/AuthContext';
 import type { ChatMessage, ChatMessageRequest } from '~/service/types';
+import { MessageStatus, MessageType } from '~/service/types';
 
 interface SupplierWithUnread extends Supplier {
   unreadCount?: number;
@@ -225,7 +226,7 @@ export default function SupportPartners() {
     const request: ChatMessageRequest = {
       content,
       receiverId: selectedSupplier.userId,
-      type: 'TEXT',
+      type: MessageType.TEXT,
     };
 
     // Create optimistic message
@@ -264,8 +265,8 @@ export default function SupportPartners() {
         createdAt: selectedSupplier.createdAt || '',
         updatedAt: selectedSupplier.updatedAt || ''
       },
-      status: 'SENT',
-      type: 'TEXT'
+      status: MessageStatus.SENT,
+      type: MessageType.TEXT
     };
 
     // Add optimistic message and clear input immediately
@@ -363,7 +364,7 @@ export default function SupportPartners() {
             <div className="flex items-center gap-3">
               <MessageSquare className="text-[#A4C3A2]" size={32} />
               <div>
-                <h1 className="text-3xl font-bold text-[#2D2D2D]">Hỗ trợ Nhà cung cấp</h1>
+                <h1 className="text-3xl font-bold text-[#2D2D2D]">Hỗ trợ nhà cung cấp</h1>
                 <p className="text-[#6B6B6B] mt-1">
                   Trò chuyện và hỗ trợ các nhà cung cấp • {isConnected ? (
                     <span className="text-green-600 font-medium">Đang kết nối</span>
