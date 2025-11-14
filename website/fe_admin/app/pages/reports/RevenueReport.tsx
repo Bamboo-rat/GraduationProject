@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import DashboardLayout from '~/component/layout/DashboardLayout';
 import reportService from '~/service/reportService';
 import type {
   RevenueSummary,
@@ -88,46 +89,51 @@ export default function RevenueReport() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-          <p className="text-gray-600">Đang tải báo cáo...</p>
+      <DashboardLayout>
+        <div className="p-6">
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2F855A]"></div>
+          </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
   if (error) {
     return (
-      <div className="p-6">
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-          <p className="font-medium">Lỗi: {error}</p>
-          <button onClick={fetchReportData} className="mt-2 text-sm underline">Thử lại</button>
+      <DashboardLayout>
+        <div className="p-6">
+          <div className="card p-6 bg-[#FFE8E8] border border-[#E63946] text-[#E63946]">
+            <p className="font-medium">Lỗi: {error}</p>
+            <button onClick={fetchReportData} className="mt-2 text-sm underline">Thử lại</button>
+          </div>
         </div>
-      </div>
-
+      </DashboardLayout>
     );
   }
 
   return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">Báo cáo Doanh thu</h1>
-        <p className="text-gray-600">Phân tích chi tiết doanh thu theo nhà cung cấp, danh mục và thời gian</p>
-      </div>
+    <DashboardLayout>
+      <div className="p-6">
+        {/* Header */}
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h1 className="heading-primary mb-2">Báo cáo doanh thu</h1>
+            <p className="text-muted">Phân tích chi tiết doanh thu theo nhà cung cấp, danh mục và thời gian</p>
+          </div>
+        </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
+        {/* Filters */}
+        <div className="card p-6 mb-8">
         <div className="flex flex-wrap gap-4 items-end">
-          {/* Date Preset */}
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Khoảng thời gian</label>
-            <select
-              value={datePreset}
-              onChange={(e) => handleDatePresetChange(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
+            {/* Date Preset */}
+            <div className="flex-1 min-w-[200px]">
+              <label className="block text-sm font-medium text-text mb-2">Khoảng thời gian</label>
+              <select
+                value={datePreset}
+                onChange={(e) => handleDatePresetChange(e.target.value)}
+                className="w-full px-3 py-2 border border-default rounded-lg text-sm focus:ring-2 focus:ring-[#2F855A] focus:border-transparent"
+              >
               <option value="7">7 ngày qua</option>
               <option value="30">30 ngày qua</option>
               <option value="90">90 ngày qua</option>
@@ -158,81 +164,83 @@ export default function RevenueReport() {
             />
           </div>
 
-          {/* Export Button */}
-          <button
-            onClick={handleExport}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2"
-          >
-            <Download className="w-4 h-4" />
-            Xuất CSV
-          </button>
+            {/* Export Button */}
+            <button
+              onClick={handleExport}
+              className="btn-primary flex items-center gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Xuất CSV
+            </button>
         </div>
       </div>
 
-      {/* Summary Cards */}
-      {summary && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-blue-100 p-3 rounded-lg">
-                <DollarSign className="w-6 h-6 text-blue-600" />
-              </div>
-              {summary.revenueGrowthRate !== 0 && (
-                <div className={`flex items-center gap-1 text-sm ${summary.revenueGrowthRate > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {summary.revenueGrowthRate > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                  {reportService.formatPercentage(Math.abs(summary.revenueGrowthRate))}
+        {/* Summary Cards */}
+        {summary && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="card card-hover p-6 bg-gradient-to-br from-[#2F855A] to-[#8FB491] text-surface">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 rounded-lg bg-white/20">
+                  <DollarSign className="w-6 h-6" />
                 </div>
-              )}
-            </div>
-            <h3 className="text-sm text-gray-600 mb-1">Tổng Doanh thu</h3>
-            <p className="text-2xl font-bold text-gray-800">{reportService.formatCurrency(summary.totalRevenue)}</p>
-            <p className="text-xs text-gray-500 mt-1">
-              Hoa hồng: {reportService.formatCurrency(summary.totalCommission)}
-            </p>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-green-100 p-3 rounded-lg">
-                <ShoppingCart className="w-6 h-6 text-green-600" />
+                {summary.revenueGrowthRate !== 0 && (
+                  <div className={`flex items-center gap-1 text-sm font-medium`}>
+                    {summary.revenueGrowthRate > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                    {reportService.formatPercentage(Math.abs(summary.revenueGrowthRate))}
+                  </div>
+                )}
               </div>
-              {summary.orderGrowthRate !== 0 && (
-                <div className={`flex items-center gap-1 text-sm ${summary.orderGrowthRate > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {summary.orderGrowthRate > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                  {reportService.formatPercentage(Math.abs(summary.orderGrowthRate))}
+              <h3 className="text-sm opacity-90 mb-1">Tổng Doanh thu</h3>
+              <p className="text-2xl font-bold">{reportService.formatCurrency(summary.totalRevenue)}</p>
+              <p className="text-xs opacity-80 mt-1">
+                Hoa hồng: {reportService.formatCurrency(summary.totalCommission)}
+              </p>
+            </div>
+
+            <div className="card card-hover p-6 bg-gradient-to-br from-[#A4C3A2] to-[#B7E4C7] text-text">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 rounded-lg bg-[#2F855A]/10">
+                  <Store className="w-6 h-6 text-[#2F855A]" />
                 </div>
-              )}
+              </div>
+              <h3 className="text-sm text-muted mb-1">Thu nhà cung cấp</h3>
+              <p className="text-2xl font-bold">{reportService.formatCurrency(summary.totalSupplierEarnings)}</p>
+              <p className="text-xs text-muted mt-1">
+                ~{((summary.totalSupplierEarnings / summary.totalRevenue) * 100).toFixed(1)}% tổng doanh thu
+              </p>
             </div>
-            <h3 className="text-sm text-gray-600 mb-1">Đơn hàng hoàn thành</h3>
-            <p className="text-2xl font-bold text-gray-800">{reportService.formatNumber(summary.completedOrders)}</p>
-            <p className="text-xs text-gray-500 mt-1">
-              Tổng: {reportService.formatNumber(summary.totalOrders)} | Hủy: {reportService.formatNumber(summary.cancelledOrders)}
-            </p>
-          </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="bg-purple-100 p-3 rounded-lg mb-4">
-              <Package className="w-6 h-6 text-purple-600" />
+            <div className="card card-hover p-6 bg-gradient-to-br from-[#DDC6B6] to-[#F5EDE6] text-text">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 rounded-lg bg-[#2F855A]/10">
+                  <ShoppingCart className="w-6 h-6 text-[#2F855A]" />
+                </div>
+                {summary.orderGrowthRate !== 0 && (
+                  <div className={`flex items-center gap-1 text-sm ${summary.orderGrowthRate > 0 ? 'text-[#2F855A]' : 'text-[#E63946]'}`}>
+                    {summary.orderGrowthRate > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                    {reportService.formatPercentage(Math.abs(summary.orderGrowthRate))}
+                  </div>
+                )}
+              </div>
+              <h3 className="text-sm text-muted mb-1">Đơn hàng</h3>
+              <p className="text-2xl font-bold">{reportService.formatNumber(summary.completedOrders)} / {reportService.formatNumber(summary.totalOrders)}</p>
+              <p className="text-xs text-muted mt-1">
+                Hoàn thành / Tổng • Hủy: {reportService.formatNumber(summary.cancelledOrders)}
+              </p>
             </div>
-            <h3 className="text-sm text-gray-600 mb-1">Giá trị đơn TB</h3>
-            <p className="text-2xl font-bold text-gray-800">{reportService.formatCurrency(summary.averageOrderValue)}</p>
-            <p className="text-xs text-gray-500 mt-1">
-              Doanh thu TB/ngày: {reportService.formatCurrency(summary.averageDailyRevenue)}
-            </p>
-          </div>
 
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="bg-yellow-100 p-3 rounded-lg mb-4">
-              <Store className="w-6 h-6 text-yellow-600" />
+            <div className="card card-hover p-6 bg-gradient-to-br from-[#FFE8E8] to-[#FFD1D1] text-text border border-[#FF6B35]">
+              <div className="p-3 rounded-lg bg-[#E63946]/10 mb-4">
+                <Package className="w-6 h-6 text-[#E63946]" />
+              </div>
+              <h3 className="text-sm text-muted mb-1">Giá trị đơn TB</h3>
+              <p className="text-2xl font-bold">{reportService.formatCurrency(summary.averageOrderValue)}</p>
+              <p className="text-xs text-muted mt-1">
+                Doanh thu TB/ngày: {reportService.formatCurrency(summary.averageDailyRevenue)}
+              </p>
             </div>
-            <h3 className="text-sm text-gray-600 mb-1">NCC hàng đầu</h3>
-            <p className="text-lg font-bold text-gray-800 truncate">{summary.topSupplierName}</p>
-            <p className="text-xs text-gray-500 mt-1">
-              {reportService.formatCurrency(summary.topSupplierRevenue)}
-            </p>
           </div>
-        </div>
-      )}
+        )}
 
       {/* Revenue Time Series Chart */}
       <div className="bg-white rounded-lg shadow p-6 mb-6">
@@ -248,6 +256,89 @@ export default function RevenueReport() {
             <Line type="monotone" dataKey="orderCount" stroke="#10B981" strokeWidth={2} name="Số đơn" yAxisId={1} />
           </LineChart>
         </ResponsiveContainer>
+      </div>
+
+      {/* Time Series Data Table */}
+      <div className="card mb-8">
+        <div className="px-6 py-4 border-b border-default">
+          <h2 className="heading-secondary">Chuỗi thời gian doanh thu chi tiết</h2>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-[#B7E4C7]">
+            <thead className="bg-surface-light">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-semibold text-text uppercase">Ngày</th>
+                <th className="px-6 py-3 text-right text-xs font-semibold text-text uppercase">Tổng doanh thu</th>
+                <th className="px-6 py-3 text-right text-xs font-semibold text-text uppercase">Doanh thu thuần</th>
+                <th className="px-6 py-3 text-right text-xs font-semibold text-text uppercase">Hoa hồng nền tảng</th>
+                <th className="px-6 py-3 text-right text-xs font-semibold text-text uppercase">Số đơn hàng</th>
+                <th className="px-6 py-3 text-right text-xs font-semibold text-text uppercase">Khách hàng mới</th>
+                <th className="px-6 py-3 text-right text-xs font-semibold text-text uppercase">Giá trị TB</th>
+              </tr>
+            </thead>
+            <tbody className="bg-surface divide-y divide-[#B7E4C7]">
+              {timeSeriesData.slice().reverse().map((data) => {
+                const netRevenue = data.revenue - data.platformCommission;
+                return (
+                  <tr key={data.date} className="hover:bg-surface-light transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-text">
+                      {new Date(data.date).toLocaleDateString('vi-VN')}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-[#2F855A]">
+                      {reportService.formatCurrency(data.revenue)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-text">
+                      {reportService.formatCurrency(netRevenue)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-text">
+                      {reportService.formatCurrency(data.platformCommission)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-text">
+                      {data.orderCount}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-text">
+                      {data.newCustomers}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-text">
+                      {reportService.formatCurrency(data.averageOrderValue)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot className="bg-surface-light border-t-2 border-[#2F855A]">
+              <tr>
+                <td className="px-6 py-4 text-sm font-bold text-text">Tổng cộng</td>
+                <td className="px-6 py-4 text-sm text-right font-bold text-[#2F855A]">
+                  {reportService.formatCurrency(
+                    timeSeriesData.reduce((sum, d) => sum + d.revenue, 0)
+                  )}
+                </td>
+                <td className="px-6 py-4 text-sm text-right font-bold text-text">
+                  {reportService.formatCurrency(
+                    timeSeriesData.reduce((sum, d) => sum + (d.revenue - d.platformCommission), 0)
+                  )}
+                </td>
+                <td className="px-6 py-4 text-sm text-right font-bold text-text">
+                  {reportService.formatCurrency(
+                    timeSeriesData.reduce((sum, d) => sum + d.platformCommission, 0)
+                  )}
+                </td>
+                <td className="px-6 py-4 text-sm text-right font-bold text-text">
+                  {timeSeriesData.reduce((sum, d) => sum + d.orderCount, 0)}
+                </td>
+                <td className="px-6 py-4 text-sm text-right font-bold text-text">
+                  {timeSeriesData.reduce((sum, d) => sum + d.newCustomers, 0)}
+                </td>
+                <td className="px-6 py-4 text-sm text-right font-bold text-text">
+                  {reportService.formatCurrency(
+                    timeSeriesData.reduce((sum, d) => sum + d.averageOrderValue, 0) / timeSeriesData.length
+                  )}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
       </div>
 
       {/* Revenue by Supplier */}
@@ -333,8 +424,9 @@ export default function RevenueReport() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

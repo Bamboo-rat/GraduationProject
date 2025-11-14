@@ -62,6 +62,9 @@ export interface CustomerBehaviorSummary {
   activeCustomers: number;
   newCustomers: number;
   returningCustomers: number;
+  suspendedCustomers: number;
+  bannedCustomers: number;
+  returnRate: number;
   activeCustomerRate: number;
   repeatPurchaseRate: number;
   customerRetentionRate: number;

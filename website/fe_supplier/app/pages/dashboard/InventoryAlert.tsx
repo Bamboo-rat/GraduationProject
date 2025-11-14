@@ -1,5 +1,16 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, Package, TrendingDown, RefreshCw, Search, Filter } from 'lucide-react';
+import { 
+  AlertTriangle, 
+  Package, 
+  TrendingDown, 
+  RefreshCw, 
+  Search, 
+  Filter, 
+  Clock,
+  ShoppingCart,
+  Calendar,
+  ArrowRight
+} from 'lucide-react';
 import productService from '~/service/productService';
 import type { ProductResponse } from '~/service/productService';
 
@@ -12,14 +23,27 @@ interface LowStockItem {
   storeId: string;
   storeName: string;
   currentStock: number;
+  threshold: number;
   imageUrl?: string;
   expiryDate?: string;
   status: string;
 }
 
+interface ExpiringItem {
+  productId: string;
+  productName: string;
+  variantId: string;
+  variantName: string;
+  quantity: number;
+  expiryDate: string;
+  daysRemaining: number;
+  imageUrl?: string;
+}
+
 export default function InventoryAlert() {
   const [products, setProducts] = useState<ProductResponse[]>([]);
   const [lowStockItems, setLowStockItems] = useState<LowStockItem[]>([]);
+  const [expiringItems, setExpiringItems] = useState<ExpiringItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterLevel, setFilterLevel] = useState<'all' | 'critical' | 'low'>('all');
@@ -38,6 +62,7 @@ export default function InventoryAlert() {
       });
       setProducts(data.content);
       analyzeLowStock(data.content);
+      analyzeExpiringItems(data.content);
     } catch (err) {
       console.error('Failed to load inventory:', err);
     } finally {
@@ -64,6 +89,7 @@ export default function InventoryAlert() {
               storeId: stock.storeId,
               storeName: stock.storeName,
               currentStock: currentStock,
+              threshold: threshold,
               imageUrl: product.images?.[0]?.imageUrl,
               expiryDate: variant.expiryDate,
               status: currentStock === 0 ? 'OUT_OF_STOCK' : currentStock <= 5 ? 'CRITICAL' : 'LOW',
@@ -74,6 +100,43 @@ export default function InventoryAlert() {
     });
 
     setLowStockItems(items);
+  };
+
+  const analyzeExpiringItems = (products: ProductResponse[]) => {
+    const items: ExpiringItem[] = [];
+    const today = new Date();
+    const sevenDaysFromNow = new Date();
+    sevenDaysFromNow.setDate(today.getDate() + 7);
+
+    products.forEach((product) => {
+      product.variants?.forEach((variant) => {
+        if (variant.expiryDate) {
+          const expiryDate = new Date(variant.expiryDate);
+          const daysRemaining = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+          
+          if (daysRemaining > 0 && daysRemaining <= 7) {
+            const totalQuantity = variant.storeStocks?.reduce((sum, stock) => sum + (stock.stockQuantity || 0), 0) || 0;
+            
+            if (totalQuantity > 0) {
+              items.push({
+                productId: product.productId,
+                productName: product.name,
+                variantId: variant.variantId,
+                variantName: variant.name,
+                quantity: totalQuantity,
+                expiryDate: variant.expiryDate,
+                daysRemaining: daysRemaining,
+                imageUrl: product.images?.[0]?.imageUrl,
+              });
+            }
+          }
+        }
+      });
+    });
+
+    // Sort by days remaining (most urgent first)
+    items.sort((a, b) => a.daysRemaining - b.daysRemaining);
+    setExpiringItems(items);
   };
 
   const filteredItems = lowStockItems.filter((item) => {
@@ -128,214 +191,243 @@ export default function InventoryAlert() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-[#2D2D2D]">Cảnh báo tồn kho</h1>
-          <p className="text-[#6B6B6B] mt-1">Theo dõi sản phẩm sắp hết hàng và cần nhập thêm</p>
+          <h1 className="text-3xl font-bold text-[#2D2D2D]">🏪 Quản Lý Tồn Kho</h1>
+          <p className="text-[#6B6B6B] mt-1">Theo dõi cảnh báo tồn kho thấp và sản phẩm sắp hết hạn</p>
         </div>
         <button
           onClick={loadInventory}
-          className="flex items-center gap-2 px-4 py-2 bg-[#2F855A] text-white rounded-xl hover:bg-[#8FB491] transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-[#2F855A] text-white rounded-xl hover:bg-[#276749] transition-colors"
         >
           <RefreshCw className="w-4 h-4" />
           Làm mới
         </button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-        <div className="bg-white rounded-2xl shadow-sm border border-[#E8FFED] p-6">
-          <div className="flex items-start justify-between mb-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center">
-              <Package className="w-6 h-6 text-white" />
+      {/* Loading State */}
+      {loading && (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-[#A4C3A2]"></div>
+        </div>
+      )}
+
+      {!loading && (
+        <>
+          {/* SECTION A: Low Stock Alerts */}
+          <div className="space-y-4">
+            <div className="bg-gradient-to-r from-orange-50 to-red-50 border-2 border-orange-300 rounded-xl p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-xl bg-orange-500 flex items-center justify-center">
+                  <AlertTriangle className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-orange-900">
+                    ⚠️ {lowStockItems.length} SẢN PHẨM SẮP HẾT HÀNG
+                  </h2>
+                  <p className="text-sm text-orange-700">Ngưỡng cảnh báo: ≤ 10 đơn vị</p>
+                </div>
+              </div>
+
+              {lowStockItems.length === 0 ? (
+                <div className="text-center py-8 text-orange-700">
+                  <Package className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p>Tất cả sản phẩm đều có đủ tồn kho</p>
+                </div>
+              ) : (
+                <div className="bg-white rounded-xl overflow-hidden border-2 border-orange-200">
+                  <table className="min-w-full">
+                    <thead className="bg-orange-100">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-orange-900 uppercase">
+                          Sản phẩm
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-orange-900 uppercase">
+                          Còn lại
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-orange-900 uppercase">
+                          Ngưỡng
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-orange-900 uppercase">
+                          Hành động
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-orange-100">
+                      {lowStockItems.slice(0, 10).map((item, index) => (
+                        <tr key={index} className="hover:bg-orange-50 transition-colors">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center">
+                              {item.imageUrl ? (
+                                <img
+                                  src={item.imageUrl}
+                                  alt={item.productName}
+                                  className="w-12 h-12 rounded-lg object-cover mr-3 border-2 border-orange-200"
+                                />
+                              ) : (
+                                <div className="w-12 h-12 rounded-lg bg-orange-100 flex items-center justify-center mr-3">
+                                  <Package className="w-6 h-6 text-orange-400" />
+                                </div>
+                              )}
+                              <div>
+                                <p className="font-semibold text-gray-900">{item.productName}</p>
+                                <p className="text-sm text-gray-500">{item.variantName}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="text-xl font-bold text-orange-600">{item.currentStock} sp</span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="text-gray-600 font-medium">{item.threshold}</span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <button className="flex items-center gap-2 px-4 py-2 bg-[#2F855A] text-white rounded-lg hover:bg-[#276749] transition-colors text-sm font-medium">
+                              <ShoppingCart className="w-4 h-4" />
+                              Nhập thêm
+                              <ArrowRight className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
-          <h3 className="text-[#6B6B6B] text-sm font-medium mb-1">Tổng cảnh báo</h3>
-          <p className="text-2xl font-bold text-[#2D2D2D]">{stats.total}</p>
-        </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-red-200 p-6">
-          <div className="flex items-start justify-between mb-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center">
-              <AlertTriangle className="w-6 h-6 text-white" />
+          {/* SECTION B: Expiring Items */}
+          <div className="space-y-4">
+            <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-300 rounded-xl p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 rounded-xl bg-yellow-500 flex items-center justify-center">
+                  <Clock className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-yellow-900">
+                    🕐 {expiringItems.length} SẢN PHẨM SẮP HẾT HẠN
+                  </h2>
+                  <p className="text-sm text-yellow-700">Còn lại {'<'} 7 ngày</p>
+                </div>
+              </div>
+
+              {expiringItems.length === 0 ? (
+                <div className="text-center py-8 text-yellow-700">
+                  <Calendar className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p>Không có sản phẩm nào sắp hết hạn</p>
+                </div>
+              ) : (
+                <div className="bg-white rounded-xl overflow-hidden border-2 border-yellow-200">
+                  <table className="min-w-full">
+                    <thead className="bg-yellow-100">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-yellow-900 uppercase">
+                          Sản phẩm
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-yellow-900 uppercase">
+                          Số lượng
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-yellow-900 uppercase">
+                          Hết hạn
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-bold text-yellow-900 uppercase">
+                          Còn lại
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-yellow-100">
+                      {expiringItems.map((item, index) => (
+                        <tr key={index} className="hover:bg-yellow-50 transition-colors">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center">
+                              {item.imageUrl ? (
+                                <img
+                                  src={item.imageUrl}
+                                  alt={item.productName}
+                                  className="w-12 h-12 rounded-lg object-cover mr-3 border-2 border-yellow-200"
+                                />
+                              ) : (
+                                <div className="w-12 h-12 rounded-lg bg-yellow-100 flex items-center justify-center mr-3">
+                                  <Package className="w-6 h-6 text-yellow-400" />
+                                </div>
+                              )}
+                              <div>
+                                <p className="font-semibold text-gray-900">{item.productName}</p>
+                                <p className="text-sm text-gray-500">{item.variantName}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="text-xl font-bold text-gray-900">{item.quantity} sp</span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="text-gray-700 font-medium">
+                              {new Date(item.expiryDate).toLocaleDateString('vi-VN', {
+                                day: '2-digit',
+                                month: '2-digit',
+                              })}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span
+                              className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-bold ${
+                                item.daysRemaining <= 2
+                                  ? 'bg-red-100 text-red-700'
+                                  : item.daysRemaining <= 4
+                                  ? 'bg-orange-100 text-orange-700'
+                                  : 'bg-yellow-100 text-yellow-700'
+                              }`}
+                            >
+                              <Clock className="w-4 h-4" />
+                              {item.daysRemaining} ngày
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
-          <h3 className="text-[#6B6B6B] text-sm font-medium mb-1">Hết hàng</h3>
-          <p className="text-2xl font-bold text-red-600">{stats.outOfStock}</p>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-sm border border-orange-200 p-6">
-          <div className="flex items-start justify-between mb-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center">
-              <TrendingDown className="w-6 h-6 text-white" />
-            </div>
-          </div>
-          <h3 className="text-[#6B6B6B] text-sm font-medium mb-1">Mức nguy hiểm</h3>
-          <p className="text-2xl font-bold text-orange-600">{stats.critical}</p>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-sm border border-yellow-200 p-6">
-          <div className="flex items-start justify-between mb-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center">
-              <AlertTriangle className="w-6 h-6 text-white" />
-            </div>
-          </div>
-          <h3 className="text-[#6B6B6B] text-sm font-medium mb-1">Sắp hết</h3>
-          <p className="text-2xl font-bold text-yellow-600">{stats.lowStock}</p>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white rounded-xl shadow-sm border border-[#E8FFED] p-4">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Tìm kiếm theo tên sản phẩm, SKU, cửa hàng..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-[#B7E4C7] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#A4C3A2]"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <Filter className="w-5 h-5 text-gray-400" />
-            <select
-              value={filterLevel}
-              onChange={(e) => setFilterLevel(e.target.value as any)}
-              className="px-4 py-2 border border-[#B7E4C7] rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#A4C3A2]"
-            >
-              <option value="all">Tất cả mức độ</option>
-              <option value="critical">Chỉ nguy hiểm</option>
-              <option value="low">Chỉ sắp hết</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* Inventory Alert Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-[#E8FFED] overflow-hidden">
-        {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-[#A4C3A2]"></div>
-          </div>
-        ) : filteredItems.length === 0 ? (
-          <div className="p-12 text-center text-gray-500">
-            <Package className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-            <p className="text-lg font-semibold mb-2">Không có cảnh báo tồn kho</p>
-            <p className="text-sm">Tất cả sản phẩm đều còn đủ hàng trong kho</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-[#F8FFF9]">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Sản phẩm
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    SKU
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Cửa hàng
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Tồn kho
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Trạng thái
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    Hạn sử dụng
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredItems.map((item, index) => (
-                  <tr key={index} className="hover:bg-[#F8FFF9] transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center">
-                        {item.imageUrl ? (
-                          <img
-                            src={item.imageUrl}
-                            alt={item.productName}
-                            className="w-12 h-12 rounded-lg object-cover mr-3"
-                          />
-                        ) : (
-                          <div className="w-12 h-12 rounded-lg bg-gray-200 flex items-center justify-center mr-3">
-                            <Package className="w-6 h-6 text-gray-400" />
-                          </div>
-                        )}
-                        <div>
-                          <p className="font-semibold text-gray-900">{item.productName}</p>
-                          <p className="text-sm text-gray-500">{item.variantName}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="font-mono text-sm text-gray-700">{item.sku}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm text-gray-700">{item.storeName}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`text-lg font-bold ${
-                          item.currentStock === 0
-                            ? 'text-red-600'
-                            : item.currentStock <= 5
-                            ? 'text-orange-600'
-                            : 'text-yellow-600'
-                        }`}
-                      >
-                        {item.currentStock}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${getStatusBadge(
-                          item.status
-                        )}`}
-                      >
-                        <AlertTriangle className="w-3 h-3 mr-1" />
-                        {getStatusLabel(item.status)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-700">
-                      {item.expiryDate
-                        ? new Date(item.expiryDate).toLocaleDateString('vi-VN')
-                        : 'N/A'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+        </>
+      )}
 
       {/* Action Recommendations */}
-      {filteredItems.length > 0 && (
+      {!loading && (lowStockItems.length > 0 || expiringItems.length > 0) && (
         <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-6">
           <div className="flex items-start gap-4">
             <div className="bg-blue-100 p-3 rounded-full flex-shrink-0">
               <AlertTriangle className="w-6 h-6 text-blue-600" />
             </div>
             <div className="flex-1">
-              <h3 className="text-lg font-semibold text-blue-900 mb-2">Khuyến nghị hành động</h3>
+              <h3 className="text-lg font-semibold text-blue-900 mb-2">💡 Khuyến nghị hành động</h3>
               <ul className="text-blue-800 space-y-2">
-                <li className="flex items-start">
-                  <span className="mr-2">•</span>
-                  <span>
-                    Liên hệ nhà cung cấp để nhập thêm <strong>{stats.critical + stats.outOfStock}</strong> sản phẩm
-                    đang ở mức nguy hiểm
-                  </span>
-                </li>
+                {lowStockItems.length > 0 && (
+                  <li className="flex items-start">
+                    <span className="mr-2">•</span>
+                    <span>
+                      Liên hệ nhà cung cấp để nhập thêm <strong>{lowStockItems.length}</strong> sản phẩm
+                      đang ở mức cảnh báo
+                    </span>
+                  </li>
+                )}
+                {expiringItems.length > 0 && (
+                  <>
+                    <li className="flex items-start">
+                      <span className="mr-2">•</span>
+                      <span>
+                        Xem xét chạy khuyến mãi cho <strong>{expiringItems.length}</strong> sản phẩm sắp hết hạn để giảm lãng phí
+                      </span>
+                    </li>
+                    <li className="flex items-start">
+                      <span className="mr-2">•</span>
+                      <span>Ưu tiên hiển thị sản phẩm sắp hết hạn ở vị trí nổi bật trên cửa hàng</span>
+                    </li>
+                  </>
+                )}
                 <li className="flex items-start">
                   <span className="mr-2">•</span>
                   <span>Cập nhật trạng thái sản phẩm hết hàng để tránh khách hàng đặt nhầm</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="mr-2">•</span>
-                  <span>Xem xét chạy khuyến mãi cho sản phẩm sắp hết hạn để giảm lãng phí</span>
                 </li>
               </ul>
             </div>

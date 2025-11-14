@@ -1,7 +1,9 @@
 package com.example.backend.service.impl;
 
 import com.example.backend.dto.response.*;
+import com.example.backend.entity.enums.CustomerStatus;
 import com.example.backend.entity.enums.CustomerTier;
+import com.example.backend.entity.enums.OrderStatus;
 import com.example.backend.entity.enums.ProductStatus;
 import com.example.backend.repository.*;
 import com.example.backend.service.ReportService;
@@ -204,6 +206,10 @@ public class ReportServiceImpl implements ReportService {
         log.info("Generating customer behavior summary from {} to {}", startDate, endDate);
 
         long totalCustomers = customerRepository.count();
+        
+        // Get suspended and banned customers
+        long suspendedCustomers = customerRepository.countByStatus(CustomerStatus.SUSPENDED);
+        long bannedCustomers = customerRepository.countByStatus(CustomerStatus.BANNED);
 
     // Get new vs returning customers
         Object[] customerData = orderRepository.findNewVsReturningCustomers(startDate, endDate);
@@ -267,6 +273,13 @@ public class ReportServiceImpl implements ReportService {
         Double repeatPurchaseRate = activeCustomers > 0
                 ? (returningCustomers.doubleValue() / activeCustomers) * 100
                 : 0.0;
+        
+        // Calculate return rate
+        long totalOrders = orderRepository.countByCreatedAtBetween(startDate, endDate);
+        long returnedOrders = orderRepository.countByStatusAndCreatedAtBetween(OrderStatus.RETURNED, startDate, endDate);
+        Double returnRate = totalOrders > 0
+                ? ((double) returnedOrders / totalOrders) * 100
+                : 0.0;
 
         BigDecimal totalValue = clvData.stream()
                 .map(row -> toBigDecimal(row[9]))
@@ -279,6 +292,9 @@ public class ReportServiceImpl implements ReportService {
                 .activeCustomers(activeCustomers)
                 .newCustomers(newCustomers)
                 .returningCustomers(returningCustomers)
+                .suspendedCustomers(suspendedCustomers)
+                .bannedCustomers(bannedCustomers)
+                .returnRate(returnRate)
                 .activeCustomerRate(activeCustomerRate)
                 .repeatPurchaseRate(repeatPurchaseRate)
                 .customerRetentionRate(repeatPurchaseRate) // Simplified
@@ -648,6 +664,9 @@ public class ReportServiceImpl implements ReportService {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
              PrintWriter writer = new PrintWriter(baos, true, StandardCharsets.UTF_8)) {
 
+            // Add UTF-8 BOM for Excel compatibility
+            baos.write(new byte[] { (byte) 0xEF, (byte) 0xBB, (byte) 0xBF });
+
             // Header
             writer.println("Supplier ID,Supplier Name,Total Orders,Total Revenue,Commission,Supplier Earnings,Revenue %,Products,Stores");
 
@@ -681,6 +700,9 @@ public class ReportServiceImpl implements ReportService {
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
              PrintWriter writer = new PrintWriter(baos, true, StandardCharsets.UTF_8)) {
 
+            // Add UTF-8 BOM for Excel compatibility
+            baos.write(new byte[] { (byte) 0xEF, (byte) 0xBB, (byte) 0xBF });
+
             writer.println("Tier,Customer Count,Customer %,Total Orders,Total Revenue,Revenue %,Avg Order Value,Avg Orders/Customer");
 
             List<CustomerSegmentationResponse> data = getCustomerSegmentation(startDate, endDate);
@@ -710,6 +732,9 @@ public class ReportServiceImpl implements ReportService {
 
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
              PrintWriter writer = new PrintWriter(baos, true, StandardCharsets.UTF_8)) {
+
+            // Add UTF-8 BOM for Excel compatibility
+            baos.write(new byte[] { (byte) 0xEF, (byte) 0xBB, (byte) 0xBF });
 
             writer.println("Category,Total Products,Unsold Products,Expired,Near Expiry,Total Stock,Unsold Qty,Expired Qty,Waste Rate %,Expiry Rate %,Waste Index");
 

@@ -130,7 +130,7 @@ public enum ErrorCode {
     DATABASE_ERROR("9999", "Database error occurred", "Đã có lỗi xảy ra với cơ sở dữ liệu", HttpStatus.INTERNAL_SERVER_ERROR),
 
     // Keycloak errors (3000-3999)
-    KEYCLOAK_USER_CREATION_FAILED("K3000", "Failed to create user in Keycloak", "Tạo tài khoản người dùng thất bại", HttpStatus.INTERNAL_SERVER_ERROR),
+    KEYCLOAK_USER_CREATION_FAILED("K3000", "Failed to create user in Keycloak", "Đã tồn tại người dùng. Tạo tài khoản người dùng thất bại", HttpStatus.INTERNAL_SERVER_ERROR),
     KEYCLOAK_USER_UPDATE_FAILED("K3001", "Failed to update user in Keycloak", "Cập nhật tài khoản người dùng thất bại", HttpStatus.INTERNAL_SERVER_ERROR),
     KEYCLOAK_USER_DELETION_FAILED("K3002", "Failed to delete user in Keycloak", "Xóa tài khoản người dùng thất bại", HttpStatus.INTERNAL_SERVER_ERROR),
     KEYCLOAK_CONNECTION_ERROR("K3003", "Cannot connect to Keycloak", "Không thể kết nối đến Keycloak", HttpStatus.SERVICE_UNAVAILABLE),

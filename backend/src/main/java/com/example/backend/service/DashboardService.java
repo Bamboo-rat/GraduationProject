@@ -35,4 +35,11 @@ public interface DashboardService {
      * @return List of category revenue statistics
      */
     List<CategoryRevenueResponse> getCategoryRevenue();
+
+    /**
+     * Get top stores by revenue
+     * @param limit Maximum number of stores to return (default: 10)
+     * @return List of top stores
+     */
+    List<TopStoreResponse> getTopStores(int limit);
 }

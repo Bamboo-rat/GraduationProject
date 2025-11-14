@@ -99,4 +99,25 @@ public class DashboardController {
 
         return ResponseEntity.ok(ApiResponse.success("Category revenue retrieved successfully", categoryRevenue));
     }
+
+    @GetMapping("/top-stores")
+    @Operation(
+            summary = "Get top stores by revenue",
+            description = "Get top N stores ranked by revenue from delivered orders. " +
+                    "Default limit: 10 stores."
+    )
+    public ResponseEntity<ApiResponse<List<TopStoreResponse>>> getTopStores(
+            @RequestParam(defaultValue = "10") int limit) {
+
+        log.info("GET /api/dashboard/top-stores - Getting top {} stores", limit);
+
+        // Validate limit
+        if (limit < 1 || limit > 100) {
+            limit = 10;
+        }
+
+        List<TopStoreResponse> topStores = dashboardService.getTopStores(limit);
+
+        return ResponseEntity.ok(ApiResponse.success("Top stores retrieved successfully", topStores));
+    }
 }

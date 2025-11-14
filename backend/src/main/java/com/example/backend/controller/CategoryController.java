@@ -68,7 +68,9 @@ public class CategoryController {
 
     @GetMapping
     @Operation(summary = "Get all categories",
-               description = "Get list of all categories with pagination, search, and filtering (public)")
+               description = "Get list of all categories with pagination, search, and filtering. " +
+                           "Public users (non-admin) will only see active categories. " +
+                           "Admin users can see all categories by explicitly setting active=false.")
     public ResponseEntity<ApiResponse<Page<CategoryResponse>>> getAllCategories(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -77,14 +79,15 @@ public class CategoryController {
             @RequestParam(defaultValue = "name") String sortBy,
             @RequestParam(defaultValue = "ASC") String sortDirection) {
         
-        // Normalize search parameter: trim and convert empty/blank strings to null
         String normalizedSearch = (search != null && !search.trim().isEmpty()) ? search.trim() : null;
+
+        Boolean effectiveActive = (active != null) ? active : true;
         
         log.info("GET /api/categories - Getting all categories (page: {}, size: {}, active: {}, search: {})",
-                page, size, active, normalizedSearch);
+                page, size, effectiveActive, normalizedSearch);
 
         Page<CategoryResponse> categories = categoryService.getAllCategories(
-                page, size, active, normalizedSearch, sortBy, sortDirection);
+                page, size, effectiveActive, normalizedSearch, sortBy, sortDirection);
 
         return ResponseEntity.ok(ApiResponse.success(categories));
     }

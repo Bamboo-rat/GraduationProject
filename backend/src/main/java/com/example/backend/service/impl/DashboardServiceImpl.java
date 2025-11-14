@@ -231,6 +231,36 @@ public class DashboardServiceImpl implements DashboardService {
         return categoryRevenues;
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<TopStoreResponse> getTopStores(int limit) {
+        log.info("Getting top {} stores by revenue", limit);
+
+        Pageable pageable = PageRequest.of(0, limit);
+        List<Object[]> rawResults = orderRepository.findTopStoresByRevenue(pageable);
+
+        List<TopStoreResponse> topStores = new ArrayList<>();
+        for (Object[] row : rawResults) {
+            String storeId = (String) row[0];
+            String storeName = (String) row[1];
+            String supplierName = (String) row[2];
+            Long orderCount = ((Number) row[3]).longValue();
+            Double revenueDouble = row[4] != null ? ((Number) row[4]).doubleValue() : 0.0;
+
+            BigDecimal revenue = BigDecimal.valueOf(revenueDouble).setScale(2, RoundingMode.HALF_UP);
+
+            topStores.add(TopStoreResponse.builder()
+                    .storeId(storeId)
+                    .storeName(storeName)
+                    .supplierName(supplierName)
+                    .orderCount(orderCount)
+                    .revenue(revenue)
+                    .build());
+        }
+
+        return topStores;
+    }
+
     /**
      * Helper method to calculate growth rate as percentage
      */

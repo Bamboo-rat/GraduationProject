@@ -132,8 +132,5 @@ public interface OrderService {
      * 
      * @return Summary of fixed orders
      */
-    String fixCodWalletBalances();
 
-    // NOTE: Shipping partner demo methods moved to ShippingPartnerDemoService
-    // to avoid duplication and maintain clear separation of concerns.
 }

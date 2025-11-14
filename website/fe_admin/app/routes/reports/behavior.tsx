@@ -1,7 +1,6 @@
 import type { Route } from './+types/behavior';
 import CustomerBehavior from '~/pages/reports/CustomerBehavior';
 import ProtectedRoute from '~/component/common/ProtectedRoute';
-import DashboardLayout from '~/component/layout/DashboardLayout';
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -13,9 +12,7 @@ export function meta({}: Route.MetaArgs) {
 export default function BehaviorRoute() {
   return (
     <ProtectedRoute requiredRoles={['SUPER_ADMIN']}>
-      <DashboardLayout>
         <CustomerBehavior />
-      </DashboardLayout>
     </ProtectedRoute>
   );
 }

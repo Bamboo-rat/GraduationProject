@@ -21,8 +21,11 @@ public class CustomerBehaviorSummaryResponse {
     private Long activeCustomers; // customers with orders in period
     private Long newCustomers;
     private Long returningCustomers;
+    private Long suspendedCustomers;
+    private Long bannedCustomers;
 
     // Engagement metrics
+    private Double returnRate; // percentage of orders returned
     private Double activeCustomerRate; // percentage
     private Double repeatPurchaseRate; // percentage
     private Double customerRetentionRate; // percentage

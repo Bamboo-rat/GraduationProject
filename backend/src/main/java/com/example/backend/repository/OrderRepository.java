@@ -74,6 +74,8 @@ public interface OrderRepository extends JpaRepository<Order, String> {
     long countByCustomer(Customer customer);
     long countByCustomerAndStatus(Customer customer, OrderStatus status);
     long countByStore(Store store);
+    long countByCreatedAtBetween(LocalDateTime startDate, LocalDateTime endDate);
+    long countByStatusAndCreatedAtBetween(OrderStatus status, LocalDateTime startDate, LocalDateTime endDate);
     boolean existsByOrderCode(String orderCode);
     boolean existsByIdempotencyKey(String idempotencyKey);
     Optional<Order> findByIdempotencyKey(String idempotencyKey);
@@ -89,6 +91,19 @@ public interface OrderRepository extends JpaRepository<Order, String> {
         ORDER BY orderCount DESC, o.store.storeName ASC
     """)
     List<Object[]> findTopStoresByOrderCount(Pageable pageable);
+
+    @Query("""
+        SELECT o.store.storeId, 
+               o.store.storeName, 
+               o.store.supplier.businessName,
+               COUNT(o) AS orderCount, 
+               SUM(o.totalAmount) AS totalRevenue
+        FROM Order o
+        WHERE o.status = 'DELIVERED'
+        GROUP BY o.store.storeId, o.store.storeName, o.store.supplier.businessName
+        ORDER BY totalRevenue DESC
+    """)
+    List<Object[]> findTopStoresByRevenue(Pageable pageable);
 
     @Query("""
                 SELECT FUNCTION('DATE', o.deliveredAt), COUNT(o), 

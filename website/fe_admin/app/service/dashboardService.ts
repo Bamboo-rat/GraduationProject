@@ -49,6 +49,14 @@ export interface CategoryRevenue {
   revenuePercentage: number;
 }
 
+export interface TopStore {
+  storeId: string;
+  storeName: string;
+  supplierName: string;
+  orderCount: number;
+  revenue: number;
+}
+
 class DashboardService {
   /**
    * Get dashboard overview metrics
@@ -88,6 +96,17 @@ class DashboardService {
    */
   async getCategoryRevenue(): Promise<CategoryRevenue[]> {
     const response = await axiosInstance.get('/dashboard/category-revenue');
+    return response.data.data;
+  }
+
+  /**
+   * Get top stores by revenue
+   * @param limit Number of stores to return (default: 10)
+   */
+  async getTopStores(limit: number = 10): Promise<TopStore[]> {
+    const response = await axiosInstance.get('/dashboard/top-stores', {
+      params: { limit }
+    });
     return response.data.data;
   }
 }
