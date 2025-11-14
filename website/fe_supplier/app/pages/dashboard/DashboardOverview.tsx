@@ -63,46 +63,18 @@ export default function DashboardOverview() {
       setWallet(walletData);
       setPerformance(performanceData);
       
-      // Generate mock data for 7-day revenue trend
-      const last7Days = Array.from({ length: 7 }, (_, i) => {
-        const date = new Date();
-        date.setDate(date.getDate() - (6 - i));
-        return {
-          date: date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
-          revenue: Math.floor(Math.random() * 5000000) + 3000000,
-        };
-      });
-      setRevenueData(last7Days);
-
-      // Generate order status distribution data
-      const statusData = [
-        { name: 'Chờ xác nhận', value: performanceData?.totalOrders ? Math.floor(performanceData.totalOrders * 0.1) : 5, color: '#FCD34D' },
-        { name: 'Đã xác nhận', value: performanceData?.totalOrders ? Math.floor(performanceData.totalOrders * 0.15) : 8, color: '#60A5FA' },
-        { name: 'Đang chuẩn bị', value: performanceData?.totalOrders ? Math.floor(performanceData.totalOrders * 0.2) : 12, color: '#A78BFA' },
-        { name: 'Đang giao', value: performanceData?.totalOrders ? Math.floor(performanceData.totalOrders * 0.25) : 15, color: '#F59E0B' },
-        { name: 'Đã giao', value: performanceData?.completedOrders || 30, color: '#2F855A' },
-      ];
-      setOrderStatusData(statusData);
-
-      // Simulate today's statistics
+      // TODO: Replace with actual API calls
+      setRevenueData([]);
+      setOrderStatusData([]);
       setTodayStats({
-        todayOrders: 23,
-        pendingOrders: 5,
-        lowStockProducts: 12,
-        unrepliedReviews: 2,
-        expiringProducts: 5,
-        overdueOrders: 3
+        todayOrders: 0,
+        pendingOrders: 0,
+        lowStockProducts: 0,
+        unrepliedReviews: 0,
+        expiringProducts: 0,
+        overdueOrders: 0
       });
-
-      // Generate mock top products
-      const mockTopProducts: TopProduct[] = [
-        { productId: '1', productName: 'Bánh mì gối nướng', totalSold: 156, revenue: 3120000 },
-        { productId: '2', productName: 'Sữa tươi tiệt trùng', totalSold: 143, revenue: 2860000 },
-        { productId: '3', productName: 'Thịt heo xay', totalSold: 98, revenue: 2940000 },
-        { productId: '4', productName: 'Rau muống hữu cơ', totalSold: 87, revenue: 1740000 },
-        { productId: '5', productName: 'Cá hồi Na Uy', totalSold: 65, revenue: 3250000 },
-      ];
-      setTopProducts(mockTopProducts);
+      setTopProducts([]);
 
     } catch (err) {
       console.error('Failed to load dashboard:', err);

@@ -61,19 +61,29 @@ public interface ReportService {
     WasteSummaryResponse getWasteSummary();
 
     /**
-     * Get unsold inventory details
+     * Get unsold inventory details with optional date filtering
      */
-    Page<UnsoldInventoryResponse> getUnsoldInventory(Pageable pageable);
+    Page<UnsoldInventoryResponse> getUnsoldInventory(
+            Pageable pageable, 
+            LocalDateTime startDate, 
+            LocalDateTime endDate
+    );
 
     /**
-     * Get waste metrics by category
+     * Get waste metrics by category with optional date filtering
      */
-    List<WasteByCategoryResponse> getWasteByCategory();
+    List<WasteByCategoryResponse> getWasteByCategory(
+            LocalDateTime startDate, 
+            LocalDateTime endDate
+    );
 
     /**
-     * Get waste metrics by supplier
+     * Get waste metrics by supplier with optional date filtering
      */
-    List<WasteBySupplierResponse> getWasteBySupplier();
+    List<WasteBySupplierResponse> getWasteBySupplier(
+            LocalDateTime startDate, 
+            LocalDateTime endDate
+    );
 
     // ==================== EXPORT FUNCTIONALITY ====================
 

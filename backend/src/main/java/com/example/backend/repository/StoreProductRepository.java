@@ -258,7 +258,8 @@ public interface StoreProductRepository extends JpaRepository<StoreProduct, Stri
                     COALESCE(SUM(sp.stockQuantity), 0),
                     0L,
                     COALESCE(SUM(sp.stockQuantity), 0),
-                    COALESCE(SUM(CASE WHEN v.expiryDate IS NOT NULL AND v.expiryDate < CURRENT_DATE THEN sp.stockQuantity ELSE 0 END), 0)
+                    COALESCE(SUM(CASE WHEN v.expiryDate IS NOT NULL AND v.expiryDate < CURRENT_DATE THEN sp.stockQuantity ELSE 0 END), 0),
+                    COALESCE(SUM(sp.stockQuantity * COALESCE(v.originalPrice, 0)), 0)
                 FROM StoreProduct sp
                 JOIN sp.variant v
                 JOIN v.product p

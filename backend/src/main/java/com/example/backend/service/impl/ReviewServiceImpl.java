@@ -82,6 +82,15 @@ public class ReviewServiceImpl implements ReviewService {
                     "Bạn đã đánh giá sản phẩm này rồi");
         }
 
+        // Validate: Product and variant must be active
+        ProductVariant variant = orderDetail.getStoreProduct().getVariant();
+        Product product = variant.getProduct();
+        
+        if (product.getStatus() != com.example.backend.entity.enums.ProductStatus.ACTIVE) {
+            throw new BadRequestException(ErrorCode.OPERATION_NOT_ALLOWED,
+                    "Không thể đánh giá sản phẩm không còn hoạt động");
+        }
+
         // Create review (now linked to ProductVariant instead of Product)
         Review review = new Review();
         review.setCustomer(customer);
@@ -163,6 +172,11 @@ public class ReviewServiceImpl implements ReviewService {
                     "Đã quá thời hạn chỉnh sửa đánh giá (7 ngày)");
         }
 
+        if (review.isMarkedAsSpam()) {
+            throw new BadRequestException(ErrorCode.OPERATION_NOT_ALLOWED,
+                    "Không thể chỉnh sửa đánh giá đã bị đánh dấu spam");
+        }
+
         // Update review
         review.setRating(request.getRating());
         review.setComment(request.getComment());
@@ -186,6 +200,12 @@ public class ReviewServiceImpl implements ReviewService {
         if (!review.getCustomer().getUserId().equals(customerId)) {
             throw new BadRequestException(ErrorCode.UNAUTHORIZED_ACCESS,
                     "Bạn không có quyền xóa đánh giá này");
+        }
+
+        LocalDateTime deleteDeadline = review.getCreatedAt().plusDays(REVIEW_EDIT_WINDOW_DAYS);
+        if (LocalDateTime.now().isAfter(deleteDeadline)) {
+            throw new BadRequestException(ErrorCode.OPERATION_NOT_ALLOWED,
+                    "Đã quá thời hạn xóa đánh giá (7 ngày)");
         }
 
         // Remove reference from order detail

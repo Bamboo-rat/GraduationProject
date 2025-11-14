@@ -124,6 +124,14 @@ public enum ErrorCode {
     FILE_UPLOAD_FAILED_CHAT("7008", "Failed to upload file for chat", "Tải lên file cho tin nhắn thất bại", HttpStatus.INTERNAL_SERVER_ERROR),
     INVALID_MESSAGE_TYPE("7009", "Invalid message type", "Loại tin nhắn không hợp lệ", HttpStatus.BAD_REQUEST),
 
+    // ===== 8xxx: External Service Errors =====
+    EXTERNAL_SERVICE_ERROR("8001", "External service error", "Lỗi kết nối với dịch vụ bên ngoài", HttpStatus.BAD_GATEWAY),
+    PAYMENT_GATEWAY_ERROR("8002", "Payment gateway error", "Lỗi kết nối với cổng thanh toán", HttpStatus.BAD_GATEWAY),
+    PAYMENT_LINK_CREATION_FAILED("8003", "Failed to create payment link", "Không thể tạo link thanh toán", HttpStatus.BAD_GATEWAY),
+    PAYMENT_LINK_EXPIRED("8004", "Payment link has expired", "Link thanh toán đã hết hạn", HttpStatus.BAD_REQUEST),
+    PAYMENT_ALREADY_PROCESSED("8005", "Payment has already been processed", "Thanh toán đã được xử lý", HttpStatus.BAD_REQUEST),
+    WEBHOOK_SIGNATURE_INVALID("8006", "Webhook signature is invalid", "Chữ ký webhook không hợp lệ", HttpStatus.UNAUTHORIZED),
+
     // ===== 9xxx: Internal/Server Errors =====
     OPTIMISTIC_LOCK_ERROR("9001", "Data has been modified by another user", "Dữ liệu đã được thay đổi bởi người dùng khác. Vui lòng thử lại", HttpStatus.CONFLICT),
     INTERNAL_SERVER_ERROR("9998", "An internal server error occurred", "Đã có lỗi xảy ra ở phía máy chủ", HttpStatus.INTERNAL_SERVER_ERROR),

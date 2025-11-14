@@ -65,7 +65,7 @@ public class OrderController {
     }
 
     @GetMapping("/{orderId}")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'SUPPLIER', 'ADMIN', 'MODERATOR', 'SUPER_ADMIN', 'STAFF')")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'SUPPLIER', 'SUPER_ADMIN', 'MODERATOR', 'STAFF')")
     @Operation(summary = "Get order by ID", description = "Get order details by order ID")
     public ResponseEntity<ApiResponse<OrderResponse>> getOrderById(
             @PathVariable String orderId) {
@@ -76,7 +76,7 @@ public class OrderController {
     }
 
     @GetMapping("/code/{orderCode}")
-    @PreAuthorize("hasAnyRole('CUSTOMER', 'SUPPLIER', 'ADMIN', 'MODERATOR', 'SUPER_ADMIN', 'STAFF')")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'SUPPLIER', 'SUPER_ADMIN', 'MODERATOR', 'STAFF')")
     @Operation(summary = "Get order by code", description = "Get order details by order code")
     public ResponseEntity<ApiResponse<OrderResponse>> getOrderByCode(
             @PathVariable String orderCode) {
@@ -184,7 +184,7 @@ public class OrderController {
     }
 
     @PostMapping("/{orderId}/deliver")
-    @PreAuthorize("hasAnyRole('SUPPLIER', 'ADMIN', 'MODERATOR', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPPLIER', 'SUPER_ADMIN', 'MODERATOR')")
     @Operation(summary = "Mark order as delivered",
                description = "Mark order as delivered (SHIPPING → DELIVERED). Awards points, updates wallet, enables reviews")
     public ResponseEntity<ApiResponse<OrderResponse>> markAsDelivered(
@@ -199,7 +199,7 @@ public class OrderController {
     // ===== ADMIN ENDPOINTS =====
 
     @GetMapping("/all")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR', 'SUPER_ADMIN', 'STAFF')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF')")
     @Operation(summary = "Get all orders (Admin)", description = "Get all orders with pagination and status filter")
     public ResponseEntity<ApiResponse<Page<OrderResponse>>> getAllOrders(
             @RequestParam(required = false) OrderStatus status,
@@ -212,7 +212,7 @@ public class OrderController {
     }
 
     @PutMapping("/{orderId}/status")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR', 'SUPER_ADMIN')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR')")
     @Operation(summary = "Update order status (Admin)", description = "Update order status with validation of status transitions")
     public ResponseEntity<ApiResponse<OrderResponse>> updateOrderStatus(
             @PathVariable String orderId,
@@ -224,7 +224,7 @@ public class OrderController {
     }
 
     @GetMapping("/date-range")
-    @PreAuthorize("hasAnyRole('ADMIN', 'MODERATOR', 'SUPER_ADMIN', 'STAFF')")
+    @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF')")
     @Operation(summary = "Get orders by date range (Admin)", description = "Get orders within specific date range for reporting")
     public ResponseEntity<ApiResponse<List<OrderResponse>>> getOrdersByDateRange(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,

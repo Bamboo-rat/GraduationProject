@@ -189,29 +189,37 @@ public class ReportController {
     @Operation(summary = "Get unsold inventory details")
     public ResponseEntity<ApiResponse<Page<UnsoldInventoryResponse>>> getUnsoldInventory(
             @Parameter(description = "Page number") @RequestParam(defaultValue = "0") int page,
-            @Parameter(description = "Page size") @RequestParam(defaultValue = "20") int size
+            @Parameter(description = "Page size") @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "Start date (ISO format)") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @Parameter(description = "End date (ISO format)") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate
     ) {
-        log.info("GET /api/reports/waste/unsold-inventory - Page: {}, Size: {}", page, size);
+        log.info("GET /api/reports/waste/unsold-inventory - Page: {}, Size: {}, StartDate: {}, EndDate: {}", page, size, startDate, endDate);
         Pageable pageable = PageRequest.of(page, size);
-        Page<UnsoldInventoryResponse> response = reportService.getUnsoldInventory(pageable);
+        Page<UnsoldInventoryResponse> response = reportService.getUnsoldInventory(pageable, startDate, endDate);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping("/waste/by-category")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF')")
     @Operation(summary = "Get waste metrics by category")
-    public ResponseEntity<ApiResponse<List<WasteByCategoryResponse>>> getWasteByCategory() {
-        log.info("GET /api/reports/waste/by-category");
-        List<WasteByCategoryResponse> response = reportService.getWasteByCategory();
+    public ResponseEntity<ApiResponse<List<WasteByCategoryResponse>>> getWasteByCategory(
+            @Parameter(description = "Start date (ISO format)") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @Parameter(description = "End date (ISO format)") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate
+    ) {
+        log.info("GET /api/reports/waste/by-category - StartDate: {}, EndDate: {}", startDate, endDate);
+        List<WasteByCategoryResponse> response = reportService.getWasteByCategory(startDate, endDate);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @GetMapping("/waste/by-supplier")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF')")
     @Operation(summary = "Get waste metrics by supplier")
-    public ResponseEntity<ApiResponse<List<WasteBySupplierResponse>>> getWasteBySupplier() {
-        log.info("GET /api/reports/waste/by-supplier");
-        List<WasteBySupplierResponse> response = reportService.getWasteBySupplier();
+    public ResponseEntity<ApiResponse<List<WasteBySupplierResponse>>> getWasteBySupplier(
+            @Parameter(description = "Start date (ISO format)") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @Parameter(description = "End date (ISO format)") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate
+    ) {
+        log.info("GET /api/reports/waste/by-supplier - StartDate: {}, EndDate: {}", startDate, endDate);
+        List<WasteBySupplierResponse> response = reportService.getWasteBySupplier(startDate, endDate);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

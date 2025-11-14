@@ -8,6 +8,7 @@ public enum PaymentProvider {
     MOMO("MoMo"),
     ZALOPAY("ZaloPay"),
     SHOPEEPAY("ShopeePay"),
+    PAYOS("PayOS"),
     INTERNAL("Hệ thống nội bộ"); // Dành cho COD hoặc chuyển khoản trực tiếp
 
     private final String displayName;
