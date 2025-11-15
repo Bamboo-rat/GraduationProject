@@ -94,12 +94,10 @@ public class PayOSServiceImpl implements PayOSService {
                     ? request.getCancelUrl() 
                     : payOSConfig.getCancelUrl());
 
-            // Add buyer information
-            Map<String, String> buyerInfo = new HashMap<>();
-            buyerInfo.put("buyerName", order.getCustomer().getFullName());
-            buyerInfo.put("buyerEmail", order.getCustomer().getEmail());
-            buyerInfo.put("buyerPhone", order.getCustomer().getPhoneNumber());
-            payosRequest.put("buyer", buyerInfo);
+            // Add buyer information (top-level fields, NOT nested object)
+            payosRequest.put("buyerName", order.getCustomer().getFullName());
+            payosRequest.put("buyerEmail", order.getCustomer().getEmail());
+            payosRequest.put("buyerPhone", order.getCustomer().getPhoneNumber());
 
             // Generate signature
             String returnUrl = (String) payosRequest.get("returnUrl");
