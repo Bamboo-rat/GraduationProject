@@ -452,7 +452,7 @@ public class ReviewServiceImpl implements ReviewService {
                         "Không tìm thấy đánh giá"));
 
         // Validate: Supplier must own this store
-        if (!review.getStore().getSupplier().getUserId().equals(supplierId)) {
+        if (!review.getStore().getSupplier().getUserId().equals(supplier.getUserId())) {
             throw new BadRequestException(ErrorCode.UNAUTHORIZED_ACCESS,
                     "Bạn không có quyền trả lời đánh giá của cửa hàng khác");
         }
@@ -488,7 +488,7 @@ public class ReviewServiceImpl implements ReviewService {
                         "Không tìm thấy đánh giá"));
 
         // Validate: Supplier must own this store
-        if (!review.getStore().getSupplier().getUserId().equals(supplierId)) {
+        if (!review.getStore().getSupplier().getUserId().equals(supplier.getUserId())) {
             throw new BadRequestException(ErrorCode.UNAUTHORIZED_ACCESS,
                     "Bạn không có quyền sửa phản hồi của cửa hàng khác");
         }
@@ -530,7 +530,7 @@ public class ReviewServiceImpl implements ReviewService {
                         "Không tìm thấy đánh giá"));
 
         // Validate: Supplier must own this store
-        if (!review.getStore().getSupplier().getUserId().equals(supplierId)) {
+        if (!review.getStore().getSupplier().getUserId().equals(supplier.getUserId())) {
             throw new BadRequestException(ErrorCode.UNAUTHORIZED_ACCESS,
                     "Bạn không có quyền xóa phản hồi của cửa hàng khác");
         }
@@ -565,7 +565,7 @@ public class ReviewServiceImpl implements ReviewService {
                         "Không tìm thấy đánh giá"));
 
         // Validate: Supplier must own this store
-        if (!review.getStore().getSupplier().getUserId().equals(supplierId)) {
+        if (!review.getStore().getSupplier().getUserId().equals(supplier.getUserId())) {
             throw new BadRequestException(ErrorCode.UNAUTHORIZED_ACCESS,
                     "Bạn chỉ có thể báo cáo đánh giá trên cửa hàng của mình");
         }
