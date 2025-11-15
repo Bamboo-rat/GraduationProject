@@ -441,9 +441,10 @@ public class ReviewServiceImpl implements ReviewService {
     public ReviewResponse replyToReview(String supplierId, String reviewId, String reply) {
         log.info("Supplier replying to review: supplierId={}, reviewId={}", supplierId, reviewId);
 
-        // Get supplier
-        Supplier supplier = supplierRepository.findById(supplierId)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+        // Get supplier (supplierId from JWT is keycloakId)
+        Supplier supplier = supplierRepository.findByKeycloakId(supplierId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND,
+                        "Không tìm thấy nhà cung cấp"));
 
         // Get review
         Review review = reviewRepository.findById(reviewId)
@@ -476,9 +477,10 @@ public class ReviewServiceImpl implements ReviewService {
     public ReviewResponse updateReply(String supplierId, String reviewId, String reply) {
         log.info("Supplier updating reply: supplierId={}, reviewId={}", supplierId, reviewId);
 
-        // Get supplier
-        Supplier supplier = supplierRepository.findById(supplierId)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+        // Get supplier (supplierId from JWT is keycloakId)
+        Supplier supplier = supplierRepository.findByKeycloakId(supplierId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND,
+                        "Không tìm thấy nhà cung cấp"));
 
         // Get review
         Review review = reviewRepository.findById(reviewId)
@@ -517,9 +519,10 @@ public class ReviewServiceImpl implements ReviewService {
     public void deleteReply(String supplierId, String reviewId) {
         log.info("Supplier deleting reply: supplierId={}, reviewId={}", supplierId, reviewId);
 
-        // Get supplier
-        Supplier supplier = supplierRepository.findById(supplierId)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+        // Get supplier (supplierId from JWT is keycloakId)
+        Supplier supplier = supplierRepository.findByKeycloakId(supplierId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND,
+                        "Không tìm thấy nhà cung cấp"));
 
         // Get review
         Review review = reviewRepository.findById(reviewId)
@@ -551,9 +554,10 @@ public class ReviewServiceImpl implements ReviewService {
     public void reportReview(String supplierId, String reviewId, String reason) {
         log.info("Supplier reporting review: supplierId={}, reviewId={}, reason={}", supplierId, reviewId, reason);
 
-        // Get supplier
-        Supplier supplier = supplierRepository.findById(supplierId)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+        // Get supplier (supplierId from JWT is keycloakId)
+        Supplier supplier = supplierRepository.findByKeycloakId(supplierId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND,
+                        "Không tìm thấy nhà cung cấp"));
 
         // Get review
         Review review = reviewRepository.findById(reviewId)
