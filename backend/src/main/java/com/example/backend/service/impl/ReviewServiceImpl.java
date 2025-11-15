@@ -102,7 +102,7 @@ public class ReviewServiceImpl implements ReviewService {
         review.setImageUrl(request.getImageUrl());
         review.setMarkedAsSpam(false);
 
-        review = reviewRepository.save(review);
+        review = reviewRepository.saveAndFlush(review);
         orderDetail.setReview(review);
         orderDetailRepository.save(orderDetail);
 
