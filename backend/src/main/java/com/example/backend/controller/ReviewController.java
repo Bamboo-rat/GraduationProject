@@ -131,7 +131,7 @@ public class ReviewController {
             summary = "Get product variant reviews",
             description = "Public endpoint to get all reviews for a product variant with optional rating filter"
     )
-    public ResponseEntity<Page<ReviewResponse>> getProductReviews(
+    public ResponseEntity<Page<ReviewResponse>> getProductVariantReviews(
             @PathVariable String productVariantId,
             @Parameter(description = "Filter by rating (1-5)") @RequestParam(required = false) Integer rating,
             @Parameter(description = "Page number (0-indexed)") @RequestParam(defaultValue = "0") int page,
@@ -141,6 +141,24 @@ public class ReviewController {
                 productVariantId, rating, page, size);
         
         Page<ReviewResponse> reviews = reviewService.getProductReviews(productVariantId, rating, page, size);
+        return ResponseEntity.ok(reviews);
+    }
+
+    @GetMapping("/product/{productId}/all")
+    @Operation(
+            summary = "Get all product reviews",
+            description = "Public endpoint to get all reviews for a product (across all variants) with optional rating filter"
+    )
+    public ResponseEntity<Page<ReviewResponse>> getAllProductReviews(
+            @PathVariable String productId,
+            @Parameter(description = "Filter by rating (1-5)") @RequestParam(required = false) Integer rating,
+            @Parameter(description = "Page number (0-indexed)") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Page size") @RequestParam(defaultValue = "10") int size
+    ) {
+        log.info("Getting reviews by product: productId={}, rating={}, page={}, size={}",
+                productId, rating, page, size);
+
+        Page<ReviewResponse> reviews = reviewService.getAllProductReviews(productId, rating, page, size);
         return ResponseEntity.ok(reviews);
     }
 

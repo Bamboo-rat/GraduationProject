@@ -2,6 +2,7 @@ package com.example.backend.repository;
 
 import com.example.backend.entity.Customer;
 import com.example.backend.entity.OrderDetail;
+import com.example.backend.entity.Product;
 import com.example.backend.entity.ProductVariant;
 import com.example.backend.entity.Review;
 import com.example.backend.entity.Store;
@@ -32,6 +33,14 @@ public interface ReviewRepository extends JpaRepository<Review, String> {
      * Find all reviews by product variant
      */
     Page<Review> findByProductVariantAndMarkedAsSpamFalseOrderByCreatedAtDesc(ProductVariant productVariant, Pageable pageable);
+
+    /**
+     * Find all reviews by product (across all variants)
+     */
+    @Query("SELECT r FROM Review r WHERE r.productVariant.product = :product " +
+           "AND r.markedAsSpam = false " +
+           "ORDER BY r.createdAt DESC")
+    Page<Review> findByProductAndMarkedAsSpamFalseOrderByCreatedAtDesc(@Param("product") Product product, Pageable pageable);
 
     /**
      * Find all reviews by customer
@@ -80,6 +89,20 @@ public interface ReviewRepository extends JpaRepository<Review, String> {
            "ORDER BY r.createdAt DESC")
     Page<Review> findByProductVariantAndRatingRange(
             @Param("variant") ProductVariant variant,
+            @Param("minRating") int minRating,
+            @Param("maxRating") int maxRating,
+            Pageable pageable
+    );
+
+    /**
+     * Find reviews by rating range for product (across all variants)
+     */
+    @Query("SELECT r FROM Review r WHERE r.productVariant.product = :product " +
+           "AND r.rating >= :minRating AND r.rating <= :maxRating " +
+           "AND r.markedAsSpam = false " +
+           "ORDER BY r.createdAt DESC")
+    Page<Review> findByProductAndRatingRange(
+            @Param("product") Product product,
             @Param("minRating") int minRating,
             @Param("maxRating") int maxRating,
             Pageable pageable

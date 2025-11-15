@@ -265,6 +265,27 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Override
     @Transactional(readOnly = true)
+    public Page<ReviewResponse> getAllProductReviews(String productId, Integer rating, int page, int size) {
+        log.info("Getting all reviews by product: productId={}, rating={}", productId, rating);
+
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND,
+                        "Không tìm thấy sản phẩm"));
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        Page<Review> reviews;
+        if (rating != null) {
+            reviews = reviewRepository.findByProductAndRatingRange(product, rating, rating, pageable);
+        } else {
+            reviews = reviewRepository.findByProductAndMarkedAsSpamFalseOrderByCreatedAtDesc(product, pageable);
+        }
+
+        return reviews.map(review -> mapToResponse(review, null));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Page<ReviewResponse> getStoreReviews(String storeId, int page, int size) {
         log.info("Getting reviews by store: storeId={}", storeId);
 
