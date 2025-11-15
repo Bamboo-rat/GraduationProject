@@ -1493,4 +1493,9 @@ public class OrderServiceImpl implements OrderService {
         
         return result;
     }
+
+    @Override
+    public void handleDeliveryCompletionPublic(Order order) {
+        handleDeliveryCompletion(order);
+    }
 }

@@ -6,12 +6,16 @@ import com.example.backend.entity.Order;
 import com.example.backend.entity.Shipment;
 import com.example.backend.entity.Store;
 import com.example.backend.entity.enums.OrderStatus;
+import com.example.backend.entity.enums.PaymentMethod;
+import com.example.backend.entity.enums.PaymentStatus;
 import com.example.backend.entity.enums.ShipmentStatus;
 import com.example.backend.exception.ErrorCode;
 import com.example.backend.exception.custom.BadRequestException;
 import com.example.backend.exception.custom.NotFoundException;
 import com.example.backend.repository.OrderRepository;
+import com.example.backend.repository.PaymentRepository;
 import com.example.backend.repository.ShipmentRepository;
+import com.example.backend.service.OrderService;
 import com.example.backend.service.ShippingPartnerDemoService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +35,8 @@ public class ShippingPartnerDemoServiceImpl implements ShippingPartnerDemoServic
 
     private final ShipmentRepository shipmentRepository;
     private final OrderRepository orderRepository;
+    private final PaymentRepository paymentRepository;
+    private final OrderService orderService;
 
     @Override
     public List<ShippingPartnerOrderResponse> getInTransitOrders(String shippingProvider) {
@@ -84,8 +90,22 @@ public class ShippingPartnerDemoServiceImpl implements ShippingPartnerDemoServic
         // Update order status
         order.setStatus(OrderStatus.DELIVERED);
         order.setDeliveredAt(LocalDateTime.now());
+        order.setActualDelivery(LocalDateTime.now());
         order.setBalanceReleased(false); // Will be released after 7-day hold period
+        
+        // CRITICAL: Update COD payment status when delivered
+        if (order.getPayment() != null && order.getPayment().getMethod() == PaymentMethod.COD) {
+            order.getPayment().setStatus(PaymentStatus.SUCCESS);
+            order.setPaymentStatus(PaymentStatus.SUCCESS);
+            paymentRepository.save(order.getPayment());
+            log.info("Updated COD payment status to SUCCESS: orderId={}, paymentId={}", 
+                    order.getOrderId(), order.getPayment().getPaymentId());
+        }
+        
         order = orderRepository.save(order);
+        
+        // CRITICAL: Call delivery completion handler to update wallet and award points
+        orderService.handleDeliveryCompletionPublic(order);
 
         log.info("Order marked as delivered: orderId={}, trackingNumber={}", order.getOrderId(), trackingNumber);
 

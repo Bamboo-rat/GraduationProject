@@ -133,4 +133,14 @@ public interface OrderService {
      * @return Summary of fixed orders
      */
 
+    /**
+     * Handle delivery completion business logic (public wrapper)
+     * - Awards customer points
+     * - Updates supplier wallet with pending balance
+     * - Creates wallet transactions
+     * - Updates FavoriteStore metrics
+     * Used by ShippingPartnerDemoService to trigger completion logic
+     */
+    void handleDeliveryCompletionPublic(com.example.backend.entity.Order order);
+
 }
