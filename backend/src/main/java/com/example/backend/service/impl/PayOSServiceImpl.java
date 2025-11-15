@@ -101,6 +101,15 @@ public class PayOSServiceImpl implements PayOSService {
             buyerInfo.put("buyerPhone", order.getCustomer().getPhoneNumber());
             payosRequest.put("buyer", buyerInfo);
 
+            // Generate signature
+            String returnUrl = (String) payosRequest.get("returnUrl");
+            String cancelUrl = (String) payosRequest.get("cancelUrl");
+            String description = (String) payosRequest.get("description");
+            int amount = (Integer) payosRequest.get("amount");
+            
+            String signature = generateSignature(amount, cancelUrl, description, orderCode, returnUrl);
+            payosRequest.put("signature", signature);
+
             // Call PayOS API
             String url = payOSConfig.getBaseUrl() + "/v2/payment-requests";
             HttpHeaders headers = new HttpHeaders();
@@ -113,13 +122,36 @@ public class PayOSServiceImpl implements PayOSService {
             log.info("Calling PayOS API: url={}, orderCode={}", url, orderCode);
             ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
 
+            log.info("PayOS API response: status={}, body={}", response.getStatusCode(), response.getBody());
+
             // Parse response
             JsonNode responseData = objectMapper.readTree(response.getBody());
+            
+            // Check response code
+            String responseCode = responseData.has("code") ? responseData.get("code").asText() : null;
+            if (!"00".equals(responseCode)) {
+                String errorDesc = responseData.has("desc") ? responseData.get("desc").asText() : "Unknown error";
+                log.error("PayOS API returned error: code={}, desc={}", responseCode, errorDesc);
+                throw new BadRequestException(ErrorCode.PAYMENT_GATEWAY_ERROR, 
+                        "PayOS error: " + errorDesc);
+            }
+            
             JsonNode data = responseData.get("data");
-
             if (data == null) {
+                log.error("PayOS response missing 'data' field. Full response: {}", responseData.toPrettyString());
                 throw new BadRequestException(ErrorCode.PAYMENT_GATEWAY_ERROR, 
                         "PayOS response không hợp lệ");
+            }
+
+            // Extract fields with null checks
+            String paymentLinkId = data.has("paymentLinkId") ? data.get("paymentLinkId").asText() : String.valueOf(orderCode);
+            String checkoutUrl = data.has("checkoutUrl") ? data.get("checkoutUrl").asText() : null;
+            String qrCode = data.has("qrCode") ? data.get("qrCode").asText() : null;
+            
+            if (checkoutUrl == null) {
+                log.error("PayOS response missing 'checkoutUrl'. Data: {}", data.toPrettyString());
+                throw new BadRequestException(ErrorCode.PAYMENT_GATEWAY_ERROR, 
+                        "PayOS response thiếu checkout URL");
             }
 
             // Update payment record
@@ -128,16 +160,16 @@ public class PayOSServiceImpl implements PayOSService {
             payment.setStatus(PaymentStatus.PENDING);
             paymentRepository.save(payment);
 
-            log.info("PayOS payment link created successfully: orderId={}, orderCode={}", 
-                    request.getOrderId(), orderCode);
+            log.info("PayOS payment link created successfully: orderId={}, orderCode={}, paymentLinkId={}", 
+                    request.getOrderId(), orderCode, paymentLinkId);
 
             // Build response
             return PaymentLinkResponse.builder()
-                    .paymentLinkId(data.get("paymentLinkId").asText())
+                    .paymentLinkId(paymentLinkId)
                     .orderCode(order.getOrderCode())
                     .amount(request.getAmount())
-                    .checkoutUrl(data.get("checkoutUrl").asText())
-                    .qrCode(data.get("qrCode").asText())
+                    .checkoutUrl(checkoutUrl)
+                    .qrCode(qrCode)
                     .status("PENDING")
                     .createdAt(LocalDateTime.now())
                     .expiresAt(LocalDateTime.now().plusMinutes(15)) // PayOS links expire after 15 minutes
@@ -339,6 +371,51 @@ public class PayOSServiceImpl implements PayOSService {
         } catch (Exception e) {
             log.error("Failed to verify webhook signature", e);
             return false;
+        }
+    }
+
+    /**
+     * Generate PayOS signature for payment request
+     * Format: amount=$amount&cancelUrl=$cancelUrl&description=$description&orderCode=$orderCode&returnUrl=$returnUrl
+     */
+    private String generateSignature(int amount, String cancelUrl, String description, long orderCode, String returnUrl) {
+        try {
+            // Build data string (sorted alphabetically)
+            String data = "amount=" + amount + 
+                         "&cancelUrl=" + cancelUrl + 
+                         "&description=" + description + 
+                         "&orderCode=" + orderCode + 
+                         "&returnUrl=" + returnUrl;
+            
+            log.debug("Signature data: {}", data);
+            
+            // Create HMAC SHA256
+            Mac hmac = Mac.getInstance("HmacSHA256");
+            SecretKeySpec secretKey = new SecretKeySpec(
+                    payOSConfig.getChecksumKey().getBytes(StandardCharsets.UTF_8),
+                    "HmacSHA256");
+            hmac.init(secretKey);
+
+            // Calculate hash
+            byte[] hash = hmac.doFinal(data.getBytes(StandardCharsets.UTF_8));
+            
+            // Convert to hex string
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hash) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) hexString.append('0');
+                hexString.append(hex);
+            }
+
+            String signature = hexString.toString();
+            log.debug("Generated signature: {}", signature);
+            
+            return signature;
+            
+        } catch (Exception e) {
+            log.error("Failed to generate signature", e);
+            throw new BadRequestException(ErrorCode.PAYMENT_GATEWAY_ERROR, 
+                    "Không thể tạo chữ ký thanh toán");
         }
     }
 }
