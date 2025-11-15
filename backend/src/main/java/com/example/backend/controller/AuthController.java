@@ -72,13 +72,22 @@ public class AuthController {
     public ResponseEntity<ApiResponse<UserInfoResponse>> getCurrentUser(Authentication authentication) {
         log.info("GET /api/auth/me - Getting current user info");
 
-        // Extract keycloakId and JWT token
-        Jwt jwt = (Jwt) authentication.getPrincipal();
-        String keycloakId = jwt.getSubject();
+        try {
+            // Extract keycloakId and JWT token
+            Jwt jwt = (Jwt) authentication.getPrincipal();
+            String keycloakId = jwt.getSubject();
+            
+            log.info("JWT subject (keycloakId): {}", keycloakId);
+            log.info("JWT issuer: {}", jwt.getIssuer());
+            log.info("JWT claims: {}", jwt.getClaims().keySet());
 
-        // Pass JWT to service to extract roles
-        UserInfoResponse response = authService.getUserInfo(keycloakId, jwt);
-        return ResponseEntity.ok(ApiResponse.success("User info retrieved successfully", response));
+            // Pass JWT to service to extract roles
+            UserInfoResponse response = authService.getUserInfo(keycloakId, jwt);
+            return ResponseEntity.ok(ApiResponse.success("User info retrieved successfully", response));
+        } catch (Exception e) {
+            log.error("Error getting current user info: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 
     @PostMapping("/refresh")

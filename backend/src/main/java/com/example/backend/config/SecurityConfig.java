@@ -14,6 +14,7 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
 
     private final HybridJwtDecoder hybridJwtDecoder;
+    private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint;
 
     @Bean
     public HybridJwtAuthenticationConverter jwtAuthenticationConverter() {
@@ -101,6 +102,7 @@ public class SecurityConfig {
                                 .decoder(hybridJwtDecoder)
                                 .jwtAuthenticationConverter(jwtAuthenticationConverter())
                         )
+                        .authenticationEntryPoint(customAuthenticationEntryPoint)
                 );
 
         return http.build();

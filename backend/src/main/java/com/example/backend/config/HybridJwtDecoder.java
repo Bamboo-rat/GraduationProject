@@ -40,6 +40,9 @@ public class HybridJwtDecoder implements JwtDecoder {
             // First, try to parse the JWT to determine its type
             SignedJWT signedJWT = SignedJWT.parse(token);
             String issuer = signedJWT.getJWTClaimsSet().getIssuer();
+            String subject = signedJWT.getJWTClaimsSet().getSubject();
+
+            log.debug("Decoding JWT - Issuer: {}, Subject: {}", issuer, subject);
 
             // Check if this is a custom customer JWT
             if ("savefood-backend".equals(issuer)) {
@@ -47,13 +50,23 @@ public class HybridJwtDecoder implements JwtDecoder {
                 return decodeCustomJwt(token);
             } else {
                 // It's a Keycloak JWT - use Keycloak decoder
-                log.debug("Decoding Keycloak JWT for admin/supplier authentication");
-                return keycloakJwtDecoder.decode(token);
+                log.debug("Decoding Keycloak JWT for admin/supplier authentication - Issuer: {}", issuer);
+                try {
+                    Jwt decodedJwt = keycloakJwtDecoder.decode(token);
+                    log.debug("Successfully decoded Keycloak JWT for subject: {}", subject);
+                    return decodedJwt;
+                } catch (JwtException e) {
+                    log.error("Keycloak JWT validation failed for subject: {}. Error: {}", subject, e.getMessage());
+                    throw e;
+                }
             }
 
+        } catch (JwtException e) {
+            // Re-throw JWT exceptions as-is
+            throw e;
         } catch (Exception e) {
-            log.error("Failed to decode JWT token", e);
-            throw new BadJwtException("Invalid JWT token", e);
+            log.error("Failed to decode JWT token: {}", e.getMessage(), e);
+            throw new BadJwtException("Invalid JWT token: " + e.getMessage(), e);
         }
     }
 
