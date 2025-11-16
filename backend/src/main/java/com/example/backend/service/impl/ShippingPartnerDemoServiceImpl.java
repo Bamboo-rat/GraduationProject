@@ -102,10 +102,25 @@ public class ShippingPartnerDemoServiceImpl implements ShippingPartnerDemoServic
                     order.getOrderId(), order.getPayment().getPaymentId());
         }
         
-        order = orderRepository.save(order);
-        
-        // CRITICAL: Call delivery completion handler to update wallet and award points
-        orderService.handleDeliveryCompletionPublic(order);
+        // CRITICAL: Save order AFTER calling delivery completion to ensure atomic transaction
+        // If handleDeliveryCompletion fails, order won't be saved as DELIVERED
+        try {
+            // Call delivery completion handler BEFORE saving to ensure transaction atomicity
+            orderService.handleDeliveryCompletionPublic(order);
+
+            // Only save if wallet transaction succeeded
+            order = orderRepository.save(order);
+
+            log.info("Order and wallet transaction saved successfully: orderId={}", order.getOrderId());
+        } catch (Exception e) {
+            log.error("Failed to complete delivery for order {}: {}", order.getOrderId(), e.getMessage(), e);
+            // Rollback order status
+            order.setStatus(OrderStatus.SHIPPING);
+            order.setDeliveredAt(null);
+            order.setActualDelivery(null);
+            shipment.setStatus(ShipmentStatus.SHIPPING);
+            throw e;  // Rethrow to rollback transaction
+        }
 
         log.info("Order marked as delivered: orderId={}, trackingNumber={}", order.getOrderId(), trackingNumber);
 

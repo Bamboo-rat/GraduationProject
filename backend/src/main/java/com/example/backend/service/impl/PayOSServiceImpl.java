@@ -185,7 +185,7 @@ public class PayOSServiceImpl implements PayOSService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public PaymentLinkResponse getPaymentStatus(String orderId) {
         log.info("Getting payment status: orderId={}", orderId);
 
