@@ -217,14 +217,9 @@ export default function PartnersList() {
 
         {/* Table */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
-          {loading ? (
-            <div className="text-center py-12">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-              <p className="mt-2 text-gray-600">Đang tải...</p>
-            </div>
-          ) : suppliers.length === 0 ? (
+          {suppliers.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
-              {debouncedSearch || statusFilter
+              {searchTerm || statusFilter
                 ? 'Không tìm thấy đối tác nào phù hợp'
                 : 'Chưa có đối tác nào'}
             </div>
