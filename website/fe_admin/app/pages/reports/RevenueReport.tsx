@@ -41,13 +41,18 @@ export default function RevenueReport() {
     }
   }, [startDate, endDate]);
 
+   const buildDateRangePayload = () => {
+    const start = `${startDate}T00:00:00`;
+    const end = `${endDate}T23:59:59`;
+    return { start, end };
+  };
+
   const fetchReportData = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const start = new Date(startDate).toISOString();
-      const end = new Date(endDate + 'T23:59:59').toISOString();
+      const { start, end } = buildDateRangePayload();
 
       const [summaryRes, supplierRes, categoryRes, timeSeriesRes] = await Promise.all([
         reportService.getRevenueSummary(start, end),
@@ -77,8 +82,7 @@ export default function RevenueReport() {
 
   const handleExport = async () => {
     try {
-      const start = new Date(startDate).toISOString();
-      const end = new Date(endDate + 'T23:59:59').toISOString();
+      const { start, end } = buildDateRangePayload();
       const blob = await reportService.exportRevenueReport(start, end);
       reportService.downloadFile(blob, `revenue-report-${startDate}-to-${endDate}.csv`);
     } catch (err) {

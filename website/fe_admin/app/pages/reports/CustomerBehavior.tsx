@@ -54,13 +54,18 @@ export default function CustomerBehavior() {
     }
   }, [clvPage]);
 
+  const buildDateRangePayload = () => {
+    const start = `${startDate}T00:00:00`;
+    const end = `${endDate}T23:59:59`;
+    return { start, end };
+  };
+
   const fetchReportData = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const start = new Date(startDate).toISOString();
-      const end = new Date(endDate + 'T23:59:59').toISOString();
+      const { start, end } = buildDateRangePayload();
 
       const [summaryRes, segmentationRes] = await Promise.all([
         reportService.getCustomerBehaviorSummary(start, end),
@@ -98,8 +103,7 @@ export default function CustomerBehavior() {
 
   const handleExport = async () => {
     try {
-      const start = new Date(startDate).toISOString();
-      const end = new Date(endDate + 'T23:59:59').toISOString();
+      const { start, end } = buildDateRangePayload();
       const blob = await reportService.exportCustomerBehaviorReport(start, end);
       reportService.downloadFile(blob, `customer-behavior-${startDate}-to-${endDate}.csv`);
     } catch (err) {

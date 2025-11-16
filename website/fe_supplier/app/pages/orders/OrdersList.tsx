@@ -1,10 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import orderService from '~/service/orderService';
 import storeService from '~/service/storeService';
 import type { Order, OrderStatus } from '~/service/orderService';
 import type { StoreResponse } from '~/service/storeService';
 import Toast, { type ToastType } from '~/component/common/Toast';
+import { 
+  useOrders, 
+  useConfirmOrder, 
+  usePrepareOrder, 
+  useShipOrder, 
+  useCancelOrder,
+  useInvalidateOrders 
+} from '~/hooks/useOrders';
+import { useAllActiveStores } from '~/hooks/useStores';
 
 interface OrdersListProps {
   loaderData?: {
@@ -22,33 +31,49 @@ export default function OrdersList({ loaderData }: OrdersListProps) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   
-  // Initialize from URL params first, then fallback to loaderData
+  // Initialize from URL params
   const urlPage = parseInt(searchParams.get('page') || '0');
   const urlStatus = searchParams.get('status') || '';
   const urlStoreId = searchParams.get('storeId') || '';
   const urlSearch = searchParams.get('search') || '';
   
-  // Initialize with loader data or URL params (no loading state!)
-  const [orders, setOrders] = useState<Order[]>(loaderData?.initialOrders || []);
-  const [stores, setStores] = useState<StoreResponse[]>(loaderData?.initialStores || []);
-  const [selectedStoreId, setSelectedStoreId] = useState<string>(urlStoreId || loaderData?.initialStoreId || '');
-  const [loading, setLoading] = useState(!loaderData);
-  const [loadingStores, setLoadingStores] = useState(!loaderData);
-  const [page, setPage] = useState(urlPage || loaderData?.initialPage || 0);
-  const [totalPages, setTotalPages] = useState(loaderData?.initialTotalPages || 0);
-  const [status, setStatus] = useState<OrderStatus | ''>(urlStatus as OrderStatus || loaderData?.initialStatus as OrderStatus || '');
-  const [searchTerm, setSearchTerm] = useState(urlSearch || loaderData?.initialSearchTerm || '');
+  // Filter states
+  const [selectedStoreId, setSelectedStoreId] = useState<string>(urlStoreId);
+  const [page, setPage] = useState(urlPage);
+  const [status, setStatus] = useState<OrderStatus | ''>(urlStatus as OrderStatus);
+  const [searchTerm, setSearchTerm] = useState(urlSearch);
+  
+  // UI states
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-
-  // Action modals
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showShipModal, setShowShipModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-
-  // Toast notification
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
+
+  // React Query hooks
+  const queryParams = useMemo(() => ({
+    storeId: selectedStoreId || undefined,
+    page,
+    size: 10,
+    status: status || undefined,
+    searchTerm: searchTerm || undefined,
+    sortBy: 'createdAt' as const,
+    sortDir: 'DESC' as const,
+  }), [selectedStoreId, page, status, searchTerm]);
+
+  const { data: ordersData, isLoading, isFetching, error } = useOrders(queryParams);
+  const { data: stores = [], isLoading: loadingStores } = useAllActiveStores();
+  const { invalidateLists } = useInvalidateOrders();
+
+  // Mutations with optimistic updates
+  const confirmOrder = useConfirmOrder();
+  const prepareOrder = usePrepareOrder();
+  const shipOrder = useShipOrder();
+  const cancelOrder = useCancelOrder();
+
+  const orders = ordersData?.content || [];
+  const totalPages = ordersData?.totalPages || 0;
 
   const showToast = (message: string, type: ToastType) => {
     setToast({ message, type });
@@ -67,13 +92,6 @@ export default function OrdersList({ loaderData }: OrdersListProps) {
     setSearchParams(params);
   };
 
-  useEffect(() => {
-    // Only load stores if not from loader
-    if (!loaderData) {
-      loadStores();
-    }
-  }, []);
-
   // Sync state with URL params (for browser back/forward)
   useEffect(() => {
     const newPage = parseInt(searchParams.get('page') || '0');
@@ -87,59 +105,6 @@ export default function OrdersList({ loaderData }: OrdersListProps) {
     if (searchTerm !== newSearch) setSearchTerm(newSearch);
   }, [searchParams]);
 
-  useEffect(() => {
-    // Only load orders if not from loader or params changed
-    if (!loaderData || 
-        page !== loaderData.initialPage || 
-        status !== loaderData.initialStatus || 
-        selectedStoreId !== loaderData.initialStoreId) {
-      loadOrders();
-    }
-  }, [page, status, selectedStoreId]);
-
-  const loadStores = async () => {
-    try {
-      setLoadingStores(true);
-      const data = await storeService.getMyStores({
-        page: 0,
-        size: 100,
-        sortBy: 'storeName',
-        sortDirection: 'ASC',
-      });
-      setStores(data.content);
-    } catch (err) {
-      console.error('Failed to load stores:', err);
-    } finally {
-      setLoadingStores(false);
-    }
-  };
-
-  const loadOrders = async (overridePage?: number) => {
-    try {
-      setLoading(true);
-      const currentPage = overridePage !== undefined ? overridePage : page;
-      const data = await orderService.getStoreOrders({
-        storeId: selectedStoreId || undefined,
-        page: currentPage,
-        size: 10,
-        status: status || undefined,
-        searchTerm: searchTerm || undefined,
-        sortBy: 'createdAt',
-        sortDir: 'DESC',
-      });
-      setOrders(data.content);
-      setTotalPages(data.totalPages);
-      // Update page state if override was used
-      if (overridePage !== undefined && overridePage !== page) {
-        setPage(overridePage);
-      }
-    } catch (err) {
-      console.error('Failed to load orders:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSearch = () => {
     updateURLParams({
       page: '0',
@@ -147,122 +112,53 @@ export default function OrdersList({ loaderData }: OrdersListProps) {
       status: status,
       storeId: selectedStoreId,
     });
-    loadOrders(0);
+    setPage(0); // React Query will automatically refetch with new params
   };
 
   const handleConfirmOrder = async () => {
     if (!selectedOrder) return;
 
-    try {
-      setSubmitting(true);
-
-      // Optimistic update: Update UI immediately
-      setOrders(prevOrders =>
-        prevOrders.map(order =>
-          order.id === selectedOrder.id
-            ? { ...order, status: 'CONFIRMED' as OrderStatus }
-            : order
-        )
-      );
-      setShowConfirmModal(false);
-
-      // API call in background
-      await orderService.confirmOrder(selectedOrder.id, {});
-      showToast('Xác nhận đơn hàng thành công!', 'success');
-
-      // Silently refresh to sync with server (no loading spinner)
-      const data = await orderService.getStoreOrders({
-        storeId: selectedStoreId || undefined,
-        page: page,
-        size: 10,
-        status: status || undefined,
-        searchTerm: searchTerm || undefined,
-        sortBy: 'createdAt',
-        sortDir: 'DESC',
-      });
-      setOrders(data.content);
-    } catch (err: any) {
-      showToast(err.message || 'Không thể xác nhận đơn hàng', 'error');
-      // Revert optimistic update on error
-      await loadOrders();
-    } finally {
-      setSubmitting(false);
-    }
+    confirmOrder.mutate(
+      { orderId: selectedOrder.id, payload: {} },
+      {
+        onSuccess: () => {
+          showToast('Xác nhận đơn hàng thành công!', 'success');
+          setShowConfirmModal(false);
+        },
+        onError: (err: any) => {
+          showToast(err.message || 'Không thể xác nhận đơn hàng', 'error');
+        },
+      }
+    );
   };
 
   const handlePrepareOrder = async (orderId: string) => {
     if (!confirm('Bắt đầu chuẩn bị đơn hàng này?')) return;
 
-    try {
-      // Optimistic update: Update UI immediately
-      setOrders(prevOrders =>
-        prevOrders.map(order =>
-          order.id === orderId
-            ? { ...order, status: 'PREPARING' as OrderStatus }
-            : order
-        )
-      );
-
-      // API call in background
-      await orderService.prepareOrder(orderId);
-      showToast('Đơn hàng đã chuyển sang trạng thái chuẩn bị!', 'success');
-
-      // Silently refresh to sync with server
-      const data = await orderService.getStoreOrders({
-        storeId: selectedStoreId || undefined,
-        page: page,
-        size: 10,
-        status: status || undefined,
-        searchTerm: searchTerm || undefined,
-        sortBy: 'createdAt',
-        sortDir: 'DESC',
-      });
-      setOrders(data.content);
-    } catch (err: any) {
-      showToast(err.message || 'Không thể cập nhật trạng thái', 'error');
-      // Revert optimistic update on error
-      await loadOrders();
-    }
+    prepareOrder.mutate(orderId, {
+        onSuccess: () => {
+          showToast('Đơn hàng đã chuyển sang trạng thái chuẩn bị!', 'success');
+        },
+        onError: (err: any) => {
+          showToast(err.message || 'Không thể cập nhật trạng thái', 'error');
+        },
+      }
+    );
   };
 
   const handleShipOrder = async () => {
     if (!selectedOrder) return;
 
-    try {
-      setSubmitting(true);
-
-      // Optimistic update: Update UI immediately
-      setOrders(prevOrders =>
-        prevOrders.map(order =>
-          order.id === selectedOrder.id
-            ? { ...order, status: 'SHIPPING' as OrderStatus }
-            : order
-        )
-      );
-      setShowShipModal(false);
-
-      // API call in background
-      await orderService.shipOrder(selectedOrder.id);
-      showToast('Đơn hàng đã chuyển sang trạng thái giao hàng qua Giao Hàng Nhanh!', 'success');
-
-      // Silently refresh to sync with server
-      const data = await orderService.getStoreOrders({
-        storeId: selectedStoreId || undefined,
-        page: page,
-        size: 10,
-        status: status || undefined,
-        searchTerm: searchTerm || undefined,
-        sortBy: 'createdAt',
-        sortDir: 'DESC',
-      });
-      setOrders(data.content);
-    } catch (err: any) {
-      showToast(err.message || 'Không thể cập nhật trạng thái', 'error');
-      // Revert optimistic update on error
-      await loadOrders();
-    } finally {
-      setSubmitting(false);
-    }
+    shipOrder.mutate(selectedOrder.id, {
+        onSuccess: () => {
+          showToast('Đơn hàng đã chuyển sang trạng thái giao hàng qua Giao Hàng Nhanh!', 'success');
+          setShowShipModal(false);
+        },
+        onError: (err: any) => {
+          showToast(err.message || 'Không thể cập nhật trạng thái', 'error');
+        },
+      }
+    );
   };
 
   const handleCancelOrder = async () => {
@@ -271,42 +167,19 @@ export default function OrdersList({ loaderData }: OrdersListProps) {
       return;
     }
 
-    try {
-      setSubmitting(true);
-
-      // Optimistic update: Update UI immediately
-      setOrders(prevOrders =>
-        prevOrders.map(order =>
-          order.id === selectedOrder.id
-            ? { ...order, status: 'CANCELED' as OrderStatus }
-            : order
-        )
-      );
-      setShowCancelModal(false);
-      setCancelReason('');
-
-      // API call in background
-      await orderService.cancelOrder(selectedOrder.id, { cancelReason });
-      showToast('Hủy đơn hàng thành công!', 'success');
-
-      // Silently refresh to sync with server
-      const data = await orderService.getStoreOrders({
-        storeId: selectedStoreId || undefined,
-        page: page,
-        size: 10,
-        status: status || undefined,
-        searchTerm: searchTerm || undefined,
-        sortBy: 'createdAt',
-        sortDir: 'DESC',
-      });
-      setOrders(data.content);
-    } catch (err: any) {
-      showToast(err.message || 'Không thể hủy đơn hàng', 'error');
-      // Revert optimistic update on error
-      await loadOrders();
-    } finally {
-      setSubmitting(false);
-    }
+    cancelOrder.mutate(
+      { orderId: selectedOrder.id, reason: cancelReason },
+      {
+        onSuccess: () => {
+          showToast('Hủy đơn hàng thành công!', 'success');
+          setShowCancelModal(false);
+          setCancelReason('');
+        },
+        onError: (err: any) => {
+          showToast(err.message || 'Không thể hủy đơn hàng', 'error');
+        },
+      }
+    );
   };
 
   const openActionModal = (order: Order, action: 'confirm' | 'ship' | 'cancel') => {
@@ -323,13 +196,21 @@ export default function OrdersList({ loaderData }: OrdersListProps) {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="heading-primary">Quản lý đơn hàng</h1>
-            <p className="text-muted">Theo dõi và quản lý tất cả đơn hàng của bạn</p>
+            <p className="text-muted">
+              Theo dõi và quản lý tất cả đơn hàng của bạn
+              {isFetching && !isLoading && (
+                <span className="ml-2 text-xs text-[#A4C3A2] animate-pulse-soft">
+                  • Đang đồng bộ...
+                </span>
+              )}
+            </p>
           </div>
           <button
-            onClick={() => loadOrders()}
-            className="btn-primary"
+            onClick={() => invalidateLists()}
+            disabled={isFetching}
+            className="btn-primary disabled:opacity-50"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className={`w-5 h-5 ${isFetching ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
       
@@ -478,7 +359,7 @@ export default function OrdersList({ loaderData }: OrdersListProps) {
               <p className="text-muted mt-1">
                 Bạn cần tạo cửa hàng trước khi có thể nhận đơn hàng.
               </p>
-              <a href="/stores/create" className="btn-primary mt-3 inline-block text-sm">
+              <a href="/store/create" className="btn-primary mt-3 inline-block text-sm">
                 Tạo cửa hàng ngay
               </a>
             </div>
@@ -488,7 +369,7 @@ export default function OrdersList({ loaderData }: OrdersListProps) {
 
       {/* Orders List */}
       <div className="space-y-4">
-        {loading ? (
+        {isLoading ? (
           <div className="card p-12 text-center">
             <div className="animate-pulse-soft rounded-full h-16 w-16 bg-[#A4C3A2] mx-auto mb-4"></div>
             <p className="text-muted">Đang tải đơn hàng...</p>
@@ -756,10 +637,10 @@ export default function OrdersList({ loaderData }: OrdersListProps) {
             <div className="flex gap-3">
               <button
                 onClick={handleConfirmOrder}
-                disabled={submitting}
+                disabled={confirmOrder.isPending}
                 className="btn-primary flex-1 disabled:opacity-50"
               >
-                {submitting ? 'Đang xử lý...' : 'Xác nhận đơn hàng'}
+                {confirmOrder.isPending ? 'Đang xử lý...' : 'Xác nhận đơn hàng'}
               </button>
               <button
                 onClick={() => setShowConfirmModal(false)}
@@ -811,10 +692,10 @@ export default function OrdersList({ loaderData }: OrdersListProps) {
             <div className="flex gap-3">
               <button
                 onClick={handleShipOrder}
-                disabled={submitting}
+                disabled={shipOrder.isPending}
                 className="btn-primary flex-1 disabled:opacity-50"
               >
-                {submitting ? 'Đang xử lý...' : 'Xác nhận giao hàng'}
+                {shipOrder.isPending ? 'Đang xử lý...' : 'Xác nhận giao hàng'}
               </button>
               <button
                 onClick={() => setShowShipModal(false)}
@@ -851,10 +732,10 @@ export default function OrdersList({ loaderData }: OrdersListProps) {
             <div className="flex gap-3">
               <button
                 onClick={handleCancelOrder}
-                disabled={submitting}
+                disabled={cancelOrder.isPending}
                 className="btn-danger flex-1 disabled:opacity-50"
               >
-                {submitting ? 'Đang xử lý...' : 'Xác nhận hủy đơn'}
+                {cancelOrder.isPending ? 'Đang xử lý...' : 'Xác nhận hủy đơn'}
               </button>
               <button
                 onClick={() => { setShowCancelModal(false); setCancelReason(''); }}
