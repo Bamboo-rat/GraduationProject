@@ -54,7 +54,6 @@ export default function RevenueReport() {
       setError(null);
 
       const { start, end } = buildDateRangePayload();
-      console.log('📅 Revenue Report - Fetching with dates:', { start, end });
 
       const [summaryRes, supplierRes, categoryRes, timeSeriesRes] = await Promise.all([
         reportService.getRevenueSummary(start, end),
@@ -62,13 +61,6 @@ export default function RevenueReport() {
         reportService.getRevenueByCategory(start, end),
         reportService.getRevenueTimeSeries(start, end)
       ]);
-
-      console.log('Revenue Report Data:', {
-        summary: summaryRes,
-        supplierCount: supplierRes.length,
-        categoryCount: categoryRes.length,
-        timeSeriesCount: timeSeriesRes.length
-      });
 
       setSummary(summaryRes);
       setSupplierData(supplierRes);
@@ -116,9 +108,10 @@ export default function RevenueReport() {
     return (
       <DashboardLayout>
         <div className="p-6">
-          <div className="card p-6 bg-[#FFE8E8] border border-[#E63946] text-[#E63946]">
-            <p className="font-medium">Lỗi: {error}</p>
-            <button onClick={fetchReportData} className="mt-2 text-sm underline">Thử lại</button>
+          <div className="card p-6 bg-red-50 border border-red-200">
+            <p className="font-medium text-red-800 mb-2">⚠️ Lỗi: {error}</p>
+            <p className="text-sm text-red-600 mb-4">Kiểm tra: Backend có đang chạy? Mạng có kết nối?</p>
+            <button onClick={fetchReportData} className="btn-primary">Thử lại</button>
           </div>
         </div>
       </DashboardLayout>

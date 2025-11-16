@@ -66,17 +66,11 @@ export default function CustomerBehavior() {
       setError(null);
 
       const { start, end } = buildDateRangePayload();
-      console.log('Customer Behavior Report - Fetching with dates:', { start, end });
 
       const [summaryRes, segmentationRes] = await Promise.all([
         reportService.getCustomerBehaviorSummary(start, end),
         reportService.getCustomerSegmentation(start, end)
       ]);
-
-      console.log('Customer Behavior Data:', {
-        summary: summaryRes,
-        segmentationCount: segmentationRes.length
-      });
 
       setSummary(summaryRes);
       setSegmentation(segmentationRes);
@@ -132,9 +126,10 @@ export default function CustomerBehavior() {
   if (error) {
     return (
       <div className="p-6">
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-          <p className="font-medium">Lỗi: {error}</p>
-          <button onClick={fetchReportData} className="mt-2 text-sm underline">Thử lại</button>
+        <div className="card p-6 bg-red-50 border border-red-200">
+          <p className="font-medium text-red-800 mb-2">⚠️ Lỗi: {error}</p>
+          <p className="text-sm text-red-600 mb-4">Kiểm tra: Backend có đang chạy? Mạng có kết nối?</p>
+          <button onClick={fetchReportData} className="btn-primary">Thử lại</button>
         </div>
       </div>
     );

@@ -64,13 +64,6 @@ axiosInstance.interceptors.response.use(
     return response;
   },
   async (error) => {
-    console.error('Error Response:', {
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      url: error.config?.url,
-      data: error.response?.data,
-    });
-
     const originalRequest = error.config;
 
     if (error.response) {
@@ -99,7 +92,6 @@ axiosInstance.interceptors.response.use(
 
         if (!refreshToken) {
           // No refresh token, clear auth and reject
-          console.error('No refresh token available');
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
           localStorage.removeItem('user_info');
@@ -137,7 +129,6 @@ axiosInstance.interceptors.response.use(
           return axiosInstance(originalRequest);
         } catch (refreshError) {
           // Refresh failed, clear auth
-          console.error('Token refresh failed');
           localStorage.removeItem('access_token');
           localStorage.removeItem('refresh_token');
           localStorage.removeItem('user_info');
@@ -147,31 +138,8 @@ axiosInstance.interceptors.response.use(
         }
       }
 
-      // Handle other error statuses
-      switch (status) {
-        case 403:
-          console.error('Access forbidden:', data.message);
-          break;
-        case 404:
-          console.error('Resource not found');
-          break;
-        case 500:
-          console.error('Internal server error');
-          break;
-        default:
-          console.error('Error:', data.message);
-      }
-    } else if (error.request) {
-      // Request was made but no response received
-      if (error.code === 'ECONNABORTED') {
-        console.error('Request timeout - server took too long to respond');
-      } else {
-        console.error('No response from server - network error or server is down');
-      }
-    } else {
-      // Something happened in setting up the request
-      console.error('Request setup error:', error.message);
     }
+
 
     return Promise.reject(error);
   }
