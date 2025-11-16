@@ -11,6 +11,7 @@ import type { Route } from "./+types/root";
 import "./app.css";
 import { AuthProvider } from "./AuthContext";
 import { Toaster } from "react-hot-toast";
+import { QueryProvider } from "./providers/QueryProvider";
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -45,9 +46,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <Outlet />
-    </AuthProvider>
+    <QueryProvider>
+      <AuthProvider>
+        <Outlet />
+      </AuthProvider>
+    </QueryProvider>
   );
 }
 

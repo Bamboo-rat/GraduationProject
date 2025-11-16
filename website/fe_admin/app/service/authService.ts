@@ -52,21 +52,14 @@ class AuthService {
 
       const loginData = response.data.data;
 
-      console.log('🔐 Login response:', loginData);
-
       // Backend returns camelCase (accessToken/refreshToken). Support both formats for compatibility.
       const access = (loginData as any).accessToken ?? (loginData as any).access_token;
       const refresh = (loginData as any).refreshToken ?? (loginData as any).refresh_token;
-
-      console.log('🔑 Access token:', access ? 'EXISTS' : 'MISSING');
-      console.log('🔑 Refresh token:', refresh ? 'EXISTS' : 'MISSING');
 
       if (access && refresh) {
         // Save tokens and user info to localStorage
         this.setTokens(access, refresh);
         this.setUserInfo(loginData.userInfo);
-
-        console.log('💾 Token saved to localStorage:', localStorage.getItem('access_token') ? 'YES' : 'NO');
 
         return loginData;
       } else {

@@ -67,7 +67,6 @@ export default function CategorySuggestionList() {
       if (!skipCache) {
         const cached = cache.get(cacheKey);
         if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-          console.log('Using cached data for:', cacheKey);
           const { content, page } = cached.data;
           setSuggestions(content);
           setTotalPages(page.totalPages ?? 0);

@@ -46,15 +46,11 @@ class ChatService {
         connectHeaders: {
           token: token, // Use 'token' header instead of 'Authorization' for SockJS compatibility
         },
-        debug: (str) => {
-          console.log('STOMP:', str);
-        },
       reconnectDelay: 2000, // Reduced from 5000 to 2000ms for faster reconnection
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,
     });      // Handle connection
       this.stompClient.onConnect = () => {
-        console.log('WebSocket connected');
         this.subscribeToMessages();
         resolve();
       };
@@ -67,7 +63,6 @@ class ChatService {
 
       // Handle disconnect
       this.stompClient.onDisconnect = (frame) => {
-        console.log('WebSocket disconnected:', frame);
         // Auto-reconnect will be handled by reconnectDelay setting
       };
 
@@ -85,7 +80,6 @@ class ChatService {
       this.subscriptions.clear();
       this.stompClient.deactivate();
       this.stompClient = null;
-      console.log('WebSocket disconnected');
     }
   }
 

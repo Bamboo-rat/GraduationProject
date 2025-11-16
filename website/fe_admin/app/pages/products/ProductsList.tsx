@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import DashboardLayout from '~/component/layout/DashboardLayout';
 import type { PageResponse, PaginatedResponse } from '~/service/types';
 import { productService, type Product, type ProductListParams } from '~/service/productService';
@@ -20,21 +20,29 @@ const isSpringPageResponse = <T,>(
 
 export default function ProductsList() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Initialize from URL params
+  const urlPage = Number(searchParams.get('page')) || 0;
+  const urlStatus = searchParams.get('status') || '';
+  const urlCategory = searchParams.get('category') || '';
+  const urlSearch = searchParams.get('search') || '';
+  
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   // Pagination
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(urlPage);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const size = 20;
 
   // Filters
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [searchTerm, setSearchTerm] = useState(urlSearch);
+  const [statusFilter, setStatusFilter] = useState<string>(urlStatus);
+  const [categoryFilter, setCategoryFilter] = useState<string>(urlCategory);
+  const [debouncedSearch, setDebouncedSearch] = useState(urlSearch);
 
   // Modals
   const [showSuspendModal, setShowSuspendModal] = useState(false);
@@ -42,11 +50,38 @@ export default function ProductsList() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [suspendReason, setSuspendReason] = useState('');
 
+  // Helper to update URL params
+  const updateURLParams = (params: { page: string; status: string; category: string; search: string }) => {
+    const newParams = new URLSearchParams();
+    if (params.page !== '0') newParams.set('page', params.page);
+    if (params.status) newParams.set('status', params.status);
+    if (params.category) newParams.set('category', params.category);
+    if (params.search) newParams.set('search', params.search);
+    setSearchParams(newParams, { replace: true });
+  };
+
+  // Sync state with URL changes (back/forward navigation)
+  useEffect(() => {
+    const newPage = Number(searchParams.get('page')) || 0;
+    const newStatus = searchParams.get('status') || '';
+    const newCategory = searchParams.get('category') || '';
+    const newSearch = searchParams.get('search') || '';
+    
+    if (page !== newPage) setPage(newPage);
+    if (statusFilter !== newStatus) setStatusFilter(newStatus);
+    if (categoryFilter !== newCategory) setCategoryFilter(newCategory);
+    if (searchTerm !== newSearch) {
+      setSearchTerm(newSearch);
+      setDebouncedSearch(newSearch);
+    }
+  }, [searchParams]);
+
   // Debounce search
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchTerm);
       setPage(0);
+      updateURLParams({ page: '0', status: statusFilter, category: categoryFilter, search: searchTerm });
     }, 500);
 
     return () => clearTimeout(timer);
@@ -255,6 +290,7 @@ export default function ProductsList() {
                 onChange={(e) => {
                   setStatusFilter(e.target.value);
                   setPage(0);
+                  updateURLParams({ page: '0', status: e.target.value, category: categoryFilter, search: searchTerm });
                 }}
                 className="input-field w-full"
               >
@@ -427,7 +463,11 @@ export default function ProductsList() {
                   <div>
                     <nav className="relative z-0 inline-flex rounded-lg shadow-sm -space-x-px">
                       <button
-                        onClick={() => setPage(Math.max(0, page - 1))}
+                        onClick={() => {
+                          const newPage = Math.max(0, page - 1);
+                          setPage(newPage);
+                          updateURLParams({ page: newPage.toString(), status: statusFilter, category: categoryFilter, search: searchTerm });
+                        }}
                         disabled={page === 0}
                         className="btn-secondary rounded-l-lg rounded-r-none disabled:opacity-50 disabled:cursor-not-allowed"
                       >
@@ -443,7 +483,10 @@ export default function ProductsList() {
                         return (
                           <button
                             key={pageNumber}
-                            onClick={() => setPage(pageNumber)}
+                            onClick={() => {
+                              setPage(pageNumber);
+                              updateURLParams({ page: pageNumber.toString(), status: statusFilter, category: categoryFilter, search: searchTerm });
+                            }}
                             className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-colors ${pageNumber === page
                                 ? 'bg-[#2F855A] text-surface border-[#2F855A]'
                                 : 'bg-surface text-text border-default hover:bg-surface-light'
@@ -454,7 +497,11 @@ export default function ProductsList() {
                         );
                       })}
                       <button
-                        onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
+                        onClick={() => {
+                          const newPage = Math.min(totalPages - 1, page + 1);
+                          setPage(newPage);
+                          updateURLParams({ page: newPage.toString(), status: statusFilter, category: categoryFilter, search: searchTerm });
+                        }}
                         disabled={page >= totalPages - 1}
                         className="btn-secondary rounded-r-lg rounded-l-none disabled:opacity-50 disabled:cursor-not-allowed"
                       >

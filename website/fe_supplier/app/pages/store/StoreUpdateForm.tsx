@@ -135,7 +135,6 @@ export default function StoreUpdateForm() {
           ...prev,
           imageUrl: defaultImage,
         }));
-        console.log('Set default store image to supplier logo:', defaultImage);
       }
     } catch (error) {
       console.error('Error loading supplier logo:', error);

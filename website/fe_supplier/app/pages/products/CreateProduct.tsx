@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import productService from '~/service/productService';
 import type {
@@ -9,19 +9,20 @@ import type {
   ProductImageRequest,
   StoreInventoryRequest,
 } from '~/service/productService';
-import categoryService from '~/service/categoryService';
-import type { Category } from '~/service/categoryService';
-import storeService from '~/service/storeService';
-import type { StoreResponse } from '~/service/storeService';
 import fileStorageService from '~/service/fileStorageService';
 import { PlusCircle, Trash2, Upload, Image as ImageIcon, ArrowLeft } from 'lucide-react';
 import Toast, { type ToastType } from '~/component/common/Toast';
+import { useFormProtection } from '~/utils/useFormProtection';
+import { useCategories } from '~/hooks/useCategories';
+import { useAllActiveStores } from '~/hooks/useStores';
 
 export default function CreateProduct() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [stores, setStores] = useState<StoreResponse[]>([]);
+  
+  // Use React Query hooks for cached data
+  const { data: categories = [], isLoading: loadingCategories, error: categoriesError } = useCategories();
+  const { data: stores = [], isLoading: loadingStores, error: storesError } = useAllActiveStores();
 
   // Toast notification
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
@@ -52,45 +53,56 @@ export default function CreateProduct() {
   const [storeInventory, setStoreInventory] = useState<StoreInventoryRequest[]>([]);
   const [uploadingImages, setUploadingImages] = useState<{ type: 'product' | 'variant'; index?: number } | null>(null);
 
-  // Load categories and stores
-  useEffect(() => {
-    loadCategories();
-    loadStores();
-  }, []);
+  // Track if form is dirty (has unsaved changes)
+  const isDirty = useMemo(() => {
+    return (
+      productInfo.name !== '' ||
+      productInfo.description !== '' ||
+      productInfo.categoryId !== '' ||
+      attributes.length > 0 ||
+      variants.length > 1 ||
+      variants[0].name !== '' ||
+      variants[0].originalPrice !== 0 ||
+      productImages.length > 0 ||
+      Object.keys(variantImages).length > 0 ||
+      storeInventory.length > 0
+    );
+  }, [productInfo, attributes, variants, productImages, variantImages, storeInventory]);
 
-  const loadCategories = async () => {
-    try {
-      const data = await categoryService.getAllCategories();
-      // Ensure data is an array
-      if (Array.isArray(data)) {
-        setCategories(data);
-      } else {
-        console.warn('Categories data is not an array:', data);
-        setCategories([]);
-      }
-    } catch (error) {
-      console.error('Error loading categories:', error);
-      setCategories([]); // Set to empty array on error
-      showToast('Không thể tải danh mục', 'error');
-    }
+  // Restore form data from backup
+  const restoreFormData = (backup: any) => {
+    if (backup.productInfo) setProductInfo(backup.productInfo);
+    if (backup.attributes) setAttributes(backup.attributes);
+    if (backup.variants) setVariants(backup.variants);
+    if (backup.productImages) setProductImages(backup.productImages);
+    if (backup.variantImages) setVariantImages(backup.variantImages);
+    if (backup.storeInventory) setStoreInventory(backup.storeInventory);
+    showToast('Đã khôi phục dữ liệu form', 'success');
   };
 
-  const loadStores = async () => {
-    try {
-      const response = await storeService.getMyStores({ page: 0, size: 100, status: 'ACTIVE' });
-      // Ensure content is an array
-      if (response && Array.isArray(response.content)) {
-        setStores(response.content);
-      } else {
-        console.warn('Stores content is not an array:', response);
-        setStores([]);
-      }
-    } catch (error) {
-      console.error('Error loading stores:', error);
-      setStores([]); // Set to empty array on error
-      showToast('Không thể tải danh sách cửa hàng', 'error');
-    }
-  };
+  // Form protection hook
+  const { clearBackup } = useFormProtection({
+    formData: {
+      productInfo,
+      attributes,
+      variants,
+      productImages,
+      variantImages,
+      storeInventory,
+    },
+    isDirty,
+    storageKey: 'create-product-backup',
+    autoSaveInterval: 30000, // 30 seconds
+    onRestore: restoreFormData,
+  });
+  
+  // Show error toast if data loading fails
+  if (categoriesError) {
+    showToast('Không thể tải danh mục: ' + (categoriesError as any).message, 'error');
+  }
+  if (storesError) {
+    showToast('Không thể tải danh sách cửa hàng: ' + (storesError as any).message, 'error');
+  }
 
   // Product Info Form
   const renderProductInfoForm = () => (
@@ -777,6 +789,10 @@ export default function CreateProduct() {
 
       await productService.createProduct(request);
       showToast('Tạo sản phẩm thành công! Sản phẩm đã được kích hoạt.', 'success');
+      
+      // Clear backup after successful submission
+      clearBackup();
+      
       setTimeout(() => navigate('/products/list'), 1500);
     } catch (error: any) {
       console.error('Error creating product:', error);

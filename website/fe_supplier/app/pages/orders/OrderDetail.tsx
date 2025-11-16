@@ -3,16 +3,27 @@ import { useParams, useNavigate } from 'react-router';
 import orderService from '~/service/orderService';
 import type { Order } from '~/service/orderService';
 
-export default function OrderDetail() {
+interface OrderDetailProps {
+  loaderData?: {
+    initialOrder: Order;
+  };
+}
+
+export default function OrderDetail({ loaderData }: OrderDetailProps) {
   const { orderId } = useParams();
   const navigate = useNavigate();
-  const [order, setOrder] = useState<Order | null>(null);
-  const [loading, setLoading] = useState(true);
+  
+  // Initialize with loader data (no loading state!)
+  const [order, setOrder] = useState<Order | null>(loaderData?.initialOrder || null);
+  const [loading, setLoading] = useState(!loaderData); 
   const [error, setError] = useState<string>('');
 
   useEffect(() => {
-    loadOrderDetail();
-  }, [orderId]);
+    // Only load if not from loader
+    if (!loaderData) {
+      loadOrderDetail();
+    }
+  }, [orderId, loaderData]);
 
   const loadOrderDetail = async () => {
     if (!orderId) return;

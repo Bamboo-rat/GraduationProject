@@ -36,19 +36,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    */
   useEffect(() => {
     const checkAuthState = async () => {
-      console.log('🚀 AuthContext: Checking auth state...');
       try {
         // Kiểm tra xem token có tồn tại trong localStorage không
         if (authService.isAuthenticated()) {
-          console.log('✅ AuthContext: Token found');
           // Lấy thông tin người dùng từ localStorage
           const userInfo = authService.getUserInfo();
-          console.log('👤 AuthContext: UserInfo from localStorage:', userInfo);
 
           if (userInfo) {
             setUser(userInfo);
             setIsAuthenticated(true);
-            console.log('✅ AuthContext: User authenticated from cache');
 
             // Tùy chọn: Gọi API /auth/me để xác thực token và lấy thông tin mới nhất
             // Nếu API call này thất bại (ví dụ token hết hạn), nó sẽ bị bắt bởi interceptor của axios
@@ -62,7 +58,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 // ignore storage errors
               }
               setUser(freshUserInfo);
-              console.log('✅ AuthContext: User validated from API');
             } catch (err) {
               console.error('❌ AuthContext: Token validation failed, logging out:', err);
               // Nếu token không hợp lệ, đăng xuất
@@ -72,12 +67,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           } else {
             // Có token nhưng không có user info -> trạng thái không hợp lệ -> đăng xuất
-            console.warn('⚠️ AuthContext: Token exists but no user info, clearing auth');
             authService.clearAuth();
             setIsAuthenticated(false);
           }
         } else {
-          console.log('ℹ️ AuthContext: No token found, user not authenticated');
           setIsAuthenticated(false);
         }
       } catch (error) {
@@ -89,7 +82,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } finally {
         // Hoàn tất kiểm tra, tắt trạng thái tải
         setIsLoading(false);
-        console.log('✅ AuthContext: Auth check complete');
       }
     };
 
@@ -100,13 +92,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    * Xử lý đăng nhập
    */
   const login = useCallback(async (credentials: LoginRequest) => {
-    console.log('🔐 AuthContext: Login attempt for user:', credentials.username);
     try {
       const loginResponse = await authService.login(credentials);
-      console.log('✅ AuthContext: Login successful, userInfo:', loginResponse.userInfo);
       setUser(loginResponse.userInfo);
       setIsAuthenticated(true);
-      console.log('✅ AuthContext: Auth state updated');
       return loginResponse.userInfo;
     } catch (error) {
       console.error('❌ AuthContext: Login failed:', error);

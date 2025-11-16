@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import DashboardLayout from '~/component/layout/DashboardLayout';
 import customerService, {
   type CustomerResponse,
@@ -13,21 +13,29 @@ import SuspendBanConfirmModal from '~/component/features/SuspendBanConfirmModal'
 
 export default function CustomersList() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Initialize from URL params
+  const urlPage = Number(searchParams.get('page')) || 0;
+  const urlStatus = searchParams.get('status') || undefined;
+  const urlTier = searchParams.get('tier') || undefined;
+  const urlSearch = searchParams.get('search') || '';
+  
   const [customers, setCustomers] = useState<CustomerResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   // Pagination
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(urlPage);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const size = 20;
 
   // Filters
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
-  const [tierFilter, setTierFilter] = useState<string | undefined>(undefined);
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [searchTerm, setSearchTerm] = useState(urlSearch);
+  const [statusFilter, setStatusFilter] = useState<string | undefined>(urlStatus);
+  const [tierFilter, setTierFilter] = useState<string | undefined>(urlTier);
+  const [debouncedSearch, setDebouncedSearch] = useState(urlSearch);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
 
   // Suspend modal state
@@ -47,11 +55,38 @@ export default function CustomersList() {
   const [customerDetail, setCustomerDetail] = useState<CustomerDetailResponse | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
 
+  // Helper to update URL params
+  const updateURLParams = (params: { page: string; status?: string; tier?: string; search: string }) => {
+    const newParams = new URLSearchParams();
+    if (params.page !== '0') newParams.set('page', params.page);
+    if (params.status) newParams.set('status', params.status);
+    if (params.tier) newParams.set('tier', params.tier);
+    if (params.search) newParams.set('search', params.search);
+    setSearchParams(newParams, { replace: true });
+  };
+
+  // Sync state with URL changes (back/forward navigation)
+  useEffect(() => {
+    const newPage = Number(searchParams.get('page')) || 0;
+    const newStatus = searchParams.get('status') || undefined;
+    const newTier = searchParams.get('tier') || undefined;
+    const newSearch = searchParams.get('search') || '';
+    
+    if (page !== newPage) setPage(newPage);
+    if (statusFilter !== newStatus) setStatusFilter(newStatus);
+    if (tierFilter !== newTier) setTierFilter(newTier);
+    if (searchTerm !== newSearch) {
+      setSearchTerm(newSearch);
+      setDebouncedSearch(newSearch);
+    }
+  }, [searchParams]);
+
   // Debounce search
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchTerm);
       setPage(0); // Reset to first page on new search
+      updateURLParams({ page: '0', status: statusFilter, tier: tierFilter, search: searchTerm });
     }, 500);
 
     return () => clearTimeout(timer);
@@ -268,8 +303,10 @@ export default function CustomersList() {
                 value={statusFilter || 'all'}
                 onChange={(e) => {
                   const value = e.target.value;
-                  setStatusFilter(value === 'all' ? undefined : value);
+                  const newStatus = value === 'all' ? undefined : value;
+                  setStatusFilter(newStatus);
                   setPage(0);
+                  updateURLParams({ page: '0', status: newStatus, tier: tierFilter, search: searchTerm });
                 }}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
@@ -288,8 +325,10 @@ export default function CustomersList() {
                 value={tierFilter || 'all'}
                 onChange={(e) => {
                   const value = e.target.value;
-                  setTierFilter(value === 'all' ? undefined : value);
+                  const newTier = value === 'all' ? undefined : value;
+                  setTierFilter(newTier);
                   setPage(0);
+                  updateURLParams({ page: '0', status: statusFilter, tier: newTier, search: searchTerm });
                 }}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
@@ -434,7 +473,11 @@ export default function CustomersList() {
                     <div>
                       <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
                         <button
-                          onClick={() => setPage(Math.max(0, page - 1))}
+                          onClick={() => {
+                            const newPage = Math.max(0, page - 1);
+                            setPage(newPage);
+                            updateURLParams({ page: newPage.toString(), status: statusFilter, tier: tierFilter, search: searchTerm });
+                          }}
                           disabled={page === 0}
                           className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
@@ -450,7 +493,10 @@ export default function CustomersList() {
                           return (
                             <button
                               key={pageNumber}
-                              onClick={() => setPage(pageNumber)}
+                              onClick={() => {
+                                setPage(pageNumber);
+                                updateURLParams({ page: pageNumber.toString(), status: statusFilter, tier: tierFilter, search: searchTerm });
+                              }}
                               className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
                                 pageNumber === page
                                   ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
@@ -462,7 +508,11 @@ export default function CustomersList() {
                           );
                         })}
                         <button
-                          onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
+                          onClick={() => {
+                            const newPage = Math.min(totalPages - 1, page + 1);
+                            setPage(newPage);
+                            updateURLParams({ page: newPage.toString(), status: statusFilter, tier: tierFilter, search: searchTerm });
+                          }}
                           disabled={page >= totalPages - 1}
                           className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                         >

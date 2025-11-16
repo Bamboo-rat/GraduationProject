@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useLoaderData, useSearchParams } from 'react-router';
 import DashboardLayout from '~/component/layout/DashboardLayout';
 import supplierService  from '~/service/supplierService';
 import type { Supplier, SupplierStatus } from '~/service/supplierService';
@@ -8,20 +8,30 @@ import Toast, { type ToastType } from '~/component/common/Toast';
 
 export default function PartnersList() {
   const navigate = useNavigate();
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  // Pagination
-  const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalElements, setTotalElements] = useState(0);
-  const size = 20;
+  // Get data from React Router 7 loader (loaded BEFORE navigation)
+  const loaderData = useLoaderData() as {
+    suppliers: Supplier[];
+    totalPages: number;
+    totalElements: number;
+    initialPage: number;
+    initialStatus?: string;
+    initialSearch: string;
+    error?: string;
+  };
 
-  // Filters
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<SupplierStatus | undefined>(undefined);
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  // Initialize state from loader data
+  const [suppliers, setSuppliers] = useState<Supplier[]>(loaderData.suppliers);
+  const [totalPages, setTotalPages] = useState(loaderData.totalPages);
+  const [totalElements, setTotalElements] = useState(loaderData.totalElements);
+  const [error, setError] = useState<string | null>(loaderData.error || null);
+
+  // Filters - initialize from URL params
+  const [searchTerm, setSearchTerm] = useState(loaderData.initialSearch);
+  const [statusFilter, setStatusFilter] = useState<SupplierStatus | undefined>(
+    loaderData.initialStatus as SupplierStatus | undefined
+  );
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
 
   // Suspend modal state
@@ -35,40 +45,37 @@ export default function PartnersList() {
     supplier: null,
   });
 
-  // Debounce search
+  const size = 20;
+  const page = loaderData.initialPage;
+
+  // Update state when loader data changes (on navigation)
+  useEffect(() => {
+    setSuppliers(loaderData.suppliers);
+    setTotalPages(loaderData.totalPages);
+    setTotalElements(loaderData.totalElements);
+    setError(loaderData.error || null);
+  }, [loaderData]);
+
+  // Debounced search - updates URL params which triggers loader
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearch(searchTerm);
-      setPage(0); // Reset to first page on new search
+      const params = new URLSearchParams();
+      if (searchTerm) params.set('search', searchTerm);
+      if (statusFilter) params.set('status', statusFilter);
+      params.set('page', '0'); // Reset to first page
+      setSearchParams(params);
     }, 500);
 
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  useEffect(() => {
-    fetchSuppliers();
-  }, [page, statusFilter, debouncedSearch]);
-
-  const fetchSuppliers = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await supplierService.getAllSuppliers(
-        page,
-        size,
-        statusFilter,
-        debouncedSearch,
-        'createdAt',
-        'DESC'
-      );
-      setSuppliers(response.content);
-      setTotalPages(response.totalPages);
-      setTotalElements(response.totalElements);
-    } catch (err: any) {
-      setError(err.message || 'Không thể tải danh sách đối tác');
-    } finally {
-      setLoading(false);
-    }
+  // Update URL when filters change
+  const updateFilters = (newStatus?: SupplierStatus, newPage: number = 0) => {
+    const params = new URLSearchParams();
+    if (searchTerm) params.set('search', searchTerm);
+    if (newStatus) params.set('status', newStatus);
+    params.set('page', newPage.toString());
+    setSearchParams(params);
   };
 
   const getStatusBadge = (status: SupplierStatus) => {
@@ -122,7 +129,8 @@ export default function PartnersList() {
         action: null,
         supplier: null,
       });
-      fetchSuppliers(); // Refresh list
+      // Trigger loader refresh by navigating to current URL
+      window.location.reload();
     } catch (err: any) {
       setToast({
         message: err.response?.data?.message || err.message || 'Không thể cập nhật trạng thái',
@@ -139,19 +147,7 @@ export default function PartnersList() {
     });
   };
 
-  if (loading && suppliers.length === 0) {
-    return (
-      <DashboardLayout>
-        <div className="flex justify-center items-center h-64">
-          <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            <p className="mt-4 text-gray-600">Đang tải...</p>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
+  // No initial loading spinner needed - loader handles it!
   return (
     <DashboardLayout>
       <div className="p-6">
@@ -171,7 +167,7 @@ export default function PartnersList() {
               {error}
             </div>
             <button
-              onClick={fetchSuppliers}
+              onClick={() => window.location.reload()}
               className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
             >
               Thử lại
@@ -202,8 +198,9 @@ export default function PartnersList() {
                 value={statusFilter || 'all'}
                 onChange={(e) => {
                   const value = e.target.value;
-                  setStatusFilter(value === 'all' ? undefined : (value as SupplierStatus));
-                  setPage(0);
+                  const newStatus = value === 'all' ? undefined : (value as SupplierStatus);
+                  setStatusFilter(newStatus);
+                  updateFilters(newStatus, 0);
                 }}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
@@ -329,14 +326,14 @@ export default function PartnersList() {
                 <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
                   <div className="flex-1 flex justify-between sm:hidden">
                     <button
-                      onClick={() => setPage(Math.max(0, page - 1))}
+                      onClick={() => updateFilters(statusFilter, Math.max(0, page - 1))}
                       disabled={page === 0}
                       className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Trước
                     </button>
                     <button
-                      onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
+                      onClick={() => updateFilters(statusFilter, Math.min(totalPages - 1, page + 1))}
                       disabled={page >= totalPages - 1}
                       className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
@@ -356,7 +353,7 @@ export default function PartnersList() {
                     <div>
                       <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
                         <button
-                          onClick={() => setPage(Math.max(0, page - 1))}
+                          onClick={() => updateFilters(statusFilter, Math.max(0, page - 1))}
                           disabled={page === 0}
                           className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
@@ -372,7 +369,7 @@ export default function PartnersList() {
                           return (
                             <button
                               key={pageNumber}
-                              onClick={() => setPage(pageNumber)}
+                              onClick={() => updateFilters(statusFilter, pageNumber)}
                               className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
                                 pageNumber === page
                                   ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
@@ -384,7 +381,7 @@ export default function PartnersList() {
                           );
                         })}
                         <button
-                          onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
+                          onClick={() => updateFilters(statusFilter, Math.min(totalPages - 1, page + 1))}
                           disabled={page >= totalPages - 1}
                           className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                         >

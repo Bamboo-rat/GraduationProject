@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router';
 import { 
   Search, 
   Plus, 
@@ -16,14 +17,45 @@ import type { ProductResponse, ProductStatus, ProductListParams } from '~/servic
 import ProductDetailModal from '~/component/features/product/ProductDetailModal';
 
 export default function ProductList() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Initialize from URL params
+  const urlPage = parseInt(searchParams.get('page') || '0');
+  const urlStatus = searchParams.get('status') || '';
+  const urlSearch = searchParams.get('search') || '';
+  
   const [products, setProducts] = useState<ProductResponse[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentPage, setCurrentPage] = useState(0);
+  const [currentPage, setCurrentPage] = useState(urlPage);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
-  const [statusFilter, setStatusFilter] = useState<ProductStatus | ''>('');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<ProductStatus | ''>(urlStatus as ProductStatus);
+  const [searchTerm, setSearchTerm] = useState(urlSearch);
   const [selectedProduct, setSelectedProduct] = useState<ProductResponse | null>(null);
+
+  // Helper to update URL params
+  const updateURLParams = (newParams: Record<string, string>) => {
+    const params = new URLSearchParams(searchParams);
+    Object.entries(newParams).forEach(([key, value]) => {
+      if (value) {
+        params.set(key, value);
+      } else {
+        params.delete(key);
+      }
+    });
+    setSearchParams(params);
+  };
+
+  // Sync state with URL (for browser back/forward)
+  useEffect(() => {
+    const newPage = parseInt(searchParams.get('page') || '0');
+    const newStatus = searchParams.get('status') || '';
+    const newSearch = searchParams.get('search') || '';
+
+    if (currentPage !== newPage) setCurrentPage(newPage);
+    if (statusFilter !== newStatus) setStatusFilter(newStatus as ProductStatus);
+    if (searchTerm !== newSearch) setSearchTerm(newSearch);
+  }, [searchParams]);
 
   const fetchProducts = async () => {
     try {
@@ -60,6 +92,11 @@ export default function ProductList() {
 
   const handleSearch = () => {
     setCurrentPage(0);
+    updateURLParams({
+      page: '0',
+      status: statusFilter,
+      search: searchTerm,
+    });
     fetchProducts();
   };
 
@@ -132,7 +169,11 @@ export default function ProductList() {
           {/* Status Filter Buttons */}
           <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => setStatusFilter('')}
+              onClick={() => {
+                setStatusFilter('');
+                setCurrentPage(0);
+                updateURLParams({ page: '0', status: '', search: searchTerm });
+              }}
               className={`px-4 py-2 rounded-lg transition-colors font-medium ${
                 !statusFilter ? 'btn-primary' : 'btn-secondary'
               }`}
@@ -140,7 +181,11 @@ export default function ProductList() {
               Tất cả
             </button>
             <button
-              onClick={() => setStatusFilter('ACTIVE')}
+              onClick={() => {
+                setStatusFilter('ACTIVE');
+                setCurrentPage(0);
+                updateURLParams({ page: '0', status: 'ACTIVE', search: searchTerm });
+              }}
               className={`px-4 py-2 rounded-lg transition-colors font-medium ${
                 statusFilter === 'ACTIVE' ? 'btn-primary' : 'bg-surface border-default border text-text hover:bg-surface-light'
               }`}
@@ -148,7 +193,11 @@ export default function ProductList() {
               Đang hoạt động
             </button>
             <button
-              onClick={() => setStatusFilter('INACTIVE')}
+              onClick={() => {
+                setStatusFilter('INACTIVE');
+                setCurrentPage(0);
+                updateURLParams({ page: '0', status: 'INACTIVE', search: searchTerm });
+              }}
               className={`px-4 py-2 rounded-lg transition-colors font-medium ${
                 statusFilter === 'INACTIVE' ? 'btn-primary' : 'bg-surface border-default border text-text hover:bg-surface-light'
               }`}
@@ -156,15 +205,23 @@ export default function ProductList() {
               Đã ẩn
             </button>
             <button
-              onClick={() => setStatusFilter('SOLD_OUT')}
+              onClick={() => {
+                setStatusFilter('SOLD_OUT');
+                setCurrentPage(0);
+                updateURLParams({ page: '0', status: 'SOLD_OUT', search: searchTerm });
+              }}
               className={`px-4 py-2 rounded-lg transition-colors font-medium ${
                 statusFilter === 'SOLD_OUT' ? 'btn-primary' : 'bg-surface border-default border text-text hover:bg-surface-light'
               }`}
             >
-              Hết hàng
+              Sold Out
             </button>
             <button
-              onClick={() => setStatusFilter('EXPIRED')}
+              onClick={() => {
+                setStatusFilter('EXPIRED');
+                setCurrentPage(0);
+                updateURLParams({ page: '0', status: 'EXPIRED', search: searchTerm });
+              }}
               className={`px-4 py-2 rounded-lg transition-colors font-medium ${
                 statusFilter === 'EXPIRED' ? 'btn-primary' : 'bg-surface border-default border text-text hover:bg-surface-light'
               }`}
@@ -349,7 +406,11 @@ export default function ProductList() {
             
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
+                onClick={() => {
+                  const newPage = Math.max(0, currentPage - 1);
+                  setCurrentPage(newPage);
+                  updateURLParams({ page: newPage.toString(), status: statusFilter, search: searchTerm });
+                }}
                 disabled={currentPage === 0}
                 className="p-2 rounded-lg border border-default bg-surface hover:bg-surface-light disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
@@ -363,7 +424,11 @@ export default function ProductList() {
               </div>
               
               <button
-                onClick={() => setCurrentPage(prev => Math.min(totalPages - 1, prev + 1))}
+                onClick={() => {
+                  const newPage = Math.min(totalPages - 1, currentPage + 1);
+                  setCurrentPage(newPage);
+                  updateURLParams({ page: newPage.toString(), status: statusFilter, search: searchTerm });
+                }}
                 disabled={currentPage >= totalPages - 1}
                 className="p-2 rounded-lg border border-default bg-surface hover:bg-surface-light disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >

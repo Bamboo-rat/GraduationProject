@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
+import { useLoaderData, useSearchParams } from 'react-router';
 import DashboardLayout from '~/component/layout/DashboardLayout';
-import dashboardService from '~/service/dashboardService';
 import type {
   DashboardOverview as DashboardOverviewType,
   SalesTrend,
@@ -32,21 +32,63 @@ import {
 } from 'recharts';
 
 export default function DashboardOverview() {
-  const [overview, setOverview] = useState<DashboardOverviewType | null>(null);
-  const [salesTrends, setSalesTrends] = useState<SalesTrend[]>([]);
-  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
-  const [categoryRevenue, setCategoryRevenue] = useState<CategoryRevenue[]>([]);
-  const [topStores, setTopStores] = useState<TopStore[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Get data from React Router 7 loader (loaded BEFORE navigation)
+  const loaderData = useLoaderData() as {
+    overview: DashboardOverviewType | null;
+    salesTrends: SalesTrend[];
+    topProducts: TopProduct[];
+    categoryRevenue: CategoryRevenue[];
+    topStores: TopStore[];
+    dateRange: string;
+    customStartDate: string;
+    customEndDate: string;
+    error?: string;
+  };
+
+  // Initialize state from loader data
+  const [overview, setOverview] = useState<DashboardOverviewType | null>(loaderData.overview);
+  const [salesTrends, setSalesTrends] = useState<SalesTrend[]>(loaderData.salesTrends);
+  const [topProducts, setTopProducts] = useState<TopProduct[]>(loaderData.topProducts);
+  const [categoryRevenue, setCategoryRevenue] = useState<CategoryRevenue[]>(loaderData.categoryRevenue);
+  const [topStores, setTopStores] = useState<TopStore[]>(loaderData.topStores);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(
+    loaderData.error ? { message: loaderData.error, type: 'error' } : null
+  );
 
   // Date range filter state
-  const [dateRange, setDateRange] = useState<'7days' | '30days' | '90days' | 'custom'>('30days');
-  const [customStartDate, setCustomStartDate] = useState('');
-  const [customEndDate, setCustomEndDate] = useState('');
+  const [dateRange, setDateRange] = useState<'7days' | '30days' | '90days' | 'custom'>(
+    loaderData.dateRange as any || '30days'
+  );
+  const [customStartDate, setCustomStartDate] = useState(loaderData.customStartDate);
+  const [customEndDate, setCustomEndDate] = useState(loaderData.customEndDate);
 
+  // Update state when loader data changes (on navigation)
   useEffect(() => {
-    loadDashboardData();
+    setOverview(loaderData.overview);
+    setSalesTrends(loaderData.salesTrends);
+    setTopProducts(loaderData.topProducts);
+    setCategoryRevenue(loaderData.categoryRevenue);
+    setTopStores(loaderData.topStores);
+    if (loaderData.error) {
+      setToast({ message: loaderData.error, type: 'error' });
+    }
+  }, [loaderData]);
+
+  // Update URL when filters change
+  useEffect(() => {
+    if (dateRange === 'custom' && customStartDate && customEndDate) {
+      const params = new URLSearchParams();
+      params.set('range', 'custom');
+      params.set('start', customStartDate);
+      params.set('end', customEndDate);
+      setSearchParams(params);
+    } else if (dateRange !== 'custom') {
+      const params = new URLSearchParams();
+      params.set('range', dateRange);
+      setSearchParams(params);
+    }
   }, [dateRange, customStartDate, customEndDate]);
 
   const getDateRange = () => {
@@ -80,36 +122,7 @@ export default function DashboardOverview() {
     };
   };
 
-  const loadDashboardData = async () => {
-    try {
-      setLoading(true);
-
-      const { startDate, endDate } = getDateRange();
-
-      // Load all dashboard data in parallel
-      const [overviewData, trendsData, productsData, categoryData, storesData] = await Promise.all([
-        dashboardService.getOverview(),
-        dashboardService.getSalesTrends(startDate, endDate),
-        dashboardService.getTopProducts(5),
-        dashboardService.getCategoryRevenue(),
-        dashboardService.getTopStores(5)
-      ]);
-
-      setOverview(overviewData);
-      setSalesTrends(trendsData);
-      setTopProducts(productsData);
-      setCategoryRevenue(categoryData);
-      setTopStores(storesData);
-    } catch (error: any) {
-      console.error('Error loading dashboard data:', error);
-      setToast({
-        message: error.response?.data?.message || 'Không thể tải dữ liệu dashboard',
-        type: 'error'
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('vi-VN', {
@@ -165,18 +178,6 @@ export default function DashboardOverview() {
       };
     });
   };
-
-  if (loading) {
-    return (
-      <DashboardLayout>
-        <div className="p-6">
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2F855A]"></div>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
 
   if (!overview) {
     return (

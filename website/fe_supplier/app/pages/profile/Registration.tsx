@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import authService from '../../service/authService';
 import locationService from '../../service/locationService';
@@ -30,11 +30,15 @@ import AddressAutocomplete from '../../component/features/AddressAutocomplete';
 import Toast from '../../component/common/Toast';
 import type { ToastType } from '../../component/common/Toast';
 import logo from '~/assets/image/logo.png';
+import { useFormProtection } from '~/utils/useFormProtection';
+import { useRegistrationPersistence } from '~/hooks/useRegistrationPersistence';
 
 type RegistrationStep = 1 | 2 | 3 | 4;
 
 const Registration: React.FC = () => {
   const navigate = useNavigate();
+  const { saveDraft, getDraft, clearDraft, hasDraft, getLastSavedTime } = useRegistrationPersistence();
+  
   const [currentStep, setCurrentStep] = useState<RegistrationStep>(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -98,6 +102,174 @@ const Registration: React.FC = () => {
   const [districts, setDistricts] = useState<any[]>([]);
   const [wards, setWards] = useState<any[]>([]);
   const [loadingLocation, setLoadingLocation] = useState(false);
+
+  // Track if form is dirty (has unsaved changes)
+  const isDirty = useMemo(() => {
+    return (
+      currentStep > 1 || // Already started registration
+      step1Data.username !== '' ||
+      step1Data.email !== '' ||
+      step1Data.fullName !== '' ||
+      step1Data.phoneNumber !== '' ||
+      step1Data.password !== '' ||
+      step3Data.businessLicense !== '' ||
+      step3Data.avatarUrl !== '' ||
+      step4Data.businessName !== '' ||
+      step4Data.storeName !== ''
+    );
+  }, [currentStep, step1Data, step3Data, step4Data]);
+
+  // Restore form data from backup
+  const restoreFormData = (backup: any) => {
+    if (backup.currentStep) setCurrentStep(backup.currentStep);
+    if (backup.step1Data) setStep1Data(backup.step1Data);
+    if (backup.supplierId) setSupplierId(backup.supplierId);
+    if (backup.step3Data) {
+      setStep3Data(backup.step3Data);
+      if (backup.step3Data.businessLicenseUrl) setLicensePreview(backup.step3Data.businessLicenseUrl);
+      if (backup.step3Data.foodSafetyCertificateUrl) setCertPreview(backup.step3Data.foodSafetyCertificateUrl);
+      if (backup.step3Data.avatarUrl) setAvatarPreview(backup.step3Data.avatarUrl);
+    }
+    if (backup.step4Data) setStep4Data(backup.step4Data);
+    setToast({ type: 'success', message: 'Đã khôi phục dữ liệu đăng ký chưa hoàn thành' });
+  };
+
+  // Form protection hook
+  const { clearBackup } = useFormProtection({
+    formData: {
+      currentStep,
+      step1Data,
+      supplierId,
+      step3Data: {
+        businessLicense: step3Data.businessLicense,
+        businessLicenseUrl: step3Data.businessLicenseUrl,
+        foodSafetyCertificate: step3Data.foodSafetyCertificate,
+        foodSafetyCertificateUrl: step3Data.foodSafetyCertificateUrl,
+        avatarUrl: step3Data.avatarUrl,
+      },
+      step4Data,
+    },
+    isDirty,
+    storageKey: 'supplier-registration-backup',
+    autoSaveInterval: 30000, // 30 seconds
+    onRestore: restoreFormData,
+  });
+
+  // Auto-save draft to localStorage on data change
+  useEffect(() => {
+    if (isDirty) {
+      saveDraft({
+        currentStep,
+        supplierId,
+        step1Data,
+        step3Data: {
+          businessLicense: step3Data.businessLicense,
+          businessLicenseUrl: step3Data.businessLicenseUrl,
+          foodSafetyCertificate: step3Data.foodSafetyCertificate,
+          foodSafetyCertificateUrl: step3Data.foodSafetyCertificateUrl,
+          avatarUrl: step3Data.avatarUrl,
+        },
+        step4Data: {
+          businessName: step4Data.businessName,
+          businessType: step4Data.businessType as string,
+          taxCode: step4Data.taxCode,
+          businessAddress: step4Data.businessAddress,
+          province: '',
+          district: '',
+          ward: '',
+          bankName: '',
+          bankAccountNumber: '',
+          bankAccountName: '',
+          storeName: step4Data.storeName,
+          storeAddress: step4Data.storeAddress,
+          storeProvince: step4Data.storeProvince,
+          storeDistrict: step4Data.storeDistrict,
+          storeWard: step4Data.storeWard,
+          email: step4Data.email,
+          storeStreet: step4Data.storeStreet,
+          storePhoneNumber: step4Data.storePhoneNumber,
+          latitude: step4Data.latitude,
+          longitude: step4Data.longitude,
+          storeDescription: step4Data.storeDescription,
+        },
+        uploadedFiles: {
+          license: step3Data.businessLicenseUrl,
+          certificate: step3Data.foodSafetyCertificateUrl,
+          avatar: step3Data.avatarUrl,
+        },
+        lastSaved: new Date().toISOString(),
+      });
+    }
+  }, [currentStep, supplierId, step1Data, step3Data, step4Data, isDirty, saveDraft]);
+
+  // Restore draft on mount
+  useEffect(() => {
+    if (hasDraft()) {
+      const draft = getDraft();
+      if (draft) {
+        const shouldRestore = window.confirm(
+          `Bạn có đăng ký dở dang từ ${getLastSavedTime()}.\n\n` +
+          `Bước hiện tại: Bước ${draft.currentStep}/4\n` +
+          `Bạn có muốn tiếp tục không?`
+        );
+
+        if (shouldRestore) {
+          // Restore all data
+          setCurrentStep(draft.currentStep as RegistrationStep);
+          setSupplierId(draft.supplierId || '');
+          setStep1Data(draft.step1Data);
+          setStep3Data(prev => ({
+            ...prev,
+            businessLicense: draft.step3Data?.businessLicense || '',
+            businessLicenseUrl: draft.step3Data?.businessLicenseUrl || '',
+            foodSafetyCertificate: draft.step3Data?.foodSafetyCertificate || '',
+            foodSafetyCertificateUrl: draft.step3Data?.foodSafetyCertificateUrl || '',
+            avatarUrl: draft.step3Data?.avatarUrl || '',
+          }));
+          
+          // Merge with default step4Data to ensure all required fields exist
+          setStep4Data(prev => ({
+            ...prev,
+            ...draft.step4Data,
+            businessType: (draft.step4Data.businessType || 'RESTAURANT') as BusinessType,
+          }));
+          
+          // Restore file previews if URLs exist
+          if (draft.uploadedFiles?.license) {
+            setLicensePreview(draft.uploadedFiles.license);
+          }
+          if (draft.uploadedFiles?.certificate) {
+            setCertPreview(draft.uploadedFiles.certificate);
+          }
+          if (draft.uploadedFiles?.avatar) {
+            setAvatarPreview(draft.uploadedFiles.avatar);
+          }
+
+          setToast({
+            type: 'success',
+            message: 'Đã khôi phục tiến trình đăng ký của bạn!'
+          });
+        } else {
+          clearDraft();
+        }
+      }
+    }
+  }, []); // Run only once on mount
+
+  // Warn user before leaving page if they have unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Only warn if in the middle of registration (not at step 1 or completed)
+      if (currentStep > 1 && isDirty) {
+        e.preventDefault();
+        e.returnValue = 'Bạn có dữ liệu đăng ký chưa hoàn tất. Bạn có chắc muốn rời khỏi trang?';
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [currentStep, isDirty]);
 
   // Lấy danh sách tỉnh/thành khi mount
   useEffect(() => {
@@ -184,7 +356,6 @@ const Registration: React.FC = () => {
 
       if (response.userId) {
         setSupplierId(response.userId);
-        console.log('Supplier ID saved:', response.userId);
       }
 
       setToast({
@@ -226,7 +397,6 @@ const Registration: React.FC = () => {
         email: step1Data.email,
         otp: otp,
       };
-      console.log('📤 Sending Step 2 request:', request);
       await authService.registerSupplierStep2(request);
       setToast({
         type: 'success',
@@ -274,7 +444,7 @@ const Registration: React.FC = () => {
   };
 
   // ===== STEP 3: Document Upload =====
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fileType: 'license' | 'cert' | 'avatar') => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>, fileType: 'license' | 'cert' | 'avatar') => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -284,37 +454,104 @@ const Registration: React.FC = () => {
       return;
     }
 
+    // Show local preview immediately for instant feedback
     const reader = new FileReader();
     reader.onloadend = () => {
       const preview = reader.result as string;
       if (fileType === 'license') {
-        setStep3Data(prev => ({ ...prev, businessLicenseFile: file }));
         setLicensePreview(preview);
         setLicenseFileName(file.name);
       } else if (fileType === 'cert') {
-        setStep3Data(prev => ({ ...prev, foodSafetyCertificateFile: file }));
         setCertPreview(preview);
         setCertFileName(file.name);
       } else {
-        setStep3Data(prev => ({ ...prev, avatarFile: file }));
         setAvatarPreview(preview);
         setAvatarFileName(file.name);
       }
     };
     reader.readAsDataURL(file);
+
+    // Upload to Cloudinary immediately in background
+    setLoading(true);
+    try {
+      let uploadedUrl = '';
+      
+      if (fileType === 'license') {
+        uploadedUrl = await fileStorageService.uploadBusinessLicense(file);
+        setStep3Data(prev => ({ 
+          ...prev, 
+          businessLicenseFile: file,
+          businessLicenseUrl: uploadedUrl 
+        }));
+        setToast({ 
+          type: 'success', 
+          message: '✅ Upload Giấy phép kinh doanh thành công!' 
+        });
+      } else if (fileType === 'cert') {
+        uploadedUrl = await fileStorageService.uploadFoodSafetyCertificate(file);
+        setStep3Data(prev => ({ 
+          ...prev, 
+          foodSafetyCertificateFile: file,
+          foodSafetyCertificateUrl: uploadedUrl 
+        }));
+        setToast({ 
+          type: 'success', 
+          message: '✅ Upload Chứng nhận ATTP thành công!' 
+        });
+      } else {
+        uploadedUrl = await fileStorageService.uploadSupplierLogo(file);
+        setStep3Data(prev => ({ 
+          ...prev, 
+          avatarFile: file,
+          avatarUrl: uploadedUrl 
+        }));
+        setToast({ 
+          type: 'success', 
+          message: '✅ Upload logo doanh nghiệp thành công!' 
+        });
+      }
+    } catch (err: any) {
+      console.error('Upload file error:', err);
+      setError(`Upload file thất bại: ${err.message || 'Vui lòng thử lại'}`);
+      // Revert preview on error
+      if (fileType === 'license') {
+        setLicensePreview(null);
+        setLicenseFileName('');
+      } else if (fileType === 'cert') {
+        setCertPreview(null);
+        setCertFileName('');
+      } else {
+        setAvatarPreview(null);
+        setAvatarFileName('');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleRemoveFile = (fileType: 'license' | 'cert' | 'avatar') => {
     if (fileType === 'license') {
-      setStep3Data(prev => ({ ...prev, businessLicenseFile: null }));
+      setStep3Data(prev => ({ 
+        ...prev, 
+        businessLicenseFile: null,
+        businessLicenseUrl: '' 
+      }));
       setLicensePreview(null);
       setLicenseFileName('');
     } else if (fileType === 'cert') {
-      setStep3Data(prev => ({ ...prev, foodSafetyCertificateFile: null }));
+      setStep3Data(prev => ({ 
+        ...prev, 
+        foodSafetyCertificateFile: null,
+        foodSafetyCertificateUrl: '' 
+      }));
       setCertPreview(null);
       setCertFileName('');
     } else {
-      setStep3Data(prev => ({ ...prev, avatarFile: null }));
+      setStep3Data(prev => ({ 
+        ...prev, 
+        avatarFile: null,
+        avatarUrl: '' 
+      }));
       setAvatarPreview(null);
       setAvatarFileName('');
     }
@@ -324,7 +561,8 @@ const Registration: React.FC = () => {
     e.preventDefault();
     setError(null);
 
-    if (!step3Data.businessLicenseFile || !step3Data.foodSafetyCertificateFile) {
+    // Check if files have been uploaded (URLs should exist)
+    if (!step3Data.businessLicenseUrl || !step3Data.foodSafetyCertificateUrl) {
       setError('Vui lòng tải lên đầy đủ giấy tờ bắt buộc (GPKD và Chứng nhận ATTP)');
       return;
     }
@@ -336,29 +574,21 @@ const Registration: React.FC = () => {
 
     setLoading(true);
     try {
-      const licenseUrl = await fileStorageService.uploadBusinessLicense(step3Data.businessLicenseFile);
-      const certUrl = await fileStorageService.uploadFoodSafetyCertificate(step3Data.foodSafetyCertificateFile);
-
-      let avatarUrl = '';
-      if (step3Data.avatarFile) {
-        avatarUrl = await fileStorageService.uploadSupplierLogo(step3Data.avatarFile);
-      }
-
+      // Files are already uploaded to Cloudinary, just submit the URLs
       const request: SupplierRegisterStep3Request = {
         supplierId: supplierId,
         email: step1Data.email,
         businessLicense: step3Data.businessLicense,
-        businessLicenseUrl: licenseUrl,
+        businessLicenseUrl: step3Data.businessLicenseUrl,
         foodSafetyCertificate: step3Data.foodSafetyCertificate,
-        foodSafetyCertificateUrl: certUrl,
-        avatarUrl: avatarUrl || undefined,
+        foodSafetyCertificateUrl: step3Data.foodSafetyCertificateUrl,
+        avatarUrl: step3Data.avatarUrl || undefined,
       };
 
-      console.log('📤 Sending Step 3 request:', request);
       await authService.registerSupplierStep3(request);
       setToast({
         type: 'success',
-        message: 'Tải lên giấy tờ thành công! Vui lòng điền thông tin doanh nghiệp và cửa hàng.'
+        message: '✅ Xác nhận giấy tờ thành công! Vui lòng điền thông tin doanh nghiệp và cửa hàng.'
       });
       setCurrentStep(4);
     } catch (err: any) {
@@ -391,12 +621,16 @@ const Registration: React.FC = () => {
         email: step1Data.email,
       };
 
-      console.log('📤 Sending Step 4 request:', request);
       await authService.registerSupplierStep4(request);
       setToast({
         type: 'success',
         message: 'Đăng ký hoàn tất! Chúng tôi sẽ xem xét và phê duyệt đơn đăng ký của bạn trong 24-48 giờ. Bạn sẽ nhận được email thông báo khi tài khoản được kích hoạt.'
       });
+      
+      // Clear all backups after successful registration
+      clearBackup();
+      clearDraft();
+      
       setTimeout(() => {
         navigate('/login');
       }, 3000);
@@ -935,7 +1169,6 @@ const Registration: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Địa chỉ doanh nghiệp <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"

@@ -1,20 +1,43 @@
 import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router';
 import orderService from '~/service/orderService';
 import storeService from '~/service/storeService';
 import type { Order, OrderStatus } from '~/service/orderService';
 import type { StoreResponse } from '~/service/storeService';
 import Toast, { type ToastType } from '~/component/common/Toast';
 
-export default function OrdersList() {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [stores, setStores] = useState<StoreResponse[]>([]);
-  const [selectedStoreId, setSelectedStoreId] = useState<string>('');
-  const [loading, setLoading] = useState(true);
-  const [loadingStores, setLoadingStores] = useState(true);
-  const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [status, setStatus] = useState<OrderStatus | ''>('');
-  const [searchTerm, setSearchTerm] = useState('');
+interface OrdersListProps {
+  loaderData?: {
+    initialOrders: Order[];
+    initialTotalPages: number;
+    initialStores: StoreResponse[];
+    initialPage: number;
+    initialStatus?: string;
+    initialStoreId?: string;
+    initialSearchTerm?: string;
+  };
+}
+
+export default function OrdersList({ loaderData }: OrdersListProps) {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Initialize from URL params first, then fallback to loaderData
+  const urlPage = parseInt(searchParams.get('page') || '0');
+  const urlStatus = searchParams.get('status') || '';
+  const urlStoreId = searchParams.get('storeId') || '';
+  const urlSearch = searchParams.get('search') || '';
+  
+  // Initialize with loader data or URL params (no loading state!)
+  const [orders, setOrders] = useState<Order[]>(loaderData?.initialOrders || []);
+  const [stores, setStores] = useState<StoreResponse[]>(loaderData?.initialStores || []);
+  const [selectedStoreId, setSelectedStoreId] = useState<string>(urlStoreId || loaderData?.initialStoreId || '');
+  const [loading, setLoading] = useState(!loaderData);
+  const [loadingStores, setLoadingStores] = useState(!loaderData);
+  const [page, setPage] = useState(urlPage || loaderData?.initialPage || 0);
+  const [totalPages, setTotalPages] = useState(loaderData?.initialTotalPages || 0);
+  const [status, setStatus] = useState<OrderStatus | ''>(urlStatus as OrderStatus || loaderData?.initialStatus as OrderStatus || '');
+  const [searchTerm, setSearchTerm] = useState(urlSearch || loaderData?.initialSearchTerm || '');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   // Action modals
@@ -31,12 +54,47 @@ export default function OrdersList() {
     setToast({ message, type });
   };
 
-  useEffect(() => {
-    loadStores();
-  }, []);
+  // Sync URL params with state
+  const updateURLParams = (newParams: Record<string, string>) => {
+    const params = new URLSearchParams(searchParams);
+    Object.entries(newParams).forEach(([key, value]) => {
+      if (value) {
+        params.set(key, value);
+      } else {
+        params.delete(key);
+      }
+    });
+    setSearchParams(params);
+  };
 
   useEffect(() => {
-    loadOrders();
+    // Only load stores if not from loader
+    if (!loaderData) {
+      loadStores();
+    }
+  }, []);
+
+  // Sync state with URL params (for browser back/forward)
+  useEffect(() => {
+    const newPage = parseInt(searchParams.get('page') || '0');
+    const newStatus = searchParams.get('status') || '';
+    const newStoreId = searchParams.get('storeId') || '';
+    const newSearch = searchParams.get('search') || '';
+
+    if (page !== newPage) setPage(newPage);
+    if (status !== newStatus) setStatus(newStatus as OrderStatus);
+    if (selectedStoreId !== newStoreId) setSelectedStoreId(newStoreId);
+    if (searchTerm !== newSearch) setSearchTerm(newSearch);
+  }, [searchParams]);
+
+  useEffect(() => {
+    // Only load orders if not from loader or params changed
+    if (!loaderData || 
+        page !== loaderData.initialPage || 
+        status !== loaderData.initialStatus || 
+        selectedStoreId !== loaderData.initialStoreId) {
+      loadOrders();
+    }
   }, [page, status, selectedStoreId]);
 
   const loadStores = async () => {
@@ -83,20 +141,50 @@ export default function OrdersList() {
   };
 
   const handleSearch = () => {
-    loadOrders(0); // Pass page 0 directly to avoid race condition
+    updateURLParams({
+      page: '0',
+      search: searchTerm,
+      status: status,
+      storeId: selectedStoreId,
+    });
+    loadOrders(0);
   };
 
   const handleConfirmOrder = async () => {
     if (!selectedOrder) return;
-    
+
     try {
       setSubmitting(true);
+
+      // Optimistic update: Update UI immediately
+      setOrders(prevOrders =>
+        prevOrders.map(order =>
+          order.id === selectedOrder.id
+            ? { ...order, status: 'CONFIRMED' as OrderStatus }
+            : order
+        )
+      );
+      setShowConfirmModal(false);
+
+      // API call in background
       await orderService.confirmOrder(selectedOrder.id, {});
       showToast('Xác nhận đơn hàng thành công!', 'success');
-      setShowConfirmModal(false);
-      await loadOrders();
+
+      // Silently refresh to sync with server (no loading spinner)
+      const data = await orderService.getStoreOrders({
+        storeId: selectedStoreId || undefined,
+        page: page,
+        size: 10,
+        status: status || undefined,
+        searchTerm: searchTerm || undefined,
+        sortBy: 'createdAt',
+        sortDir: 'DESC',
+      });
+      setOrders(data.content);
     } catch (err: any) {
       showToast(err.message || 'Không thể xác nhận đơn hàng', 'error');
+      // Revert optimistic update on error
+      await loadOrders();
     } finally {
       setSubmitting(false);
     }
@@ -104,13 +192,36 @@ export default function OrdersList() {
 
   const handlePrepareOrder = async (orderId: string) => {
     if (!confirm('Bắt đầu chuẩn bị đơn hàng này?')) return;
-    
+
     try {
+      // Optimistic update: Update UI immediately
+      setOrders(prevOrders =>
+        prevOrders.map(order =>
+          order.id === orderId
+            ? { ...order, status: 'PREPARING' as OrderStatus }
+            : order
+        )
+      );
+
+      // API call in background
       await orderService.prepareOrder(orderId);
       showToast('Đơn hàng đã chuyển sang trạng thái chuẩn bị!', 'success');
-      await loadOrders();
+
+      // Silently refresh to sync with server
+      const data = await orderService.getStoreOrders({
+        storeId: selectedStoreId || undefined,
+        page: page,
+        size: 10,
+        status: status || undefined,
+        searchTerm: searchTerm || undefined,
+        sortBy: 'createdAt',
+        sortDir: 'DESC',
+      });
+      setOrders(data.content);
     } catch (err: any) {
       showToast(err.message || 'Không thể cập nhật trạng thái', 'error');
+      // Revert optimistic update on error
+      await loadOrders();
     }
   };
 
@@ -119,12 +230,36 @@ export default function OrdersList() {
 
     try {
       setSubmitting(true);
+
+      // Optimistic update: Update UI immediately
+      setOrders(prevOrders =>
+        prevOrders.map(order =>
+          order.id === selectedOrder.id
+            ? { ...order, status: 'SHIPPING' as OrderStatus }
+            : order
+        )
+      );
+      setShowShipModal(false);
+
+      // API call in background
       await orderService.shipOrder(selectedOrder.id);
       showToast('Đơn hàng đã chuyển sang trạng thái giao hàng qua Giao Hàng Nhanh!', 'success');
-      setShowShipModal(false);
-      await loadOrders();
+
+      // Silently refresh to sync with server
+      const data = await orderService.getStoreOrders({
+        storeId: selectedStoreId || undefined,
+        page: page,
+        size: 10,
+        status: status || undefined,
+        searchTerm: searchTerm || undefined,
+        sortBy: 'createdAt',
+        sortDir: 'DESC',
+      });
+      setOrders(data.content);
     } catch (err: any) {
       showToast(err.message || 'Không thể cập nhật trạng thái', 'error');
+      // Revert optimistic update on error
+      await loadOrders();
     } finally {
       setSubmitting(false);
     }
@@ -135,16 +270,40 @@ export default function OrdersList() {
       showToast('Vui lòng nhập lý do hủy đơn', 'warning');
       return;
     }
-    
+
     try {
       setSubmitting(true);
-      await orderService.cancelOrder(selectedOrder.id, { cancelReason });
-      showToast('Hủy đơn hàng thành công!', 'success');
+
+      // Optimistic update: Update UI immediately
+      setOrders(prevOrders =>
+        prevOrders.map(order =>
+          order.id === selectedOrder.id
+            ? { ...order, status: 'CANCELED' as OrderStatus }
+            : order
+        )
+      );
       setShowCancelModal(false);
       setCancelReason('');
-      await loadOrders();
+
+      // API call in background
+      await orderService.cancelOrder(selectedOrder.id, { cancelReason });
+      showToast('Hủy đơn hàng thành công!', 'success');
+
+      // Silently refresh to sync with server
+      const data = await orderService.getStoreOrders({
+        storeId: selectedStoreId || undefined,
+        page: page,
+        size: 10,
+        status: status || undefined,
+        searchTerm: searchTerm || undefined,
+        sortBy: 'createdAt',
+        sortDir: 'DESC',
+      });
+      setOrders(data.content);
     } catch (err: any) {
       showToast(err.message || 'Không thể hủy đơn hàng', 'error');
+      // Revert optimistic update on error
+      await loadOrders();
     } finally {
       setSubmitting(false);
     }
@@ -192,7 +351,16 @@ export default function OrdersList() {
           ].map((tab) => (
             <button
               key={tab.value}
-              onClick={() => { setStatus(tab.value as OrderStatus | ''); setPage(0); }}
+              onClick={() => { 
+                setStatus(tab.value as OrderStatus | ''); 
+                setPage(0);
+                updateURLParams({
+                  page: '0',
+                  status: tab.value,
+                  storeId: selectedStoreId,
+                  search: searchTerm,
+                });
+              }}
               className={`px-6 py-3 font-medium whitespace-nowrap rounded-lg transition-all duration-200 ${
                 status === tab.value
                   ? 'tab-active bg-[#A4C3A2] bg-opacity-10'
@@ -214,7 +382,16 @@ export default function OrdersList() {
               </label>
               <select
                 value={selectedStoreId}
-                onChange={(e) => { setSelectedStoreId(e.target.value); setPage(0); }}
+                onChange={(e) => { 
+                  setSelectedStoreId(e.target.value); 
+                  setPage(0);
+                  updateURLParams({
+                    page: '0',
+                    status: status,
+                    storeId: e.target.value,
+                    search: searchTerm,
+                  });
+                }}
                 disabled={loadingStores}
                 className="input-field w-full"
               >
@@ -265,7 +442,16 @@ export default function OrdersList() {
                 </span>
               </span>
               <button
-                onClick={() => { setSelectedStoreId(''); setPage(0); }}
+                onClick={() => { 
+                  setSelectedStoreId(''); 
+                  setPage(0);
+                  updateURLParams({
+                    page: '0',
+                    status: status,
+                    storeId: '',
+                    search: searchTerm,
+                  });
+                }}
                 className="ml-auto text-[#6B6B6B] hover:text-[#E63946] transition-colors"
                 title="Xóa bộ lọc"
               >
@@ -317,7 +503,13 @@ export default function OrdersList() {
             <h3 className="text-xl font-semibold text-[#2D2D2D] mb-2">Không có đơn hàng nào</h3>
             <p className="text-muted mb-4">Hiện tại không có đơn hàng nào phù hợp với bộ lọc của bạn.</p>
             <button
-              onClick={() => { setStatus(''); setSearchTerm(''); setSelectedStoreId(''); setPage(0); }}
+              onClick={() => { 
+                setStatus(''); 
+                setSearchTerm(''); 
+                setSelectedStoreId(''); 
+                setPage(0);
+                setSearchParams({}); // Clear all URL params
+              }}
               className="btn-primary"
             >
               Xem tất cả đơn hàng
@@ -502,7 +694,16 @@ export default function OrdersList() {
       {totalPages > 1 && (
         <div className="mt-8 flex items-center justify-center gap-3">
           <button
-            onClick={() => setPage(p => Math.max(0, p - 1))}
+            onClick={() => {
+              const newPage = Math.max(0, page - 1);
+              setPage(newPage);
+              updateURLParams({
+                page: newPage.toString(),
+                status: status,
+                storeId: selectedStoreId,
+                search: searchTerm,
+              });
+            }}
             disabled={page === 0}
             className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed text-sm"
           >
@@ -512,7 +713,16 @@ export default function OrdersList() {
             Trang {page + 1} / {totalPages}
           </span>
           <button
-            onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+            onClick={() => {
+              const newPage = Math.min(totalPages - 1, page + 1);
+              setPage(newPage);
+              updateURLParams({
+                page: newPage.toString(),
+                status: status,
+                storeId: selectedStoreId,
+                search: searchTerm,
+              });
+            }}
             disabled={page >= totalPages - 1}
             className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed text-sm"
           >

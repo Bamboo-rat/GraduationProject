@@ -48,7 +48,6 @@ class FileStorageService {
       formData.append('file', file);
 
       const endpoint = this.getUploadEndpoint(bucket);
-      console.log(`Uploading file to ${endpoint}...`);
 
       const response = await axiosInstance.post<ApiResponse<any>>(
         endpoint,

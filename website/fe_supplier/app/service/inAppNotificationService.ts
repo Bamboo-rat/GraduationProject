@@ -28,11 +28,9 @@ class InAppNotificationService {
    * Get all notifications for current user
    */
   async getMyNotifications(page: number = 0, size: number = 20): Promise<NotificationPage> {
-    console.log('Calling getMyNotifications API with params:', { page, size });
     const response = await axiosInstance.get('/notifications', {
       params: { page, size }
     });
-    console.log('API Response:', response.data);
     return response.data.data;
   }
 

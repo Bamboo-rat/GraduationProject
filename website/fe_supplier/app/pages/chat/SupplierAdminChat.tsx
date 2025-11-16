@@ -47,11 +47,9 @@ export default function SupplierAdminChat() {
       
       // Connect to WebSocket
       await chatService.connect();
-      console.log('WebSocket connected');
 
       // Subscribe to incoming messages - use ref to get current selection
       const unsubscribeMessage = chatService.onMessage((message: ChatMessage) => {
-        console.log('New message received:', message);
         const current = selectedConversationRef.current;
         
         // Only add message if it belongs to current conversation
@@ -192,7 +190,6 @@ export default function SupplierAdminChat() {
         chatService.sendMessageViaWebSocket(request);
         // WebSocket will trigger onMessage callback with real message from server
       } catch (wsError) {
-        console.log('WebSocket send failed, falling back to REST API');
         const realMessage = await chatService.sendMessage(request);
         
         // Replace optimistic message with real message from server

@@ -29,13 +29,9 @@ axiosInstance.interceptors.request.use(
     
     if (!isPublicEndpoint) {
       const token = localStorage.getItem('access_token');
-      console.log('Token:', token ? `${token.substring(0, 20)}...` : 'NO TOKEN');
-      console.log('Request:', config.method?.toUpperCase(), config.url);
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
-    } else {
-      console.log('Public Request:', config.method?.toUpperCase(), config.url, '(No token needed)');
     }
     return config;
   },
@@ -65,7 +61,6 @@ const processQueue = (error: any, token: string | null = null) => {
 // Response interceptor - Handle errors globally and refresh token
 axiosInstance.interceptors.response.use(
   (response) => {
-    console.log('Response:', response.status, response.config.url);
     return response;
   },
   async (error) => {

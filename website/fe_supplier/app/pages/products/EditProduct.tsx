@@ -1,23 +1,24 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import productService from '~/service/productService';
 import type { ProductResponse, UpdateProductRequest, StoreStockInfo } from '~/service/productService';
-import categoryService from '~/service/categoryService';
-import type { Category } from '~/service/categoryService';
-import storeService from '~/service/storeService';
-import type { StoreResponse } from '~/service/storeService';
 import StockUpdateModal from '~/component/features/product/StockUpdateModal';
 import { ArrowLeft, Package, Image, Layers, Tag, Store, Calendar, AlertCircle, Edit3 } from 'lucide-react';
 import Toast, { type ToastType } from '~/component/common/Toast';
+import { useFormProtection } from '~/utils/useFormProtection';
+import { useCategories } from '~/hooks/useCategories';
+import { useAllActiveStores } from '~/hooks/useStores';
 
 export default function EditProduct() {
   const navigate = useNavigate();
   const { productId } = useParams<{ productId: string }>();
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [product, setProduct] = useState<ProductResponse | null>(null);
-  const [stores, setStores] = useState<StoreResponse[]>([]);
+  
+  // Use React Query hooks for cached data
+  const { data: categories = [], isLoading: loadingCategories, error: categoriesError } = useCategories();
+  const { data: stores = [], isLoading: loadingStores, error: storesError } = useAllActiveStores();
 
   // Toast notification
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
@@ -41,61 +42,75 @@ export default function EditProduct() {
     categoryId: '',
   });
 
-  // Load product data
+  // Original data for dirty checking
+  const [originalData, setOriginalData] = useState<UpdateProductRequest>({
+    name: '',
+    description: '',
+    categoryId: '',
+  });
+
+  // Track if form is dirty (has unsaved changes)
+  const isDirty = useMemo(() => {
+    return (
+      formData.name !== originalData.name ||
+      formData.description !== originalData.description ||
+      formData.categoryId !== originalData.categoryId
+    );
+  }, [formData, originalData]);
+
+  // Restore form data from backup
+  const restoreFormData = (backup: UpdateProductRequest) => {
+    setFormData(backup);
+    showToast('Đã khôi phục dữ liệu form', 'success');
+  };
+
+  // Form protection hook
+  const { clearBackup } = useFormProtection({
+    formData,
+    isDirty,
+    storageKey: `edit-product-${productId}`,
+    autoSaveInterval: 30000, // 30 seconds
+    onRestore: restoreFormData,
+  });
+
+  // Load product data on mount
   useEffect(() => {
     if (productId) {
       loadProduct();
-      loadCategories();
-      loadStores();
     }
   }, [productId]);
+
+  // Show error toasts for cached data errors
+  useEffect(() => {
+    if (categoriesError) {
+      showToast('Không thể tải danh mục: ' + categoriesError.message, 'error');
+    }
+  }, [categoriesError]);
+
+  useEffect(() => {
+    if (storesError) {
+      showToast('Không thể tải cửa hàng: ' + storesError.message, 'error');
+    }
+  }, [storesError]);
 
   const loadProduct = async () => {
     try {
       setLoadingData(true);
       const data = await productService.getProductById(productId!);
       setProduct(data);
-      setFormData({
+      const initialData = {
         name: data.name,
         description: data.description || '',
         categoryId: data.categoryId,
-      });
+      };
+      setFormData(initialData);
+      setOriginalData(initialData);
     } catch (error: any) {
       console.error('Error loading product:', error);
       showToast('Không thể tải thông tin sản phẩm: ' + (error.response?.data?.message || error.message), 'error');
       setTimeout(() => navigate('/products/list'), 1500);
     } finally {
       setLoadingData(false);
-    }
-  };
-
-  const loadCategories = async () => {
-    try {
-      const data = await categoryService.getAllCategories();
-      if (Array.isArray(data)) {
-        setCategories(data);
-      } else {
-        console.warn('Categories data is not an array:', data);
-        setCategories([]);
-      }
-    } catch (error) {
-      console.error('Error loading categories:', error);
-      setCategories([]);
-    }
-  };
-
-  const loadStores = async () => {
-    try {
-      const response = await storeService.getMyStores({ page: 0, size: 100, status: 'ACTIVE' });
-      if (response && Array.isArray(response.content)) {
-        setStores(response.content);
-      } else {
-        console.warn('Stores content is not an array:', response);
-        setStores([]);
-      }
-    } catch (error) {
-      console.error('Error loading stores:', error);
-      setStores([]);
     }
   };
 
@@ -116,6 +131,10 @@ export default function EditProduct() {
     try {
       await productService.updateProduct(productId!, formData);
       showToast('Cập nhật sản phẩm thành công!', 'success');
+      
+      // Clear backup after successful update
+      clearBackup();
+      
       setTimeout(() => navigate('/products/list'), 1500);
     } catch (error: any) {
       console.error('Error updating product:', error);
@@ -167,7 +186,7 @@ export default function EditProduct() {
     return { label: 'Không xác định', class: 'badge-neutral' };
   };
 
-  if (loadingData) {
+  if (loadingData || loadingCategories || loadingStores) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
