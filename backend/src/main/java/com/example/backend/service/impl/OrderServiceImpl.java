@@ -59,7 +59,7 @@ public class OrderServiceImpl implements OrderService {
     private final AddressRepository addressRepository;
     private final WalletTransactionRepository walletTransactionRepository;
 
-    private static final String CONFIG_KEY_POINTS_PERCENTAGE = "points.reward.percentage";
+    private static final String CONFIG_KEY_POINTS_PERCENTAGE = "points.percentage.per.order";
     private static final BigDecimal DEFAULT_POINTS_PERCENTAGE = new BigDecimal("0.05"); // 5% default
     
     // Minimum order value after discount (10,000 VND)

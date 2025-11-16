@@ -138,7 +138,7 @@ public interface OrderDetailRepository extends JpaRepository<OrderDetail, String
         JOIN v.product p
         LEFT JOIN p.category c
         WHERE od.order.status = com.example.backend.entity.enums.OrderStatus.DELIVERED
-            AND od.order.createdAt BETWEEN :startDate AND :endDate
+            AND od.order.deliveredAt BETWEEN :startDate AND :endDate
             AND c IS NOT NULL
         GROUP BY c.categoryId, c.name, c.imageUrl
         ORDER BY revenue DESC

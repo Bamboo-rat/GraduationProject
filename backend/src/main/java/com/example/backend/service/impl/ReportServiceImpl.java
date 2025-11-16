@@ -116,7 +116,13 @@ public class ReportServiceImpl implements ReportService {
         log.info("Generating revenue by supplier from {} to {}", startDate, endDate);
 
         List<Object[]> results = orderRepository.findRevenueBySupplier(startDate, endDate);
-        
+
+        // Handle empty results
+        if (results == null || results.isEmpty()) {
+            log.warn("No revenue data found for suppliers between {} and {}", startDate, endDate);
+            return Collections.emptyList();
+        }
+
         // Calculate total supplier earnings for percentage calculation
         BigDecimal totalSupplierEarnings = results.stream()
                 .map(r -> toBigDecimal(r[6]))
@@ -152,6 +158,13 @@ public class ReportServiceImpl implements ReportService {
         log.info("Generating revenue by category from {} to {}", startDate, endDate);
 
         List<Object[]> results = orderDetailRepository.findRevenueByCategoryWithDateRange(startDate, endDate);
+
+        // Handle empty results
+        if (results == null || results.isEmpty()) {
+            log.warn("No revenue data found for categories between {} and {}", startDate, endDate);
+            return Collections.emptyList();
+        }
+
         BigDecimal totalRevenue = results.stream()
                 .map(r -> toBigDecimal(r[5]))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -180,6 +193,12 @@ public class ReportServiceImpl implements ReportService {
         log.info("Generating revenue time series from {} to {}", startDate, endDate);
 
         List<Object[]> results = orderRepository.findRevenueTimeSeries(startDate, endDate);
+
+        // Handle empty results
+        if (results == null || results.isEmpty()) {
+            log.warn("No revenue time series data found between {} and {}", startDate, endDate);
+            return Collections.emptyList();
+        }
 
         // Get new vs returning customers per day
         Object[] customerData = orderRepository.findNewVsReturningCustomers(startDate, endDate);
@@ -252,22 +271,28 @@ public class ReportServiceImpl implements ReportService {
 
         // Calculate CLV metrics
         List<Object[]> clvData = orderRepository.findCustomerLifetimeValue(Pageable.ofSize(1000));
-        if (clvData == null) {
+        if (clvData == null || clvData.isEmpty()) {
             clvData = new ArrayList<>();
         }
-        BigDecimal avgCLV = clvData.stream()
-                .map(row -> toBigDecimal(row[9]))
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .divide(BigDecimal.valueOf(Math.max(1, clvData.size())), 2, RoundingMode.HALF_UP);
 
-        BigDecimal avgOrderValue = clvData.stream()
-                .map(row -> toBigDecimal(row[10]))
-                .filter(v -> v.compareTo(BigDecimal.ZERO) > 0)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .divide(BigDecimal.valueOf(Math.max(1, clvData.size())), 2, RoundingMode.HALF_UP);
+        BigDecimal avgCLV = BigDecimal.ZERO;
+        BigDecimal avgOrderValue = BigDecimal.ZERO;
 
-        Double avgOrdersPerCustomer = clvData.stream()
-                .mapToLong(row -> toLong(row[6]))
+        if (!clvData.isEmpty()) {
+            avgCLV = clvData.stream()
+                    .map(row -> row.length > 9 ? toBigDecimal(row[9]) : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add)
+                    .divide(BigDecimal.valueOf(clvData.size()), 2, RoundingMode.HALF_UP);
+
+            avgOrderValue = clvData.stream()
+                    .map(row -> row.length > 10 ? toBigDecimal(row[10]) : BigDecimal.ZERO)
+                    .filter(v -> v.compareTo(BigDecimal.ZERO) > 0)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add)
+                    .divide(BigDecimal.valueOf(clvData.size()), 2, RoundingMode.HALF_UP);
+        }
+
+        Double avgOrdersPerCustomer = clvData.isEmpty() ? 0.0 : clvData.stream()
+                .mapToLong(row -> row.length > 6 ? toLong(row[6]) : 0L)
                 .average()
                 .orElse(0.0);
 
@@ -280,14 +305,14 @@ public class ReportServiceImpl implements ReportService {
                 : 0.0;
         
         // Calculate return rate
-        long totalOrders = orderRepository.countByCreatedAtBetween(startDate, endDate);
-        long returnedOrders = orderRepository.countByStatusAndCreatedAtBetween(OrderStatus.RETURNED, startDate, endDate);
+        long totalOrders = orderRepository.countByDeliveredAtBetween(startDate, endDate);
+        long returnedOrders = orderRepository.countByStatusAndDeliveredAtBetween(OrderStatus.RETURNED, startDate, endDate);
         Double returnRate = totalOrders > 0
                 ? ((double) returnedOrders / totalOrders) * 100
                 : 0.0;
 
-        BigDecimal totalValue = clvData.stream()
-                .map(row -> toBigDecimal(row[9]))
+        BigDecimal totalValue = clvData.isEmpty() ? BigDecimal.ZERO : clvData.stream()
+                .map(row -> row.length > 9 ? toBigDecimal(row[9]) : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         return CustomerBehaviorSummaryResponse.builder()
@@ -321,8 +346,9 @@ public class ReportServiceImpl implements ReportService {
         log.info("Generating customer segmentation from {} to {}", startDate, endDate);
 
         List<Object[]> results = orderRepository.findCustomerSegmentation(startDate, endDate);
-        if (results == null) {
-            results = Collections.emptyList();
+        if (results == null || results.isEmpty()) {
+            log.warn("No customer segmentation data found between {} and {}", startDate, endDate);
+            return Collections.emptyList();
         }
 
         Long totalCustomers = results.stream().map(r -> toLong(r[1])).reduce(0L, Long::sum);
@@ -361,8 +387,9 @@ public class ReportServiceImpl implements ReportService {
         log.info("Generating customer lifetime value analysis");
 
         List<Object[]> results = orderRepository.findCustomerLifetimeValue(pageable);
-        if (results == null) {
-            results = Collections.emptyList();
+        if (results == null || results.isEmpty()) {
+            log.warn("No customer lifetime value data found");
+            return new PageImpl<>(Collections.emptyList(), pageable, 0);
         }
 
         List<CustomerLifetimeValueResponse> responses = results.stream().map(row -> {

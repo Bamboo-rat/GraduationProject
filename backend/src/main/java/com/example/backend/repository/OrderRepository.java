@@ -76,6 +76,8 @@ public interface OrderRepository extends JpaRepository<Order, String> {
     long countByStore(Store store);
     long countByCreatedAtBetween(LocalDateTime startDate, LocalDateTime endDate);
     long countByStatusAndCreatedAtBetween(OrderStatus status, LocalDateTime startDate, LocalDateTime endDate);
+    long countByDeliveredAtBetween(LocalDateTime startDate, LocalDateTime endDate);
+    long countByStatusAndDeliveredAtBetween(OrderStatus status, LocalDateTime startDate, LocalDateTime endDate);
     boolean existsByOrderCode(String orderCode);
     boolean existsByIdempotencyKey(String idempotencyKey);
     Optional<Order> findByIdempotencyKey(String idempotencyKey);
@@ -258,7 +260,7 @@ public interface OrderRepository extends JpaRepository<Order, String> {
     @Query("""
         SELECT
             SUM(CASE WHEN c.createdAt BETWEEN :startDate AND :endDate THEN 1 ELSE 0 END),
-            SUM(CASE WHEN c.createdAt < :startDate AND o.createdAt BETWEEN :startDate AND :endDate THEN 1 ELSE 0 END)
+            SUM(CASE WHEN c.createdAt < :startDate AND o.deliveredAt BETWEEN :startDate AND :endDate AND o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN 1 ELSE 0 END)
         FROM Customer c
         LEFT JOIN c.orders o
     """)

@@ -311,6 +311,7 @@ public class PayOSServiceImpl implements PayOSService {
             // Update order status to CONFIRMED (ready for supplier to process)
             if (order.getStatus() == OrderStatus.PENDING) {
                 order.setStatus(OrderStatus.CONFIRMED);
+                order.setPaymentStatus(PaymentStatus.SUCCESS); // Update payment status
                 orderRepository.save(order);
                 log.info("Order confirmed after successful payment: orderId={}, orderCode={}", 
                         order.getOrderId(), order.getOrderCode());
@@ -322,6 +323,10 @@ public class PayOSServiceImpl implements PayOSService {
             // Payment failed
             payment.setStatus(PaymentStatus.FAILED);
             paymentRepository.save(payment);
+
+            // Update order payment status to FAILED
+            order.setPaymentStatus(PaymentStatus.FAILED);
+            orderRepository.save(order);
 
             log.warn("Payment failed via webhook: orderId={}, transactionId={}, code={}", 
                     order.getOrderId(), transactionId, webhook.getCode());
