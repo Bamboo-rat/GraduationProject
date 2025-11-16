@@ -55,8 +55,8 @@ export default function CustomerBehavior() {
   }, [clvPage]);
 
   const buildDateRangePayload = () => {
-    const start = `${startDate}T00:00:00`;
-    const end = `${endDate}T23:59:59`;
+    const start = new Date(`${startDate}T00:00:00`).toISOString();
+    const end = new Date(`${endDate}T23:59:59`).toISOString();
     return { start, end };
   };
 
@@ -66,11 +66,17 @@ export default function CustomerBehavior() {
       setError(null);
 
       const { start, end } = buildDateRangePayload();
+      console.log('Customer Behavior Report - Fetching with dates:', { start, end });
 
       const [summaryRes, segmentationRes] = await Promise.all([
         reportService.getCustomerBehaviorSummary(start, end),
         reportService.getCustomerSegmentation(start, end)
       ]);
+
+      console.log('Customer Behavior Data:', {
+        summary: summaryRes,
+        segmentationCount: segmentationRes.length
+      });
 
       setSummary(summaryRes);
       setSegmentation(segmentationRes);
@@ -194,6 +200,13 @@ export default function CustomerBehavior() {
         {/* Summary Cards */}
         {summary && (
           <>
+            {summary.totalCustomers === 0 && (
+              <div className="card p-6 mb-6 bg-yellow-50 border border-yellow-200">
+                <p className="text-yellow-800 text-sm">
+                  <strong>Chú ý:</strong> Không có dữ liệu khách hàng trong hệ thống.
+                </p>
+              </div>
+            )}
             {/* Top Row: Main Customer Metrics */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
               <div className="card card-hover">
@@ -307,7 +320,7 @@ export default function CustomerBehavior() {
                 <p className="text-sm text-muted">Bronze</p>
                 <p className="text-2xl font-bold text-gray-800">{reportService.formatNumber(summary.bronzeTierCount)}</p>
                 <p className="text-xs text-muted mt-1">
-                  {summary.totalCustomers > 0 ? reportService.formatPercentage((summary.bronzeTierCount / summary.totalCustomers) * 100) : '0%'}
+                  {summary.totalCustomers > 0 ? reportService.formatPercentage((summary.bronzeTierCount / summary.totalCustomers) * 100) : '0.00%'}
                 </p>
               </div>
 

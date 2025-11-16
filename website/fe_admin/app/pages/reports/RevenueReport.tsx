@@ -42,8 +42,9 @@ export default function RevenueReport() {
   }, [startDate, endDate]);
 
    const buildDateRangePayload = () => {
-    const start = `${startDate}T00:00:00`;
-    const end = `${endDate}T23:59:59`;
+    // Create proper ISO DateTime with timezone
+    const start = new Date(`${startDate}T00:00:00`).toISOString();
+    const end = new Date(`${endDate}T23:59:59`).toISOString();
     return { start, end };
   };
 
@@ -53,6 +54,7 @@ export default function RevenueReport() {
       setError(null);
 
       const { start, end } = buildDateRangePayload();
+      console.log('📅 Revenue Report - Fetching with dates:', { start, end });
 
       const [summaryRes, supplierRes, categoryRes, timeSeriesRes] = await Promise.all([
         reportService.getRevenueSummary(start, end),
@@ -60,6 +62,13 @@ export default function RevenueReport() {
         reportService.getRevenueByCategory(start, end),
         reportService.getRevenueTimeSeries(start, end)
       ]);
+
+      console.log('Revenue Report Data:', {
+        summary: summaryRes,
+        supplierCount: supplierRes.length,
+        categoryCount: categoryRes.length,
+        timeSeriesCount: timeSeriesRes.length
+      });
 
       setSummary(summaryRes);
       setSupplierData(supplierRes);
@@ -181,6 +190,15 @@ export default function RevenueReport() {
 
         {/* Summary Cards */}
         {summary && (
+          <>
+            {summary.totalRevenue === 0 && summary.totalOrders === 0 && (
+              <div className="card p-6 mb-6 bg-yellow-50 border border-yellow-200">
+                <p className="text-yellow-800 text-sm">
+                  <strong>Chú ý:</strong> Không có dữ liệu doanh thu trong khoảng thời gian này. 
+                  Chỉ có các đơn hàng đã GIAO THÀNH CÔNG (DELIVERED) và có ngày giao hàng (deliveredAt) mới được tính vào báo cáo.
+                </p>
+              </div>
+            )}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <div className="card card-hover p-6 bg-gradient-to-br from-[#2F855A] to-[#8FB491] text-surface">
               <div className="flex items-center justify-between mb-4">
@@ -210,7 +228,7 @@ export default function RevenueReport() {
               <h3 className="text-sm text-muted mb-1">Thu nhà cung cấp</h3>
               <p className="text-2xl font-bold">{reportService.formatCurrency(summary.totalSupplierEarnings)}</p>
               <p className="text-xs text-muted mt-1">
-                ~{((summary.totalSupplierEarnings / summary.totalRevenue) * 100).toFixed(1)}% tổng doanh thu
+                ~{summary.totalRevenue > 0 ? ((summary.totalSupplierEarnings / summary.totalRevenue) * 100).toFixed(1) : '0.0'}% tổng doanh thu
               </p>
             </div>
 
@@ -244,6 +262,7 @@ export default function RevenueReport() {
               </p>
             </div>
           </div>
+          </>
         )}
 
       {/* Revenue Time Series Chart */}
