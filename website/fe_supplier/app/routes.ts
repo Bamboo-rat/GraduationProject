@@ -50,6 +50,10 @@ export default [
   route("chat", "routes/chat.tsx"),
 
   // Settings routes
-  route("settings", "routes/settings/settings.tsx")
+  route("settings", "routes/settings/settings.tsx"),
+
+  // Legal & Privacy routes
+  route("privacy-policy", "routes/mobile/privacy-policy.tsx"),
+  route("delete-data", "routes/mobile/delete-data.tsx")
 
 ] satisfies RouteConfig;

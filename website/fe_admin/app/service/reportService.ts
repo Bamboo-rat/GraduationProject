@@ -5,14 +5,24 @@ import axiosInstance from '~/config/axios';
 export interface RevenueSummary {
   startDate: string;
   endDate: string;
-  totalRevenue: number;
-  totalCommission: number;
-  totalSupplierEarnings: number;
+  
+  // New detailed breakdown
+  totalGMV: number;  // Total GMV (Gross Merchandise Value)
+  totalProductRevenue: number;  // Product revenue only
+  totalShippingFee: number;  // Total shipping fees
+  totalPlatformRevenue: number;  // Platform's actual revenue (commission + shipping)
+  totalSupplierEarnings: number;  // Supplier's gross earnings
+  
+  // Legacy fields (backward compatible)
+  totalRevenue: number;  // Same as totalGMV
+  totalCommission: number;  // Product commission only
+  
   totalOrders: number;
   completedOrders: number;
   cancelledOrders: number;
-  averageOrderValue: number;
+  averageOrderValue: number;  // Average GMV per order
   averageDailyRevenue: number;
+  averageCommissionRate: number;  // Average commission rate
   revenueGrowthRate: number;
   orderGrowthRate: number;
   topSupplierName: string;
@@ -26,12 +36,21 @@ export interface RevenueBySupplier {
   supplierName: string;
   avatarUrl: string;
   totalOrders: number;
-  totalRevenue: number;
-  platformCommission: number;
+  
+  // New detailed breakdown
+  totalGMV: number;
+  totalProductRevenue: number;
+  totalShippingFee: number;
+  platformCommission: number;  // Includes shipping
   supplierEarnings: number;
+  
+  // Legacy
+  totalRevenue: number;  // Same as totalGMV
+  
   revenuePercentage: number;
   productCount: number;
   storeCount: number;
+  commissionRate: number;  // Supplier's commission rate
 }
 
 export interface RevenueByCategory {

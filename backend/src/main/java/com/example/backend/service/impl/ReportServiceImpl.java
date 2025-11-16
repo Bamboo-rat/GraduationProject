@@ -52,56 +52,79 @@ public class ReportServiceImpl implements ReportService {
 
         Object[] summaryData = orderRepository.findRevenueSummary(startDate, endDate);
         if (summaryData == null) {
-            summaryData = new Object[]{BigDecimal.ZERO, 0L, 0L, 0L, BigDecimal.ZERO, BigDecimal.ZERO};
+            summaryData = new Object[]{
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, 
+                BigDecimal.ZERO, BigDecimal.ZERO, 
+                0L, 0L, 0L, 
+                BigDecimal.ZERO, 0.0
+            };
         }
 
-        BigDecimal totalRevenue = toBigDecimal(summaryData[0]);
-        Long completedOrders = toLong(summaryData[1]);
-        Long cancelledOrders = toLong(summaryData[2]);
-        Long totalOrders = toLong(summaryData[3]);
-        BigDecimal avgOrderValue = toBigDecimal(summaryData[4]);
-        BigDecimal totalCommission = toBigDecimal(summaryData[5]); // Actual commission from query
-        BigDecimal totalSupplierEarnings = totalRevenue.subtract(totalCommission);
+        // Parse query results (updated order based on new query)
+        BigDecimal totalGMV = toBigDecimal(summaryData[0]);  // totalAmount + shippingFee
+        BigDecimal totalProductRevenue = toBigDecimal(summaryData[1]);  // totalAmount only
+        BigDecimal totalShippingFee = toBigDecimal(summaryData[2]);  // shippingFee only
+        BigDecimal totalPlatformRevenue = toBigDecimal(summaryData[3]);  // commission + shipping
+        BigDecimal totalSupplierEarnings = toBigDecimal(summaryData[4]);  // totalAmount * (1 - rate)
+        Long completedOrders = toLong(summaryData[5]);
+        Long cancelledOrders = toLong(summaryData[6]);
+        Long totalOrders = toLong(summaryData[7]);
+        BigDecimal avgOrderValue = toBigDecimal(summaryData[8]);  // Average GMV
+        Double avgCommissionRate = toDouble(summaryData[9]);  // Average commission rate
+        
+        // Legacy fields for backward compatibility
+        BigDecimal totalRevenue = totalGMV;
+        BigDecimal totalCommission = totalPlatformRevenue.subtract(totalShippingFee);  // Commission on products only
 
         // Calculate daily average
         long daysBetween = Math.max(1, ChronoUnit.DAYS.between(startDate.toLocalDate(), endDate.toLocalDate()));
-        BigDecimal avgDailyRevenue = totalRevenue.divide(BigDecimal.valueOf(daysBetween), 2, RoundingMode.HALF_UP);
+        BigDecimal avgDailyRevenue = totalGMV.divide(BigDecimal.valueOf(daysBetween), 2, RoundingMode.HALF_UP);
 
         // Calculate growth rates (compare to previous period)
         LocalDateTime previousStartDate = startDate.minusDays(daysBetween);
         LocalDateTime previousEndDate = startDate;
         Object[] previousData = orderRepository.findRevenueSummary(previousStartDate, previousEndDate);
         if (previousData == null) {
-            previousData = new Object[]{BigDecimal.ZERO, 0L, 0L, 0L, BigDecimal.ZERO, BigDecimal.ZERO};
+            previousData = new Object[]{
+                BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+                BigDecimal.ZERO, BigDecimal.ZERO,
+                0L, 0L, 0L,
+                BigDecimal.ZERO, 0.0
+            };
         }
 
-        BigDecimal previousRevenue = toBigDecimal(previousData[0]);
-        Long previousOrders = toLong(previousData[1]);
+        BigDecimal previousGMV = toBigDecimal(previousData[0]);
+        Long previousCompletedOrders = toLong(previousData[5]);
 
-        Double revenueGrowth = calculateGrowthRate(previousRevenue, totalRevenue);
-        Double orderGrowth = calculateGrowthRate(previousOrders.doubleValue(), totalOrders.doubleValue());
+        Double revenueGrowth = calculateGrowthRate(previousGMV, totalGMV);
+        Double orderGrowth = calculateGrowthRate(previousCompletedOrders.doubleValue(), completedOrders.doubleValue());
 
         // Get top performers
         List<Object[]> topSuppliers = orderRepository.findRevenueBySupplier(startDate, endDate);
         List<Object[]> topCategories = orderDetailRepository.findRevenueByCategoryWithDateRange(startDate, endDate);
 
         String topSupplierName = (topSuppliers != null && !topSuppliers.isEmpty()) ? (String) topSuppliers.get(0)[1] : "N/A";
-        // row[4] = totalRevenue, row[5] = commission, row[6] = supplierEarnings
-        BigDecimal topSupplierRevenue = (topSuppliers != null && !topSuppliers.isEmpty()) ? toBigDecimal(topSuppliers.get(0)[4]) : BigDecimal.ZERO;
+        // row[8] = supplierEarnings (new position after query update)
+        BigDecimal topSupplierRevenue = (topSuppliers != null && !topSuppliers.isEmpty()) ? toBigDecimal(topSuppliers.get(0)[8]) : BigDecimal.ZERO;
         String topCategoryName = (topCategories != null && !topCategories.isEmpty()) ? (String) topCategories.get(0)[1] : "N/A";
         BigDecimal topCategoryRevenue = (topCategories != null && !topCategories.isEmpty()) ? toBigDecimal(topCategories.get(0)[5]) : BigDecimal.ZERO;
 
         return RevenueSummaryResponse.builder()
                 .startDate(startDate)
                 .endDate(endDate)
-                .totalRevenue(totalRevenue)
-                .totalCommission(totalCommission)
+                .totalGMV(totalGMV)
+                .totalProductRevenue(totalProductRevenue)
+                .totalShippingFee(totalShippingFee)
+                .totalPlatformRevenue(totalPlatformRevenue)
                 .totalSupplierEarnings(totalSupplierEarnings)
+                .totalRevenue(totalRevenue)  // Legacy: same as GMV
+                .totalCommission(totalCommission)  // Legacy: commission only
                 .totalOrders(totalOrders)
                 .completedOrders(completedOrders)
                 .cancelledOrders(cancelledOrders)
                 .averageOrderValue(avgOrderValue)
                 .averageDailyRevenue(avgDailyRevenue)
+                .averageCommissionRate(avgCommissionRate)
                 .revenueGrowthRate(revenueGrowth)
                 .orderGrowthRate(orderGrowth)
                 .topSupplierName(topSupplierName)
@@ -125,14 +148,21 @@ public class ReportServiceImpl implements ReportService {
 
         // Calculate total supplier earnings for percentage calculation
         BigDecimal totalSupplierEarnings = results.stream()
-                .map(r -> toBigDecimal(r[6]))
+                .map(r -> toBigDecimal(r[8]))  // supplierEarnings at index 8
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         return results.stream().map(row -> {
-            // Query returns: totalRevenue, platformCommission, supplierEarnings
-            BigDecimal totalRevenue = toBigDecimal(row[4]);
-            BigDecimal platformCommission = toBigDecimal(row[5]);
-            BigDecimal supplierEarnings = toBigDecimal(row[6]);
+            // Updated query returns:
+            // 0: supplierId, 1: supplierName, 2: avatarUrl, 3: orderCount,
+            // 4: totalGMV, 5: productRevenue, 6: shippingFee, 7: platformCommission,
+            // 8: supplierEarnings, 9: productCount, 10: storeCount, 11: commissionRate
+            
+            BigDecimal totalGMV = toBigDecimal(row[4]);
+            BigDecimal productRevenue = toBigDecimal(row[5]);
+            BigDecimal shippingFee = toBigDecimal(row[6]);
+            BigDecimal platformCommission = toBigDecimal(row[7]);
+            BigDecimal supplierEarnings = toBigDecimal(row[8]);
+            Double commissionRate = toDouble(row[11]);
             
             Double revenuePercentage = totalSupplierEarnings.compareTo(BigDecimal.ZERO) > 0
                     ? supplierEarnings.divide(totalSupplierEarnings, 4, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(100)).doubleValue()
@@ -143,12 +173,16 @@ public class ReportServiceImpl implements ReportService {
                     .supplierName((String) row[1])
                     .avatarUrl((String) row[2])
                     .totalOrders(toLong(row[3]))
-                    .totalRevenue(totalRevenue)
+                    .totalGMV(totalGMV)
+                    .totalProductRevenue(productRevenue)
+                    .totalShippingFee(shippingFee)
                     .platformCommission(platformCommission)
                     .supplierEarnings(supplierEarnings)
+                    .totalRevenue(totalGMV)  // Legacy: same as GMV
                     .revenuePercentage(revenuePercentage)
-                    .productCount(toLong(row[7]))
-                    .storeCount(toLong(row[8]))
+                    .productCount(toLong(row[9]))
+                    .storeCount(toLong(row[10]))
+                    .commissionRate(commissionRate)
                     .build();
         }).collect(Collectors.toList());
     }
@@ -823,20 +857,23 @@ public class ReportServiceImpl implements ReportService {
             // Add UTF-8 BOM for Excel compatibility
             baos.write(new byte[] { (byte) 0xEF, (byte) 0xBB, (byte) 0xBF });
 
-            // Header
-            writer.println("Supplier ID,Supplier Name,Total Orders,Total Revenue,Commission,Supplier Earnings,Revenue %,Products,Stores");
+
+            writer.println("Supplier ID,Supplier Name,Total Orders,Total GMV,Product Revenue,Shipping Fee,Platform Revenue,Commission Rate %,Supplier Earnings,Revenue Share %,Products,Stores");
 
             // Data
             List<RevenueBySupplierResponse> data = getRevenueBySupplier(startDate, endDate);
             for (RevenueBySupplierResponse item : data) {
-                writer.printf("%s,%s,%d,%s,%s,%s,%.2f,%d,%d%n",
+                writer.printf("%s,%s,%d,%s,%s,%s,%s,%.2f,%s,%.2f,%d,%d%n",
                         item.getSupplierId(),
                         escapeCSV(item.getSupplierName()),
                         item.getTotalOrders(),
-                        item.getTotalRevenue(),
-                        item.getPlatformCommission(),
-                        item.getSupplierEarnings(),
-                        item.getRevenuePercentage(),
+                        item.getTotalGMV(),  // Total GMV (what customer pays)
+                        item.getTotalProductRevenue(),  // Product revenue only
+                        item.getTotalShippingFee(),  // Shipping fees
+                        item.getPlatformCommission(),  // Platform's actual revenue (commission + shipping)
+                        item.getCommissionRate() * 100,  // Commission rate as percentage
+                        item.getSupplierEarnings(),  // Supplier's gross earnings
+                        item.getRevenuePercentage(),  // % of total supplier earnings
                         item.getProductCount(),
                         item.getStoreCount());
             }
@@ -957,10 +994,14 @@ public class ReportServiceImpl implements ReportService {
         return 0L;
     }
 
-    private Double getCommissionRate() {
-        return systemConfigRepository.findByConfigKey("commission_rate")
-                .map(config -> Double.parseDouble(config.getConfigValue()))
-                .orElse(5.0); // Default 5%
+    private Double toDouble(Object value) {
+        if (value == null) return 0.0;
+        if (value instanceof Double) return (Double) value;
+        if (value instanceof Float) return ((Float) value).doubleValue();
+        if (value instanceof BigDecimal) return ((BigDecimal) value).doubleValue();
+        if (value instanceof Integer) return ((Integer) value).doubleValue();
+        if (value instanceof Long) return ((Long) value).doubleValue();
+        return 0.0;
     }
 
     private Double calculateGrowthRate(Double previous, Double current) {

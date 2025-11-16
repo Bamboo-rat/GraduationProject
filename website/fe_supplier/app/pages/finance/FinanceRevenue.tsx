@@ -211,10 +211,6 @@ export default function FinanceRevenue() {
           <CreditCard className="w-5 h-5" />
           Rút tiền
         </button>
-        <button className="flex items-center gap-2 px-6 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium">
-          <FileText className="w-5 h-5" />
-          Lịch sử giao dịch
-        </button>
       </div>
 
       {/* 2.2. Revenue Over Time Chart */}
@@ -291,112 +287,6 @@ export default function FinanceRevenue() {
             </p>
           </div>
         </div>
-      </div>
-
-      {/* 2.3. Transaction History */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2 mb-4">
-            <FileText className="w-5 h-5 text-gray-700" />
-            Lịch sử giao dịch
-          </h2>
-          
-          {/* Filters */}
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Tìm kiếm theo mã đơn hàng..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-200"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <Filter className="w-5 h-5 text-gray-400" />
-              <select
-                value={transactionType}
-                onChange={(e) => setTransactionType(e.target.value as any)}
-                className="px-4 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-gray-200"
-              >
-                <option value="all">Tất cả giao dịch</option>
-                <option value="credit">Tiền vào (+)</option>
-                <option value="debit">Tiền ra (-)</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Transaction Table */}
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Thời gian
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Loại
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Số tiền
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Số dư sau
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Mã tham chiếu
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredTransactions.map((transaction) => (
-                <tr key={transaction.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {new Date(transaction.timestamp).toLocaleDateString('vi-VN')}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {new Date(transaction.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center gap-2">
-                      {getTransactionIcon(transaction.type)}
-                      <span className="text-sm font-medium text-gray-900">
-                        {getTransactionLabel(transaction.type)}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`text-lg font-bold ${transaction.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {transaction.amount > 0 ? '+' : ''}{walletService.formatVND(transaction.amount)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm font-semibold text-gray-900">
-                      {walletService.formatVND(transaction.balanceAfter)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm font-mono text-blue-600 hover:text-blue-800 cursor-pointer">
-                      {transaction.referenceCode}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {filteredTransactions.length === 0 && (
-          <div className="p-12 text-center text-gray-500">
-            <FileText className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-            <p className="text-lg font-semibold mb-2">Không có giao dịch</p>
-            <p className="text-sm">Không tìm thấy giao dịch phù hợp với bộ lọc</p>
-          </div>
-        )}
       </div>
     </div>
   );

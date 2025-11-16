@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { Supplier } from '~/service/supplierService';
-import { downloadFile, viewFile, fetchFileAsBlobUrl } from '~/utils/fileUtils';
+import { downloadFile, fetchFileAsBlobUrl } from '~/utils/fileUtils';
 import PDFViewer from '~/component/common/PDFViewer';
 import Toast, { type ToastType } from '~/component/common/Toast';
 
@@ -81,21 +81,6 @@ export default function SupplierPendingDetail({
     } catch (error: any) {
       console.error('Error downloading file:', error);
       const errorMessage = error?.message || 'Không thể tải file. Vui lòng thử lại.';
-      setToast({ message: errorMessage, type: 'error' });
-    }
-  };
-
-  // Handle file view
-  const handleViewFile = async (fileUrl: string | null | undefined) => {
-    if (!fileUrl) {
-      setToast({ message: 'URL file không hợp lệ', type: 'error' });
-      return;
-    }
-    try {
-      await viewFile(fileUrl);
-    } catch (error: any) {
-      console.error('Error viewing file:', error);
-      const errorMessage = error?.message || 'Không thể xem file. Vui lòng thử lại.';
       setToast({ message: errorMessage, type: 'error' });
     }
   };
@@ -281,8 +266,8 @@ export default function SupplierPendingDetail({
                                     <img
                                       src={businessLicenseBlobUrl}
                                       alt="Business License"
-                                      className="w-full h-48 object-contain bg-surface"
-                                      onClick={() => handleViewFile(supplier.businessLicenseUrl)}
+                                      className="w-full h-48 object-contain bg-surface cursor-pointer"
+                                      onClick={() => handleDownload(supplier.businessLicenseUrl, 'business-license.pdf')}
                                     />
                                   ) : (
                                     <div className="w-full h-48 bg-surface flex items-center justify-center">
@@ -291,13 +276,13 @@ export default function SupplierPendingDetail({
                                   )}
                                 </div>
                                 <button
-                                  onClick={() => handleViewFile(supplier.businessLicenseUrl)}
+                                  onClick={() => handleDownload(supplier.businessLicenseUrl, 'business-license.pdf')}
                                   className="w-full flex items-center justify-center gap-2 text-primary hover:text-primary-dark font-medium text-sm py-2 bg-primary-lighter rounded-lg hover:bg-primary-light transition-colors"
                                 >
                                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                   </svg>
-                                  Mở trong tab mới
+                                  Tải xuống file
                                 </button>
                               </div>
                             ) : (
@@ -367,14 +352,13 @@ export default function SupplierPendingDetail({
                             {!isPdf ? (
                               <div className="space-y-3">
                                 <button
-                                  onClick={() => handleViewFile(supplier.foodSafetyCertificateUrl)}
-
+                                  onClick={() => handleDownload(supplier.foodSafetyCertificateUrl, 'food-safety-certificate.pdf')}
                                   className="w-full flex items-center justify-center gap-2 btn-primary py-3 px-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 text-sm"
                                 >
                                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                   </svg>
-                                  Mở file trong tab mới
+                                  Tải xuống file
                                 </button>
                               </div>
                             ) : (

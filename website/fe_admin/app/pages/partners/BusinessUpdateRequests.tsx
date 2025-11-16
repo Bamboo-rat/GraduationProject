@@ -4,7 +4,7 @@ import DashboardLayout from '~/component/layout/DashboardLayout';
 import supplierService, { type Supplier, type SupplierStatus } from '~/service/supplierService';
 import storeService, { type StorePendingUpdateResponse } from '~/service/storeService';
 import Toast, { type ToastType } from '~/component/common/Toast';
-import { downloadFile, viewFile } from '~/utils/fileUtils';
+import { downloadFile } from '~/utils/fileUtils';
 import type { SupplierPendingUpdate, UpdateStatus } from '~/service/supplierService';
 import { FileText, Calendar, User, Building2, Eye, CheckCircle, XCircle, ChevronDown, Download, Store, Users } from 'lucide-react';
 
