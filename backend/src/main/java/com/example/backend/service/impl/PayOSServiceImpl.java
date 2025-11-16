@@ -218,6 +218,20 @@ public class PayOSServiceImpl implements PayOSService {
 
             String status = data.get("status").asText(); // PENDING, PAID, CANCELLED
 
+            // Auto-update order if payment is successful and order is still pending
+            if ("PAID".equals(status) && payment.getStatus() != PaymentStatus.SUCCESS) {
+                payment.setStatus(PaymentStatus.SUCCESS);
+                paymentRepository.save(payment);
+
+                if (order.getStatus() == OrderStatus.PENDING) {
+                    order.setStatus(OrderStatus.CONFIRMED);
+                    order.setPaymentStatus(PaymentStatus.SUCCESS);
+                    orderRepository.save(order);
+                    log.info("Order auto-confirmed after checking PAID status: orderId={}, orderCode={}", 
+                            order.getOrderId(), order.getOrderCode());
+                }
+            }
+
             return PaymentLinkResponse.builder()
                     .paymentLinkId(data.get("id").asText())
                     .orderCode(order.getOrderCode())
