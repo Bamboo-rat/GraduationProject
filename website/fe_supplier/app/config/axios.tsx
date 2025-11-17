@@ -20,7 +20,9 @@ axiosInstance.interceptors.request.use(
       '/auth/verify-reset-otp',
       '/auth/reset-password',
       '/auth/refresh',
-      '/locations'
+      '/locations',
+      '/files/upload',
+      '/files/download'
     ];
     
     const isPublicEndpoint = publicEndpoints.some(endpoint => 

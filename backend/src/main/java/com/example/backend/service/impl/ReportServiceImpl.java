@@ -84,7 +84,7 @@ public class ReportServiceImpl implements ReportService {
         LocalDateTime previousStartDate = startDate.minusDays(daysBetween);
         LocalDateTime previousEndDate = startDate;
         Object[] previousData = orderRepository.findRevenueSummary(previousStartDate, previousEndDate);
-        if (previousData == null || previousData.length < 0) {
+        if (previousData == null || previousData.length < 10) {
             previousData = new Object[]{
                 BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
                 BigDecimal.ZERO, BigDecimal.ZERO,
