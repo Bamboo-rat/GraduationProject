@@ -45,7 +45,11 @@ public class SecurityConfig {
                                 "/api/mobile/**",
                                 "/api/admin/fix-cod-wallets",
                                 "/api/auth/customer/login/**",
-                                "/ws/**" 
+                                "/ws/**",
+                                "/api/files/download",
+                                "/api/files/upload/business-license",
+                                "/api/files/upload/food-safety-certificate",
+                                "/api/files/upload/supplier-logo"
                         ).permitAll()
 
                         // Chat endpoints - require authentication (all roles)
@@ -71,17 +75,16 @@ public class SecurityConfig {
                         .requestMatchers("/api/orders/*/confirm", "/api/orders/*/prepare", "/api/orders/*/ship", "/api/orders/*/deliver").hasRole("SUPPLIER")
                         .requestMatchers("/api/orders/*/cancel").hasAnyRole("CUSTOMER", "SUPPLIER")
                         .requestMatchers("/api/orders/all").hasAnyRole("SUPER_ADMIN", "MODERATOR", "STAFF")
-                        // Public access for order viewing (for 3rd party integrations like shipping partners)
                         .requestMatchers("/api/orders/**").permitAll()
 
                         // Admin endpoints
                         .requestMatchers("/api/admins/**").hasAnyRole("SUPER_ADMIN", "MODERATOR", "STAFF")
 
-                        .requestMatchers("/api/files/**").permitAll()
+                        .requestMatchers("/api/files/**").authenticated() // Bảo mật các endpoint file còn lại
 
-                        // Public customer-facing endpoints 
+                        // Public customer-facing endpoints
                         .requestMatchers("/api/products/**", "/api/categories/**", "/api/stores/public", "/api/stores/top-stores", "/api/stores/*/products","/api/stores/nearby").permitAll()
-                        
+
                         // Review endpoints (public read access)
                         .requestMatchers("/api/reviews/**").permitAll()
 
