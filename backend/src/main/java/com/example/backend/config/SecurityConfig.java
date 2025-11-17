@@ -44,6 +44,7 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/api/mobile/**",
                                 "/api/admin/fix-cod-wallets",
+                                "/api/auth/customer/login/**",
                                 "/ws/**" 
                         ).permitAll()
 
