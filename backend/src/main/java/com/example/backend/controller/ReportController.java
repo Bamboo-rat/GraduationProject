@@ -20,7 +20,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 @Slf4j
@@ -39,11 +41,13 @@ public class ReportController {
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF')")
     @Operation(summary = "Get revenue summary", description = "Get comprehensive revenue summary for date range")
     public ResponseEntity<ApiResponse<RevenueSummaryResponse>> getRevenueSummary(
-            @Parameter(description = "Start date (ISO format)") @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
-            @Parameter(description = "End date (ISO format)") @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate
+            @Parameter(description = "Start date (ISO format with Z)") @RequestParam Instant startDate,
+            @Parameter(description = "End date (ISO format with Z)") @RequestParam Instant endDate
     ) {
-        log.info("GET /api/reports/revenue/summary - Start: {}, End: {}", startDate, endDate);
-        RevenueSummaryResponse response = reportService.getRevenueSummary(startDate, endDate);
+        LocalDateTime startDateTime = LocalDateTime.ofInstant(startDate, ZoneId.systemDefault());
+        LocalDateTime endDateTime = LocalDateTime.ofInstant(endDate, ZoneId.systemDefault());
+        log.info("GET /api/reports/revenue/summary - Start: {}, End: {}", startDateTime, endDateTime);
+        RevenueSummaryResponse response = reportService.getRevenueSummary(startDateTime, endDateTime);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -51,11 +55,13 @@ public class ReportController {
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF')")
     @Operation(summary = "Get revenue by supplier", description = "Get revenue breakdown by supplier")
     public ResponseEntity<ApiResponse<List<RevenueBySupplierResponse>>> getRevenueBySupplier(
-            @Parameter(description = "Start date") @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
-            @Parameter(description = "End date") @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate
+            @Parameter(description = "Start date") @RequestParam Instant startDate,
+            @Parameter(description = "End date") @RequestParam Instant endDate
     ) {
-        log.info("GET /api/reports/revenue/by-supplier - Start: {}, End: {}", startDate, endDate);
-        List<RevenueBySupplierResponse> response = reportService.getRevenueBySupplier(startDate, endDate);
+        LocalDateTime startDateTime = LocalDateTime.ofInstant(startDate, ZoneId.systemDefault());
+        LocalDateTime endDateTime = LocalDateTime.ofInstant(endDate, ZoneId.systemDefault());
+        log.info("GET /api/reports/revenue/by-supplier - Start: {}, End: {}", startDateTime, endDateTime);
+        List<RevenueBySupplierResponse> response = reportService.getRevenueBySupplier(startDateTime, endDateTime);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -63,11 +69,13 @@ public class ReportController {
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF')")
     @Operation(summary = "Get revenue by category", description = "Get revenue breakdown by category")
     public ResponseEntity<ApiResponse<List<RevenueByCategoryResponse>>> getRevenueByCategory(
-            @Parameter(description = "Start date") @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
-            @Parameter(description = "End date") @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate
+            @Parameter(description = "Start date") @RequestParam Instant startDate,
+            @Parameter(description = "End date") @RequestParam Instant endDate
     ) {
-        log.info("GET /api/reports/revenue/by-category - Start: {}, End: {}", startDate, endDate);
-        List<RevenueByCategoryResponse> response = reportService.getRevenueByCategory(startDate, endDate);
+        LocalDateTime startDateTime = LocalDateTime.ofInstant(startDate, ZoneId.systemDefault());
+        LocalDateTime endDateTime = LocalDateTime.ofInstant(endDate, ZoneId.systemDefault());
+        log.info("GET /api/reports/revenue/by-category - Start: {}, End: {}", startDateTime, endDateTime);
+        List<RevenueByCategoryResponse> response = reportService.getRevenueByCategory(startDateTime, endDateTime);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -75,11 +83,13 @@ public class ReportController {
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF')")
     @Operation(summary = "Get revenue time series", description = "Get daily revenue time series")
     public ResponseEntity<ApiResponse<List<RevenueTimeSeriesResponse>>> getRevenueTimeSeries(
-            @Parameter(description = "Start date") @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
-            @Parameter(description = "End date") @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate
+            @Parameter(description = "Start date") @RequestParam Instant startDate,
+            @Parameter(description = "End date") @RequestParam Instant endDate
     ) {
-        log.info("GET /api/reports/revenue/time-series - Start: {}, End: {}", startDate, endDate);
-        List<RevenueTimeSeriesResponse> response = reportService.getRevenueTimeSeries(startDate, endDate);
+        LocalDateTime startDateTime = LocalDateTime.ofInstant(startDate, ZoneId.systemDefault());
+        LocalDateTime endDateTime = LocalDateTime.ofInstant(endDate, ZoneId.systemDefault());
+        log.info("GET /api/reports/revenue/time-series - Start: {}, End: {}", startDateTime, endDateTime);
+        List<RevenueTimeSeriesResponse> response = reportService.getRevenueTimeSeries(startDateTime, endDateTime);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

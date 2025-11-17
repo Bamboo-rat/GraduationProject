@@ -51,7 +51,7 @@ public class ReportServiceImpl implements ReportService {
         log.info("Generating revenue summary from {} to {}", startDate, endDate);
 
         Object[] summaryData = orderRepository.findRevenueSummary(startDate, endDate);
-        if (summaryData == null) {
+        if (summaryData == null || summaryData.length == 0) {
             summaryData = new Object[]{
                 BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, 
                 BigDecimal.ZERO, BigDecimal.ZERO, 
@@ -84,7 +84,7 @@ public class ReportServiceImpl implements ReportService {
         LocalDateTime previousStartDate = startDate.minusDays(daysBetween);
         LocalDateTime previousEndDate = startDate;
         Object[] previousData = orderRepository.findRevenueSummary(previousStartDate, previousEndDate);
-        if (previousData == null) {
+        if (previousData == null || previousData.length == 0) {
             previousData = new Object[]{
                 BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
                 BigDecimal.ZERO, BigDecimal.ZERO,

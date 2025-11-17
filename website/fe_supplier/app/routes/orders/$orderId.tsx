@@ -1,7 +1,6 @@
 import type { Route } from './+types/$orderId';
 import OrderDetail from '~/pages/orders/OrderDetail';
 import DashboardLayout from '~/component/layout/DashboardLayout';
-import orderService from '~/service/orderService';
 
 export function meta({ }: Route.MetaArgs) {
   return [
@@ -10,27 +9,13 @@ export function meta({ }: Route.MetaArgs) {
   ];
 }
 
-// Loader: Pre-fetch order detail before navigation
-export async function loader({ params }: Route.LoaderArgs) {
-  const { orderId } = params;
+// Loader removed: SSR cannot access localStorage for auth token
+// Data fetching moved to client-side in OrderDetail component
 
-  if (!orderId) {
-    throw new Response('Order ID not found', { status: 404 });
-  }
-
-  try {
-    const order = await orderService.getOrderById(orderId);
-    return { initialOrder: order };
-  } catch (error: any) {
-    console.error('Loader error:', error);
-    throw new Response(error.message || 'Failed to load order', { status: 404 });
-  }
-}
-
-export default function OrderDetailRoute({ loaderData }: Route.ComponentProps) {
+export default function OrderDetailRoute() {
   return (
     <DashboardLayout>
-      <OrderDetail loaderData={loaderData} />
+      <OrderDetail />
     </DashboardLayout>
   );
 }

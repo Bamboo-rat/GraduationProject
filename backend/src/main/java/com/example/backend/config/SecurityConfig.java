@@ -76,14 +76,8 @@ public class SecurityConfig {
 
                         // Admin endpoints
                         .requestMatchers("/api/admins/**").hasAnyRole("SUPER_ADMIN", "MODERATOR", "STAFF")
-                        .requestMatchers(
-                        "/api/files/upload/business-license",
-                        "/api/files/upload/food-safety-certificate",
-                        "/api/files/upload/supplier-logo"
-                        ).permitAll()
-                        .requestMatchers("/api/files/download").permitAll()
 
-                        .requestMatchers("/api/files/**").authenticated()
+                        .requestMatchers("/api/files/**").permitAll()
 
                         // Public customer-facing endpoints 
                         .requestMatchers("/api/products/**", "/api/categories/**", "/api/stores/public", "/api/stores/top-stores", "/api/stores/*/products","/api/stores/nearby").permitAll()
