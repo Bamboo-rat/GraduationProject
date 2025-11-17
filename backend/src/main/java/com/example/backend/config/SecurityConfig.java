@@ -81,6 +81,8 @@ public class SecurityConfig {
                         "/api/files/upload/food-safety-certificate",
                         "/api/files/upload/supplier-logo"
                         ).permitAll()
+                        .requestMatchers("/api/files/download").permitAll()
+
                         .requestMatchers("/api/files/**").authenticated()
 
                         // Public customer-facing endpoints 

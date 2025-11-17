@@ -170,23 +170,24 @@ public interface OrderRepository extends JpaRepository<Order, String> {
                         s.businessName,
                         s.avatarUrl,
                         COUNT(DISTINCT o.orderId),
-                        SUM(o.totalAmount + o.shippingFee),
-                        SUM(o.totalAmount),
-                        SUM(o.shippingFee),
-                        SUM(o.totalAmount * s.commissionRate),
-                        SUM(o.totalAmount * (1 - s.commissionRate) + o.shippingFee),
-                        COUNT(DISTINCT sp.variant.product.productId),
+                        COALESCE(SUM(o.totalAmount + o.shippingFee), 0),
+                        COALESCE(SUM(o.totalAmount), 0),
+                        COALESCE(SUM(o.shippingFee), 0),
+                        COALESCE(SUM(o.totalAmount * s.commissionRate), 0),
+                        COALESCE(SUM(o.totalAmount * (1 - s.commissionRate) + o.shippingFee), 0),
+                        (SELECT COUNT(DISTINCT sp2.variant.product.productId) 
+                         FROM StoreProduct sp2 
+                         WHERE sp2.store.supplier.userId = s.userId),
                         COUNT(DISTINCT st.storeId),
                         s.commissionRate
                 FROM Order o
                 JOIN o.store st
                 JOIN st.supplier s
-                LEFT JOIN st.storeProducts sp
                 WHERE o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED
                     AND o.deliveredAt IS NOT NULL
                     AND o.deliveredAt BETWEEN :startDate AND :endDate
                 GROUP BY s.userId, s.businessName, s.avatarUrl, s.commissionRate
-                ORDER BY SUM(o.totalAmount * (1 - s.commissionRate) + o.shippingFee) DESC
+                ORDER BY COALESCE(SUM(o.totalAmount * (1 - s.commissionRate) + o.shippingFee), 0) DESC
     """)
     List<Object[]> findRevenueBySupplier(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
