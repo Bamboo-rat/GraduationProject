@@ -37,24 +37,24 @@ public interface OrderRepository extends JpaRepository<Order, String> {
 
     // Search orders by order code or shipping address
     @Query("SELECT o FROM Order o WHERE o.store.storeId = :storeId " +
-           "AND (LOWER(o.orderCode) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(o.shippingAddress) LIKE LOWER(CONCAT('%', :search, '%')))")
+            "AND (LOWER(o.orderCode) LIKE LOWER(CONCAT('%', :search, '%')) " +
+            "OR LOWER(o.shippingAddress) LIKE LOWER(CONCAT('%', :search, '%')))")
     Page<Order> searchStoreOrders(@Param("storeId") String storeId, @Param("search") String search, Pageable pageable);
 
     @Query("SELECT o FROM Order o WHERE o.store.storeId = :storeId AND o.status = :status " +
-           "AND (LOWER(o.orderCode) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(o.shippingAddress) LIKE LOWER(CONCAT('%', :search, '%')))")
-    Page<Order> searchStoreOrdersByStatus(@Param("storeId") String storeId, @Param("status") OrderStatus status, 
+            "AND (LOWER(o.orderCode) LIKE LOWER(CONCAT('%', :search, '%')) " +
+            "OR LOWER(o.shippingAddress) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<Order> searchStoreOrdersByStatus(@Param("storeId") String storeId, @Param("status") OrderStatus status,
                                           @Param("search") String search, Pageable pageable);
 
     @Query("SELECT o FROM Order o WHERE o.store.storeId IN :storeIds " +
-           "AND (LOWER(o.orderCode) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(o.shippingAddress) LIKE LOWER(CONCAT('%', :search, '%')))")
+            "AND (LOWER(o.orderCode) LIKE LOWER(CONCAT('%', :search, '%')) " +
+            "OR LOWER(o.shippingAddress) LIKE LOWER(CONCAT('%', :search, '%')))")
     Page<Order> searchStoreOrdersIn(@Param("storeIds") List<String> storeIds, @Param("search") String search, Pageable pageable);
 
     @Query("SELECT o FROM Order o WHERE o.store.storeId IN :storeIds AND o.status = :status " +
-           "AND (LOWER(o.orderCode) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(o.shippingAddress) LIKE LOWER(CONCAT('%', :search, '%')))")
+            "AND (LOWER(o.orderCode) LIKE LOWER(CONCAT('%', :search, '%')) " +
+            "OR LOWER(o.shippingAddress) LIKE LOWER(CONCAT('%', :search, '%')))")
     Page<Order> searchStoreOrdersInByStatus(@Param("storeIds") List<String> storeIds, @Param("status") OrderStatus status,
                                             @Param("search") String search, Pageable pageable);
 
@@ -184,6 +184,7 @@ public interface OrderRepository extends JpaRepository<Order, String> {
                 JOIN st.supplier s
                 LEFT JOIN st.storeProducts sp
                 WHERE o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED
+                    AND o.deliveredAt IS NOT NULL
                     AND o.deliveredAt BETWEEN :startDate AND :endDate
                 GROUP BY s.userId, s.businessName, s.avatarUrl, s.commissionRate
                 ORDER BY SUM(o.totalAmount * (1 - s.commissionRate) + o.shippingFee) DESC
@@ -201,12 +202,14 @@ public interface OrderRepository extends JpaRepository<Order, String> {
                 JOIN o.store st
                 JOIN st.supplier s
                 WHERE o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED
+                    AND o.deliveredAt IS NOT NULL
                     AND o.deliveredAt BETWEEN :startDate AND :endDate
                 GROUP BY FUNCTION('DATE', o.deliveredAt)
                 ORDER BY FUNCTION('DATE', o.deliveredAt) ASC
     """)
     List<Object[]> findRevenueTimeSeries(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
+    // FIXED: Added null check and proper status conditions
     @Query("""
         SELECT
             COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN o.totalAmount + o.shippingFee ELSE 0 END), 0),
@@ -222,23 +225,29 @@ public interface OrderRepository extends JpaRepository<Order, String> {
         FROM Order o
         JOIN o.store st
         JOIN st.supplier s
-        WHERE o.deliveredAt BETWEEN :startDate AND :endDate
+        WHERE o.createdAt BETWEEN :startDate AND :endDate
+            AND (o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED 
+                 OR o.status = com.example.backend.entity.enums.OrderStatus.CANCELED)
+            AND (o.deliveredAt IS NULL OR o.deliveredAt BETWEEN :startDate AND :endDate)
     """)
     Object[] findRevenueSummary(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
     // ==================== CUSTOMER BEHAVIOR REPORT QUERIES ====================
 
+    // FIXED: Simplified query to avoid JPQL limitations
     @Query("""
                 SELECT
                         c.tier,
                         COUNT(DISTINCT c.userId),
                         COUNT(DISTINCT o.orderId),
-                        SUM(o.totalAmount),
-                        AVG(o.totalAmount)
+                        COALESCE(SUM(o.totalAmount), 0),
+                        COALESCE(AVG(o.totalAmount), 0)
                 FROM Customer c
                 LEFT JOIN c.orders o
-                WHERE o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED
-                    AND o.deliveredAt BETWEEN :startDate AND :endDate
+                WHERE (o.orderId IS NULL) OR 
+                      (o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED
+                       AND o.deliveredAt IS NOT NULL
+                       AND o.deliveredAt BETWEEN :startDate AND :endDate)
                 GROUP BY c.tier
     """)
     List<Object[]> findCustomerSegmentation(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
@@ -264,12 +273,17 @@ public interface OrderRepository extends JpaRepository<Order, String> {
     """)
     List<Object[]> findCustomerLifetimeValue(Pageable pageable);
 
-    @Query("""
-        SELECT
-            SUM(CASE WHEN c.createdAt BETWEEN :startDate AND :endDate THEN 1 ELSE 0 END),
-            SUM(CASE WHEN c.createdAt < :startDate AND o.deliveredAt BETWEEN :startDate AND :endDate AND o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN 1 ELSE 0 END)
-        FROM Customer c
-        LEFT JOIN c.orders o
-    """)
+    // FIXED: Using native query for complex aggregation to avoid JPQL limitations
+    @Query(value = """
+        SELECT 
+            (SELECT COUNT(*) FROM customer WHERE created_at BETWEEN :startDate AND :endDate) as new_customers,
+            (SELECT COUNT(DISTINCT c.user_id) 
+             FROM customer c 
+             INNER JOIN orders o ON c.user_id = o.customer_id 
+             WHERE c.created_at < :startDate 
+                AND o.status = 'DELIVERED'
+                AND o.delivered_at IS NOT NULL
+                AND o.delivered_at BETWEEN :startDate AND :endDate) as returning_customers
+        """, nativeQuery = true)
     Object[] findNewVsReturningCustomers(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 }
