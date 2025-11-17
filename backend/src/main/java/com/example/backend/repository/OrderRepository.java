@@ -329,19 +329,15 @@ public interface OrderRepository extends JpaRepository<Order, String> {
     """)
     List<Object[]> findCustomerLifetimeValue(Pageable pageable);
 
-    // FIXED: Using native query to avoid JPQL limitations with complex aggregations
-    @Query(value = """
-        SELECT 
-            (SELECT COUNT(*) FROM customer WHERE created_at BETWEEN :startDate AND :endDate) as new_customers,
-            (SELECT COUNT(DISTINCT c.user_id) 
-             FROM customer c 
-             INNER JOIN orders o ON c.user_id = o.customer_id 
-             WHERE c.created_at < :startDate 
-                AND o.status = 'DELIVERED'
-                AND o.delivered_at IS NOT NULL
-                AND o.delivered_at BETWEEN :startDate AND :endDate) as returning_customers
-        """, nativeQuery = true)
-    Object[] findNewVsReturningCustomers(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+    @Query("""
+        SELECT COUNT(DISTINCT o.customer.userId)
+        FROM Order o
+        WHERE o.customer.createdAt < :startDate
+            AND o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED
+            AND o.deliveredAt IS NOT NULL
+            AND o.deliveredAt BETWEEN :startDate AND :endDate
+    """)
+    Long countReturningCustomers(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
     // Additional helper query for purchase patterns
     @Query("""

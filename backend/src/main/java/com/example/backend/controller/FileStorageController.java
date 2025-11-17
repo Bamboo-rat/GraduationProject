@@ -261,37 +261,6 @@ public class FileStorageController {
             return ResponseEntity.badRequest().build();
         }
 
-        // For Cloudinary URLs, try to generate signed URL
-        if (urlToFetch.contains("res.cloudinary.com")) {
-            try {
-                // Extract public_id from Cloudinary URL
-                String publicId = extractPublicIdFromUrl(urlToFetch);
-                if (publicId != null) {
-                    log.info("Extracted public_id: {}", publicId);
-                    
-                    // Determine resource type from URL
-                    String resourceType = urlToFetch.contains("/image/upload/") ? "image" : "raw";
-                    
-                    // Generate signed URL with 1 hour expiration
-                    String signedUrl = cloudinary.url()
-                            .resourceType(resourceType)
-                            .type("upload")
-                            .signed(true)
-                            .generate(publicId);
-                    
-                    log.info("Generated signed URL, redirecting...");
-                    
-                    // Redirect to signed URL
-                    return ResponseEntity.status(HttpStatus.FOUND)
-                            .location(URI.create(signedUrl))
-                            .build();
-                }
-            } catch (Exception e) {
-                log.warn("Failed to generate signed URL, falling back to proxy: {}", e.getMessage());
-            }
-        }
-
-        // Fallback: Proxy the file
         try {
             log.info("Proxying file from: {}", urlToFetch);
             

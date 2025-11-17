@@ -234,9 +234,6 @@ public class ReportServiceImpl implements ReportService {
             return Collections.emptyList();
         }
 
-        // Get new vs returning customers per day
-        Object[] customerData = orderRepository.findNewVsReturningCustomers(startDate, endDate);
-
         return results.stream().map(row -> {
             LocalDate date = row[0] instanceof java.sql.Date
                     ? ((java.sql.Date) row[0]).toLocalDate()
@@ -264,18 +261,19 @@ public class ReportServiceImpl implements ReportService {
         log.info("Generating customer behavior summary from {} to {}", startDate, endDate);
 
         long totalCustomers = customerRepository.count();
-        
+
         // Get suspended and banned customers
         long suspendedCustomers = customerRepository.countByStatus(CustomerStatus.SUSPENDED);
         long bannedCustomers = customerRepository.countByStatus(CustomerStatus.BANNED);
 
-    // Get new vs returning customers
-        Object[] customerData = orderRepository.findNewVsReturningCustomers(startDate, endDate);
-        if (customerData == null) {
-            customerData = new Object[]{0L, 0L};
+        Long newCustomers = customerRepository.countByCreatedAtBetween(startDate, endDate);
+        Long returningCustomers = orderRepository.countReturningCustomers(startDate, endDate);
+        if (newCustomers == null) {
+            newCustomers = 0L;
         }
-        Long newCustomers = toLong(customerData[0]);
-        Long returningCustomers = toLong(customerData[1]);
+        if (returningCustomers == null) {
+            returningCustomers = 0L;
+        }
         Long activeCustomers = newCustomers + returningCustomers;
 
         // Get segmentation data
