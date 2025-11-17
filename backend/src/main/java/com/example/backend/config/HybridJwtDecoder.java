@@ -4,6 +4,7 @@ import com.nimbusds.jose.JWSVerifier;
 import com.nimbusds.jose.crypto.MACVerifier;
 import com.nimbusds.jwt.SignedJWT;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.jwt.*;
 import org.springframework.stereotype.Component;
@@ -23,6 +24,7 @@ public class HybridJwtDecoder implements JwtDecoder {
     private final JwtDecoder keycloakJwtDecoder;
     private final String jwtSecret;
 
+    @Autowired
     public HybridJwtDecoder(
             @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}") String issuerUri,
             @Value("${jwt.secret:your-256-bit-secret-key-change-this-in-production-minimum-32-characters}") String jwtSecret) {
