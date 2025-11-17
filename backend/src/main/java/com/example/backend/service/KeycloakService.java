@@ -92,4 +92,20 @@ public interface KeycloakService {
      * @param refreshToken Refresh token to revoke
      */
     void revokeToken(String refreshToken);
+
+    /**
+     * Exchange OAuth2 authorization code for tokens via Keycloak Identity Provider
+     * @param code Authorization code from OAuth provider
+     * @param redirectUri Redirect URI used in OAuth flow
+     * @param provider Provider name (google, facebook)
+     * @return Token response with access_token, refresh_token, etc.
+     */
+    Map<String, Object> exchangeSocialLoginCode(String code, String redirectUri, String provider);
+
+    /**
+     * Decode JWT token and extract user information
+     * @param accessToken JWT access token
+     * @return User info map with sub (keycloakId), email, name, etc.
+     */
+    Map<String, Object> getUserInfoFromToken(String accessToken);
 }

@@ -370,11 +370,16 @@ export default function RevenueReport() {
                 <img src={supplier.avatarUrl || 'https://via.placeholder.com/40'} alt={supplier.supplierName} className="w-10 h-10 rounded-full" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">{supplier.supplierName}</p>
-                  <p className="text-xs text-gray-500">{supplier.totalOrders} đơn • {reportService.formatPercentage(supplier.revenuePercentage)}</p>
+                  <p className="text-xs text-gray-500">
+                    {supplier.totalOrders} đơn • {reportService.formatPercentage(supplier.revenuePercentage)} • 
+                    Hoa hồng {reportService.formatPercentage((supplier.commissionRate || 0) * 100)}
+                  </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-semibold text-gray-900">{reportService.formatCurrency(supplier.totalRevenue)}</p>
-                  <p className="text-xs text-gray-500">{reportService.formatCurrency(supplier.supplierEarnings)}</p>
+                  <p className="text-sm font-semibold text-[#2F855A]">{reportService.formatCurrency(supplier.supplierEarnings)}</p>
+                  <p className="text-xs text-gray-500">
+                    Nền tảng: {reportService.formatCurrency(supplier.platformCommission)}
+                  </p>
                 </div>
               </div>
             ))}

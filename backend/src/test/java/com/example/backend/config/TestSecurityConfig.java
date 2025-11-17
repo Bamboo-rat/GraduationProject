@@ -18,10 +18,20 @@ import java.util.Map;
 public class TestSecurityConfig {
 
     /**
-     * Mock JwtDecoder to avoid connecting to Keycloak during tests
+     * Mock HybridJwtDecoder to avoid connecting to Keycloak during tests
      */
     @Bean
     @Primary
+    public HybridJwtDecoder hybridJwtDecoder() {
+        // Use constructor with JWT secret to create internal decoder
+        // This avoids Keycloak connection
+        return new HybridJwtDecoder("test-secret-key-for-jwt-token-generation-minimum-32-characters-long");
+    }
+
+    /**
+     * Mock JwtDecoder fallback 
+     */
+    @Bean
     public JwtDecoder jwtDecoder() {
         JwtDecoder mockDecoder = Mockito.mock(JwtDecoder.class);
         

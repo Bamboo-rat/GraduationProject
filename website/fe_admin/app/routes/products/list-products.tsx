@@ -32,10 +32,37 @@ export async function clientLoader({ request }: Route.ClientLoaderArgs) {
     const response = await productService.getProductsSummary(params);
     const pageData = response?.data;
 
+    if (!pageData || !pageData.content) {
+      return {
+        products: [],
+        totalPages: 0,
+        totalElements: 0,
+        initialPage: page,
+        initialStatus: status,
+        initialCategory: categoryId,
+        initialSearch: search,
+      };
+    }
+
+    // Handle both PaginatedResponse and PageResponse
+    let totalPages = 0;
+    let totalElements = 0;
+
+    // Check if it's PaginatedResponse (has page.totalPages)
+    if ('page' in pageData && pageData.page) {
+      totalPages = pageData.page.totalPages || 0;
+      totalElements = pageData.page.totalElements || 0;
+    }
+    // Check if it's PageResponse (has totalPages at root)
+    else if ('totalPages' in pageData) {
+      totalPages = pageData.totalPages || 0;
+      totalElements = pageData.totalElements || 0;
+    }
+
     return {
-      products: pageData?.content || [],
-      totalPages: pageData?.totalPages || 0,
-      totalElements: pageData?.totalElements || 0,
+      products: pageData.content || [],
+      totalPages,
+      totalElements,
       initialPage: page,
       initialStatus: status,
       initialCategory: categoryId,

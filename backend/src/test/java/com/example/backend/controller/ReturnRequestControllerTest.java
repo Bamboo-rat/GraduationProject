@@ -1,5 +1,6 @@
 package com.example.backend.controller;
 
+import com.example.backend.config.TestSecurityConfig;
 import com.example.backend.dto.request.CreateReturnRequestRequest;
 import com.example.backend.dto.request.ReviewReturnRequestRequest;
 import com.example.backend.dto.response.ReturnRequestResponse;
@@ -11,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -31,6 +33,7 @@ import org.springframework.test.context.ActiveProfiles;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
+@Import(TestSecurityConfig.class)
 class ReturnRequestControllerTest {
 
     @Autowired

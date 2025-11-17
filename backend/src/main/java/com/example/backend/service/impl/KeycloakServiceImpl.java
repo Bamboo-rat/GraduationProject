@@ -4,6 +4,8 @@ import com.example.backend.dto.request.LoginRequest;
 import com.example.backend.exception.ErrorCode;
 import com.example.backend.exception.custom.KeycloakException;
 import com.example.backend.service.KeycloakService;
+import com.nimbusds.jwt.JWT;
+import com.nimbusds.jwt.JWTParser;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
 import org.keycloak.admin.client.Keycloak;
@@ -22,6 +24,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
@@ -364,6 +367,69 @@ KeycloakServiceImpl implements KeycloakService {
         } catch (Exception e) {
             // Don't throw exception on logout failure, just log it
             log.error("Failed to revoke token", e);
+        }
+    }
+
+    @Override
+    public Map<String, Object> exchangeSocialLoginCode(String code, String redirectUri, String provider) {
+        try {
+            RestTemplate restTemplate = new RestTemplate();
+            String tokenUrl = authServerUrl + "/realms/" + realm + "/protocol/openid-connect/token";
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+            MultiValueMap<String, String> map = new LinkedMultiValueMap<>();
+            map.add("grant_type", "authorization_code");
+            map.add("client_id", clientId);
+            map.add("client_secret", clientSecret);
+            map.add("code", code);
+            map.add("redirect_uri", redirectUri);
+
+            HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(map, headers);
+            @SuppressWarnings("rawtypes")
+            ResponseEntity<Map> response = restTemplate.exchange(tokenUrl, HttpMethod.POST, entity, Map.class);
+
+            if (response.getStatusCode() == HttpStatus.OK) {
+                log.info("Successfully exchanged {} authorization code for tokens", provider);
+                @SuppressWarnings("unchecked")
+                Map<String, Object> body = response.getBody();
+                return body;
+            } else {
+                log.error("Failed to exchange {} authorization code. Status: {}", provider, response.getStatusCode());
+                throw new KeycloakException(ErrorCode.SOCIAL_LOGIN_FAILED);
+            }
+
+        } catch (KeycloakException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Error exchanging {} authorization code: {}", provider, e.getMessage(), e);
+            throw new KeycloakException(ErrorCode.SOCIAL_LOGIN_FAILED);
+        }
+    }
+
+    @Override
+    public Map<String, Object> getUserInfoFromToken(String accessToken) {
+        try {
+            // Parse JWT token using Nimbus JOSE+JWT library
+            JWT jwt = JWTParser.parse(accessToken);
+            Map<String, Object> claims = jwt.getJWTClaimsSet().getClaims();
+
+            // Extract standard claims
+            Map<String, Object> userInfo = new HashMap<>();
+            userInfo.put("sub", claims.get("sub")); // Keycloak user ID
+            userInfo.put("email", claims.get("email"));
+            userInfo.put("name", claims.get("name"));
+            userInfo.put("given_name", claims.get("given_name"));
+            userInfo.put("family_name", claims.get("family_name"));
+            userInfo.put("preferred_username", claims.get("preferred_username"));
+
+            log.info("Successfully decoded JWT token for user: {}", claims.get("sub"));
+            return userInfo;
+
+        } catch (Exception e) {
+            log.error("Error decoding JWT token: {}", e.getMessage(), e);
+            throw new KeycloakException(ErrorCode.TOKEN_INVALID);
         }
     }
 }

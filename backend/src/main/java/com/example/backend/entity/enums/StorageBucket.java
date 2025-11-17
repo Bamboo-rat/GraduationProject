@@ -12,6 +12,7 @@ public enum StorageBucket {
     AVATAR_CUSTOMER("avatar-customer", "Customer profile avatars"),
     AVATAR_ADMIN("avatar-admin", "Admin profile avatars"),
     SUPPLIER_LOGO("supplier-logo", "Supplier business logos"),
+    STORE_LOGO("store-logo", "Store logo images"),
     REVIEW_IMAGES("review-images", "Customer review images");
 
     private final String folderName;

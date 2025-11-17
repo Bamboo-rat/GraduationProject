@@ -145,7 +145,8 @@ public enum ErrorCode {
     KEYCLOAK_ROLE_ASSIGNMENT_FAILED("K3004", "Failed to assign role to user in Keycloak", "Gán quyền cho người dùng thất bại", HttpStatus.INTERNAL_SERVER_ERROR),
     KEYCLOAK_AUTHENTICATION_FAILED("K3005", "Authentication failed", "Đăng nhập thất bại", HttpStatus.UNAUTHORIZED),
     KEYCLOAK_USER_NOT_FOUND("K3006", "User not found in Keycloak", "Không tìm thấy người dùng trong Keycloak", HttpStatus.NOT_FOUND),
-    KEYCLOAK_PASSWORD_UPDATE_FAILED("K3007", "Failed to update password in Keycloak", "Cập nhật mật khẩu thất bại", HttpStatus.INTERNAL_SERVER_ERROR);
+    KEYCLOAK_PASSWORD_UPDATE_FAILED("K3007", "Failed to update password in Keycloak", "Cập nhật mật khẩu thất bại", HttpStatus.INTERNAL_SERVER_ERROR),
+    SOCIAL_LOGIN_FAILED("K3008", "Social login failed", "Đăng nhập qua mạng xã hội thất bại", HttpStatus.BAD_REQUEST);
 
     private final String code;
     private final String message;

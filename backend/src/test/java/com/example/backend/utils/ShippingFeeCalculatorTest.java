@@ -53,14 +53,14 @@ class ShippingFeeCalculatorTest {
 
     @Test
     void testCalculateShippingFee_ShortDistance() {
-        // 5km should be: 15,000 + (5-3)*5,000 = 15,000 + 10,000 = 25,000
+        // ~8km should be: 15,000 + (8-3)*5,000 = 15,000 + 25,000 = 40,000
         BigDecimal fee = ShippingFeeCalculator.calculateShippingFee(
                 10.762622, 106.660172,  // District 1
-                10.810000, 106.710000   // ~5-6 km away
+                10.810000, 106.710000   // ~8 km away (actual distance)
         );
-        assertTrue(fee.compareTo(new BigDecimal("20000")) >= 0 &&
-                   fee.compareTo(new BigDecimal("30000")) <= 0,
-                "Fee should be between 20,000 and 30,000 VND for ~5km");
+        assertTrue(fee.compareTo(new BigDecimal("38000")) >= 0 &&
+                   fee.compareTo(new BigDecimal("45000")) <= 0,
+                "Fee should be between 38,000 and 45,000 VND for ~8km");
     }
 
     @Test

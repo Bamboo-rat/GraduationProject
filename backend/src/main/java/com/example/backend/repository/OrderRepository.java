@@ -174,8 +174,8 @@ public interface OrderRepository extends JpaRepository<Order, String> {
                         SUM(o.totalAmount + o.shippingFee),
                         SUM(o.totalAmount),
                         SUM(o.shippingFee),
-                        SUM((o.totalAmount * s.commissionRate) + o.shippingFee),
-                        SUM(o.totalAmount * (1 - s.commissionRate)),
+                        SUM(o.totalAmount * s.commissionRate),
+                        SUM(o.totalAmount * (1 - s.commissionRate) + o.shippingFee),
                         COUNT(DISTINCT sp.variant.product.productId),
                         COUNT(DISTINCT st.storeId),
                         s.commissionRate
@@ -186,7 +186,7 @@ public interface OrderRepository extends JpaRepository<Order, String> {
                 WHERE o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED
                     AND o.deliveredAt BETWEEN :startDate AND :endDate
                 GROUP BY s.userId, s.businessName, s.avatarUrl, s.commissionRate
-                ORDER BY SUM(o.totalAmount * (1 - s.commissionRate)) DESC
+                ORDER BY SUM(o.totalAmount * (1 - s.commissionRate) + o.shippingFee) DESC
     """)
     List<Object[]> findRevenueBySupplier(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
@@ -212,8 +212,8 @@ public interface OrderRepository extends JpaRepository<Order, String> {
             COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN o.totalAmount + o.shippingFee ELSE 0 END), 0),
             COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN o.totalAmount ELSE 0 END), 0),
             COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN o.shippingFee ELSE 0 END), 0),
-            COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN (o.totalAmount * s.commissionRate) + o.shippingFee ELSE 0 END), 0),
-            COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN o.totalAmount * (1 - s.commissionRate) ELSE 0 END), 0),
+            COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN o.totalAmount * s.commissionRate ELSE 0 END), 0),
+            COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN o.totalAmount * (1 - s.commissionRate) + o.shippingFee ELSE 0 END), 0),
             SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN 1 ELSE 0 END),
             SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.CANCELED THEN 1 ELSE 0 END),
             COUNT(o),

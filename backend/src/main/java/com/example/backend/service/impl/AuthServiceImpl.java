@@ -514,4 +514,112 @@ public class AuthServiceImpl implements AuthService {
                     "Không thể cập nhật mật khẩu. Vui lòng thử lại sau.");
         }
     }
+
+    @Override
+    @Transactional
+    public LoginResponse loginWithGoogle(String code, String redirectUri) {
+        log.info("Google social login attempt with code: {}", code.substring(0, Math.min(10, code.length())) + "...");
+        
+        try {
+            // Exchange authorization code for tokens via Keycloak Identity Provider
+            Map<String, Object> tokenResponse = keycloakService.exchangeSocialLoginCode(code, redirectUri, "google");
+            
+            String accessToken = (String) tokenResponse.get("access_token");
+            String refreshToken = (String) tokenResponse.get("refresh_token");
+            
+            // Decode token to get user info
+            Map<String, Object> userInfo = keycloakService.getUserInfoFromToken(accessToken);
+            String keycloakId = (String) userInfo.get("sub");
+            String email = (String) userInfo.get("email");
+            String name = (String) userInfo.get("name");
+            
+            // Find or create customer in database
+            Customer customer = getOrCreateSocialCustomer(keycloakId, email, name, "google");
+            
+            // Build login response
+            return LoginResponse.builder()
+                    .accessToken(accessToken)
+                    .refreshToken(refreshToken)
+                    .tokenType("Bearer")
+                    .expiresIn((Integer) tokenResponse.getOrDefault("expires_in", 3600))
+                    .userId(customer.getUserId())
+                    .username(customer.getUsername())
+                    .email(customer.getEmail())
+                    .fullName(customer.getFullName())
+                    .userType("CUSTOMER")
+                    .build();
+                    
+        } catch (Exception e) {
+            log.error("Google social login failed", e);
+            throw new BadRequestException(ErrorCode.SOCIAL_LOGIN_FAILED, 
+                    "Đăng nhập Google thất bại. Vui lòng thử lại.");
+        }
+    }
+
+    @Override
+    @Transactional
+    public LoginResponse loginWithFacebook(String code, String redirectUri) {
+        log.info("Facebook social login attempt with code: {}", code.substring(0, Math.min(10, code.length())) + "...");
+        
+        try {
+            // Exchange authorization code for tokens via Keycloak Identity Provider
+            Map<String, Object> tokenResponse = keycloakService.exchangeSocialLoginCode(code, redirectUri, "facebook");
+            
+            String accessToken = (String) tokenResponse.get("access_token");
+            String refreshToken = (String) tokenResponse.get("refresh_token");
+            
+            // Decode token to get user info
+            Map<String, Object> userInfo = keycloakService.getUserInfoFromToken(accessToken);
+            String keycloakId = (String) userInfo.get("sub");
+            String email = (String) userInfo.get("email");
+            String name = (String) userInfo.get("name");
+            
+            // Find or create customer in database
+            Customer customer = getOrCreateSocialCustomer(keycloakId, email, name, "facebook");
+            
+            // Build login response
+            return LoginResponse.builder()
+                    .accessToken(accessToken)
+                    .refreshToken(refreshToken)
+                    .tokenType("Bearer")
+                    .expiresIn((Integer) tokenResponse.getOrDefault("expires_in", 3600))
+                    .userId(customer.getUserId())
+                    .username(customer.getUsername())
+                    .email(customer.getEmail())
+                    .fullName(customer.getFullName())
+                    .userType("CUSTOMER")
+                    .build();
+                    
+        } catch (Exception e) {
+            log.error("Facebook social login failed", e);
+            throw new BadRequestException(ErrorCode.SOCIAL_LOGIN_FAILED, 
+                    "Đăng nhập Facebook thất bại. Vui lòng thử lại.");
+        }
+    }
+
+    /**
+     * Get existing or create new customer from social login
+     */
+    private Customer getOrCreateSocialCustomer(String keycloakId, String email, String name, String provider) {
+        // Try to find existing customer by keycloakId first
+        return userRepository.findByKeycloakId(keycloakId)
+                .filter(user -> user instanceof Customer)
+                .map(user -> (Customer) user)
+                .orElseGet(() -> {
+                    // Create new customer
+                    Customer newCustomer = new Customer();
+                    newCustomer.setUserId(UUID.randomUUID().toString());
+                    newCustomer.setKeycloakId(keycloakId);
+                    newCustomer.setEmail(email);
+                    newCustomer.setFullName(name != null ? name : email.split("@")[0]);
+                    newCustomer.setUsername(email); // Use email as username
+                    newCustomer.setActive(true);
+                    newCustomer.setStatus(CustomerStatus.ACTIVE);
+                    newCustomer.setPhoneNumber(null); // Social login doesn't provide phone
+                    
+                    Customer saved = (Customer) userRepository.save(newCustomer);
+                    log.info("Created new customer from {} social login: {} ({})", provider, email, keycloakId);
+                    return saved;
+                });
+    }
 }

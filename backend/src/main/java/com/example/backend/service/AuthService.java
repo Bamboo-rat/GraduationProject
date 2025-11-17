@@ -82,4 +82,20 @@ public interface AuthService {
      * @param newPassword New password
      */
     void changePassword(String keycloakId, String currentPassword, String newPassword);
+
+    /**
+     * Social login via Google (Keycloak Identity Provider)
+     * @param code Authorization code from Google OAuth
+     * @param redirectUri Redirect URI used in the authorization request
+     * @return Login response with tokens and user info
+     */
+    LoginResponse loginWithGoogle(String code, String redirectUri);
+
+    /**
+     * Social login via Facebook (Keycloak Identity Provider)
+     * @param code Authorization code from Facebook OAuth
+     * @param redirectUri Redirect URI used in the authorization request
+     * @return Login response with tokens and user info
+     */
+    LoginResponse loginWithFacebook(String code, String redirectUri);
 }

@@ -64,8 +64,8 @@ public class ReportServiceImpl implements ReportService {
         BigDecimal totalGMV = toBigDecimal(summaryData[0]);  // totalAmount + shippingFee
         BigDecimal totalProductRevenue = toBigDecimal(summaryData[1]);  // totalAmount only
         BigDecimal totalShippingFee = toBigDecimal(summaryData[2]);  // shippingFee only
-        BigDecimal totalPlatformRevenue = toBigDecimal(summaryData[3]);  // commission + shipping
-        BigDecimal totalSupplierEarnings = toBigDecimal(summaryData[4]);  // totalAmount * (1 - rate)
+        BigDecimal totalPlatformRevenue = toBigDecimal(summaryData[3]);  // commission on products only (no shipping)
+        BigDecimal totalSupplierEarnings = toBigDecimal(summaryData[4]);  // product net + shipping
         Long completedOrders = toLong(summaryData[5]);
         Long cancelledOrders = toLong(summaryData[6]);
         Long totalOrders = toLong(summaryData[7]);
@@ -74,7 +74,7 @@ public class ReportServiceImpl implements ReportService {
         
         // Legacy fields for backward compatibility
         BigDecimal totalRevenue = totalGMV;
-        BigDecimal totalCommission = totalPlatformRevenue.subtract(totalShippingFee);  // Commission on products only
+        BigDecimal totalCommission = totalPlatformRevenue;  // Commission on products only (no shipping)
 
         // Calculate daily average
         long daysBetween = Math.max(1, ChronoUnit.DAYS.between(startDate.toLocalDate(), endDate.toLocalDate()));
@@ -104,7 +104,7 @@ public class ReportServiceImpl implements ReportService {
         List<Object[]> topCategories = orderDetailRepository.findRevenueByCategoryWithDateRange(startDate, endDate);
 
         String topSupplierName = (topSuppliers != null && !topSuppliers.isEmpty()) ? (String) topSuppliers.get(0)[1] : "N/A";
-        // row[8] = supplierEarnings (new position after query update)
+        // row[8] = supplierEarnings (product net + shipping)
         BigDecimal topSupplierRevenue = (topSuppliers != null && !topSuppliers.isEmpty()) ? toBigDecimal(topSuppliers.get(0)[8]) : BigDecimal.ZERO;
         String topCategoryName = (topCategories != null && !topCategories.isEmpty()) ? (String) topCategories.get(0)[1] : "N/A";
         BigDecimal topCategoryRevenue = (topCategories != null && !topCategories.isEmpty()) ? toBigDecimal(topCategories.get(0)[5]) : BigDecimal.ZERO;
@@ -154,14 +154,14 @@ public class ReportServiceImpl implements ReportService {
         return results.stream().map(row -> {
             // Updated query returns:
             // 0: supplierId, 1: supplierName, 2: avatarUrl, 3: orderCount,
-            // 4: totalGMV, 5: productRevenue, 6: shippingFee, 7: platformCommission,
-            // 8: supplierEarnings, 9: productCount, 10: storeCount, 11: commissionRate
+            // 4: totalGMV, 5: productRevenue, 6: shippingFee, 7: platformCommission (product only),
+            // 8: supplierEarnings (product net + shipping), 9: productCount, 10: storeCount, 11: commissionRate
             
             BigDecimal totalGMV = toBigDecimal(row[4]);
             BigDecimal productRevenue = toBigDecimal(row[5]);
             BigDecimal shippingFee = toBigDecimal(row[6]);
-            BigDecimal platformCommission = toBigDecimal(row[7]);
-            BigDecimal supplierEarnings = toBigDecimal(row[8]);
+            BigDecimal platformCommission = toBigDecimal(row[7]);  // Commission on products only (no shipping)
+            BigDecimal supplierEarnings = toBigDecimal(row[8]);     // Product net + shipping fee
             Double commissionRate = toDouble(row[11]);
             
             Double revenuePercentage = totalSupplierEarnings.compareTo(BigDecimal.ZERO) > 0

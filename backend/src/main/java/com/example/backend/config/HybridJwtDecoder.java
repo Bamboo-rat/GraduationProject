@@ -28,10 +28,25 @@ public class HybridJwtDecoder implements JwtDecoder {
             @Value("${jwt.secret:your-256-bit-secret-key-change-this-in-production-minimum-32-characters}") String jwtSecret) {
 
         // Create Keycloak JWT decoder for admin/supplier JWTs
-        this.keycloakJwtDecoder = JwtDecoders.fromIssuerLocation(issuerUri);
+        // Skip Keycloak connection if issuerUri is empty (test mode)
+        if (issuerUri == null || issuerUri.trim().isEmpty()) {
+            log.warn("Keycloak issuer URI is empty - running in TEST MODE without Keycloak validation");
+            this.keycloakJwtDecoder = null;
+        } else {
+            this.keycloakJwtDecoder = JwtDecoders.fromIssuerLocation(issuerUri);
+            log.info("Hybrid JWT Decoder initialized with Keycloak issuer: {}", issuerUri);
+        }
+        
         this.jwtSecret = jwtSecret;
+    }
 
-        log.info("Hybrid JWT Decoder initialized with Keycloak issuer: {}", issuerUri);
+    /**
+     * Test-only constructor that only validates custom JWTs (no Keycloak)
+     */
+    public HybridJwtDecoder(String jwtSecret) {
+        this.keycloakJwtDecoder = null;
+        this.jwtSecret = jwtSecret;
+        log.info("Hybrid JWT Decoder initialized in TEST MODE (custom JWT only)");
     }
 
     @Override
@@ -50,6 +65,10 @@ public class HybridJwtDecoder implements JwtDecoder {
                 return decodeCustomJwt(token);
             } else {
                 // It's a Keycloak JWT - use Keycloak decoder
+                if (keycloakJwtDecoder == null) {
+                    throw new BadJwtException("Keycloak JWT decoder not available (test mode)");
+                }
+                
                 log.debug("Decoding Keycloak JWT for admin/supplier authentication - Issuer: {}", issuer);
                 try {
                     Jwt decodedJwt = keycloakJwtDecoder.decode(token);

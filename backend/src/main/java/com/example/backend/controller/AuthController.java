@@ -4,6 +4,7 @@ import com.example.backend.dto.request.ChangePasswordRequest;
 import com.example.backend.dto.request.LoginRequest;
 import com.example.backend.dto.request.PhoneAuthStep1Request;
 import com.example.backend.dto.request.PhoneAuthStep2Request;
+import com.example.backend.dto.request.SocialLoginRequest;
 import com.example.backend.dto.response.ApiResponse;
 import com.example.backend.dto.response.LoginResponse;
 import com.example.backend.dto.response.PhoneAuthStep1Response;
@@ -55,6 +56,32 @@ public class AuthController {
         log.info("POST /api/auth/customer/phone-auth/step2 - Phone: {}", request.getPhoneNumber());
         LoginResponse response = customerService.phoneAuthStep2(request);
         return ResponseEntity.ok(ApiResponse.success("Login successful", response));
+    }
+
+    // ===== SOCIAL LOGIN (Google/Facebook via Keycloak) =====
+
+    @PostMapping("/customer/login/google")
+    @Operation(
+        summary = "Google OAuth2 Login",
+        description = "Exchange Google OAuth2 authorization code for JWT tokens. Frontend should redirect user to Google OAuth, then send the authorization code here."
+    )
+    public ResponseEntity<ApiResponse<LoginResponse>> loginWithGoogle(
+            @Valid @RequestBody SocialLoginRequest request) {
+        log.info("POST /api/auth/customer/login/google - Google OAuth login attempt");
+        LoginResponse response = authService.loginWithGoogle(request.getCode(), request.getRedirectUri());
+        return ResponseEntity.ok(ApiResponse.success("Google login successful", response));
+    }
+
+    @PostMapping("/customer/login/facebook")
+    @Operation(
+        summary = "Facebook OAuth2 Login",
+        description = "Exchange Facebook OAuth2 authorization code for JWT tokens. Frontend should redirect user to Facebook OAuth, then send the authorization code here."
+    )
+    public ResponseEntity<ApiResponse<LoginResponse>> loginWithFacebook(
+            @Valid @RequestBody SocialLoginRequest request) {
+        log.info("POST /api/auth/customer/login/facebook - Facebook OAuth login attempt");
+        LoginResponse response = authService.loginWithFacebook(request.getCode(), request.getRedirectUri());
+        return ResponseEntity.ok(ApiResponse.success("Facebook login successful", response));
     }
 
     // ===== COMMON LOGIN =====
