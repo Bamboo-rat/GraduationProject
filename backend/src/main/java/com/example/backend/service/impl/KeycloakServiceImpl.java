@@ -386,6 +386,8 @@ KeycloakServiceImpl implements KeycloakService {
             map.add("code", code);
             map.add("redirect_uri", redirectUri);
 
+            log.debug("Exchanging {} code with redirectUri: {}", provider, redirectUri);
+
             HttpEntity<MultiValueMap<String, String>> entity = new HttpEntity<>(map, headers);
             @SuppressWarnings("rawtypes")
             ResponseEntity<Map> response = restTemplate.exchange(tokenUrl, HttpMethod.POST, entity, Map.class);
@@ -402,6 +404,21 @@ KeycloakServiceImpl implements KeycloakService {
 
         } catch (KeycloakException e) {
             throw e;
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            // Parse Keycloak error response for better debugging
+            String errorBody = e.getResponseBodyAsString();
+            log.error("Keycloak token exchange failed for {}: {} - Response: {}", 
+                     provider, e.getStatusCode(), errorBody);
+            
+            // Common OAuth errors
+            if (errorBody.contains("invalid_grant")) {
+                log.error("Invalid grant error - possible causes: " +
+                         "1) Authorization code already used or expired (codes are single-use and expire in ~5 minutes), " +
+                         "2) Redirect URI mismatch between frontend and Keycloak Identity Provider config, " +
+                         "3) Code was issued to different client");
+            }
+            
+            throw new KeycloakException(ErrorCode.SOCIAL_LOGIN_FAILED);
         } catch (Exception e) {
             log.error("Error exchanging {} authorization code: {}", provider, e.getMessage(), e);
             throw new KeycloakException(ErrorCode.SOCIAL_LOGIN_FAILED);

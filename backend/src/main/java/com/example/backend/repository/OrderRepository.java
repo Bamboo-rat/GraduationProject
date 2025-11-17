@@ -163,7 +163,6 @@ public interface OrderRepository extends JpaRepository<Order, String> {
 
     Page<Order> findByStatusAndShipment_ShippingProvider(OrderStatus status, String shippingProvider, Pageable pageable);
 
-    // ==================== REVENUE REPORT QUERIES ====================
 
     @Query("""
                 SELECT
@@ -191,6 +190,7 @@ public interface OrderRepository extends JpaRepository<Order, String> {
     """)
     List<Object[]> findRevenueBySupplier(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
+
     @Query("""
                 SELECT
                         FUNCTION('DATE', o.deliveredAt),
@@ -209,45 +209,101 @@ public interface OrderRepository extends JpaRepository<Order, String> {
     """)
     List<Object[]> findRevenueTimeSeries(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
-    // FIXED: Added null check and proper status conditions
+
     @Query("""
         SELECT
-            COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN o.totalAmount + o.shippingFee ELSE 0 END), 0),
-            COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN o.totalAmount ELSE 0 END), 0),
-            COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN o.shippingFee ELSE 0 END), 0),
-            COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN o.totalAmount * s.commissionRate ELSE 0 END), 0),
-            COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN o.totalAmount * (1 - s.commissionRate) + o.shippingFee ELSE 0 END), 0),
-            SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN 1 ELSE 0 END),
-            SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.CANCELED THEN 1 ELSE 0 END),
-            COUNT(o),
-            COALESCE(AVG(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED THEN o.totalAmount + o.shippingFee ELSE NULL END), 0),
+            COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED 
+                              AND o.deliveredAt IS NOT NULL 
+                              AND o.deliveredAt BETWEEN :startDate AND :endDate 
+                         THEN o.totalAmount + o.shippingFee ELSE 0 END), 0),
+            COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED 
+                              AND o.deliveredAt IS NOT NULL 
+                              AND o.deliveredAt BETWEEN :startDate AND :endDate 
+                         THEN o.totalAmount ELSE 0 END), 0),
+            COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED 
+                              AND o.deliveredAt IS NOT NULL 
+                              AND o.deliveredAt BETWEEN :startDate AND :endDate 
+                         THEN o.shippingFee ELSE 0 END), 0),
+            COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED 
+                              AND o.deliveredAt IS NOT NULL 
+                              AND o.deliveredAt BETWEEN :startDate AND :endDate 
+                         THEN o.totalAmount * s.commissionRate ELSE 0 END), 0),
+            COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED 
+                              AND o.deliveredAt IS NOT NULL 
+                              AND o.deliveredAt BETWEEN :startDate AND :endDate 
+                         THEN o.totalAmount * (1 - s.commissionRate) + o.shippingFee ELSE 0 END), 0),
+            SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED 
+                      AND o.deliveredAt IS NOT NULL 
+                      AND o.deliveredAt BETWEEN :startDate AND :endDate 
+                 THEN 1 ELSE 0 END),
+            SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.CANCELED 
+                      AND o.createdAt BETWEEN :startDate AND :endDate 
+                 THEN 1 ELSE 0 END),
+            COUNT(CASE WHEN o.createdAt BETWEEN :startDate AND :endDate THEN 1 ELSE NULL END),
+            COALESCE(AVG(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED 
+                              AND o.deliveredAt IS NOT NULL 
+                              AND o.deliveredAt BETWEEN :startDate AND :endDate 
+                         THEN o.totalAmount + o.shippingFee ELSE NULL END), 0),
             COALESCE(AVG(s.commissionRate), 0)
         FROM Order o
         JOIN o.store st
         JOIN st.supplier s
         WHERE o.createdAt BETWEEN :startDate AND :endDate
-            AND (o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED 
-                 OR o.status = com.example.backend.entity.enums.OrderStatus.CANCELED)
-            AND (o.deliveredAt IS NULL OR o.deliveredAt BETWEEN :startDate AND :endDate)
+           OR (o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED 
+               AND o.deliveredAt IS NOT NULL 
+               AND o.deliveredAt BETWEEN :startDate AND :endDate)
     """)
     Object[] findRevenueSummary(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
-    // ==================== CUSTOMER BEHAVIOR REPORT QUERIES ====================
+    @Query("""
+        SELECT
+            p.category.categoryId,
+            p.category.name,
+            p.category.imageUrl,
+            COUNT(DISTINCT o.orderId),
+            SUM(od.quantity),
+            SUM(od.amount * od.quantity),
+            AVG(od.amount * od.quantity)
+        FROM Order o
+        JOIN o.orderDetails od
+        JOIN od.storeProduct sp
+        JOIN sp.variant.product p
+        WHERE o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED
+            AND o.deliveredAt IS NOT NULL
+            AND o.deliveredAt BETWEEN :startDate AND :endDate
+        GROUP BY p.category.categoryId, p.category.name, p.category.imageUrl
+        ORDER BY SUM(od.amount * od.quantity) DESC
+    """)
+    List<Object[]> findRevenueByCategory(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
-    // FIXED: Simplified query to avoid JPQL limitations
+
     @Query("""
                 SELECT
                         c.tier,
                         COUNT(DISTINCT c.userId),
-                        COUNT(DISTINCT o.orderId),
-                        COALESCE(SUM(o.totalAmount), 0),
-                        COALESCE(AVG(o.totalAmount), 0)
+                        SUM(CASE 
+                            WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED 
+                                AND o.deliveredAt IS NOT NULL
+                                AND o.deliveredAt BETWEEN :startDate AND :endDate
+                            THEN 1 
+                            ELSE 0
+                        END),
+                        COALESCE(SUM(CASE 
+                            WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED 
+                                AND o.deliveredAt IS NOT NULL
+                                AND o.deliveredAt BETWEEN :startDate AND :endDate
+                            THEN o.totalAmount 
+                            ELSE 0 
+                        END), 0),
+                        COALESCE(AVG(CASE 
+                            WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED 
+                                AND o.deliveredAt IS NOT NULL
+                                AND o.deliveredAt BETWEEN :startDate AND :endDate
+                            THEN o.totalAmount 
+                            ELSE NULL
+                        END), 0)
                 FROM Customer c
                 LEFT JOIN c.orders o
-                WHERE (o.orderId IS NULL) OR 
-                      (o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED
-                       AND o.deliveredAt IS NOT NULL
-                       AND o.deliveredAt BETWEEN :startDate AND :endDate)
                 GROUP BY c.tier
     """)
     List<Object[]> findCustomerSegmentation(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
@@ -273,7 +329,7 @@ public interface OrderRepository extends JpaRepository<Order, String> {
     """)
     List<Object[]> findCustomerLifetimeValue(Pageable pageable);
 
-    // FIXED: Using native query for complex aggregation to avoid JPQL limitations
+    // FIXED: Using native query to avoid JPQL limitations with complex aggregations
     @Query(value = """
         SELECT 
             (SELECT COUNT(*) FROM customer WHERE created_at BETWEEN :startDate AND :endDate) as new_customers,
@@ -286,4 +342,31 @@ public interface OrderRepository extends JpaRepository<Order, String> {
                 AND o.delivered_at BETWEEN :startDate AND :endDate) as returning_customers
         """, nativeQuery = true)
     Object[] findNewVsReturningCustomers(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    // Additional helper query for purchase patterns
+    @Query("""
+        SELECT
+            HOUR(o.createdAt) as hour,
+            COUNT(o) as orderCount
+        FROM Order o
+        WHERE o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED
+            AND o.deliveredAt IS NOT NULL
+            AND o.deliveredAt BETWEEN :startDate AND :endDate
+        GROUP BY HOUR(o.createdAt)
+        ORDER BY HOUR(o.createdAt)
+    """)
+    List<Object[]> findHourlyOrderDistribution(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    @Query("""
+        SELECT
+            DAYOFWEEK(o.createdAt) as dayOfWeek,
+            COUNT(o) as orderCount
+        FROM Order o
+        WHERE o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED
+            AND o.deliveredAt IS NOT NULL
+            AND o.deliveredAt BETWEEN :startDate AND :endDate
+        GROUP BY DAYOFWEEK(o.createdAt)
+        ORDER BY DAYOFWEEK(o.createdAt)
+    """)
+    List<Object[]> findWeeklyOrderDistribution(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 }
