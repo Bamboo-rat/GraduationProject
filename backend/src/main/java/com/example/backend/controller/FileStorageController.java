@@ -285,9 +285,16 @@ public class FileStorageController {
         }
 
         try {
-            // Determine source for logging
-            String source = urlToFetch.contains("cloudinary.com") ? "Cloudinary" : "External";
-            log.info("Proxying {} file: {}", source, urlToFetch);
+
+            if (urlToFetch.contains("cloudinary.com")) {
+                log.info("Cloudinary PUBLIC file detected - redirecting to: {}", urlToFetch);
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setLocation(URI.create(urlToFetch));
+                return new ResponseEntity<>(headers, HttpStatus.FOUND);
+            }
+
+            log.info("Proxying external file: {}", urlToFetch);
 
             // Connect to remote URL
             URI uri = URI.create(urlToFetch);
