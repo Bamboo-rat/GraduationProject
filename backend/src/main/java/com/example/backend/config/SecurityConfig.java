@@ -46,10 +46,7 @@ public class SecurityConfig {
                                 "/api/admin/fix-cod-wallets",
                                 "/api/auth/customer/login/**",
                                 "/ws/**",
-                                "/api/files/download",
-                                "/api/files/upload/business-license",
-                                "/api/files/upload/food-safety-certificate",
-                                "/api/files/upload/supplier-logo"
+                                "/api/files/**"
                         ).permitAll()
 
                         // Chat endpoints - require authentication (all roles)
@@ -79,8 +76,6 @@ public class SecurityConfig {
 
                         // Admin endpoints
                         .requestMatchers("/api/admins/**").hasAnyRole("SUPER_ADMIN", "MODERATOR", "STAFF")
-
-                        .requestMatchers("/api/files/**").authenticated() // Bảo mật các endpoint file còn lại
 
                         // Public customer-facing endpoints
                         .requestMatchers("/api/products/**", "/api/categories/**", "/api/stores/public", "/api/stores/top-stores", "/api/stores/*/products","/api/stores/nearby").permitAll()
