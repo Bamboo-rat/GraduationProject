@@ -264,43 +264,44 @@ public class FileStorageController {
         try {
             // Check if this is a Cloudinary URL
             if (urlToFetch.contains("cloudinary.com")) {
-                log.info("Generating signed URL for Cloudinary file: {}", urlToFetch);
+                log.info("Cloudinary PUBLIC file detected, redirecting to original URL: {}", urlToFetch);
                 
-                // Extract public_id from URL
-                String publicId = extractPublicIdFromUrl(urlToFetch);
-                if (publicId == null) {
-                    log.error("Failed to extract public_id from Cloudinary URL: {}", urlToFetch);
-                    return ResponseEntity.badRequest().build();
+                // Files uploaded with type="upload" are PUBLIC and can be accessed directly
+                // No need for signed URLs or authentication
+                String redirectUrl = urlToFetch;
+                
+                // If custom filename or download mode requested, add fl_attachment flag to URL
+                if ((customFilename != null && !customFilename.isEmpty()) || !inline) {
+                    String publicId = extractPublicIdFromUrl(urlToFetch);
+                    if (publicId != null) {
+                        String resourceType = urlToFetch.contains("/raw/") ? "raw" : "image";
+                        
+                        // Build transformation string for attachment flag
+                        String transformation = "";
+                        if (customFilename != null && !customFilename.isEmpty()) {
+                            transformation = "fl_attachment:" + customFilename;
+                        } else if (!inline) {
+                            transformation = "fl_attachment";
+                        }
+                        
+                        // Generate URL with transformation
+                        if (!transformation.isEmpty()) {
+                            redirectUrl = cloudinary.url()
+                                    .resourceType(resourceType)
+                                    .type("upload")
+                                    .transformation(new com.cloudinary.Transformation().chain().fetchFormat("auto"))
+                                    .generate(publicId);
+                            
+                            // Insert transformation manually into URL
+                            redirectUrl = redirectUrl.replace("/upload/", "/upload/" + transformation + "/");
+                            log.info("Generated download URL with attachment flag for: {}", publicId);
+                        }
+                    }
                 }
                 
-                // Determine resource type from URL (raw for documents, image for images)
-                String resourceType = urlToFetch.contains("/raw/") ? "raw" : "image";
-                
-                // Generate signed URL with 1 hour expiration
-                Map<String, Object> options = new HashMap<>();
-                options.put("resource_type", resourceType);
-                options.put("type", "upload");
-                options.put("sign_url", true);
-                options.put("expires_at", System.currentTimeMillis() / 1000 + 3600); // 1 hour
-                
-                if (customFilename != null && !customFilename.isEmpty()) {
-                    options.put("attachment", true);
-                    options.put("filename", customFilename);
-                } else if (!inline) {
-                    options.put("attachment", true);
-                }
-                
-                String signedUrl = cloudinary.url()
-                        .resourceType(resourceType)
-                        .type("upload")
-                        .signed(true)
-                        .generate(publicId);
-                
-                log.info("Generated signed URL for public_id: {} (type: {})", publicId, resourceType);
-                
-                // Redirect to signed URL
+                // Redirect to Cloudinary URL (public access, no signature needed)
                 HttpHeaders headers = new HttpHeaders();
-                headers.setLocation(URI.create(signedUrl));
+                headers.setLocation(URI.create(redirectUrl));
                 return new ResponseEntity<>(headers, HttpStatus.FOUND);
             }
             
