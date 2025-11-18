@@ -596,18 +596,21 @@ public class AuthServiceImpl implements AuthService {
 
     /**
      * Get existing or create new customer from social login
-     * Handles race condition with synchronized block to prevent concurrent creation
+     * Handles race condition with retry logic for multi-instance deployment
      */
     private Customer getOrCreateSocialCustomer(String keycloakId, String email, String name, String provider) {
-        synchronized (("CUSTOMER_" + keycloakId).intern()) {
-            // Double-check: Try to find existing customer by keycloakId first
-            Optional<User> existingUser = userRepository.findByKeycloakId(keycloakId);
-            if (existingUser.isPresent() && existingUser.get() instanceof Customer) {
-                log.info("Found existing customer for keycloakId: {}", keycloakId);
-                return (Customer) existingUser.get();
-            }
 
+        Optional<User> existingUser = userRepository.findByKeycloakId(keycloakId);
+        if (existingUser.isPresent() && existingUser.get() instanceof Customer) {
+            log.info("Found existing customer for keycloakId: {}", keycloakId);
+            return (Customer) existingUser.get();
+        }
+
+
+        int maxRetries = 3;
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
             try {
+
                 Customer newCustomer = new Customer();
                 newCustomer.setUserId(UUID.randomUUID().toString());
                 newCustomer.setKeycloakId(keycloakId);
@@ -619,41 +622,48 @@ public class AuthServiceImpl implements AuthService {
                 newCustomer.setPhoneNumber(null); // Social login doesn't provide phone
 
                 Customer saved = (Customer) userRepository.save(newCustomer);
-                userRepository.flush(); // Force immediate flush to DB
-                log.info("Created new customer from {} social login: {} ({})", provider, email, keycloakId);
+                log.info("Created new customer from {} social login: {} ({}) on attempt {}", 
+                        provider, email, keycloakId, attempt);
                 return saved;
-            } catch (org.springframework.dao.DataIntegrityViolationException |
+                
+            } catch (org.springframework.dao.DataIntegrityViolationException | 
                      org.springframework.orm.ObjectOptimisticLockingFailureException e) {
-                // Very rare case: Another thread created customer between synchronized block entry and check
-                // This can happen if synchronized on different JVM instances (multi-server deployment)
-                log.warn("Race condition detected despite synchronization for keycloakId: {}. Exception: {}. Attempting final fetch...",
-                        keycloakId, e.getClass().getSimpleName());
-
-                // Final attempt with small delay to ensure transaction commits
+                // Unique constraint violation or optimistic lock - another instance created the customer
+                log.warn("Attempt {} failed for keycloakId: {} due to {}. Fetching existing customer...",
+                        attempt, keycloakId, e.getClass().getSimpleName());
+                
+                // Wait briefly for other transaction to commit
                 try {
-                    Thread.sleep(100);
+                    Thread.sleep(50 * attempt); // Exponential backoff: 50ms, 100ms, 150ms
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
                 }
-
+                
+                // Try to fetch the customer that was created by another instance
                 Optional<User> retryUser = userRepository.findByKeycloakId(keycloakId);
                 if (retryUser.isPresent() && retryUser.get() instanceof Customer) {
-                    log.info("Successfully fetched customer on final retry for keycloakId: {}", keycloakId);
+                    log.info("Successfully fetched customer created by another instance for keycloakId: {}", keycloakId);
                     return (Customer) retryUser.get();
                 }
-
-                // If still not found, this is a genuine error
-                log.error("Failed to create or fetch customer for keycloakId: {}. Exception: {}",
-                        keycloakId, e.getMessage());
-                throw new BadRequestException(ErrorCode.USER_NOT_FOUND,
-                        "Không thể tạo tài khoản. Vui lòng thử lại sau.");
+                
+                // If this is the last attempt and still not found, throw error
+                if (attempt == maxRetries) {
+                    log.error("Failed to create or fetch customer after {} attempts for keycloakId: {}", 
+                            maxRetries, keycloakId);
+                    throw new BadRequestException(ErrorCode.USER_NOT_FOUND,
+                            "Không thể tạo tài khoản. Vui lòng thử lại sau.");
+                }
+                // Otherwise continue to next retry
             } catch (Exception e) {
-                // Unexpected error
-                log.error("Unexpected error creating customer for keycloakId: {}. Exception: {}",
-                        keycloakId, e.getMessage(), e);
+                // Unexpected error - don't retry
+                log.error("Unexpected error creating customer for keycloakId: {}", keycloakId, e);
                 throw new BadRequestException(ErrorCode.INTERNAL_SERVER_ERROR,
                         "Lỗi hệ thống. Vui lòng thử lại sau.");
             }
         }
+        
+        // Should never reach here due to maxRetries check above
+        throw new BadRequestException(ErrorCode.INTERNAL_SERVER_ERROR,
+                "Không thể tạo tài khoản sau nhiều lần thử.");
     }
 }
