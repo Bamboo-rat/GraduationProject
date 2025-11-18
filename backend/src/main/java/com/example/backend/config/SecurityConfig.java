@@ -46,7 +46,8 @@ public class SecurityConfig {
                                 "/api/admin/fix-cod-wallets",
                                 "/api/auth/customer/login/**",
                                 "/ws/**",
-                                "/api/files/**"
+                                "/api/files/**",
+                                "/api/goong/**"
                         ).permitAll()
 
                         // Chat endpoints - require authentication (all roles)

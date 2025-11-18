@@ -71,7 +71,7 @@ public class SupplierDashboardServiceImpl implements SupplierDashboardService {
 
         // Today's statistics
         List<Order> todayOrders = allOrders.stream()
-                .filter(o -> o.getCreatedAt().isAfter(todayStart) && o.getCreatedAt().isBefore(todayEnd))
+                .filter(o -> !o.getCreatedAt().isBefore(todayStart) && !o.getCreatedAt().isAfter(todayEnd))
                 .collect(Collectors.toList());
 
         Long todayOrdersCount = (long) todayOrders.size();
@@ -91,7 +91,7 @@ public class SupplierDashboardServiceImpl implements SupplierDashboardService {
 
         // Monthly statistics
         List<Order> monthlyOrders = allOrders.stream()
-                .filter(o -> o.getCreatedAt().isAfter(monthStart) && o.getCreatedAt().isBefore(monthEnd))
+                .filter(o -> !o.getCreatedAt().isBefore(monthStart) && !o.getCreatedAt().isAfter(monthEnd))
                 .collect(Collectors.toList());
 
         Long monthlyOrdersCount = (long) monthlyOrders.size();
