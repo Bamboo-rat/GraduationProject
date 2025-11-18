@@ -80,7 +80,6 @@
       "icon": "bar-chart-3",
       "link": "/reports/revenue",
       "subMenu": [
-        { "title": "Báo cáo doanh thu", "link": "/reports/revenue", "icon": "dollar-sign" },
         { "title": "Phân tích khách hàng", "link": "/reports/behavior", "icon": "pie-chart" },
         { "title": "Báo cáo lãng phí", "link": "/reports/waste", "icon": "trash-2" }
       ]
@@ -91,7 +90,6 @@
       "icon": "settings",
       "link": "/settings/roles",
       "subMenu": [
-        { "title": "Phân quyền & Vai trò", "link": "/settings/roles", "icon": "shield" },
         { "title": "Cấu hình hệ thống", "link": "/settings/system-settings", "icon": "bell" }
       ]
     }

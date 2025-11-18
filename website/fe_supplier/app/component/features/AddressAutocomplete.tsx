@@ -2,12 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { MapPin, Loader2, Search, X } from 'lucide-react';
 import axios from 'axios';
 
-// Use backend proxy to avoid CORS issues
-const API_BASE_URL = typeof window !== 'undefined' && window.location.origin
-  ? window.location.origin
-  : 'http://localhost:8080';
-const GOONG_AUTOCOMPLETE_API = `${API_BASE_URL}/api/goong/autocomplete`;
-const GOONG_PLACE_DETAIL_API = `${API_BASE_URL}/api/goong/place-detail`;
+const GOONG_API_KEY = import.meta.env.VITE_GOONG_API_KEY || '';
+const GOONG_AUTOCOMPLETE_API = 'https://rsapi.goong.io/Place/AutoComplete';
+const GOONG_PLACE_DETAIL_API = 'https://rsapi.goong.io/Place/Detail';
 
 interface GoongPrediction {
   place_id: string;
@@ -71,12 +68,18 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
     }
 
     const delayDebounce = setTimeout(async () => {
+      if (!GOONG_API_KEY) {
+        setError('Thiếu Goong API key');
+        return;
+      }
+
       setIsLoading(true);
       setError(null);
 
       try {
         const response = await axios.get(GOONG_AUTOCOMPLETE_API, {
           params: {
+            api_key: GOONG_API_KEY,
             input: value,
             location: '10.762622,106.660172', // TP.HCM center
             radius: 50000, // 50km
@@ -105,6 +108,7 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
       setIsLoading(true);
       const response = await axios.get(GOONG_PLACE_DETAIL_API, {
         params: {
+          api_key: GOONG_API_KEY,
           place_id: prediction.place_id,
         },
       });
@@ -146,6 +150,31 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
     setShowDropdown(false);
     inputRef.current?.focus();
   };
+
+  // Error state - show warning
+  if (!GOONG_API_KEY) {
+    return (
+      <div className="w-full">
+        <label className="block text-sm font-semibold text-gray-700 mb-2">
+          {label} {required && <span className="text-red-500">*</span>}
+        </label>
+        <div className="w-full px-4 py-3 border-2 border-orange-300 rounded-xl bg-orange-50">
+          <p className="text-orange-700 text-sm flex items-center">
+            <span className="mr-2">⚠️</span>
+            Chưa cấu hình Goong API key. Vui lòng nhập địa chỉ thủ công.
+          </p>
+        </div>
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          required={required}
+          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:ring-2 focus:ring-green-200 transition-all outline-none mt-2"
+          placeholder={placeholder}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="w-full" ref={dropdownRef}>

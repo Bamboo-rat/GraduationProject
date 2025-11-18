@@ -408,7 +408,7 @@ export default function ProductsList() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className="text-sm text-text font-medium">
-                              {product.variants.length} biến thể
+                              {product.variants?.length || 0} biến thể
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">

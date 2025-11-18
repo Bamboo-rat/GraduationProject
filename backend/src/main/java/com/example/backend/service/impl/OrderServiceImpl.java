@@ -102,9 +102,8 @@ public class OrderServiceImpl implements OrderService {
                         "Idempotency key đã được sử dụng bởi khách hàng khác");
             }
 
-            // Use optimized query to prevent N+1 when mapping to response
-            order = orderRepository.findByIdWithDetails(order.getOrderId())
-                    .orElseThrow(() -> new NotFoundException(ErrorCode.ORDER_NOT_FOUND));
+            // Use optimized queries to prevent N+1 and MultipleBagFetchException
+            order = loadOrderWithAllDetails(order.getOrderId());
             return mapToOrderResponse(order);
         }
 
@@ -345,9 +344,8 @@ public class OrderServiceImpl implements OrderService {
                 String.format("Bạn có đơn hàng mới #%s. Tổng tiền: %s VNĐ. Vui lòng xác nhận đơn hàng",
                         order.getOrderCode(), order.getTotalAmount()));
 
-        // Reload with optimized query to prevent N+1 when mapping to response
-        order = orderRepository.findByIdWithDetails(order.getOrderId())
-                .orElseThrow(() -> new NotFoundException(ErrorCode.ORDER_NOT_FOUND));
+        // Use optimized queries to prevent N+1 and MultipleBagFetchException
+        order = loadOrderWithAllDetails(order.getOrderId());
         return mapToOrderResponse(order);
     }
 
@@ -393,9 +391,8 @@ public class OrderServiceImpl implements OrderService {
         log.info("Order status updated: orderId={}, oldStatus={}, newStatus={}",
                 orderId, oldStatus, newStatus);
 
-        // Reload with optimized query to prevent N+1 when mapping to response
-        order = orderRepository.findByIdWithDetails(orderId)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.ORDER_NOT_FOUND));
+        // Reload with optimized queries to prevent N+1 and MultipleBagFetchException
+        order = loadOrderWithAllDetails(orderId);
         return mapToOrderResponse(order);
     }
 
@@ -422,9 +419,8 @@ public class OrderServiceImpl implements OrderService {
 
         log.info("Order confirmed successfully: orderId={}", orderId);
 
-        // Reload with optimized query to prevent N+1 when mapping to response
-        order = orderRepository.findByIdWithDetails(orderId)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.ORDER_NOT_FOUND));
+        // Reload with optimized queries to prevent N+1 and MultipleBagFetchException
+        order = loadOrderWithAllDetails(orderId);
         return mapToOrderResponse(order);
     }
 
@@ -450,9 +446,8 @@ public class OrderServiceImpl implements OrderService {
 
         log.info("Order preparation started: orderId={}", orderId);
 
-        // Reload with optimized query to prevent N+1 when mapping to response
-        order = orderRepository.findByIdWithDetails(orderId)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.ORDER_NOT_FOUND));
+        // Reload with optimized queries to prevent N+1 and MultipleBagFetchException
+        order = loadOrderWithAllDetails(orderId);
         return mapToOrderResponse(order);
     }
 
@@ -500,9 +495,8 @@ public class OrderServiceImpl implements OrderService {
         log.info("Order shipment started: orderId={}, trackingNumber={}, estimatedDelivery={}",
                 orderId, trackingNumber, estimatedDelivery);
 
-        // Reload with optimized query to prevent N+1 when mapping to response
-        order = orderRepository.findByIdWithDetails(orderId)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.ORDER_NOT_FOUND));
+        // Reload with optimized queries to prevent N+1 and MultipleBagFetchException
+        order = loadOrderWithAllDetails(orderId);
         return mapToOrderResponse(order);
     }
     
@@ -645,27 +639,29 @@ public class OrderServiceImpl implements OrderService {
 
         log.info("Order canceled successfully: orderId={}", orderId);
 
-        // Reload with optimized query to prevent N+1 when mapping to response
-        order = orderRepository.findByIdWithDetails(orderId)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.ORDER_NOT_FOUND));
+        // Reload with optimized queries to prevent N+1 and MultipleBagFetchException
+        order = loadOrderWithAllDetails(orderId);
         return mapToOrderResponse(order);
     }
 
     @Override
     @Transactional(readOnly = true)
     public OrderResponse getOrderById(String orderId) {
-        // Use optimized query with JOIN FETCH to prevent N+1 query problem
-        Order order = orderRepository.findByIdWithDetails(orderId)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.ORDER_NOT_FOUND));
-        return mapToOrderResponse(order);
+        return mapToOrderResponse(loadOrderWithAllDetails(orderId));
     }
 
     @Override
     @Transactional(readOnly = true)
     public OrderResponse getOrderByCode(String orderCode) {
-        // Use optimized query with JOIN FETCH to prevent N+1 query problem
+        // Fetch order with orderDetails first (prevents MultipleBagFetchException)
         Order order = orderRepository.findByOrderCodeWithDetails(orderCode)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.ORDER_NOT_FOUND));
+        
+        // Fetch promotions separately to avoid multiple bags issue
+        orderRepository.findByOrderCodeWithPromotions(orderCode).ifPresent(o -> {
+            order.setPromotionUsages(o.getPromotionUsages());
+        });
+        
         return mapToOrderResponse(order);
     }
 
@@ -845,9 +841,8 @@ public class OrderServiceImpl implements OrderService {
         log.info("Payment callback processed: orderId={}, paymentStatus={}",
                 orderId, payment.getStatus());
 
-        // Reload with optimized query to prevent N+1 when mapping to response
-        order = orderRepository.findByIdWithDetails(orderId)
-                .orElseThrow(() -> new NotFoundException(ErrorCode.ORDER_NOT_FOUND));
+        // Reload with optimized queries to prevent N+1 and MultipleBagFetchException
+        order = loadOrderWithAllDetails(orderId);
         return mapToOrderResponse(order);
     }
 
@@ -1330,9 +1325,8 @@ public class OrderServiceImpl implements OrderService {
                         "Đơn hàng #%s đã được giao thành công! Bạn nhận được %s điểm thưởng. Đánh giá sản phẩm để nhận thêm điểm",
                         order.getOrderCode(), pointsAwarded));
 
-        // Reload with optimized query to prevent N+1 when mapping to response
-        order = orderRepository.findByIdWithDetails(order.getOrderId())
-                .orElseThrow(() -> new NotFoundException(ErrorCode.ORDER_NOT_FOUND));
+        // Reload with optimized queries to prevent N+1 and MultipleBagFetchException
+        order = loadOrderWithAllDetails(order.getOrderId());
         return mapToOrderResponse(order);
     }
 
@@ -1537,5 +1531,22 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public void handleDeliveryCompletionPublic(Order order) {
         handleDeliveryCompletion(order);
+    }
+
+    /**
+     * Helper method to load Order with all details (orderDetails + promotionUsages)
+     * Prevents MultipleBagFetchException by splitting into two queries
+     */
+    private Order loadOrderWithAllDetails(String orderId) {
+        // Fetch order with orderDetails first
+        Order order = orderRepository.findByIdWithDetails(orderId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.ORDER_NOT_FOUND));
+        
+        // Fetch promotions separately to avoid multiple bags issue
+        orderRepository.findByIdWithPromotions(orderId).ifPresent(o -> {
+            order.setPromotionUsages(o.getPromotionUsages());
+        });
+        
+        return order;
     }
 }

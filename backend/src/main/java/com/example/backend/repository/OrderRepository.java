@@ -21,8 +21,10 @@ public interface OrderRepository extends JpaRepository<Order, String> {
     Optional<Order> findByOrderCode(String orderCode);
 
     /**
-     * Find order by ID with all relationships eagerly loaded (optimized for display)
+     * Find order by ID with orderDetails relationships eagerly loaded
      * Prevents N+1 query problem by using JOIN FETCH
+     * Note: Cannot fetch multiple bags (orderDetails + promotionUsages) simultaneously
+     * Use findByIdWithPromotions() separately to load promotions if needed
      */
     @Query("""
         SELECT DISTINCT o FROM Order o
@@ -32,15 +34,28 @@ public interface OrderRepository extends JpaRepository<Order, String> {
         LEFT JOIN FETCH v.product p
         LEFT JOIN FETCH p.images
         LEFT JOIN FETCH od.review
-        LEFT JOIN FETCH o.promotionUsages pu
-        LEFT JOIN FETCH pu.promotion
         WHERE o.orderId = :orderId
     """)
     Optional<Order> findByIdWithDetails(@Param("orderId") String orderId);
 
     /**
-     * Find order by order code with all relationships eagerly loaded (optimized for display)
+     * Find order by ID with promotionUsages eagerly loaded
+     * This is a separate query to avoid MultipleBagFetchException
+     * Call this AFTER findByIdWithDetails() if you need promotions
+     */
+    @Query("""
+        SELECT DISTINCT o FROM Order o
+        LEFT JOIN FETCH o.promotionUsages pu
+        LEFT JOIN FETCH pu.promotion
+        WHERE o.orderId = :orderId
+    """)
+    Optional<Order> findByIdWithPromotions(@Param("orderId") String orderId);
+
+    /**
+     * Find order by order code with orderDetails relationships eagerly loaded
      * Prevents N+1 query problem by using JOIN FETCH
+     * Note: Cannot fetch multiple bags (orderDetails + promotionUsages) simultaneously
+     * Use findByOrderCodeWithPromotions() separately to load promotions if needed
      */
     @Query("""
         SELECT DISTINCT o FROM Order o
@@ -50,11 +65,22 @@ public interface OrderRepository extends JpaRepository<Order, String> {
         LEFT JOIN FETCH v.product p
         LEFT JOIN FETCH p.images
         LEFT JOIN FETCH od.review
+        WHERE o.orderCode = :orderCode
+    """)
+    Optional<Order> findByOrderCodeWithDetails(@Param("orderCode") String orderCode);
+
+    /**
+     * Find order by order code with promotionUsages eagerly loaded
+     * This is a separate query to avoid MultipleBagFetchException
+     * Call this AFTER findByOrderCodeWithDetails() if you need promotions
+     */
+    @Query("""
+        SELECT DISTINCT o FROM Order o
         LEFT JOIN FETCH o.promotionUsages pu
         LEFT JOIN FETCH pu.promotion
         WHERE o.orderCode = :orderCode
     """)
-    Optional<Order> findByOrderCodeWithDetails(@Param("orderCode") String orderCode);
+    Optional<Order> findByOrderCodeWithPromotions(@Param("orderCode") String orderCode);
 
     Page<Order> findByCustomer(Customer customer, Pageable pageable);
     List<Order> findByCustomer(Customer customer);
