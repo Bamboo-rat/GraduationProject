@@ -607,47 +607,41 @@ public class AuthServiceImpl implements AuthService {
         }
         
         // Try to create new customer
+        // Use INSERT IGNORE to avoid optimistic locking and race conditions
+        String userId = UUID.randomUUID().toString();
+        String fullName = name != null ? name : email.split("@")[0];
+        
         try {
-            Customer newCustomer = new Customer();
-            newCustomer.setUserId(UUID.randomUUID().toString());
-            newCustomer.setKeycloakId(keycloakId);
-            newCustomer.setEmail(email);
-            newCustomer.setFullName(name != null ? name : email.split("@")[0]);
-            newCustomer.setUsername(email);
-            newCustomer.setActive(true);
-            newCustomer.setStatus(CustomerStatus.ACTIVE);
-            newCustomer.setPhoneNumber(null);
+            // INSERT IGNORE will succeed silently if keycloakId already exists
+            userRepository.insertCustomerIfNotExists(userId, keycloakId, email, fullName, email);
+            log.info("Executed INSERT IGNORE for customer with keycloakId: {}", keycloakId);
             
-            Customer saved = (Customer) userRepository.save(newCustomer);
-            log.info("Created new customer from {} social login: {}", provider, keycloakId);
-            return saved;
-            
-        } catch (org.springframework.dao.DataIntegrityViolationException e) {
-            // Unique constraint violation - customer was created by another request
-            log.warn("Duplicate customer detected for keycloakId: {}. Fetching existing...", keycloakId);
-            
-            // Retry fetch with delays to allow transaction commit
-            for (int i = 0; i < 3; i++) {
-                try {
-                    Thread.sleep(100 * (i + 1)); // 100ms, 200ms, 300ms
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                }
-                
-                Optional<User> retry = userRepository.findByKeycloakId(keycloakId);
-                if (retry.isPresent() && retry.get() instanceof Customer) {
-                    log.info("Successfully fetched customer after duplicate attempt: {}", keycloakId);
-                    return (Customer) retry.get();
-                }
+            // Always fetch after insert to get the actual customer (either newly created or existing)
+            Optional<User> customer = userRepository.findByKeycloakId(keycloakId);
+            if (customer.isPresent() && customer.get() instanceof Customer) {
+                log.info("Successfully retrieved customer from {} social login: {}", provider, keycloakId);
+                return (Customer) customer.get();
             }
             
-            // Still not found after retries
-            log.error("Failed to fetch customer after DataIntegrityViolation for keycloakId: {}", keycloakId);
+            // Rare case: insert succeeded but fetch failed (maybe replication lag)
+            log.warn("Insert succeeded but customer not found immediately for keycloakId: {}", keycloakId);
+            Thread.sleep(100); // Brief delay for database consistency
+            
+            Optional<User> retryFetch = userRepository.findByKeycloakId(keycloakId);
+            if (retryFetch.isPresent() && retryFetch.get() instanceof Customer) {
+                return (Customer) retryFetch.get();
+            }
+            
+            log.error("Customer not found after successful INSERT IGNORE for keycloakId: {}", keycloakId);
             throw new BadRequestException(ErrorCode.USER_NOT_FOUND,
                     "Không thể tạo tài khoản. Vui lòng thử lại sau.");
                     
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new BadRequestException(ErrorCode.INTERNAL_SERVER_ERROR,
+                    "Lỗi hệ thống. Vui lòng thử lại sau.");
         } catch (Exception e) {
-            log.error("Unexpected error creating customer for keycloakId: {}", keycloakId, e);
+            log.error("Unexpected error in INSERT IGNORE for keycloakId: {}", keycloakId, e);
             throw new BadRequestException(ErrorCode.INTERNAL_SERVER_ERROR,
                     "Lỗi hệ thống. Vui lòng thử lại sau.");
         }
