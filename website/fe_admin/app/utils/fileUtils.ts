@@ -3,6 +3,21 @@
  */
 
 import axiosInstance from '~/config/axios';
+import axios from 'axios';
+
+// Get base URL from environment or use default
+const API_BASE_URL: string = typeof window !== 'undefined'
+  ? window.location.origin
+  : 'http://localhost:8080';
+
+// Create a separate axios instance WITHOUT authentication for public file downloads
+// This prevents 401 errors when tokens are expired/invalid
+const publicAxios = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
 /**
  * Adds the fl_attachment flag to Cloudinary URL to force download
@@ -25,8 +40,6 @@ export function getDownloadableCloudinaryUrl(url: string): string {
       return url;
     }
 
-    // For raw resources (documents like PDF, DOC, etc.)
-    // Add fl_attachment transformation to force download
     if (url.includes('/raw/upload/')) {
       // Insert fl_attachment after /upload/
       return url.replace('/raw/upload/', '/raw/upload/fl_attachment/');
@@ -47,7 +60,7 @@ export function getDownloadableCloudinaryUrl(url: string): string {
 /**
  * Downloads a file through backend proxy to avoid CORS and auth issues
  * The backend fetches from Cloudinary and streams it back with proper headers
- * Uses axiosInstance to automatically handle token refresh
+ * Uses publicAxios (no auth) since /api/files/** endpoint is public
  *
  * @param url - The Cloudinary file URL to download
  * @param filename - Optional custom filename for the download
@@ -58,19 +71,16 @@ export async function downloadFile(url: string, filename?: string): Promise<void
   }
 
   try {
-    // Build backend proxy URL
-    const encodedUrl = encodeURIComponent(url);
-    let downloadUrl = `/files/download?url=${encodedUrl}`;
 
-    // Add custom filename if provided
+    const encodedUrl = encodeURIComponent(url);
+    let downloadUrl = `/api/files/download?url=${encodedUrl}`;
+
     if (filename) {
       const encodedFilename = encodeURIComponent(filename);
       downloadUrl += `&filename=${encodedFilename}`;
     }
 
-    // Use axiosInstance with responseType: 'blob' to get binary data
-    // This automatically includes auth token and handles refresh
-    const response = await axiosInstance.get(downloadUrl, {
+    const response = await publicAxios.get(downloadUrl, {
       responseType: 'blob',
     });
 
@@ -92,8 +102,12 @@ export async function downloadFile(url: string, filename?: string): Promise<void
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
         if (filenameMatch && filenameMatch[1]) {
-          finalFilename = filenameMatch[1].replace(/['"]/g, '');
-          finalFilename = decodeURIComponent(finalFilename);
+          const matchedName = filenameMatch[1].replace(/['"]/g, '');
+          try {
+            finalFilename = decodeURIComponent(matchedName);
+          } catch {
+            finalFilename = matchedName;
+          }
         }
       }
     }
@@ -124,7 +138,7 @@ export async function downloadFile(url: string, filename?: string): Promise<void
 /**
  * Fetches a file (image or PDF) through the backend proxy and returns a blob URL
  * Used for displaying files in components with authentication
- * Uses axiosInstance to automatically handle token refresh
+ * Uses publicAxios (no auth) since /api/files/** endpoint is public
  * Renamed from fetchImageAsBlobUrl to support both images and PDFs
  *
  * @param url - The Cloudinary file URL to fetch
@@ -137,11 +151,11 @@ export async function fetchFileAsBlobUrl(url: string): Promise<string | null> {
 
   try {
     const encodedUrl = encodeURIComponent(url);
-    const fetchUrl = `/files/download?url=${encodedUrl}&inline=true`;
+    const fetchUrl = `/api/files/download?url=${encodedUrl}&inline=true`;
 
-    // Use axiosInstance with responseType: 'blob'
-    // This automatically includes auth token and handles refresh
-    const response = await axiosInstance.get(fetchUrl, {
+    // Use publicAxios (no auth headers) since this is a public endpoint
+    // This prevents 401 errors when admin tokens are expired/invalid
+    const response = await publicAxios.get(fetchUrl, {
       responseType: 'blob',
     });
 
