@@ -240,7 +240,7 @@ public class FileStorageController {
     }
 
     @GetMapping("/download")
-    @Operation(summary = "Download or view file with signed URL", description = "Generate signed URL or proxy Cloudinary files")
+    @Operation(summary = "Download or view file with signed URL", description = "Generate signed URL for Cloudinary files with authentication")
     public ResponseEntity<?> downloadFile(
             @RequestParam("url") String fileUrl,
             @RequestParam(value = "filename", required = false) String customFilename,
@@ -262,7 +262,50 @@ public class FileStorageController {
         }
 
         try {
-            log.info("Proxying file from: {}", urlToFetch);
+            // Check if this is a Cloudinary URL
+            if (urlToFetch.contains("cloudinary.com")) {
+                log.info("Generating signed URL for Cloudinary file: {}", urlToFetch);
+                
+                // Extract public_id from URL
+                String publicId = extractPublicIdFromUrl(urlToFetch);
+                if (publicId == null) {
+                    log.error("Failed to extract public_id from Cloudinary URL: {}", urlToFetch);
+                    return ResponseEntity.badRequest().build();
+                }
+                
+                // Determine resource type from URL (raw for documents, image for images)
+                String resourceType = urlToFetch.contains("/raw/") ? "raw" : "image";
+                
+                // Generate signed URL with 1 hour expiration
+                Map<String, Object> options = new HashMap<>();
+                options.put("resource_type", resourceType);
+                options.put("type", "upload");
+                options.put("sign_url", true);
+                options.put("expires_at", System.currentTimeMillis() / 1000 + 3600); // 1 hour
+                
+                if (customFilename != null && !customFilename.isEmpty()) {
+                    options.put("attachment", true);
+                    options.put("filename", customFilename);
+                } else if (!inline) {
+                    options.put("attachment", true);
+                }
+                
+                String signedUrl = cloudinary.url()
+                        .resourceType(resourceType)
+                        .type("upload")
+                        .signed(true)
+                        .generate(publicId);
+                
+                log.info("Generated signed URL for public_id: {} (type: {})", publicId, resourceType);
+                
+                // Redirect to signed URL
+                HttpHeaders headers = new HttpHeaders();
+                headers.setLocation(URI.create(signedUrl));
+                return new ResponseEntity<>(headers, HttpStatus.FOUND);
+            }
+            
+            // For non-Cloudinary URLs, proxy directly (original behavior)
+            log.info("Proxying non-Cloudinary file from: {}", urlToFetch);
             
             URI uri = URI.create(urlToFetch);
             URL url = uri.toURL();
