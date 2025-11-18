@@ -596,72 +596,60 @@ public class AuthServiceImpl implements AuthService {
 
     /**
      * Get existing or create new customer from social login
-     * Handles race condition with retry logic and proper transaction management
+     * Uses database unique constraint on keycloakId to prevent duplicates
      */
     private Customer getOrCreateSocialCustomer(String keycloakId, String email, String name, String provider) {
-        // Retry loop to handle race conditions
-        int maxRetries = 5; // Increase retry count
-        
-        for (int attempt = 1; attempt <= maxRetries; attempt++) {
-            try {
-                // Check if customer already exists (check both keycloakId and email)
-                Optional<User> existingByKeycloak = userRepository.findByKeycloakId(keycloakId);
-                if (existingByKeycloak.isPresent() && existingByKeycloak.get() instanceof Customer) {
-                    log.info("Found existing customer by keycloakId: {} on attempt {}", keycloakId, attempt);
-                    return (Customer) existingByKeycloak.get();
-                }
-                
-                Optional<User> existingByEmail = userRepository.findByEmail(email);
-                if (existingByEmail.isPresent() && existingByEmail.get() instanceof Customer) {
-                    Customer customer = (Customer) existingByEmail.get();
-                    // Update keycloakId if missing
-                    if (customer.getKeycloakId() == null || !customer.getKeycloakId().equals(keycloakId)) {
-                        customer.setKeycloakId(keycloakId);
-                        customer = (Customer) userRepository.save(customer);
-                    }
-                    log.info("Found existing customer by email: {} on attempt {}", email, attempt);
-                    return customer;
-                }
-                
-                // Try to create new customer
-                Customer newCustomer = new Customer();
-                newCustomer.setUserId(UUID.randomUUID().toString());
-                newCustomer.setKeycloakId(keycloakId);
-                newCustomer.setEmail(email);
-                newCustomer.setFullName(name != null ? name : email.split("@")[0]);
-                newCustomer.setUsername(email);
-                newCustomer.setActive(true);
-                newCustomer.setStatus(CustomerStatus.ACTIVE);
-                newCustomer.setPhoneNumber(null);
-
-                Customer saved = (Customer) userRepository.saveAndFlush(newCustomer);
-                log.info("Created new customer from {} social login: {} ({}) on attempt {}", 
-                        provider, email, keycloakId, attempt);
-                return saved;
-                
-            } catch (Exception e) {
-                String exceptionName = e.getClass().getSimpleName();
-                log.warn("Attempt {} failed for keycloakId: {} due to {}. Message: {}", 
-                        attempt, keycloakId, exceptionName, e.getMessage());
-                
-                // Wait with exponential backoff
-                if (attempt < maxRetries) {
-                    try {
-                        long waitTime = 100L * attempt; // 100ms, 200ms, 300ms, 400ms, 500ms
-                        Thread.sleep(waitTime);
-                    } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
-                    }
-                } else {
-                    // Last attempt failed
-                    log.error("All {} attempts failed for keycloakId: {}. Last exception: {}", 
-                            maxRetries, keycloakId, exceptionName, e);
-                }
-            }
+        // Try to find existing customer first
+        Optional<User> existing = userRepository.findByKeycloakId(keycloakId);
+        if (existing.isPresent() && existing.get() instanceof Customer) {
+            log.info("Found existing customer for keycloakId: {}", keycloakId);
+            return (Customer) existing.get();
         }
         
-        // All retries failed
-        throw new BadRequestException(ErrorCode.USER_NOT_FOUND,
-                "Không thể tạo tài khoản. Vui lòng thử lại sau.");
+        // Try to create new customer
+        try {
+            Customer newCustomer = new Customer();
+            newCustomer.setUserId(UUID.randomUUID().toString());
+            newCustomer.setKeycloakId(keycloakId);
+            newCustomer.setEmail(email);
+            newCustomer.setFullName(name != null ? name : email.split("@")[0]);
+            newCustomer.setUsername(email);
+            newCustomer.setActive(true);
+            newCustomer.setStatus(CustomerStatus.ACTIVE);
+            newCustomer.setPhoneNumber(null);
+            
+            Customer saved = (Customer) userRepository.save(newCustomer);
+            log.info("Created new customer from {} social login: {}", provider, keycloakId);
+            return saved;
+            
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // Unique constraint violation - customer was created by another request
+            log.warn("Duplicate customer detected for keycloakId: {}. Fetching existing...", keycloakId);
+            
+            // Retry fetch with delays to allow transaction commit
+            for (int i = 0; i < 3; i++) {
+                try {
+                    Thread.sleep(100 * (i + 1)); // 100ms, 200ms, 300ms
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                }
+                
+                Optional<User> retry = userRepository.findByKeycloakId(keycloakId);
+                if (retry.isPresent() && retry.get() instanceof Customer) {
+                    log.info("Successfully fetched customer after duplicate attempt: {}", keycloakId);
+                    return (Customer) retry.get();
+                }
+            }
+            
+            // Still not found after retries
+            log.error("Failed to fetch customer after DataIntegrityViolation for keycloakId: {}", keycloakId);
+            throw new BadRequestException(ErrorCode.USER_NOT_FOUND,
+                    "Không thể tạo tài khoản. Vui lòng thử lại sau.");
+                    
+        } catch (Exception e) {
+            log.error("Unexpected error creating customer for keycloakId: {}", keycloakId, e);
+            throw new BadRequestException(ErrorCode.INTERNAL_SERVER_ERROR,
+                    "Lỗi hệ thống. Vui lòng thử lại sau.");
+        }
     }
 }
