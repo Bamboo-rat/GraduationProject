@@ -3,18 +3,6 @@
  */
 
 import axiosInstance from '~/config/axios';
-import axios from 'axios';
-
-// Create a separate axios instance WITHOUT authentication for public file downloads
-// Uses the same base URL as axiosInstance but without auth interceptors
-// This prevents 401 errors when tokens are expired/invalid
-const publicAxios = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api',
-  timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
 
 /**
  * Adds the fl_attachment flag to Cloudinary URL to force download
@@ -80,14 +68,26 @@ export async function downloadFile(url: string, filename?: string): Promise<void
       downloadUrl += `&filename=${encodedFilename}`;
     }
 
-    // Use publicAxios (no auth headers) since this is a public endpoint
-    // This prevents 401 errors when admin tokens are expired/invalid
-    const response = await publicAxios.get(downloadUrl, {
-      responseType: 'blob',
+    // Get base URL for fetch
+    const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+    const fullUrl = `${baseURL}${downloadUrl}`;
+
+    // Use native fetch API without ANY authentication headers
+    // This ensures no token is sent even if axios has global defaults
+    const response = await fetch(fullUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        // Explicitly NO Authorization header
+      },
     });
 
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
     // Get the blob from response
-    const blob = response.data;
+    const blob = await response.blob();
 
     // Create blob URL
     const blobUrl = URL.createObjectURL(blob);
@@ -100,7 +100,7 @@ export async function downloadFile(url: string, filename?: string): Promise<void
     // Extract filename from Content-Disposition header or use provided filename
     let finalFilename = filename;
     if (!finalFilename) {
-      const contentDisposition = response.headers['content-disposition'];
+      const contentDisposition = response.headers.get('content-disposition');
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
         if (filenameMatch && filenameMatch[1]) {
@@ -153,16 +153,28 @@ export async function fetchFileAsBlobUrl(url: string): Promise<string | null> {
 
   try {
     const encodedUrl = encodeURIComponent(url);
-    const fetchUrl = `/files/download?url=${encodedUrl}&inline=true`;
+    const fetchUrlPath = `/files/download?url=${encodedUrl}&inline=true`;
 
-    // Use publicAxios (no auth headers) since this is a public endpoint
-    // This prevents 401 errors when admin tokens are expired/invalid
-    const response = await publicAxios.get(fetchUrl, {
-      responseType: 'blob',
+    // Get base URL for fetch
+    const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+    const fullUrl = `${baseURL}${fetchUrlPath}`;
+
+    // Use native fetch API without ANY authentication headers
+    // This ensures no token is sent even if axios has global defaults
+    const response = await fetch(fullUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        // Explicitly NO Authorization header
+      },
     });
 
+    if (!response.ok) {
+      return null;
+    }
+
     // Get the blob from response
-    const blob = response.data;
+    const blob = await response.blob();
 
     // Create and return blob URL
     const blobUrl = URL.createObjectURL(blob);
