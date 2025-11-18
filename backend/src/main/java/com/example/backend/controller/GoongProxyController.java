@@ -2,6 +2,7 @@ package com.example.backend.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -15,13 +16,14 @@ import org.springframework.web.client.RestTemplate;
 @Slf4j
 @RestController
 @RequestMapping("/api/goong")
+@RequiredArgsConstructor
 @Tag(name = "Goong Proxy", description = "Proxy endpoints for Goong Maps API")
 public class GoongProxyController {
 
     @Value("${goong.api.key:}")
     private String goongApiKey;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
 
     @GetMapping("/autocomplete")
     @Operation(summary = "Autocomplete address", description = "Proxy for Goong Place Autocomplete API")
