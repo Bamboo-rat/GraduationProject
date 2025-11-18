@@ -43,6 +43,9 @@ export interface SupplierDashboardStats {
   activeProducts: number;
   monthlyRevenue: number;
   monthlyOrders: number;
+  unrepliedReviews: number;
+  expiringProducts: number;
+  overdueOrders: number;
 }
 
 // Revenue time series
@@ -116,22 +119,10 @@ class ReportService {
    */
   async getDashboardStats(): Promise<SupplierDashboardStats> {
     try {
-      // This would need a dedicated backend endpoint
-      // For now, we'll aggregate from existing endpoints
-      const performance = await this.getMyPerformance();
-      const walletService = (await import('./walletService')).default;
-      const wallet = await walletService.getWalletSummary();
-
-      return {
-        todayRevenue: 0, // Would need dedicated endpoint
-        todayOrders: 0,
-        pendingOrders: 0,
-        lowStockProducts: 0,
-        totalProducts: performance.totalProducts || 0,
-        activeProducts: performance.activeProducts || 0,
-        monthlyRevenue: wallet.monthlyEarnings || 0,
-        monthlyOrders: wallet.totalOrdersThisMonth || 0,
-      };
+      const { data } = await axiosInstance.get<ApiResponse<SupplierDashboardStats>>(
+        '/suppliers/me/dashboard/stats'
+      );
+      return data.data;
     } catch (error) {
       throw this.handleError(error);
     }
@@ -146,9 +137,14 @@ class ReportService {
     endDate?: string;
   }): Promise<RevenueTimePoint[]> {
     try {
-      // This would need a dedicated supplier revenue endpoint
-      // For now return mock data structure
-      return [];
+      const queryParams = new URLSearchParams();
+      if (params.startDate) queryParams.append('startDate', params.startDate);
+      if (params.endDate) queryParams.append('endDate', params.endDate);
+
+      const { data } = await axiosInstance.get<ApiResponse<RevenueTimePoint[]>>(
+        `/suppliers/me/dashboard/revenue?${queryParams.toString()}`
+      );
+      return data.data;
     } catch (error) {
       throw this.handleError(error);
     }
@@ -163,8 +159,15 @@ class ReportService {
     endDate?: string;
   }): Promise<TopProduct[]> {
     try {
-      // This would need a dedicated endpoint
-      return [];
+      const queryParams = new URLSearchParams();
+      if (params?.limit) queryParams.append('limit', params.limit.toString());
+      if (params?.startDate) queryParams.append('startDate', params.startDate);
+      if (params?.endDate) queryParams.append('endDate', params.endDate);
+
+      const { data } = await axiosInstance.get<ApiResponse<TopProduct[]>>(
+        `/suppliers/me/dashboard/top-products?${queryParams.toString()}`
+      );
+      return data.data;
     } catch (error) {
       throw this.handleError(error);
     }
@@ -226,6 +229,20 @@ class ReportService {
    */
   formatDateTime(dateString: string): string {
     return new Date(dateString).toLocaleString('vi-VN');
+  }
+
+  /**
+   * Get order status distribution
+   */
+  async getOrderStatusDistribution(): Promise<any[]> {
+    try {
+      const { data } = await axiosInstance.get<ApiResponse<any[]>>(
+        '/suppliers/me/dashboard/order-status'
+      );
+      return data.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
   }
 }
 

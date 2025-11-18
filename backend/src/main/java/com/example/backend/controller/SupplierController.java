@@ -1,11 +1,10 @@
 package com.example.backend.controller;
 
 import com.example.backend.dto.request.*;
-import com.example.backend.dto.response.ApiResponse;
-import com.example.backend.dto.response.SupplierPendingUpdateResponse;
-import com.example.backend.dto.response.SupplierResponse;
+import com.example.backend.dto.response.*;
 import com.example.backend.entity.enums.SuggestionStatus;
 import com.example.backend.entity.enums.SupplierStatus;
+import com.example.backend.service.SupplierDashboardService;
 import com.example.backend.service.SupplierService;
 import com.example.backend.utils.JwtUtils;
 import io.swagger.v3.oas.annotations.Operation;
@@ -39,6 +38,7 @@ import org.springframework.web.bind.annotation.*;
 public class SupplierController {
 
     private final SupplierService supplierService;
+    private final SupplierDashboardService supplierDashboardService;
 
     // ===== PROFILE MANAGEMENT ENDPOINTS (Authentication required) =====
 
@@ -336,5 +336,100 @@ public class SupplierController {
                 supplierService.rejectBusinessInfoUpdate(updateId, keycloakId, adminNotes);
 
         return ResponseEntity.ok(ApiResponse.success("Business info update request rejected", response));
+    }
+
+    // ===== DASHBOARD ANALYTICS ENDPOINTS =====
+
+    @GetMapping("/me/dashboard/stats")
+    @PreAuthorize("hasRole('SUPPLIER')")
+    @Operation(summary = "Get dashboard statistics",
+               description = "Get comprehensive dashboard statistics including today's orders, revenue, stock alerts, etc.")
+    public ResponseEntity<ApiResponse<SupplierDashboardStatsResponse>> getDashboardStats(
+            Authentication authentication) {
+        log.info("GET /api/suppliers/me/dashboard/stats - Getting dashboard statistics");
+
+        Jwt jwt = (Jwt) authentication.getPrincipal();
+        String keycloakId = JwtUtils.extractKeycloakId(jwt);
+
+        SupplierDashboardStatsResponse stats = supplierDashboardService.getDashboardStats(keycloakId);
+
+        return ResponseEntity.ok(ApiResponse.success("Dashboard statistics retrieved successfully", stats));
+    }
+
+    @GetMapping("/me/dashboard/revenue")
+    @PreAuthorize("hasRole('SUPPLIER')")
+    @Operation(summary = "Get revenue over time",
+               description = "Get daily revenue time series for a date range. Default: last 7 days.")
+    public ResponseEntity<ApiResponse<java.util.List<SupplierRevenueTimeSeriesResponse>>> getRevenueOverTime(
+            Authentication authentication,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate startDate,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate endDate) {
+        log.info("GET /api/suppliers/me/dashboard/revenue - Getting revenue over time");
+
+        Jwt jwt = (Jwt) authentication.getPrincipal();
+        String keycloakId = JwtUtils.extractKeycloakId(jwt);
+
+        // Default to last 7 days if not specified
+        if (startDate == null) {
+            startDate = java.time.LocalDate.now().minusDays(6);
+        }
+        if (endDate == null) {
+            endDate = java.time.LocalDate.now();
+        }
+
+        java.util.List<SupplierRevenueTimeSeriesResponse> revenue =
+                supplierDashboardService.getRevenueOverTime(keycloakId, startDate, endDate);
+
+        return ResponseEntity.ok(ApiResponse.success("Revenue time series retrieved successfully", revenue));
+    }
+
+    @GetMapping("/me/dashboard/top-products")
+    @PreAuthorize("hasRole('SUPPLIER')")
+    @Operation(summary = "Get top selling products",
+               description = "Get top N selling products ranked by revenue. Default limit: 5 products.")
+    public ResponseEntity<ApiResponse<java.util.List<SupplierTopProductResponse>>> getTopProducts(
+            Authentication authentication,
+            @RequestParam(defaultValue = "5") int limit,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate startDate,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate endDate) {
+        log.info("GET /api/suppliers/me/dashboard/top-products - Getting top {} products", limit);
+
+        Jwt jwt = (Jwt) authentication.getPrincipal();
+        String keycloakId = JwtUtils.extractKeycloakId(jwt);
+
+        // Validate limit
+        if (limit < 1 || limit > 100) {
+            limit = 5;
+        }
+
+        // Default to current month if not specified
+        if (startDate == null) {
+            startDate = java.time.LocalDate.now().withDayOfMonth(1);
+        }
+        if (endDate == null) {
+            endDate = java.time.LocalDate.now();
+        }
+
+        java.util.List<SupplierTopProductResponse> topProducts =
+                supplierDashboardService.getTopProducts(keycloakId, limit, startDate, endDate);
+
+        return ResponseEntity.ok(ApiResponse.success("Top products retrieved successfully", topProducts));
+    }
+
+    @GetMapping("/me/dashboard/order-status")
+    @PreAuthorize("hasRole('SUPPLIER')")
+    @Operation(summary = "Get order status distribution",
+               description = "Get count of orders grouped by status")
+    public ResponseEntity<ApiResponse<java.util.List<SupplierOrderStatusResponse>>> getOrderStatusDistribution(
+            Authentication authentication) {
+        log.info("GET /api/suppliers/me/dashboard/order-status - Getting order status distribution");
+
+        Jwt jwt = (Jwt) authentication.getPrincipal();
+        String keycloakId = JwtUtils.extractKeycloakId(jwt);
+
+        java.util.List<SupplierOrderStatusResponse> orderStatus =
+                supplierDashboardService.getOrderStatusDistribution(keycloakId);
+
+        return ResponseEntity.ok(ApiResponse.success("Order status distribution retrieved successfully", orderStatus));
     }
 }

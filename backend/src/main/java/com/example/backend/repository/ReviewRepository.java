@@ -58,6 +58,12 @@ public interface ReviewRepository extends JpaRepository<Review, String> {
     List<Review> findTop20ByCustomerOrderByCreatedAtDesc(Customer customer);
 
     /**
+     * Count unreplied reviews by product and rating
+     */
+    @Query("SELECT COUNT(r) FROM Review r WHERE r.productVariant.product.productId = :productId AND r.rating = :rating AND r.supplierReply IS NULL")
+    long countByProductProductIdAndRatingAndReplyIsNull(@Param("productId") String productId, @Param("rating") int rating);
+
+    /**
      * Find all reviews by store
      */
     Page<Review> findByStoreAndMarkedAsSpamFalseOrderByCreatedAtDesc(Store store, Pageable pageable);

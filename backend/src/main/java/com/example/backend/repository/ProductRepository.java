@@ -16,6 +16,9 @@ public interface ProductRepository extends JpaRepository<Product, String>, JpaSp
     // Find products by supplier
     Page<Product> findBySupplierUserId(String supplierUserId, Pageable pageable);
 
+    // Find products by supplier (non-paginated)
+    java.util.List<Product> findBySupplierUserId(String supplierUserId);
+
     // Find products by supplier and status
     Page<Product> findBySupplierUserIdAndStatus(String supplierUserId, ProductStatus status, Pageable pageable);
 

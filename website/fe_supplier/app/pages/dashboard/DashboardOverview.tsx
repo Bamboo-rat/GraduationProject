@@ -56,25 +56,62 @@ export default function DashboardOverview() {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      const [walletData, performanceData] = await Promise.all([
+
+      // Calculate date range for last 7 days
+      const endDate = new Date();
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 6);
+
+      const startDateStr = startDate.toISOString().split('T')[0];
+      const endDateStr = endDate.toISOString().split('T')[0];
+
+      const [walletData, performanceData, dashboardStats, revenueTimeSeries, topProductsData, orderStatusData] = await Promise.all([
         walletService.getWalletSummary(),
         reportService.getMyPerformance(),
+        reportService.getDashboardStats(),
+        reportService.getRevenueOverTime({ period: 'day', startDate: startDateStr, endDate: endDateStr }),
+        reportService.getTopProducts({ limit: 5 }),
+        reportService.getOrderStatusDistribution(),
       ]);
+
       setWallet(walletData);
       setPerformance(performanceData);
-      
-      // TODO: Replace with actual API calls
-      setRevenueData([]);
-      setOrderStatusData([]);
+
+      // Set today stats from dashboard stats
       setTodayStats({
-        todayOrders: 0,
-        pendingOrders: 0,
-        lowStockProducts: 0,
-        unrepliedReviews: 0,
-        expiringProducts: 0,
-        overdueOrders: 0
+        todayOrders: Number(dashboardStats.todayOrders) || 0,
+        pendingOrders: Number(dashboardStats.pendingOrders) || 0,
+        lowStockProducts: Number(dashboardStats.lowStockProducts) || 0,
+        unrepliedReviews: Number(dashboardStats.unrepliedReviews) || 0,
+        expiringProducts: Number(dashboardStats.expiringProducts) || 0,
+        overdueOrders: Number(dashboardStats.overdueOrders) || 0
       });
-      setTopProducts([]);
+
+      // Format revenue data for chart
+      const formattedRevenueData = revenueTimeSeries.map(item => ({
+        date: new Date(item.date).toLocaleDateString('vi-VN', { month: 'short', day: 'numeric' }),
+        revenue: Number(item.revenue) || 0,
+        orders: Number(item.orders) || 0
+      }));
+      setRevenueData(formattedRevenueData);
+
+      // Format order status data for pie chart
+      const formattedOrderStatusData = orderStatusData.map(item => ({
+        name: item.name,
+        value: Number(item.count) || 0,
+        color: item.color
+      }));
+      setOrderStatusData(formattedOrderStatusData);
+
+      // Format top products data
+      const formattedTopProducts = topProductsData.map(item => ({
+        productId: item.productId,
+        productName: item.productName,
+        totalSold: Number(item.totalSold) || 0,
+        revenue: Number(item.totalRevenue) || 0,
+        imageUrl: item.imageUrl
+      }));
+      setTopProducts(formattedTopProducts);
 
     } catch (err) {
       console.error('Failed to load dashboard:', err);
