@@ -5,15 +5,12 @@
 import axiosInstance from '~/config/axios';
 import axios from 'axios';
 
-// Get base URL from environment or use default
-const API_BASE_URL: string = typeof window !== 'undefined'
-  ? window.location.origin
-  : 'http://localhost:8080';
-
 // Create a separate axios instance WITHOUT authentication for public file downloads
+// Uses the same base URL as axiosInstance but without auth interceptors
 // This prevents 401 errors when tokens are expired/invalid
 const publicAxios = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api',
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -40,6 +37,8 @@ export function getDownloadableCloudinaryUrl(url: string): string {
       return url;
     }
 
+    // For raw resources (documents like PDF, DOC, etc.)
+    // Add fl_attachment transformation to force download
     if (url.includes('/raw/upload/')) {
       // Insert fl_attachment after /upload/
       return url.replace('/raw/upload/', '/raw/upload/fl_attachment/');
@@ -71,15 +70,18 @@ export async function downloadFile(url: string, filename?: string): Promise<void
   }
 
   try {
-
+    // Build backend proxy URL
     const encodedUrl = encodeURIComponent(url);
-    let downloadUrl = `/api/files/download?url=${encodedUrl}`;
+    let downloadUrl = `/files/download?url=${encodedUrl}`;
 
+    // Add custom filename if provided
     if (filename) {
       const encodedFilename = encodeURIComponent(filename);
       downloadUrl += `&filename=${encodedFilename}`;
     }
 
+    // Use publicAxios (no auth headers) since this is a public endpoint
+    // This prevents 401 errors when admin tokens are expired/invalid
     const response = await publicAxios.get(downloadUrl, {
       responseType: 'blob',
     });
@@ -102,11 +104,11 @@ export async function downloadFile(url: string, filename?: string): Promise<void
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
         if (filenameMatch && filenameMatch[1]) {
-          const matchedName = filenameMatch[1].replace(/['"]/g, '');
+          const rawFilename = filenameMatch[1].replace(/['"]/g, '');
           try {
-            finalFilename = decodeURIComponent(matchedName);
+            finalFilename = decodeURIComponent(rawFilename);
           } catch {
-            finalFilename = matchedName;
+            finalFilename = rawFilename;
           }
         }
       }
@@ -128,8 +130,8 @@ export async function downloadFile(url: string, filename?: string): Promise<void
     }, 100);
   } catch (error: any) {
     // Error is already handled by axios interceptor
-    const errorMessage = error.response?.data?.message 
-      || error.message 
+    const errorMessage = error.response?.data?.message
+      || error.message
       || 'Tải file thất bại';
     throw new Error(errorMessage);
   }
@@ -151,7 +153,7 @@ export async function fetchFileAsBlobUrl(url: string): Promise<string | null> {
 
   try {
     const encodedUrl = encodeURIComponent(url);
-    const fetchUrl = `/api/files/download?url=${encodedUrl}&inline=true`;
+    const fetchUrl = `/files/download?url=${encodedUrl}&inline=true`;
 
     // Use publicAxios (no auth headers) since this is a public endpoint
     // This prevents 401 errors when admin tokens are expired/invalid
