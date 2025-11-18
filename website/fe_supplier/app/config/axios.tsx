@@ -21,8 +21,7 @@ axiosInstance.interceptors.request.use(
       '/auth/reset-password',
       '/auth/refresh',
       '/locations',
-      '/files/upload',
-      '/files/download'
+      '/files/upload'
     ];
     
     const isPublicEndpoint = publicEndpoints.some(endpoint => 
