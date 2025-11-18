@@ -43,6 +43,12 @@ public class CartServiceImpl implements CartService {
         log.info("Adding item to cart: customerId={}, storeProductId={}, quantity={}",
                 customerId, request.getStoreProductId(), request.getQuantity());
 
+        // Validate quantity to prevent division by zero and invalid cart items
+        if (request.getQuantity() <= 0) {
+            throw new BadRequestException(ErrorCode.INVALID_REQUEST,
+                    "Quantity must be greater than 0");
+        }
+
         // Get customer
         Customer customer = customerRepository.findById(customerId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
@@ -130,6 +136,12 @@ public class CartServiceImpl implements CartService {
         if (request.getQuantity() == null || request.getQuantity() == 0) {
             log.info("Quantity is 0 or null, removing cart item: cartDetailId={}", cartDetailId);
             return removeCartItem(customerId, cartDetailId);
+        }
+
+        // Validate quantity to prevent division by zero and invalid cart items
+        if (request.getQuantity() < 0) {
+            throw new BadRequestException(ErrorCode.INVALID_REQUEST,
+                    "Quantity must be greater than 0");
         }
 
         StoreProduct storeProduct = cartDetail.getStoreProduct();

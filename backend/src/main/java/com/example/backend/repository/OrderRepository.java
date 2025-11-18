@@ -19,6 +19,43 @@ import java.util.Optional;
 public interface OrderRepository extends JpaRepository<Order, String> {
 
     Optional<Order> findByOrderCode(String orderCode);
+
+    /**
+     * Find order by ID with all relationships eagerly loaded (optimized for display)
+     * Prevents N+1 query problem by using JOIN FETCH
+     */
+    @Query("""
+        SELECT DISTINCT o FROM Order o
+        LEFT JOIN FETCH o.orderDetails od
+        LEFT JOIN FETCH od.storeProduct sp
+        LEFT JOIN FETCH sp.variant v
+        LEFT JOIN FETCH v.product p
+        LEFT JOIN FETCH p.images
+        LEFT JOIN FETCH od.review
+        LEFT JOIN FETCH o.promotionUsages pu
+        LEFT JOIN FETCH pu.promotion
+        WHERE o.orderId = :orderId
+    """)
+    Optional<Order> findByIdWithDetails(@Param("orderId") String orderId);
+
+    /**
+     * Find order by order code with all relationships eagerly loaded (optimized for display)
+     * Prevents N+1 query problem by using JOIN FETCH
+     */
+    @Query("""
+        SELECT DISTINCT o FROM Order o
+        LEFT JOIN FETCH o.orderDetails od
+        LEFT JOIN FETCH od.storeProduct sp
+        LEFT JOIN FETCH sp.variant v
+        LEFT JOIN FETCH v.product p
+        LEFT JOIN FETCH p.images
+        LEFT JOIN FETCH od.review
+        LEFT JOIN FETCH o.promotionUsages pu
+        LEFT JOIN FETCH pu.promotion
+        WHERE o.orderCode = :orderCode
+    """)
+    Optional<Order> findByOrderCodeWithDetails(@Param("orderCode") String orderCode);
+
     Page<Order> findByCustomer(Customer customer, Pageable pageable);
     List<Order> findByCustomer(Customer customer);
     Page<Order> findByCustomerUserId(String customerId, Pageable pageable);

@@ -77,7 +77,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    @Transactional(isolation = Isolation.SERIALIZABLE)
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public OrderResponse checkout(String customerId, CheckoutRequest request) {
         // Generate idempotency key if not provided by frontend
         if (request.getIdempotencyKey() == null || request.getIdempotencyKey().trim().isEmpty()) {
@@ -101,7 +101,10 @@ public class OrderServiceImpl implements OrderService {
                 throw new BadRequestException(ErrorCode.UNAUTHORIZED_ACCESS,
                         "Idempotency key đã được sử dụng bởi khách hàng khác");
             }
-            
+
+            // Use optimized query to prevent N+1 when mapping to response
+            order = orderRepository.findByIdWithDetails(order.getOrderId())
+                    .orElseThrow(() -> new NotFoundException(ErrorCode.ORDER_NOT_FOUND));
             return mapToOrderResponse(order);
         }
 
@@ -273,6 +276,13 @@ public class OrderServiceImpl implements OrderService {
 
         // Copy cart details to order details with current prices
         for (CartDetail cartDetail : cart.getCartDetails()) {
+            // Validate quantity to prevent division by zero and invalid orders
+            if (cartDetail.getQuantity() <= 0) {
+                throw new BadRequestException(ErrorCode.INVALID_REQUEST,
+                    "Quantity must be greater than 0 for product: " +
+                    cartDetail.getStoreProduct().getVariant().getProduct().getName());
+            }
+
             // Re-fetch with lock before deducting stock to ensure atomicity
             StoreProduct storeProduct = storeProductRepository
                     .findByStoreProductIdForUpdate(cartDetail.getStoreProduct().getStoreProductId())
@@ -335,6 +345,9 @@ public class OrderServiceImpl implements OrderService {
                 String.format("Bạn có đơn hàng mới #%s. Tổng tiền: %s VNĐ. Vui lòng xác nhận đơn hàng",
                         order.getOrderCode(), order.getTotalAmount()));
 
+        // Reload with optimized query to prevent N+1 when mapping to response
+        order = orderRepository.findByIdWithDetails(order.getOrderId())
+                .orElseThrow(() -> new NotFoundException(ErrorCode.ORDER_NOT_FOUND));
         return mapToOrderResponse(order);
     }
 
@@ -380,6 +393,9 @@ public class OrderServiceImpl implements OrderService {
         log.info("Order status updated: orderId={}, oldStatus={}, newStatus={}",
                 orderId, oldStatus, newStatus);
 
+        // Reload with optimized query to prevent N+1 when mapping to response
+        order = orderRepository.findByIdWithDetails(orderId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.ORDER_NOT_FOUND));
         return mapToOrderResponse(order);
     }
 
@@ -405,6 +421,10 @@ public class OrderServiceImpl implements OrderService {
                         order.getOrderCode(), order.getStore().getStoreName()));
 
         log.info("Order confirmed successfully: orderId={}", orderId);
+
+        // Reload with optimized query to prevent N+1 when mapping to response
+        order = orderRepository.findByIdWithDetails(orderId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.ORDER_NOT_FOUND));
         return mapToOrderResponse(order);
     }
 
@@ -429,6 +449,10 @@ public class OrderServiceImpl implements OrderService {
                         order.getStore().getStoreName(), order.getOrderCode()));
 
         log.info("Order preparation started: orderId={}", orderId);
+
+        // Reload with optimized query to prevent N+1 when mapping to response
+        order = orderRepository.findByIdWithDetails(orderId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.ORDER_NOT_FOUND));
         return mapToOrderResponse(order);
     }
 
@@ -473,8 +497,12 @@ public class OrderServiceImpl implements OrderService {
                 String.format("Đơn hàng #%s đang được giao đến bạn. Mã vận đơn: %s - Giao Hàng Nhanh. Dự kiến giao lúc %s (%d phút)",
                         order.getOrderCode(), trackingNumber, estimatedTimeStr, deliveryMinutes));
 
-        log.info("Order shipment started: orderId={}, trackingNumber={}, estimatedDelivery={}", 
+        log.info("Order shipment started: orderId={}, trackingNumber={}, estimatedDelivery={}",
                 orderId, trackingNumber, estimatedDelivery);
+
+        // Reload with optimized query to prevent N+1 when mapping to response
+        order = orderRepository.findByIdWithDetails(orderId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.ORDER_NOT_FOUND));
         return mapToOrderResponse(order);
     }
     
@@ -616,13 +644,18 @@ public class OrderServiceImpl implements OrderService {
                                 : ""));
 
         log.info("Order canceled successfully: orderId={}", orderId);
+
+        // Reload with optimized query to prevent N+1 when mapping to response
+        order = orderRepository.findByIdWithDetails(orderId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.ORDER_NOT_FOUND));
         return mapToOrderResponse(order);
     }
 
     @Override
     @Transactional(readOnly = true)
     public OrderResponse getOrderById(String orderId) {
-        Order order = orderRepository.findById(orderId)
+        // Use optimized query with JOIN FETCH to prevent N+1 query problem
+        Order order = orderRepository.findByIdWithDetails(orderId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.ORDER_NOT_FOUND));
         return mapToOrderResponse(order);
     }
@@ -630,7 +663,8 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(readOnly = true)
     public OrderResponse getOrderByCode(String orderCode) {
-        Order order = orderRepository.findByOrderCode(orderCode)
+        // Use optimized query with JOIN FETCH to prevent N+1 query problem
+        Order order = orderRepository.findByOrderCodeWithDetails(orderCode)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.ORDER_NOT_FOUND));
         return mapToOrderResponse(order);
     }
@@ -811,6 +845,9 @@ public class OrderServiceImpl implements OrderService {
         log.info("Payment callback processed: orderId={}, paymentStatus={}",
                 orderId, payment.getStatus());
 
+        // Reload with optimized query to prevent N+1 when mapping to response
+        order = orderRepository.findByIdWithDetails(orderId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.ORDER_NOT_FOUND));
         return mapToOrderResponse(order);
     }
 
@@ -1293,6 +1330,9 @@ public class OrderServiceImpl implements OrderService {
                         "Đơn hàng #%s đã được giao thành công! Bạn nhận được %s điểm thưởng. Đánh giá sản phẩm để nhận thêm điểm",
                         order.getOrderCode(), pointsAwarded));
 
+        // Reload with optimized query to prevent N+1 when mapping to response
+        order = orderRepository.findByIdWithDetails(order.getOrderId())
+                .orElseThrow(() -> new NotFoundException(ErrorCode.ORDER_NOT_FOUND));
         return mapToOrderResponse(order);
     }
 

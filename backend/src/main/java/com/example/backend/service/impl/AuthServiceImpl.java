@@ -21,10 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * Service implementation for common authentication operations
@@ -599,27 +596,37 @@ public class AuthServiceImpl implements AuthService {
 
     /**
      * Get existing or create new customer from social login
+     * Handles race condition by catching duplicate key exceptions
      */
     private Customer getOrCreateSocialCustomer(String keycloakId, String email, String name, String provider) {
         // Try to find existing customer by keycloakId first
-        return userRepository.findByKeycloakId(keycloakId)
-                .filter(user -> user instanceof Customer)
-                .map(user -> (Customer) user)
-                .orElseGet(() -> {
-                    // Create new customer
-                    Customer newCustomer = new Customer();
-                    newCustomer.setUserId(UUID.randomUUID().toString());
-                    newCustomer.setKeycloakId(keycloakId);
-                    newCustomer.setEmail(email);
-                    newCustomer.setFullName(name != null ? name : email.split("@")[0]);
-                    newCustomer.setUsername(email); // Use email as username
-                    newCustomer.setActive(true);
-                    newCustomer.setStatus(CustomerStatus.ACTIVE);
-                    newCustomer.setPhoneNumber(null); // Social login doesn't provide phone
-                    
-                    Customer saved = (Customer) userRepository.save(newCustomer);
-                    log.info("Created new customer from {} social login: {} ({})", provider, email, keycloakId);
-                    return saved;
-                });
+        Optional<User> existingUser = userRepository.findByKeycloakId(keycloakId);
+        if (existingUser.isPresent() && existingUser.get() instanceof Customer) {
+            return (Customer) existingUser.get();
+        }
+        
+        // Create new customer if not found
+        try {
+            Customer newCustomer = new Customer();
+            newCustomer.setUserId(UUID.randomUUID().toString());
+            newCustomer.setKeycloakId(keycloakId);
+            newCustomer.setEmail(email);
+            newCustomer.setFullName(name != null ? name : email.split("@")[0]);
+            newCustomer.setUsername(email); // Use email as username
+            newCustomer.setActive(true);
+            newCustomer.setStatus(CustomerStatus.ACTIVE);
+            newCustomer.setPhoneNumber(null); // Social login doesn't provide phone
+            
+            Customer saved = (Customer) userRepository.save(newCustomer);
+            log.info("Created new customer from {} social login: {} ({})", provider, email, keycloakId);
+            return saved;
+        } catch (Exception e) {
+            // Race condition: another thread created the customer, fetch it again
+            log.warn("Race condition detected when creating customer for keycloakId: {}. Fetching existing customer.", keycloakId);
+            return (Customer) userRepository.findByKeycloakId(keycloakId)
+                    .filter(user -> user instanceof Customer)
+                    .orElseThrow(() -> new BadRequestException(ErrorCode.USER_NOT_FOUND, 
+                            "Không thể tạo hoặc tìm thấy tài khoản khách hàng."));
+        }
     }
 }
