@@ -49,95 +49,116 @@ public class SupplierDashboardServiceImpl implements SupplierDashboardService {
     @Override
     @Transactional(readOnly = true)
     public SupplierDashboardStatsResponse getDashboardStats(String supplierId) {
-        Supplier supplier = getSupplierByKeycloakId(supplierId);
-        String supplierUserId = supplier.getUserId();
+        try {
+            log.info("Getting dashboard stats for keycloakId: {}", supplierId);
+            
+            Supplier supplier = getSupplierByKeycloakId(supplierId);
+            String supplierUserId = supplier.getUserId();
 
-        log.info("Getting dashboard stats for supplier: {}", supplierUserId);
+            log.info("Found supplier with userId: {}", supplierUserId);
 
-        // Get all stores belonging to this supplier
-        List<Store> stores = storeRepository.findBySupplierUserId(supplierUserId);
-        List<String> storeIds = stores.stream()
-                .map(Store::getStoreId)
-                .collect(Collectors.toList());
+            // Get all stores belonging to this supplier
+            List<Store> stores = storeRepository.findBySupplierUserId(supplierUserId);
+            log.info("Found {} stores for supplier", stores.size());
+            
+            List<String> storeIds = stores.stream()
+                    .map(Store::getStoreId)
+                    .collect(Collectors.toList());
 
-        if (storeIds.isEmpty()) {
-            return buildEmptyStats();
+            if (storeIds.isEmpty()) {
+                log.warn("No stores found for supplier: {}, returning empty stats", supplierUserId);
+                return buildEmptyStats();
+            }
+
+            // Date ranges
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime todayStart = LocalDate.now().atStartOfDay();
+            LocalDateTime todayEnd = LocalDate.now().atTime(LocalTime.MAX);
+            LocalDateTime monthStart = LocalDate.now().withDayOfMonth(1).atStartOfDay();
+            LocalDateTime monthEnd = now;
+
+            // Get all orders for these stores
+            List<Order> allOrders = storeIds.stream()
+                    .flatMap(storeId -> orderRepository.findByStoreId(storeId).stream())
+                    .collect(Collectors.toList());
+
+            // Today's statistics
+            List<Order> todayOrders = allOrders.stream()
+                    .filter(o -> !o.getCreatedAt().isBefore(todayStart) && !o.getCreatedAt().isAfter(todayEnd))
+                    .collect(Collectors.toList());
+
+            Long todayOrdersCount = (long) todayOrders.size();
+            BigDecimal todayRevenue = calculateRevenue(todayOrders, OrderStatus.DELIVERED);
+
+            // Pending orders (all time)
+            Long pendingOrders = allOrders.stream()
+                    .filter(o -> o.getStatus() == OrderStatus.PENDING)
+                    .count();
+
+            // Overdue orders (pending > 2 hours)
+            LocalDateTime twoHoursAgo = now.minusHours(2);
+            Long overdueOrders = allOrders.stream()
+                    .filter(o -> o.getStatus() == OrderStatus.PENDING)
+                    .filter(o -> o.getCreatedAt().isBefore(twoHoursAgo))
+                    .count();
+
+            // Monthly statistics
+            List<Order> monthlyOrders = allOrders.stream()
+                    .filter(o -> !o.getCreatedAt().isBefore(monthStart) && !o.getCreatedAt().isAfter(monthEnd))
+                    .collect(Collectors.toList());
+
+            Long monthlyOrdersCount = (long) monthlyOrders.size();
+            BigDecimal monthlyRevenue = calculateRevenue(monthlyOrders, OrderStatus.DELIVERED);
+
+            // Product statistics
+            Long totalProducts = productRepository.countBySupplierUserId(supplierUserId);
+            Long activeProducts = productRepository.countBySupplierUserIdAndStatus(supplierUserId, ProductStatus.ACTIVE);
+
+            log.info("Product stats - Total: {}, Active: {}", totalProducts, activeProducts);
+
+            // Low stock products across all stores
+            Long lowStockProducts = storeIds.stream()
+                    .mapToLong(storeId -> storeProductRepository.countLowStockProductsByStore(storeId, LOW_STOCK_THRESHOLD))
+                    .sum();
+
+            log.info("Low stock products: {}", lowStockProducts);
+
+            // Expiring products (within 7 days)
+            LocalDateTime expiryThreshold = now.plusDays(EXPIRING_DAYS_THRESHOLD);
+            Long expiringProducts = storeIds.stream()
+                    .mapToLong(storeId -> storeProductRepository.countExpiringProductsByStore(storeId, expiryThreshold))
+                    .sum();
+
+            log.info("Expiring products: {}", expiringProducts);
+
+            // Unreplied 1-star reviews
+            Long unrepliedReviews = productRepository.findBySupplierUserId(supplierUserId).stream()
+                    .mapToLong(product -> reviewRepository.countByProductProductIdAndRatingAndReplyIsNull(
+                            product.getProductId(), 1))
+                    .sum();
+
+            log.info("Unreplied reviews: {}", unrepliedReviews);
+            log.info("Dashboard stats calculation completed successfully");
+
+            return SupplierDashboardStatsResponse.builder()
+                    .todayRevenue(todayRevenue)
+                    .todayOrders(todayOrdersCount)
+                    .pendingOrders(pendingOrders)
+                    .lowStockProducts(lowStockProducts)
+                    .totalProducts(totalProducts)
+                    .activeProducts(activeProducts)
+                    .monthlyRevenue(monthlyRevenue)
+                    .monthlyOrders(monthlyOrdersCount)
+                    .unrepliedReviews(unrepliedReviews)
+                    .expiringProducts(expiringProducts)
+                    .overdueOrders(overdueOrders)
+                    .build();
+        } catch (Exception e) {
+            log.error("Error getting dashboard stats for supplier: {}", supplierId, e);
+            log.error("Exception type: {}", e.getClass().getName());
+            log.error("Error message: {}", e.getMessage());
+            throw e;
         }
-
-        // Date ranges
-        LocalDateTime now = LocalDateTime.now();
-        LocalDateTime todayStart = LocalDate.now().atStartOfDay();
-        LocalDateTime todayEnd = LocalDate.now().atTime(LocalTime.MAX);
-        LocalDateTime monthStart = LocalDate.now().withDayOfMonth(1).atStartOfDay();
-        LocalDateTime monthEnd = now;
-
-        // Get all orders for these stores
-        List<Order> allOrders = storeIds.stream()
-                .flatMap(storeId -> orderRepository.findByStoreId(storeId).stream())
-                .collect(Collectors.toList());
-
-        // Today's statistics
-        List<Order> todayOrders = allOrders.stream()
-                .filter(o -> !o.getCreatedAt().isBefore(todayStart) && !o.getCreatedAt().isAfter(todayEnd))
-                .collect(Collectors.toList());
-
-        Long todayOrdersCount = (long) todayOrders.size();
-        BigDecimal todayRevenue = calculateRevenue(todayOrders, OrderStatus.DELIVERED);
-
-        // Pending orders (all time)
-        Long pendingOrders = allOrders.stream()
-                .filter(o -> o.getStatus() == OrderStatus.PENDING)
-                .count();
-
-        // Overdue orders (pending > 2 hours)
-        LocalDateTime twoHoursAgo = now.minusHours(2);
-        Long overdueOrders = allOrders.stream()
-                .filter(o -> o.getStatus() == OrderStatus.PENDING)
-                .filter(o -> o.getCreatedAt().isBefore(twoHoursAgo))
-                .count();
-
-        // Monthly statistics
-        List<Order> monthlyOrders = allOrders.stream()
-                .filter(o -> !o.getCreatedAt().isBefore(monthStart) && !o.getCreatedAt().isAfter(monthEnd))
-                .collect(Collectors.toList());
-
-        Long monthlyOrdersCount = (long) monthlyOrders.size();
-        BigDecimal monthlyRevenue = calculateRevenue(monthlyOrders, OrderStatus.DELIVERED);
-
-        // Product statistics
-        Long totalProducts = productRepository.countBySupplierUserId(supplierUserId);
-        Long activeProducts = productRepository.countBySupplierUserIdAndStatus(supplierUserId, ProductStatus.ACTIVE);
-
-        // Low stock products across all stores
-        Long lowStockProducts = storeIds.stream()
-                .mapToLong(storeId -> storeProductRepository.countLowStockProductsByStore(storeId, LOW_STOCK_THRESHOLD))
-                .sum();
-
-        // Expiring products (within 7 days)
-        LocalDateTime expiryThreshold = now.plusDays(EXPIRING_DAYS_THRESHOLD);
-        Long expiringProducts = storeIds.stream()
-                .mapToLong(storeId -> storeProductRepository.countExpiringProductsByStore(storeId, expiryThreshold))
-                .sum();
-
-        // Unreplied 1-star reviews
-        Long unrepliedReviews = productRepository.findBySupplierUserId(supplierUserId).stream()
-                .mapToLong(product -> reviewRepository.countByProductProductIdAndRatingAndReplyIsNull(
-                        product.getProductId(), 1))
-                .sum();
-
-        return SupplierDashboardStatsResponse.builder()
-                .todayRevenue(todayRevenue)
-                .todayOrders(todayOrdersCount)
-                .pendingOrders(pendingOrders)
-                .lowStockProducts(lowStockProducts)
-                .totalProducts(totalProducts)
-                .activeProducts(activeProducts)
-                .monthlyRevenue(monthlyRevenue)
-                .monthlyOrders(monthlyOrdersCount)
-                .unrepliedReviews(unrepliedReviews)
-                .expiringProducts(expiringProducts)
-                .overdueOrders(overdueOrders)
-                .build();
     }
 
     @Override
