@@ -244,7 +244,8 @@ class StoreService {
       return response.data.data;
     } catch (error: any) {
       console.error('Error updating store:', error);
-      throw new Error(error.response?.data?.message || 'Không thể cập nhật cửa hàng');
+      console.error('Error response:', error.response?.data);
+      throw new Error(error.response?.data?.vietnameseMessage || error.response?.data?.message || 'Không thể cập nhật cửa hàng');
     }
   }
 

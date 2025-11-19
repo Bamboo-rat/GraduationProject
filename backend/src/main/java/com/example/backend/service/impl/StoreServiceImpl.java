@@ -20,7 +20,9 @@ import com.example.backend.entity.PendingUpdate;
 import com.example.backend.entity.enums.UpdateEntityType;
 import com.example.backend.service.InAppNotificationService;
 import com.example.backend.service.StoreService;
+import com.example.backend.service.FileStorageService;
 import com.example.backend.entity.enums.NotificationType;
+import com.example.backend.entity.enums.StorageBucket;
 import com.example.backend.utils.LocationUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -52,6 +54,7 @@ public class StoreServiceImpl implements StoreService {
     private final StoreMapper storeMapper;
     private final ProductMapper productMapper;
     private final InAppNotificationService inAppNotificationService;
+    private final FileStorageService fileStorageService;
 
     @Override
     @Transactional(readOnly = true)
@@ -467,6 +470,16 @@ public class StoreServiceImpl implements StoreService {
                 store.setDescription(request.getDescription());
             }
             if (request.getImageUrl() != null) {
+                // Delete old image if exists and is different from new image
+                String oldImageUrl = store.getImageUrl();
+                if (oldImageUrl != null && !oldImageUrl.equals(request.getImageUrl())) {
+                    try {
+                        fileStorageService.deleteFile(oldImageUrl, StorageBucket.STORE_LOGO);
+                        log.info("Deleted old store image: {}", oldImageUrl);
+                    } catch (Exception e) {
+                        log.error("Failed to delete old store image: {}", oldImageUrl, e);
+                    }
+                }
                 store.setImageUrl(request.getImageUrl());
             }
             if (request.getOpenTime() != null) {
@@ -658,6 +671,16 @@ public class StoreServiceImpl implements StoreService {
             store.setLongitude(pendingUpdate.getLongitude());
         }
         if (pendingUpdate.getImageUrl() != null) {
+            // Delete old image if exists and is different from new image
+            String oldImageUrl = store.getImageUrl();
+            if (oldImageUrl != null && !oldImageUrl.equals(pendingUpdate.getImageUrl())) {
+                try {
+                    fileStorageService.deleteFile(oldImageUrl, StorageBucket.STORE_LOGO);
+                    log.info("Deleted old store image: {}", oldImageUrl);
+                } catch (Exception e) {
+                    log.error("Failed to delete old store image: {}", oldImageUrl, e);
+                }
+            }
             store.setImageUrl(pendingUpdate.getImageUrl());
         }
         if (pendingUpdate.getOpenTime() != null) {
@@ -718,6 +741,19 @@ public class StoreServiceImpl implements StoreService {
         if (pendingUpdate.getUpdateStatus() != SuggestionStatus.PENDING) {
             throw new BadRequestException(ErrorCode.INVALID_REQUEST, 
                     "Only PENDING updates can be rejected");
+        }
+
+        // Delete pending update's new image if exists (since it's rejected)
+        if (pendingUpdate.getImageUrl() != null) {
+            String oldImageUrl = pendingUpdate.getStore().getImageUrl();
+            if (oldImageUrl == null || !oldImageUrl.equals(pendingUpdate.getImageUrl())) {
+                try {
+                    fileStorageService.deleteFile(pendingUpdate.getImageUrl(), StorageBucket.STORE_LOGO);
+                    log.info("Deleted rejected pending update image: {}", pendingUpdate.getImageUrl());
+                } catch (Exception e) {
+                    log.error("Failed to delete rejected pending update image: {}", pendingUpdate.getImageUrl(), e);
+                }
+            }
         }
 
         // Update pending update status
