@@ -268,7 +268,7 @@ export default function ProductsList() {
         <div className="card p-6 mb-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-text mb-2 flex items-center">
+              <label className="flex items-center text-sm font-medium text-text mb-2">
                 <Search className="w-4 h-4 mr-2" />
                 Tìm kiếm sản phẩm
               </label>
@@ -281,7 +281,7 @@ export default function ProductsList() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-text mb-2 flex items-center">
+              <label className="flex items-center text-sm font-medium text-text mb-2">
                 <Filter className="w-4 h-4 mr-2" />
                 Trạng thái
               </label>
@@ -365,20 +365,31 @@ export default function ProductsList() {
                     </tr>
                   </thead>
                   <tbody className="bg-surface divide-y divide-[#B7E4C7]">
-                    {products.map((product) => {
-                      const primaryImage = (product.images || []).find(img => img.isPrimary) || (product.images || [])[0];
-                      const firstVariant = (product.variants || [])[0];
+                    {products.map((product: any) => {
+                      // ProductSummaryResponse structure
+                      const priceRange = product.priceRange;
+                      const displayPrice = priceRange?.minDiscountPrice || priceRange?.minPrice || 0;
+                      const originalPrice = priceRange?.minPrice || 0;
+                      const hasDiscount = product.hasDiscount;
 
                       return (
                         <tr key={product.productId} className="hover:bg-surface-light transition-colors group">
                           <td className="px-6 py-4">
                             <div className="flex items-center space-x-4">
-                              {primaryImage && (
+                              {product.thumbnailUrl && (
                                 <img
                                   className="h-14 w-14 rounded-lg object-cover border border-default"
-                                  src={primaryImage.imageUrl}
+                                  src={product.thumbnailUrl}
                                   alt={product.name}
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = '/placeholder-product.png';
+                                  }}
                                 />
+                              )}
+                              {!product.thumbnailUrl && (
+                                <div className="h-14 w-14 rounded-lg bg-gray-200 flex items-center justify-center border border-default">
+                                  <Package className="w-6 h-6 text-gray-400" />
+                                </div>
                               )}
                               <div className="min-w-0 flex-1">
                                 <div className="text-sm font-semibold text-text truncate">
@@ -398,18 +409,28 @@ export default function ProductsList() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm font-bold text-[#2F855A]">
-                              {firstVariant && formatCurrency(firstVariant.discountPrice || firstVariant.originalPrice)}
+                              {formatCurrency(displayPrice)}
                             </div>
-                            {firstVariant && firstVariant.discountPrice && (
+                            {hasDiscount && displayPrice < originalPrice && (
                               <div className="text-xs text-light line-through">
-                                {formatCurrency(firstVariant.originalPrice)}
+                                {formatCurrency(originalPrice)}
+                              </div>
+                            )}
+                            {priceRange?.maxPrice > priceRange?.minPrice && (
+                              <div className="text-xs text-muted">
+                                đến {formatCurrency(priceRange.maxDiscountPrice || priceRange.maxPrice)}
                               </div>
                             )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <span className="text-sm text-text font-medium">
-                              {product.variants?.length || 0} biến thể
+                              {product.totalVariantCount || 0} biến thể
                             </span>
+                            {product.availableVariantCount !== product.totalVariantCount && (
+                              <div className="text-xs text-muted">
+                                ({product.availableVariantCount || 0} còn hàng)
+                              </div>
+                            )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             {getStatusBadge(product.status)}

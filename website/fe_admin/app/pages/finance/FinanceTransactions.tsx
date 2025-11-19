@@ -3,8 +3,10 @@ import { DollarSign, CheckCircle, XCircle, CreditCard, RefreshCw, X, Store, Cale
 import DashboardLayout from '~/component/layout/DashboardLayout';
 import walletService from '~/service/walletService';
 import type { TransactionResponse } from '~/service/walletService';
+import { usePermissions } from '~/hooks/usePermissions';
 
 export default function FinanceTransactions() {
+  const { can } = usePermissions();
   const [transactions, setTransactions] = useState<TransactionResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);

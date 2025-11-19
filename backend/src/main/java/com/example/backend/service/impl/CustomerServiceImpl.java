@@ -89,7 +89,7 @@ public class CustomerServiceImpl implements CustomerService {
             customer.setFullName(generatedFullName);
             customer.setStatus(CustomerStatus.PENDING_VERIFICATION);
             customer.setActive(false);
-            customer.setAvatarUrl("https://res.cloudinary.com/dk7coitah/image/upload/v1760668372/avatar_cflwdp.jpg");
+            customer.setAvatarUrl("https://res.cloudinary.com/dk7coitah/image/upload/v1763529268/avatar_yxv6tq.jpg");
 
             customerRepository.save(customer);
             log.info("New customer created in DB: userId={}, username={}, fullName={} (Keycloak user will be created after OTP)",

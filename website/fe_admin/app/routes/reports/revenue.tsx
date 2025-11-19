@@ -11,7 +11,7 @@ export function meta({}: Route.MetaArgs) {
 
 export default function RevenueRoute() {
   return (
-    <ProtectedRoute requiredRoles={['SUPER_ADMIN']}>
+    <ProtectedRoute requiredRoles={['SUPER_ADMIN', 'MODERATOR']}>
         <RevenueReport />
     </ProtectedRoute>
   );

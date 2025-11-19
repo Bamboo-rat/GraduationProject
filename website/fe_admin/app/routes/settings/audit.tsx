@@ -11,7 +11,7 @@ export function meta({}: Route.MetaArgs) {
 
 export default function AuditRoute() {
   return (
-    <ProtectedRoute requiredRoles={['SUPER_ADMIN', 'MODERATOR', 'STAFF']}>
+    <ProtectedRoute requiredRoles={['SUPER_ADMIN', 'MODERATOR']}>
       <AuditLog />
     </ProtectedRoute>
   );

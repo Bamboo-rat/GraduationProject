@@ -151,6 +151,11 @@ export interface PurchasePattern {
 export interface WasteSummary {
   startDate: string;
   endDate: string;
+  // NEW DEFINITION - Core waste metrics
+  totalListed: number;     // Tổng số lượng đã niêm yết
+  totalSold: number;       // Tổng số lượng đã bán
+  totalUnsold: number;     // Tổng số lượng chưa bán
+  // Legacy fields
   totalProducts: number;
   activeProducts: number;
   soldOutProducts: number;

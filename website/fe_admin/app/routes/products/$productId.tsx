@@ -139,7 +139,10 @@ export default function ProductDetailRoute() {
     );
   }
 
-  const primaryImage = product.images.find(img => img.isPrimary) || product.images[0];
+  const images = product.images || [];
+  const variants = product.variants || [];
+  const attributes = product.attributes || [];
+  const primaryImage = images.find(img => img.isPrimary) || images[0];
 
   return (
     <DashboardLayout>
@@ -215,46 +218,50 @@ export default function ProductDetailRoute() {
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-lg font-semibold mb-4 flex items-center">
                 <Tag className="w-5 h-5 mr-2 text-blue-600" />
-                Biến thể sản phẩm ({product.variants.length})
+                Biến thể sản phẩm ({variants.length})
               </h2>
-              <div className="space-y-3">
-                {product.variants.map((variant) => (
-                  <div key={variant.variantId} className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-medium text-gray-900">{variant.name}</h3>
-                      <span className="text-xs text-gray-500">SKU: {variant.sku}</span>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                      <div>
-                        <span className="text-gray-500">Giá gốc:</span>
-                        <p className="font-medium">{formatCurrency(variant.originalPrice)}</p>
+              {variants.length === 0 ? (
+                <p className="text-gray-500 text-center py-4">Chưa có biến thể nào</p>
+              ) : (
+                <div className="space-y-3">
+                  {variants.map((variant) => (
+                    <div key={variant.variantId} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="font-medium text-gray-900">{variant.name}</h3>
+                        <span className="text-xs text-gray-500">SKU: {variant.sku}</span>
                       </div>
-                      {variant.discountPrice && (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                         <div>
-                          <span className="text-gray-500">Giá giảm:</span>
-                          <p className="font-medium text-green-600">{formatCurrency(variant.discountPrice)}</p>
+                          <span className="text-gray-500">Giá gốc:</span>
+                          <p className="font-medium">{formatCurrency(variant.originalPrice)}</p>
                         </div>
-                      )}
-                      {variant.manufacturingDate && (
-                        <div>
-                          <span className="text-gray-500">NSX:</span>
-                          <p className="font-medium">{new Date(variant.manufacturingDate).toLocaleDateString('vi-VN')}</p>
-                        </div>
-                      )}
-                      {variant.expiryDate && (
-                        <div>
-                          <span className="text-gray-500">HSD:</span>
-                          <p className="font-medium">{new Date(variant.expiryDate).toLocaleDateString('vi-VN')}</p>
-                        </div>
-                      )}
+                        {variant.discountPrice && (
+                          <div>
+                            <span className="text-gray-500">Giá giảm:</span>
+                            <p className="font-medium text-green-600">{formatCurrency(variant.discountPrice)}</p>
+                          </div>
+                        )}
+                        {variant.manufacturingDate && (
+                          <div>
+                            <span className="text-gray-500">NSX:</span>
+                            <p className="font-medium">{new Date(variant.manufacturingDate).toLocaleDateString('vi-VN')}</p>
+                          </div>
+                        )}
+                        {variant.expiryDate && (
+                          <div>
+                            <span className="text-gray-500">HSD:</span>
+                            <p className="font-medium">{new Date(variant.expiryDate).toLocaleDateString('vi-VN')}</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Product Attributes */}
-            {product.attributes.length > 0 && (
+            {attributes.length > 0 && (
               <div className="bg-white rounded-lg shadow p-6">
                 <h2 className="text-lg font-semibold mb-4">Thuộc tính</h2>
                 <div className="grid grid-cols-2 gap-3">
@@ -277,23 +284,38 @@ export default function ProductDetailRoute() {
                 <ImageIcon className="w-5 h-5 mr-2 text-blue-600" />
                 Hình ảnh
               </h3>
-              {primaryImage && (
-                <img
-                  src={primaryImage.imageUrl}
-                  alt={product.name}
-                  className="w-full h-64 object-cover rounded-lg mb-3"
-                />
-              )}
-              {product.images.length > 1 && (
-                <div className="grid grid-cols-3 gap-2">
-                  {product.images.slice(1).map((img) => (
-                    <img
-                      key={img.imageId}
-                      src={img.imageUrl}
-                      alt={product.name}
-                      className="w-full h-20 object-cover rounded"
-                    />
-                  ))}
+              {primaryImage ? (
+                <>
+                  <img
+                    src={primaryImage.imageUrl}
+                    alt={product.name}
+                    className="w-full h-64 object-cover rounded-lg mb-3"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = '/placeholder-product.png';
+                    }}
+                  />
+                  {images.length > 1 && (
+                    <div className="grid grid-cols-3 gap-2">
+                      {images.slice(1).map((img) => (
+                        <img
+                          key={img.imageId}
+                          src={img.imageUrl}
+                          alt={product.name}
+                          className="w-full h-20 object-cover rounded"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = '/placeholder-product.png';
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="w-full h-64 bg-gray-100 rounded-lg flex items-center justify-center">
+                  <div className="text-center text-gray-400">
+                    <Package className="w-16 h-16 mx-auto mb-2" />
+                    <p className="text-sm">Chưa có hình ảnh</p>
+                  </div>
                 </div>
               )}
             </div>

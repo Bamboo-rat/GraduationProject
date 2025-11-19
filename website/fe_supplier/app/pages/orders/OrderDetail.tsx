@@ -227,8 +227,8 @@ export default function OrderDetail() {
               </div>
               <div className="flex justify-between items-center py-2">
                 <span className="text-muted">Trạng thái TT:</span>
-                <span className={`font-semibold ${order.paymentStatus === 'PAID' ? 'text-[#2F855A]' : 'text-[#FF6B35]'}`}>
-                  {order.paymentStatus === 'PAID' ? 'Đã thanh toán' : order.paymentStatus === 'PENDING' ? 'Chờ thanh toán' : 'Thất bại'}
+                <span className={`font-semibold ${order.paymentStatus === 'SUCCESS' ? 'text-[#2F855A]' : 'text-[#FF6B35]'}`}>
+                  {order.paymentStatus === 'SUCCESS' ? 'Đã thanh toán' : order.paymentStatus === 'PENDING' ? 'Chờ thanh toán' : order.paymentStatus === 'REFUNDED' ? 'Đã hoàn tiền' : 'Thất bại'}
                 </span>
               </div>
               {order.trackingNumber && (

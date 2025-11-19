@@ -79,26 +79,26 @@ export default function DashboardOverview() {
 
       // Set today stats from dashboard stats
       setTodayStats({
-        todayOrders: Number(dashboardStats.todayOrders) || 0,
-        pendingOrders: Number(dashboardStats.pendingOrders) || 0,
-        lowStockProducts: Number(dashboardStats.lowStockProducts) || 0,
-        unrepliedReviews: Number(dashboardStats.unrepliedReviews) || 0,
-        expiringProducts: Number(dashboardStats.expiringProducts) || 0,
-        overdueOrders: Number(dashboardStats.overdueOrders) || 0
+        todayOrders: dashboardStats.todayOrders || 0,
+        pendingOrders: dashboardStats.pendingOrders || 0,
+        lowStockProducts: dashboardStats.lowStockProducts || 0,
+        unrepliedReviews: dashboardStats.unrepliedReviews || 0,
+        expiringProducts: dashboardStats.expiringProducts || 0,
+        overdueOrders: dashboardStats.overdueOrders || 0
       });
 
       // Format revenue data for chart
       const formattedRevenueData = revenueTimeSeries.map(item => ({
         date: new Date(item.date).toLocaleDateString('vi-VN', { month: 'short', day: 'numeric' }),
-        revenue: Number(item.revenue) || 0,
-        orders: Number(item.orders) || 0
+        revenue: item.revenue || 0,
+        orders: item.orders || 0
       }));
       setRevenueData(formattedRevenueData);
 
       // Format order status data for pie chart
       const formattedOrderStatusData = orderStatusData.map(item => ({
         name: item.name,
-        value: Number(item.count) || 0,
+        value: item.count || 0,
         color: item.color
       }));
       setOrderStatusData(formattedOrderStatusData);
@@ -107,8 +107,8 @@ export default function DashboardOverview() {
       const formattedTopProducts = topProductsData.map(item => ({
         productId: item.productId,
         productName: item.productName,
-        totalSold: Number(item.totalSold) || 0,
-        revenue: Number(item.totalRevenue) || 0,
+        totalSold: item.totalSold || 0,
+        revenue: item.totalRevenue || 0,
         imageUrl: item.imageUrl
       }));
       setTopProducts(formattedTopProducts);

@@ -11,7 +11,7 @@ export function meta({}: Route.MetaArgs) {
 
 export default function FinanceTransactionsRoute() {
   return (
-    <ProtectedRoute requiredRoles={['SUPER_ADMIN', 'MODERATOR', 'STAFF']}>
+    <ProtectedRoute requiredRoles={['SUPER_ADMIN', 'MODERATOR']}>
       <FinanceTransactions />
     </ProtectedRoute>
   );

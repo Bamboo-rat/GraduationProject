@@ -112,7 +112,7 @@ public class SupplierServiceImpl implements SupplierService {
             supplier.setKeycloakId(keycloakId);
             supplier.setStatus(SupplierStatus.PENDING_VERIFICATION);
             supplier.setActive(false);
-            supplier.setAvatarUrl("https://res.cloudinary.com/dk7coitah/image/upload/v1760668372/avatar_cflwdp.jpg");
+            supplier.setAvatarUrl("https://res.cloudinary.com/dk7coitah/image/upload/v1763529268/avatar_yxv6tq.jpg");
 
             supplier = supplierRepository.save(supplier);
 
@@ -541,12 +541,22 @@ public class SupplierServiceImpl implements SupplierService {
         supplier.setStatus(SupplierStatus.ACTIVE);
         supplier.setActive(true);
 
-        // Activate all pending stores
-        supplier.getStores().forEach(store -> {
-            if (store.getStatus() == StoreStatus.PENDING) {
-                store.setStatus(StoreStatus.ACTIVE);
+        // Fetch all stores and activate ONLY the first store (created during registration)
+        java.util.List<Store> supplierStores = storeRepository.findBySupplierUserId(userId);
+        if (!supplierStores.isEmpty()) {
+            // Find the oldest store (first store created during registration)
+            Store initialStore = supplierStores.stream()
+                    .filter(store -> store.getStatus() == StoreStatus.PENDING)
+                    .min(java.util.Comparator.comparing(Store::getCreatedAt))
+                    .orElse(null);
+            
+            if (initialStore != null) {
+                initialStore.setStatus(StoreStatus.ACTIVE);
+                storeRepository.save(initialStore);
+                log.info("Auto-activated initial store: {} (ID: {}) created during registration", 
+                        initialStore.getStoreName(), initialStore.getStoreId());
             }
-        });
+        }
 
         supplier = supplierRepository.save(supplier);
 

@@ -3,8 +3,10 @@ import DashboardLayout from '~/component/layout/DashboardLayout';
 import categoryService, { type Category, type CategoryRequest } from '~/service/categoryService';
 import fileStorageService from '~/service/fileStorageService';
 import { PlusCircle, Search, Filter, Edit2, ToggleLeft, ToggleRight, Upload, Image as ImageIcon } from 'lucide-react';
+import { usePermissions } from '~/hooks/usePermissions';
 
 export default function CategoriesManagement() {
+  const { can } = usePermissions();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -223,13 +225,15 @@ export default function CategoriesManagement() {
             </select>
           </div>
 
-          <button
-            onClick={openCreateModal}
-            className="btn-primary flex items-center gap-2 whitespace-nowrap lg:ml-auto"
-          >
-            <PlusCircle size={20} />
-            Tạo danh mục mới
-          </button>
+          {can('products.create') && (
+            <button
+              onClick={openCreateModal}
+              className="btn-primary flex items-center gap-2 whitespace-nowrap lg:ml-auto"
+            >
+              <PlusCircle size={20} />
+              Tạo danh mục mới
+            </button>
+          )}
         </div>
 
         {/* Categories Table */}
@@ -307,20 +311,24 @@ export default function CategoriesManagement() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex justify-end gap-2">
-                            <button
-                              onClick={() => handleEdit(category)}
-                              className="text-text hover:text-secondary transition-colors p-1"
-                              title="Sửa"
-                            >
-                              <Edit2 size={18} />
-                            </button>
-                            <button
-                              onClick={() => handleToggleActive(category)}
-                              className="text-text hover:text-accent-warm transition-colors p-1"
-                              title={category.active ? 'Vô hiệu hóa' : 'Kích hoạt'}
-                            >
-                              {category.active ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
-                            </button>
+                            {can('products.update') && (
+                              <button
+                                onClick={() => handleEdit(category)}
+                                className="text-text hover:text-secondary transition-colors p-1"
+                                title="Sửa"
+                              >
+                                <Edit2 size={18} />
+                              </button>
+                            )}
+                            {can('products.update') && (
+                              <button
+                                onClick={() => handleToggleActive(category)}
+                                className="text-text hover:text-accent-warm transition-colors p-1"
+                                title={category.active ? 'Vô hiệu hóa' : 'Kích hoạt'}
+                              >
+                                {category.active ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>

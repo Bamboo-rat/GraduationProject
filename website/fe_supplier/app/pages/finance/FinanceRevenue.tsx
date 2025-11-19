@@ -15,6 +15,7 @@ import {
   BarChart3
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import * as XLSX from 'xlsx';
 import walletService from '~/service/walletService';
 import type { WalletSummaryResponse } from '~/service/walletService';
 
@@ -44,8 +45,63 @@ export default function FinanceRevenue() {
   const loadFinanceData = async () => {
     try {
       setLoading(true);
-      const data = await walletService.getWalletSummary();
-      setSummary(data);
+      
+      // Calculate date range based on selected period
+      const endDate = new Date();
+      let startDate = new Date();
+      
+      switch (timePeriod) {
+        case '7days':
+          startDate.setDate(startDate.getDate() - 6);
+          break;
+        case '30days':
+          startDate.setDate(startDate.getDate() - 29);
+          break;
+        case 'thisMonth':
+          startDate = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
+          break;
+        default:
+          startDate.setDate(startDate.getDate() - 29);
+      }
+
+      const startDateStr = startDate.toISOString().split('T')[0];
+      const endDateStr = endDate.toISOString().split('T')[0];
+
+      // Load wallet summary and revenue data
+      const [walletData, revenueTimeSeries] = await Promise.all([
+        walletService.getWalletSummary(),
+        fetch(`/api/suppliers/me/dashboard/revenue?startDate=${startDateStr}&endDate=${endDateStr}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          },
+        }).then(res => res.json()).then(data => data.data)
+      ]);
+      
+      setSummary(walletData);
+
+      // Format revenue data for chart
+      // Backend trả về: { date, revenue, orders, averageOrderValue }
+      // Commission rate từ wallet summary
+      const commissionRate = walletData.commissionRate || 0.10; // Default 10%
+      
+      const formattedData = revenueTimeSeries.map((item: any) => {
+        const revenue = item.revenue || 0;
+        const commission = revenue * commissionRate;
+        const netIncome = revenue - commission;
+        
+        return {
+          date: new Date(item.date).toLocaleDateString('vi-VN', { 
+            month: 'short', 
+            day: 'numeric' 
+          }),
+          revenue: revenue,
+          commission: commission,
+          netIncome: netIncome,
+          orders: item.orders || 0
+        };
+      });
+      
+      setRevenueData(formattedData);
       setError(null);
     } catch (err: any) {
       setError(err.message || 'Không thể tải thông tin ví');
@@ -111,6 +167,72 @@ export default function FinanceRevenue() {
     return matchesType && matchesSearch;
   });
 
+  const exportToExcel = () => {
+    try {
+      // Prepare summary data
+      const summaryData = [
+        ['BÁO CÁO TÀI CHÍNH - SAVEFOOD'],
+        ['Thời gian xuất:', new Date().toLocaleString('vi-VN')],
+        ['Kỳ báo cáo:', timePeriod === '7days' ? '7 ngày qua' : timePeriod === '30days' ? '30 ngày qua' : 'Tháng này'],
+        [],
+        ['TỔNG QUAN TÀI CHÍNH'],
+        ['Số dư khả dụng:', summary?.availableBalance || 0],
+        ['Số dư đang chờ:', summary?.pendingBalance || 0],
+        ['Tổng thu nhập:', summary?.totalBalance || 0],
+        ['Hoa hồng đã trả:', summary?.estimatedCommissionThisMonth || 0],
+        ['Tỷ lệ hoa hồng:', `${(summary?.commissionRate || 0.1) * 100}%`],
+        [],
+        ['CHI TIẾT DOANH THU THEO NGÀY'],
+        ['Ngày', 'Doanh thu gốc (VNĐ)', 'Hoa hồng (VNĐ)', 'Thu nhập thực (VNĐ)', 'Số đơn hàng']
+      ];
+
+      // Add revenue data
+      revenueData.forEach(item => {
+        summaryData.push([
+          item.date,
+          item.revenue,
+          item.commission,
+          item.netIncome,
+          item.orders
+        ]);
+      });
+
+      // Add totals
+      const totalRevenue = revenueData.reduce((sum, item) => sum + item.revenue, 0);
+      const totalCommission = revenueData.reduce((sum, item) => sum + item.commission, 0);
+      const totalNetIncome = revenueData.reduce((sum, item) => sum + item.netIncome, 0);
+      const totalOrders = revenueData.reduce((sum, item) => sum + item.orders, 0);
+
+      summaryData.push([]);
+      summaryData.push(['TỔNG CỘNG', totalRevenue, totalCommission, totalNetIncome, totalOrders]);
+
+      // Create worksheet
+      const ws = XLSX.utils.aoa_to_sheet(summaryData);
+
+      // Set column widths
+      ws['!cols'] = [
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 15 }
+      ];
+
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Báo cáo doanh thu');
+
+      // Generate filename with current date
+      const fileName = `BaoCao_DoanhThu_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+      // Export file
+      XLSX.writeFile(wb, fileName);
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      alert('Không thể xuất file Excel. Vui lòng thử lại.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -137,13 +259,15 @@ export default function FinanceRevenue() {
           <h1 className="text-3xl font-bold text-[#2D2D2D]">Báo cáo tài chính</h1>
           <p className="text-[#6B6B6B] mt-1">Quản lý thu nhập và giao dịch của bạn</p>
         </div>
-        <button
-          onClick={loadFinanceData}
-          className="flex items-center gap-2 px-4 py-2 bg-[#2F855A] text-white rounded-xl hover:bg-[#8FB491] transition-colors shadow-sm"
-        >
-          <RefreshCw className="w-4 h-4" />
-          Làm mới
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={loadFinanceData}
+            className="flex items-center gap-2 px-4 py-2 bg-[#2F855A] text-white rounded-xl hover:bg-[#8FB491] transition-colors shadow-sm"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Làm mới
+          </button>
+        </div>
       </div>
 
       {/* 2.1. Wallet Overview - 4 Cards Grid */}
@@ -231,9 +355,12 @@ export default function FinanceRevenue() {
               <option value="thisMonth">Tháng này</option>
               <option value="custom">Tùy chỉnh</option>
             </select>
-            <button className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+            <button
+              onClick={exportToExcel}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            >
               <Download className="w-4 h-4" />
-              Xuất
+              Xuất Excel
             </button>
           </div>
         </div>

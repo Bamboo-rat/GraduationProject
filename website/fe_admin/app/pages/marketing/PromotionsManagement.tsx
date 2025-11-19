@@ -9,8 +9,10 @@ import type {
   PromotionType,
 } from '~/service/promotionService';
 import { PlusCircle, Search, Filter, Eye, Edit2, ToggleLeft, ToggleRight, Trash2 } from 'lucide-react';
+import { usePermissions } from '~/hooks/usePermissions';
 
 export default function PromotionsManagement() {
+  const { can } = usePermissions();
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -282,13 +284,15 @@ export default function PromotionsManagement() {
             </div>
           </div>
 
-          <button
-            onClick={openCreateModal}
-            className="btn-primary flex items-center gap-2 whitespace-nowrap"
-          >
-            <PlusCircle size={20} />
-            Tạo khuyến mãi mới
-          </button>
+          {can('marketing.createPromotion') && (
+            <button
+              onClick={openCreateModal}
+              className="btn-primary flex items-center gap-2 whitespace-nowrap"
+            >
+              <PlusCircle size={20} />
+              Tạo khuyến mãi mới
+            </button>
+          )}
         </div>
 
         {/* Promotions Table */}
@@ -379,25 +383,29 @@ export default function PromotionsManagement() {
                             >
                               <Eye size={18} />
                             </button>
-                            <button
-                              onClick={() => handleEdit(promotion)}
-                              className="text-text hover:text-secondary transition-colors p-1"
-                              title="Sửa"
-                            >
-                              <Edit2 size={18} />
-                            </button>
-                            <button
-                              onClick={() =>
-                                handleToggleStatus(
-                                  promotion,
-                                  promotion.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'
-                                )
-                              }
-                              className="text-text hover:text-accent-warm transition-colors p-1"
-                              title={promotion.status === 'ACTIVE' ? 'Vô hiệu hóa' : 'Kích hoạt'}
-                            >
-                              {promotion.status === 'ACTIVE' ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
-                            </button>
+                            {can('marketing.updatePromotion') && (
+                              <button
+                                onClick={() => handleEdit(promotion)}
+                                className="text-text hover:text-secondary transition-colors p-1"
+                                title="Sửa"
+                              >
+                                <Edit2 size={18} />
+                              </button>
+                            )}
+                            {can('marketing.updatePromotion') && (
+                              <button
+                                onClick={() =>
+                                  handleToggleStatus(
+                                    promotion,
+                                    promotion.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'
+                                  )
+                                }
+                                className="text-text hover:text-accent-warm transition-colors p-1"
+                                title={promotion.status === 'ACTIVE' ? 'Vô hiệu hóa' : 'Kích hoạt'}
+                              >
+                                {promotion.status === 'ACTIVE' ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                              </button>
+                            )}
                             {/* <button
                               onClick={() => openDeleteModal(promotion)}
                               className="text-text hover:text-accent-red transition-colors p-1"

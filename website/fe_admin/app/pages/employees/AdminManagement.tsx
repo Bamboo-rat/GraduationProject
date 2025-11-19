@@ -9,6 +9,7 @@ import Toast from '~/component/common/Toast';
 import StaffRegister from '~/component/features/StaffRegister';
 import StaffDetail from '~/component/features/StaffDetail';
 import StaffEdit from '~/component/features/StaffEdit';
+import { usePermissions } from '~/hooks/usePermissions';
 import '~/assets/css/adminmanagement.css';
 
 interface ToastState {
@@ -18,6 +19,7 @@ interface ToastState {
 }
 
 export default function AdminManagement() {
+  const { can } = usePermissions();
   const [admins, setAdmins] = useState<AdminResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
@@ -319,13 +321,15 @@ export default function AdminManagement() {
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => setShowRegisterModal(true)}
-              className="btn-primary flex items-center space-x-2 shadow-lg hover:shadow-xl"
-            >
-              <Icons.UserPlus className="w-5 h-5" />
-              <span>Thêm Admin/Staff</span>
-            </button>
+            {can('employees.create') && (
+              <button
+                onClick={() => setShowRegisterModal(true)}
+                className="btn-primary flex items-center space-x-2 shadow-lg hover:shadow-xl"
+              >
+                <Icons.UserPlus className="w-5 h-5" />
+                <span>Thêm Admin/Staff</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -440,14 +444,16 @@ export default function AdminManagement() {
                           >
                             <Icons.Eye className="w-5 h-5" />
                           </button>
-                          <button
-                            onClick={() => handleEditAdmin(admin)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                            title="Chỉnh sửa"
-                          >
-                            <Icons.Edit className="w-5 h-5" />
-                          </button>
-                          {admin.status === 'INACTIVE' && (
+                          {can('employees.update') && (
+                            <button
+                              onClick={() => handleEditAdmin(admin)}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="Chỉnh sửa"
+                            >
+                              <Icons.Edit className="w-5 h-5" />
+                            </button>
+                          )}
+                          {can('employees.updateStatus') && admin.status === 'INACTIVE' && (
                             <button
                               onClick={() => handleStatusChange(admin, 'activate')}
                               className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
@@ -456,7 +462,7 @@ export default function AdminManagement() {
                               <Icons.CheckCircle className="w-5 h-5" />
                             </button>
                           )}
-                          {admin.status === 'ACTIVE' && (
+                          {can('employees.updateStatus') && admin.status === 'ACTIVE' && (
                             <button
                               onClick={() => handleStatusChange(admin, 'suspend')}
                               className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -465,7 +471,7 @@ export default function AdminManagement() {
                               <Icons.Ban className="w-5 h-5" />
                             </button>
                           )}
-                          {admin.status === 'PENDING_APPROVAL' && (
+                          {can('employees.approve') && admin.status === 'PENDING_APPROVAL' && (
                             <button
                               onClick={() => handleStatusChange(admin, 'approve')}
                               className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import DashboardLayout from '~/component/layout/DashboardLayout';
 import systemConfigService, { type SystemConfigResponse } from '~/service/systemConfigService';
 import * as Icons from 'lucide-react';
+import { usePermissions } from '~/hooks/usePermissions';
 
 interface ConfigGroup {
   title: string;
@@ -10,6 +11,7 @@ interface ConfigGroup {
 }
 
 export default function SystemSettings() {
+  const { can } = usePermissions();
   const [configs, setConfigs] = useState<SystemConfigResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingKey, setEditingKey] = useState<string | null>(null);
@@ -353,13 +355,15 @@ export default function SystemSettings() {
             ) : (
               <div className="text-center">
                 <div className="text-4xl font-bold text-gray-800 mb-4">{commissionRate}%</div>
-                <button
-                  onClick={() => setEditingCommission(true)}
-                  className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium flex items-center justify-center"
-                >
-                  <Icons.Edit2 className="w-4 h-4 mr-2" />
-                  Thay đổi tỷ lệ
-                </button>
+                {can('settings.update') && (
+                  <button
+                    onClick={() => setEditingCommission(true)}
+                    className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium flex items-center justify-center"
+                  >
+                    <Icons.Edit2 className="w-4 h-4 mr-2" />
+                    Thay đổi tỷ lệ
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -415,13 +419,15 @@ export default function SystemSettings() {
             ) : (
               <div className="text-center">
                 <div className="text-4xl font-bold text-gray-800 mb-4">{pointsPercentage}%</div>
-                <button
-                  onClick={() => setEditingPoints(true)}
-                  className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium flex items-center justify-center"
-                >
-                  <Icons.Edit2 className="w-4 h-4 mr-2" />
-                  Thay đổi tỷ lệ
-                </button>
+                {can('settings.update') && (
+                  <button
+                    onClick={() => setEditingPoints(true)}
+                    className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium flex items-center justify-center"
+                  >
+                    <Icons.Edit2 className="w-4 h-4 mr-2" />
+                    Thay đổi tỷ lệ
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -491,12 +497,14 @@ export default function SystemSettings() {
                           <span className="font-semibold text-gray-900">
                             {formatValue(config)}
                           </span>
-                          <button
-                            onClick={() => handleEdit(config)}
-                            className="text-[#A4C3A2] hover:text-[#8FB491] p-1 rounded"
-                          >
-                            <Icons.Edit2 className="w-4 h-4" />
-                          </button>
+                          {can('settings.update') && (
+                            <button
+                              onClick={() => handleEdit(config)}
+                              className="text-[#A4C3A2] hover:text-[#8FB491] p-1 rounded"
+                            >
+                              <Icons.Edit2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       )}
 

@@ -2,10 +2,11 @@ import React from 'react';
 import type { ReactNode } from 'react';
 import { Navigate } from 'react-router';
 import { useAuth } from '../../AuthContext';
+import type { AdminRole } from '../../utils/rolePermissions';
 
 interface ProtectedRouteProps {
   children: ReactNode;
-  requiredRoles?: string[];
+  requiredRoles?: AdminRole[];
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRoles }) => {
@@ -35,33 +36,20 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRoles
 
   // Check if user has required roles
   if (requiredRoles && requiredRoles.length > 0) {
-    // SUPER_ADMIN has access to everything (check multiple formats)
     const userRoles = user?.roles || [];
-    const isSuperAdmin = userRoles.some(role =>
-      role === 'ROLE_SUPER_ADMIN' ||
-      role === 'SUPER_ADMIN' ||
-      role === 'super-admin' ||
-      role === 'super_admin'
-    );
+    
+    // Normalize user role
+    const normalizedUserRole = userRoles[0]
+      ?.replace(/^ROLE_/i, '')
+      .toUpperCase() as AdminRole;
 
-    console.log('ProtectedRoute - Is Super Admin:', isSuperAdmin);
-
-    if (isSuperAdmin) {
-      // SUPER_ADMIN bypasses all role checks
+    // SUPER_ADMIN has access to everything
+    if (normalizedUserRole === 'SUPER_ADMIN') {
       return <>{children}</>;
     }
 
-    // Check if user has any of the required roles (support multiple formats)
-    const hasRequiredRole = requiredRoles.some(requiredRole => {
-      return userRoles.some(userRole => {
-        // Normalize both roles for comparison (remove ROLE_ prefix and convert to uppercase)
-        const normalizedUserRole = userRole.replace(/^ROLE_/i, '').toUpperCase();
-        const normalizedRequiredRole = requiredRole.replace(/^ROLE_/i, '').toUpperCase();
-        return normalizedUserRole === normalizedRequiredRole;
-      });
-    });
-
-    console.log('ProtectedRoute - Has required role:', hasRequiredRole);
+    // Check if user's role is in the required roles list
+    const hasRequiredRole = requiredRoles.includes(normalizedUserRole);
 
     if (!hasRequiredRole) {
       return (

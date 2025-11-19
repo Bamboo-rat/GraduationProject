@@ -592,7 +592,7 @@ public class ReportServiceImpl implements ReportService {
         LocalDate nearExpiryDate = LocalDate.now().plusDays(7);
 
         Object[] data = storeProductRepository.findWasteSummary(nearExpiryDate);
-        if (data == null || data.length < 13) {
+        if (data == null || data.length < 10) {
             data = defaultWasteSummary();
         }
 
@@ -601,19 +601,31 @@ public class ReportServiceImpl implements ReportService {
         Long soldOutProducts = toLong(data[2]);
         Long expiredProducts = toLong(data[3]);
         Long nearExpiryProducts = toLong(data[4]);
-        Long totalStock = toLong(data[5]);
-        Long soldQuantity = toLong(data[6]);
-        Long unsoldQuantity = toLong(data[7]);
-        Long expiredQuantity = toLong(data[8]);
-        BigDecimal totalStockValue = toBigDecimal(data[9]);
-        BigDecimal soldValue = toBigDecimal(data[10]);
-        BigDecimal unsoldValue = toBigDecimal(data[11]);
-        BigDecimal wasteValue = toBigDecimal(data[12]);
+        Long currentStock = toLong(data[5]);      // Số còn lại hiện tại
+        Long expiredQuantity = toLong(data[6]);   // Số đã hết hạn
+        BigDecimal totalStockValue = toBigDecimal(data[7]);
+        BigDecimal unsoldValue = toBigDecimal(data[8]);
+        BigDecimal wasteValue = toBigDecimal(data[9]);
+
+        Long deliveredOrders = orderRepository.countByStatus(OrderStatus.DELIVERED);
+        Long canceledOrders = orderRepository.countByStatus(OrderStatus.CANCELED);
+        
+        // totalListed = delivered + canceled + currentStock + expired
+        Long totalListed = deliveredOrders + canceledOrders + currentStock + expiredQuantity;
+        Long totalSold = deliveredOrders;  // Đã bán thành công
+        Long totalUnsold = canceledOrders + currentStock + expiredQuantity;  // Chưa bán được
+        
+        // Legacy fields for backward compatibility
+        Long totalStock = totalListed;
+        Long soldQuantity = totalSold;
+        Long unsoldQuantity = totalUnsold;
+        BigDecimal soldValue = BigDecimal.ZERO;
 
         // Calculate rates
-        Double sellThroughRate = totalStock > 0 ? (soldQuantity.doubleValue() / totalStock) * 100 : 0.0;
-        Double wasteRate = totalStock > 0 ? (unsoldQuantity.doubleValue() / totalStock) * 100 : 0.0;
-        Double expiryRate = totalStock > 0 ? (expiredQuantity.doubleValue() / totalStock) * 100 : 0.0;
+        // WasteRate = (totalUnsold / totalListed) × 100%
+        Double sellThroughRate = totalListed > 0 ? (totalSold.doubleValue() / totalListed) * 100 : 0.0;
+        Double wasteRate = totalListed > 0 ? (totalUnsold.doubleValue() / totalListed) * 100 : 0.0;
+        Double expiryRate = totalListed > 0 ? (expiredQuantity.doubleValue() / totalListed) * 100 : 0.0;
 
         // Waste index (0-100, lower is better)
         Double overallWasteIndex = (wasteRate + expiryRate) / 2;
@@ -637,6 +649,11 @@ public class ReportServiceImpl implements ReportService {
         return WasteSummaryResponse.builder()
                 .startDate(LocalDateTime.now().minusMonths(1))
                 .endDate(LocalDateTime.now())
+                // NEW METRICS
+                .totalListed(totalListed)
+                .totalSold(totalSold)
+                .totalUnsold(totalUnsold)
+                // Legacy metrics
                 .totalProducts(totalProducts)
                 .activeProducts(activeProducts)
                 .soldOutProducts(soldOutProducts)

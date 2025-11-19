@@ -283,7 +283,11 @@ public interface StoreProductRepository extends JpaRepository<StoreProduct, Stri
     List<Object[]> findWasteBySupplier();
 
     /**
-     * Find global waste summary metrics (native SQL version)
+     * Find global waste summary metrics - SIMPLIFIED (no initialStock needed)
+     * totalListed and totalSold will be calculated from order data in service
+     * Index 0: totalProducts, 1: activeProducts, 2: soldOutProducts, 3: expiredProducts
+     * Index 4: nearExpiryProducts, 5: currentStock, 6: expiredQuantity
+     * Index 7: totalStockValue, 8: unsoldValue, 9: wasteValue
      */
     @Query("""
                 SELECT
@@ -293,12 +297,9 @@ public interface StoreProductRepository extends JpaRepository<StoreProduct, Stri
                     SUM(CASE WHEN v.expiryDate IS NOT NULL AND v.expiryDate < CURRENT_DATE THEN 1 ELSE 0 END),
                     SUM(CASE WHEN v.expiryDate IS NOT NULL AND v.expiryDate BETWEEN CURRENT_DATE AND :nearExpiryDate THEN 1 ELSE 0 END),
                     COALESCE(SUM(sp.stockQuantity), 0),
-                    0L,
-                    COALESCE(SUM(CASE WHEN sp.stockQuantity > 0 THEN sp.stockQuantity ELSE 0 END), 0),
                     COALESCE(SUM(CASE WHEN v.expiryDate IS NOT NULL AND v.expiryDate < CURRENT_DATE THEN sp.stockQuantity ELSE 0 END), 0),
                     COALESCE(SUM(sp.stockQuantity * COALESCE(v.originalPrice, 0)), 0),
-                    0,
-                    COALESCE(SUM(CASE WHEN sp.stockQuantity > 0 THEN sp.stockQuantity * COALESCE(v.originalPrice, 0) ELSE 0 END), 0),
+                    COALESCE(SUM(sp.stockQuantity * COALESCE(v.originalPrice, 0)), 0),
                     COALESCE(SUM(CASE WHEN v.expiryDate IS NOT NULL AND v.expiryDate < CURRENT_DATE THEN sp.stockQuantity * COALESCE(v.originalPrice, 0) ELSE 0 END), 0)
                 FROM StoreProduct sp
                 JOIN sp.variant v

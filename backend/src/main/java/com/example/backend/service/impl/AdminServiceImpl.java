@@ -80,7 +80,7 @@ public class AdminServiceImpl implements AdminService {
 
             // Set default avatar if not provided
             if (request.getAvatarUrl() == null || request.getAvatarUrl().isBlank()) {
-                admin.setAvatarUrl("https://res.cloudinary.com/dk7coitah/image/upload/v1760668372/avatar_cflwdp.jpg");
+                admin.setAvatarUrl("https://res.cloudinary.com/dk7coitah/image/upload/v1763529268/avatar_yxv6tq.jpg");
             } else {
                 admin.setAvatarUrl(request.getAvatarUrl());
             }

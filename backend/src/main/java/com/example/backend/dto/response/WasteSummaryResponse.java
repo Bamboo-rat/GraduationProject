@@ -16,6 +16,12 @@ public class WasteSummaryResponse {
     private LocalDateTime startDate;
     private LocalDateTime endDate;
 
+    // NEW DEFINITION - Core waste metrics
+    private Long totalListed;    // Tổng số lượng đã niêm yết (from orders + stock)
+    private Long totalSold;      // Tổng số lượng đã bán (delivered orders)
+    private Long totalUnsold;    // Tổng số lượng chưa bán (canceled + stock + expired)
+    // WasteRate = (totalUnsold / totalListed) × 100%
+
     // Overall metrics
     private Long totalProducts;
     private Long activeProducts;

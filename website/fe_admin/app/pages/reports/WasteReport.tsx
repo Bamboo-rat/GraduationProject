@@ -1,81 +1,56 @@
 import { useState, useEffect } from 'react';
 import DashboardLayout from '~/component/layout/DashboardLayout';
 import reportService from '~/service/reportService';
-import type {
-  WasteSummary,
-  UnsoldInventory,
-  WasteByCategory,
-  WasteBySupplier,
-  PageResponse
-} from '~/service/reportService';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
-import { Download, AlertTriangle, TrendingUp, TrendingDown, Package, Trash2, AlertCircle, Calendar, Store, Users, PieChart as PieChartIcon, BarChart3 } from 'lucide-react';
+import type { WasteSummary, WasteBySupplier } from '~/service/reportService';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { Download, Package, TrendingUp, AlertTriangle, Store, Calendar, Filter } from 'lucide-react';
 
-const RISK_COLORS = {
-  LOW: '#10B981',
-  MEDIUM: '#F59E0B',
-  HIGH: '#F97316',
-  CRITICAL: '#EF4444'
-};
-
-const CATEGORY_COLORS = ['#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#06B6D4', '#6366F1', '#EF4444', '#84CC16', '#F97316'];
-
-export default function WasteReport() {
+export default function WasteReportNew() {
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [activeChart, setActiveChart] = useState<'bar' | 'pie'>('bar');
-
-  // Data
   const [summary, setSummary] = useState<WasteSummary | null>(null);
-  const [categoryData, setCategoryData] = useState<WasteByCategory[]>([]);
   const [supplierData, setSupplierData] = useState<WasteBySupplier[]>([]);
-  const [unsoldInventory, setUnsoldInventory] = useState<UnsoldInventory[]>([]);
-
-  // Pagination
-  const [page, setPage] = useState(0);
-  const [totalPages, setTotalPages] = useState(0);
-  const [totalElements, setTotalElements] = useState(0);
-  const pageSize = 20;
+  const [timeSeriesData, setTimeSeriesData] = useState<any[]>([]);
+  const [period, setPeriod] = useState<'7days' | '30days' | 'thisMonth'>('30days');
 
   useEffect(() => {
-    fetchReportData();
-  }, []);
+    fetchData();
+  }, [period]);
 
-  useEffect(() => {
-    fetchUnsoldInventory();
-  }, [page]);
-
-  const fetchReportData = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
-      setError(null);
-
-      const [summaryRes, categoryRes, supplierRes] = await Promise.all([
+      const [summaryRes, supplierRes] = await Promise.all([
         reportService.getWasteSummary(),
-        reportService.getWasteByCategory(),
         reportService.getWasteBySupplier()
       ]);
-
       setSummary(summaryRes);
-      setCategoryData(categoryRes);
       setSupplierData(supplierRes);
-    } catch (err: any) {
-      console.error('Error fetching waste report:', err);
-      setError(err.message || 'Không thể tải báo cáo lãng phí');
+      
+      // Mock time series data
+      const mockTimeSeries = generateMockTimeSeries(period);
+      setTimeSeriesData(mockTimeSeries);
+    } catch (err) {
+      console.error('Error fetching waste data:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchUnsoldInventory = async () => {
-    try {
-      const response: PageResponse<UnsoldInventory> = await reportService.getUnsoldInventory(page, pageSize);
-      setUnsoldInventory(response.content);
-      setTotalPages(response.totalPages);
-      setTotalElements(response.totalElements);
-    } catch (err: any) {
-      console.error('Error fetching unsold inventory:', err);
+  const generateMockTimeSeries = (period: string) => {
+    const days = period === '7days' ? 7 : period === '30days' ? 30 : 30;
+    const data = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      data.push({
+        date: date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
+        wasteRate: Math.random() * 30 + 10,
+        listed: Math.floor(Math.random() * 100 + 50),
+        sold: Math.floor(Math.random() * 60 + 20),
+        unsold: Math.floor(Math.random() * 30 + 5)
+      });
     }
+    return data;
   };
 
   const handleExport = async () => {
@@ -83,15 +58,8 @@ export default function WasteReport() {
       const blob = await reportService.exportWasteReport();
       reportService.downloadFile(blob, `waste-report-${new Date().toISOString().split('T')[0]}.csv`);
     } catch (err) {
-      console.error('Error exporting report:', err);
       alert('Không thể xuất báo cáo');
     }
-  };
-
-  const getTrendIcon = (trend: string) => {
-    if (trend === 'IMPROVING') return <TrendingDown className="w-4 h-4 text-green-600" />;
-    if (trend === 'WORSENING') return <TrendingUp className="w-4 h-4 text-red-600" />;
-    return null;
   };
 
   if (loading) {
@@ -107,25 +75,17 @@ export default function WasteReport() {
     );
   }
 
-  if (error) {
-    return (
-      <DashboardLayout>
-        <div className="p-6">
-          <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
-            <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-red-800 mb-2">Lỗi tải dữ liệu</h3>
-            <p className="text-red-600 mb-4">{error}</p>
-            <button 
-              onClick={fetchReportData}
-              className="btn-primary"
-            >
-              Thử lại
-            </button>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
+  const totalListed = summary?.totalListed || 0;
+  const totalSold = summary?.totalSold || 0;
+  const totalUnsold = summary?.totalUnsold || 0;
+  const wasteRate = summary?.wasteRate || 0;
+  const platformAvgWasteRate = supplierData.length > 0 
+    ? supplierData.reduce((sum, s) => sum + s.wasteRate, 0) / supplierData.length 
+    : 0;
+
+  const topWasteStores = supplierData
+    .sort((a, b) => b.wasteRate - a.wasteRate)
+    .slice(0, 5);
 
   return (
     <DashboardLayout>
@@ -133,505 +93,321 @@ export default function WasteReport() {
         {/* Header */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Báo Cáo Lãng Phí Thực Phẩm</h1>
-            <p className="text-gray-600">Theo dõi tồn kho chưa bán và tối ưu hóa giảm lãng phí thực phẩm</p>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Báo Cáo Lãng Phí</h1>
+            <p className="text-gray-600">Theo dõi hiệu quả bán hàng và giảm thiểu lãng phí</p>
           </div>
-          <button
-            onClick={handleExport}
-            className="btn-primary flex items-center gap-2 px-4 py-2.5"
-          >
-            <Download className="w-4 h-4" />
-            Xuất CSV
-          </button>
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <select
+                value={period}
+                onChange={(e) => setPeriod(e.target.value as any)}
+                className="pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2F855A] focus:border-transparent appearance-none bg-white"
+              >
+                <option value="7days">7 ngày qua</option>
+                <option value="30days">30 ngày qua</option>
+                <option value="thisMonth">Tháng này</option>
+              </select>
+            </div>
+            <button
+              onClick={handleExport}
+              className="px-4 py-2.5 bg-[#2F855A] text-white rounded-lg hover:bg-[#276749] transition-colors flex items-center gap-2 font-medium"
+            >
+              <Download className="w-4 h-4" />
+              Xuất CSV
+            </button>
+          </div>
         </div>
 
-        {/* Summary Cards */}
-        {summary && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Total Stock */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-              <div className="flex items-center justify-between mb-4">
-                <div className="bg-blue-50 p-3 rounded-xl">
-                  <Package className="w-6 h-6 text-blue-600" />
-                </div>
-                <span className="text-sm text-gray-500">Tổng</span>
+        {/* Main Metrics */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center gap-4">
+              <div className="bg-blue-50 p-3 rounded-lg">
+                <Package className="w-6 h-6 text-blue-600" />
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-1">{summary.totalStockQuantity.toLocaleString()}</h3>
-              <p className="text-sm text-gray-600">Tổng lượng tồn kho</p>
-              <div className="mt-2 text-xs text-gray-500">
-                {summary.totalProducts.toLocaleString()} sản phẩm
-              </div>
-            </div>
-
-            {/* Sold Quantity */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-              <div className="flex items-center justify-between mb-4">
-                <div className="bg-green-50 p-3 rounded-xl">
-                  <TrendingUp className="w-6 h-6 text-green-600" />
-                </div>
-                <span className="text-sm text-green-600 font-medium">
-                  {reportService.formatPercentage(summary.sellThroughRate)}
-                </span>
-              </div>
-              <h3 className="text-2xl font-bold text-green-600 mb-1">{summary.soldQuantity.toLocaleString()}</h3>
-              <p className="text-sm text-gray-600">Lượng đã bán</p>
-              <div className="mt-2 text-xs text-gray-500">
-                Tỷ lệ bán qua
-              </div>
-            </div>
-
-            {/* Unsold Quantity */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-              <div className="flex items-center justify-between mb-4">
-                <div className="bg-orange-50 p-3 rounded-xl">
-                  <Trash2 className="w-6 h-6 text-orange-600" />
-                </div>
-                <span className="text-sm text-gray-500">Tồn kho</span>
-              </div>
-              <h3 className="text-2xl font-bold text-orange-600 mb-1">{summary.unsoldQuantity.toLocaleString()}</h3>
-              <p className="text-sm text-gray-600">Lượng chưa bán</p>
-              <div className="mt-2 text-xs text-gray-500">
-                Giá trị: {reportService.formatCurrency(summary.unsoldValue)}
-              </div>
-            </div>
-
-            {/* Expired Quantity */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-              <div className="flex items-center justify-between mb-4">
-                <div className="bg-red-50 p-3 rounded-xl">
-                  <AlertTriangle className="w-6 h-6 text-red-600" />
-                </div>
-                <span className="text-sm text-red-600 font-medium">
-                  {summary.nearExpiryProducts} sắp hết hạn
-                </span>
-              </div>
-              <h3 className="text-2xl font-bold text-red-600 mb-1">{summary.expiredQuantity.toLocaleString()}</h3>
-              <p className="text-sm text-gray-600">Lượng hết hạn</p>
-              <div className="mt-2 text-xs text-gray-500">
-                {summary.expiredProducts} sản phẩm
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900">{totalListed.toLocaleString()}</h3>
+                <p className="text-sm text-gray-600">Tổng nhập bán</p>
               </div>
             </div>
           </div>
-        )}
 
-        {/* Charts Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Waste by Category Chart */}
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <PieChartIcon className="w-5 h-5 text-[#2F855A]" />
-                Lãng phí theo Danh mục
-              </h2>
-              <div className="flex bg-gray-100 rounded-lg p-1">
-                <button
-                  onClick={() => setActiveChart('bar')}
-                  className={`px-3 py-1 text-sm rounded-md transition-all ${
-                    activeChart === 'bar' 
-                      ? 'bg-white text-gray-900 shadow-sm' 
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  <BarChart3 className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setActiveChart('pie')}
-                  className={`px-3 py-1 text-sm rounded-md transition-all ${
-                    activeChart === 'pie' 
-                      ? 'bg-white text-gray-900 shadow-sm' 
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  <PieChartIcon className="w-4 h-4" />
-                </button>
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center gap-4">
+              <div className="bg-green-50 p-3 rounded-lg">
+                <TrendingUp className="w-6 h-6 text-green-600" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-green-600">{totalSold.toLocaleString()}</h3>
+                <p className="text-sm text-gray-600">Đã bán</p>
               </div>
             </div>
-            
-            {activeChart === 'bar' ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={categoryData.slice(0, 8) as any[]}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis 
-                    dataKey="categoryName" 
-                    angle={-45} 
-                    textAnchor="end" 
-                    height={80}
-                    fontSize={12}
-                  />
-                  <YAxis 
-                    tickFormatter={(value: unknown) => `${Number(value).toFixed(0)}%`}
-                    fontSize={12}
-                  />
-                  <Tooltip
-                    formatter={(value: any, name: string) => {
-                      if (name === 'wasteIndex') return [`${Number(value).toFixed(2)}%`, 'Chỉ số lãng phí'];
-                      if (name === 'wasteRate') return [`${Number(value).toFixed(2)}%`, 'Tỷ lệ lãng phí'];
-                      if (name === 'expiryRate') return [`${Number(value).toFixed(2)}%`, 'Tỷ lệ hết hạn'];
-                      return value;
-                    }}
-                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                  />
-                  <Legend />
-                  <Bar dataKey="wasteRate" name="Tỷ lệ lãng phí" radius={[4, 4, 0, 0]}>
-                    {categoryData.slice(0, 8).map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={categoryData.slice(0, 6) as any[]}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={(entry: any) => `${entry.categoryName}: ${Number(entry.wasteRate).toFixed(1)}%`}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="wasteRate"
-                    nameKey="categoryName"
-                  >
-                    {categoryData.slice(0, 6).map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    formatter={(value: any) => [`${Number(value).toFixed(2)}%`, 'Tỷ lệ lãng phí']}
-                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
           </div>
 
-          {/* Performance Metrics */}
-          {summary && (
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-              <h2 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-[#2F855A]" />
-                Chỉ số Hiệu suất
-              </h2>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-orange-100 p-2 rounded-lg">
-                      <Trash2 className="w-5 h-5 text-orange-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">Tỷ lệ lãng phí</p>
-                      <p className="text-xs text-gray-500">Giá trị lãng phí: {reportService.formatCurrency(summary.wasteValue)}</p>
-                    </div>
-                  </div>
-                  <span className="text-xl font-bold text-orange-600">
-                    {reportService.formatPercentage(summary.wasteRate)}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-red-100 p-2 rounded-lg">
-                      <AlertTriangle className="w-5 h-5 text-red-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">Tỷ lệ hết hạn</p>
-                      <p className="text-xs text-gray-500">{summary.expiredProducts} sản phẩm đã hết hạn</p>
-                    </div>
-                  </div>
-                  <span className="text-xl font-bold text-red-600">
-                    {reportService.formatPercentage(summary.expiryRate)}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-purple-100 p-2 rounded-lg">
-                      <TrendingUp className="w-5 h-5 text-purple-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">Chỉ số lãng phí tổng thể</p>
-                      <p className="text-xs text-gray-500">Xu hướng: {summary.wasteRateTrend}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-xl font-bold text-purple-600 block">
-                      {summary.overallWasteIndex.toFixed(1)}
-                    </span>
-                    {getTrendIcon(summary.wasteRateTrend)}
-                  </div>
-                </div>
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center gap-4">
+              <div className="bg-red-50 p-3 rounded-lg">
+                <AlertTriangle className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-red-600">{totalUnsold.toLocaleString()}</h3>
+                <p className="text-sm text-gray-600">Không bán được</p>
               </div>
             </div>
-          )}
+          </div>
+
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center gap-4">
+              <div className="bg-orange-50 p-3 rounded-lg">
+                <AlertTriangle className="w-6 h-6 text-orange-600" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-orange-600">{wasteRate.toFixed(1)}%</h3>
+                <p className="text-sm text-gray-600">Tỉ lệ lãng phí</p>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Data Tables */}
-        <div className="grid grid-cols-1 gap-6">
-          {/* Waste by Category Table */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <Package className="w-5 h-5 text-[#2F855A]" />
-                Chi tiết Lãng phí theo Danh mục
-              </h2>
+        {/* Platform Average */}
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="bg-purple-50 p-3 rounded-lg">
+                <Store className="w-6 h-6 text-purple-600" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">{platformAvgWasteRate.toFixed(1)}%</h3>
+                <p className="text-gray-600">Tỉ lệ lãng phí trung bình toàn nền tảng</p>
+              </div>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Danh mục</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tổng SP</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SP hết hạn</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Giá trị lãng phí</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tỷ lệ lãng phí</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Chỉ số</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {categoryData.map((category) => (
-                    <tr key={category.categoryId} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          {category.categoryImageUrl && (
-                            <img 
-                              src={category.categoryImageUrl} 
-                              alt={category.categoryName} 
-                              className="w-8 h-8 rounded-lg mr-3 object-cover"
-                            />
-                          )}
-                          <span className="text-sm font-medium text-gray-900">{category.categoryName}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {category.totalProducts.toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-semibold text-red-600">
-                          {category.expiredProducts.toLocaleString()}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-red-600">
-                        {reportService.formatCurrency(category.wasteValue)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <div className="w-16 bg-gray-200 rounded-full h-2">
-                            <div 
-                              className={`h-2 rounded-full ${
-                                category.wasteRate >= 50 ? 'bg-red-500' : 
-                                category.wasteRate >= 30 ? 'bg-orange-500' : 'bg-green-500'
-                              }`}
-                              style={{ width: `${Math.min(category.wasteRate, 100)}%` }}
-                            />
-                          </div>
-                          <span className={`text-sm font-semibold ${
-                            category.wasteRate >= 50 ? 'text-red-600' : 
-                            category.wasteRate >= 30 ? 'text-orange-600' : 'text-green-600'
-                          }`}>
-                            {reportService.formatPercentage(category.wasteRate)}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          {category.wasteIndex.toFixed(1)}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="text-right">
+              <p className="text-sm text-gray-500">Từ {supplierData.length} nhà cung cấp</p>
+              <p className="text-xs text-gray-400 mt-1">Cập nhật: {new Date().toLocaleString('vi-VN')}</p>
             </div>
           </div>
+        </div>
 
-          {/* Waste by Supplier Table */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-              <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                <Users className="w-5 h-5 text-[#2F855A]" />
-                Lãng phí theo Nhà cung cấp
-              </h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nhà cung cấp</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tổng SP</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SP hết hạn</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tỷ lệ bán qua</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tỷ lệ lãng phí</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Xếp hạng</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {supplierData.map((supplier) => (
-                    <tr key={supplier.supplierId} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          {supplier.avatarUrl && (
+        {/* Waste Rate Time Series Chart */}
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-[#2F855A]" />
+              Xu hướng lãng phí theo thời gian
+            </h2>
+          </div>
+          <ResponsiveContainer width="100%" height={350}>
+            <LineChart data={timeSeriesData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+              <XAxis 
+                dataKey="date" 
+                fontSize={12}
+                stroke="#6b7280"
+              />
+              <YAxis 
+                yAxisId="left"
+                fontSize={12}
+                stroke="#6b7280"
+              />
+              <YAxis 
+                yAxisId="right"
+                orientation="right"
+                fontSize={12}
+                stroke="#f97316"
+              />
+              <Tooltip 
+                contentStyle={{ 
+                  borderRadius: '8px', 
+                  border: 'none', 
+                  boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                  background: 'white'
+                }}
+              />
+              <Legend />
+              <Line 
+                yAxisId="left"
+                type="monotone" 
+                dataKey="listed" 
+                stroke="#3b82f6" 
+                strokeWidth={2}
+                name="Nhập bán"
+                dot={{ fill: '#3b82f6', r: 3 }}
+              />
+              <Line 
+                yAxisId="left"
+                type="monotone" 
+                dataKey="sold" 
+                stroke="#10b981" 
+                strokeWidth={2}
+                name="Đã bán"
+                dot={{ fill: '#10b981', r: 3 }}
+              />
+              <Line 
+                yAxisId="left"
+                type="monotone" 
+                dataKey="unsold" 
+                stroke="#ef4444" 
+                strokeWidth={2}
+                name="Không bán được"
+                dot={{ fill: '#ef4444', r: 3 }}
+              />
+              <Line 
+                yAxisId="right"
+                type="monotone" 
+                dataKey="wasteRate" 
+                stroke="#f97316" 
+                strokeWidth={2}
+                name="Tỉ lệ lãng phí (%)"
+                dot={{ fill: '#f97316', r: 4 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Top 5 Waste Stores */}
+        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+          <h2 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-amber-500" />
+            Top 5 cửa hàng có tỉ lệ lãng phí cao nhất
+          </h2>
+          <div className="space-y-4">
+            {topWasteStores.map((store, index) => {
+              const storeWasteRate = store.wasteRate;
+              return (
+                <div 
+                  key={store.supplierId} 
+                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className={`
+                      w-8 h-8 rounded-full flex items-center justify-center font-semibold text-white text-sm
+                      ${index === 0 ? 'bg-amber-500' : index === 1 ? 'bg-amber-400' : 'bg-gray-400'}
+                    `}>
+                      {index + 1}
+                    </div>
+                    <div className="flex items-center gap-3 flex-1">
+                      {store.avatarUrl && (
+                        <img 
+                          src={store.avatarUrl} 
+                          alt={store.supplierName}
+                          className="w-10 h-10 rounded-lg object-cover"
+                        />
+                      )}
+                      <div>
+                        <p className="font-medium text-gray-900">{store.supplierName}</p>
+                        <p className="text-sm text-gray-500">{store.totalStores} cửa hàng</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-6">
+                    <div className="text-right">
+                      <p className="text-sm text-gray-500">Nhập bán</p>
+                      <p className="font-semibold text-gray-900">{store.totalProducts.toLocaleString()}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-gray-500">Đã bán</p>
+                      <p className="font-semibold text-green-600">{store.totalProducts - store.expiredProducts}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-gray-500">Lãng phí</p>
+                      <p className="font-semibold text-red-600">{store.expiredProducts}</p>
+                    </div>
+                    <div className="text-right min-w-[100px]">
+                      <p className="text-lg font-bold text-amber-600">{storeWasteRate.toFixed(1)}%</p>
+                      <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                        <div 
+                          className="bg-amber-500 h-1.5 rounded-full transition-all"
+                          style={{ width: `${Math.min(storeWasteRate, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* All Stores Waste Rate Table */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+              <Store className="w-5 h-5 text-[#2F855A]" />
+              Tỉ lệ lãng phí theo cửa hàng
+            </h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cửa hàng</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Nhập bán</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Đã bán</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Lãng phí</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Tỉ lệ</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {supplierData.map((store) => {
+                  const listed = store.totalProducts;
+                  const sold = listed - store.expiredProducts;
+                  const unsold = store.expiredProducts;
+                  const rate = store.wasteRate;
+
+                  return (
+                    <tr key={store.supplierId} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          {store.avatarUrl && (
                             <img 
-                              src={supplier.avatarUrl} 
-                              alt={supplier.supplierName} 
-                              className="w-8 h-8 rounded-full mr-3 object-cover"
+                              src={store.avatarUrl} 
+                              alt={store.supplierName}
+                              className="w-8 h-8 rounded-lg object-cover"
                             />
                           )}
                           <div>
-                            <p className="text-sm font-medium text-gray-900">{supplier.supplierName}</p>
-                            <p className="text-xs text-gray-500">{supplier.totalStores} cửa hàng</p>
+                            <p className="font-medium text-gray-900">{store.supplierName}</p>
+                            <p className="text-xs text-gray-500">{store.totalStores} cửa hàng</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {supplier.totalProducts.toLocaleString()}
+                      <td className="px-6 py-4 text-center">
+                        <span className="font-medium text-gray-900">{listed.toLocaleString()}</span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-semibold text-red-600">
-                          {supplier.expiredProducts.toLocaleString()}
-                        </span>
+                      <td className="px-6 py-4 text-center">
+                        <span className="font-medium text-green-600">{sold.toLocaleString()}</span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <div className="w-16 bg-gray-200 rounded-full h-2">
+                      <td className="px-6 py-4 text-center">
+                        <span className="font-medium text-red-600">{unsold.toLocaleString()}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col items-center gap-1">
+                          <span className={`text-sm font-semibold ${
+                            rate >= 30 ? 'text-red-600' : 
+                            rate >= 15 ? 'text-amber-600' : 
+                            'text-green-600'
+                          }`}>
+                            {rate.toFixed(1)}%
+                          </span>
+                          <div className="w-20 bg-gray-200 rounded-full h-1.5">
                             <div 
-                              className={`h-2 rounded-full ${
-                                supplier.sellThroughRate >= 70 ? 'bg-green-500' : 
-                                supplier.sellThroughRate >= 50 ? 'bg-yellow-500' : 'bg-red-500'
+                              className={`h-1.5 rounded-full transition-all ${
+                                rate >= 30 ? 'bg-red-500' : 
+                                rate >= 15 ? 'bg-amber-500' : 
+                                'bg-green-500'
                               }`}
-                              style={{ width: `${Math.min(supplier.sellThroughRate, 100)}%` }}
+                              style={{ width: `${Math.min(rate, 100)}%` }}
                             />
                           </div>
-                          <span className={`text-sm font-semibold ${
-                            supplier.sellThroughRate >= 70 ? 'text-green-600' : 
-                            supplier.sellThroughRate >= 50 ? 'text-yellow-600' : 'text-red-600'
-                          }`}>
-                            {reportService.formatPercentage(supplier.sellThroughRate)}
-                          </span>
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {reportService.formatPercentage(supplier.wasteRate)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          supplier.performanceRating === 'EXCELLENT' ? 'bg-green-100 text-green-800' :
-                          supplier.performanceRating === 'GOOD' ? 'bg-blue-100 text-blue-800' :
-                          supplier.performanceRating === 'FAIR' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-red-100 text-red-800'
-                        }`}>
-                          {supplier.performanceRating}
-                        </span>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Unsold Inventory Table */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                  <Store className="w-5 h-5 text-[#2F855A]" />
-                  Hàng tồn kho chưa bán
-                  <span className="text-sm font-normal text-gray-500">({totalElements} sản phẩm)</span>
-                </h2>
-              </div>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sản phẩm</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số lượng tồn</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Giá trị tồn kho</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày hết hạn</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">DT tiềm năng bị mất</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {unsoldInventory.map((item) => (
-                    <tr key={`${item.productId}-${item.variantId}`} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">{item.productName}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            <p className="text-xs text-gray-500">{item.supplierName}</p>
-                            <span className="text-xs text-gray-300">•</span>
-                            <p className="text-xs text-gray-500">{item.categoryName}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm">
-                          <span className="font-semibold text-gray-900">{item.currentStock}</span>
-                          <p className="text-xs text-gray-500">Ban đầu: {item.initialStock}</p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                        {reportService.formatCurrency(item.estimatedWasteValue)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {item.expiryDate ? (
-                          <div className="flex items-center gap-2">
-                            <Calendar className="w-4 h-4 text-gray-400" />
-                            <div>
-                              <p className="text-sm text-gray-900">
-                                {new Date(item.expiryDate).toLocaleDateString('vi-VN')}
-                              </p>
-                              <p className={`text-xs ${
-                                item.daysUntilExpiry <= 2 ? 'text-red-600 font-semibold' : 
-                                item.daysUntilExpiry <= 7 ? 'text-orange-600' : 'text-gray-500'
-                              }`}>
-                                {item.daysUntilExpiry <= 0 ? 'Đã hết hạn' : `${item.daysUntilExpiry} ngày`}
-                              </p>
-                            </div>
-                          </div>
-                        ) : (
-                          <span className="text-sm text-gray-500">Không rõ</span>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-red-600">
-                        {reportService.formatCurrency(item.potentialRevenueLoss)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
-                <div className="flex items-center justify-between">
-                  <div className="text-sm text-gray-700">
-                    Hiển thị {page * pageSize + 1} - {Math.min((page + 1) * pageSize, totalElements)} của {totalElements}
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setPage(Math.max(0, page - 1))}
-                      disabled={page === 0}
-                      className="px-4 py-2 text-sm border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
-                    >
-                      Trước
-                    </button>
-                    <span className="px-4 py-2 text-sm text-gray-700">
-                      Trang {page + 1} / {totalPages}
-                    </span>
-                    <button
-                      onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
-                      disabled={page >= totalPages - 1}
-                      className="px-4 py-2 text-sm border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
-                    >
-                      Sau
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
