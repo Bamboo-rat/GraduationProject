@@ -272,13 +272,18 @@ export default function StoreUpdateForm() {
           const value = formData[key as keyof typeof formData];
           if (value !== '' && value !== null && value !== undefined) {
             if (key === 'latitude' || key === 'longitude') {
-              // Ensure coordinates are numbers
-              cleanedData[key as keyof StoreCreateRequest] = Number(value) as any;
+              // Ensure coordinates are numbers and valid
+              const numValue = Number(value);
+              if (!isNaN(numValue)) {
+                cleanedData[key as keyof StoreCreateRequest] = numValue as any;
+              }
             } else {
               cleanedData[key as keyof StoreCreateRequest] = value as any;
             }
           }
         });
+        
+        console.log('Cleaned data for create:', cleanedData);
         await storeService.createStore(cleanedData);
         setToast({ type: 'success', message: 'Tạo cửa hàng thành công! Cửa hàng đang chờ admin phê duyệt' });
         setTimeout(() => navigate('/store/list'), 2000);
@@ -301,13 +306,18 @@ export default function StoreUpdateForm() {
         const value = formData[key as keyof typeof formData];
         if (value !== '' && value !== null && value !== undefined) {
           if (key === 'latitude' || key === 'longitude') {
-            // Ensure coordinates are numbers
-            cleanedData[key as keyof StoreUpdateRequest] = Number(value) as any;
+            // Ensure coordinates are numbers and valid
+            const numValue = Number(value);
+            if (!isNaN(numValue)) {
+              cleanedData[key as keyof StoreUpdateRequest] = numValue as any;
+            }
           } else {
             cleanedData[key as keyof StoreUpdateRequest] = value as any;
           }
         }
       });
+      
+      console.log('Cleaned data being sent:', cleanedData);
       const result = await storeService.updateStore(storeId, cleanedData);
 
       if (result.updateType === 'IMMEDIATE') {

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { Supplier } from '~/service/supplierService';
 import { downloadFile, fetchFileAsBlobUrl } from '~/utils/fileUtils';
-import PDFViewer from '~/component/common/PDFViewer';
 import Toast, { type ToastType } from '~/component/common/Toast';
 
 interface SupplierPendingDetailProps {
@@ -19,11 +18,9 @@ export default function SupplierPendingDetail({
   onApprove,
   onReject,
 }: SupplierPendingDetailProps) {
-  // State for blob URLs of files (images and PDFs)
+  // State for blob URLs of files (images only, PDFs are downloaded directly)
   const [businessLicenseBlobUrl, setBusinessLicenseBlobUrl] = useState<string | null>(null);
   const [foodSafetyCertBlobUrl, setFoodSafetyCertBlobUrl] = useState<string | null>(null);
-  const [showBusinessLicensePDF, setShowBusinessLicensePDF] = useState(false);
-  const [showFoodSafetyCertPDF, setShowFoodSafetyCertPDF] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: ToastType } | null>(null);
 
   // Fetch files as blob URLs when supplier changes
@@ -287,35 +284,15 @@ export default function SupplierPendingDetail({
                               </div>
                             ) : (
                               <div className="space-y-3">
-                                {!showBusinessLicensePDF ? (
-                                  <button
-                                    onClick={() => setShowBusinessLicensePDF(true)}
-                                    className="w-full flex items-center justify-center gap-2 btn-primary py-3 px-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 text-sm"
-                                  >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                    </svg>
-                                    Xem file PDF
-                                  </button>
-                                ) : businessLicenseBlobUrl ? (
-                                  <div className="relative h-[500px] border-2 border-default rounded-xl overflow-hidden">
-                                    <PDFViewer
-                                      fileUrl={businessLicenseBlobUrl}
-                                      onDownload={() => handleDownload(supplier.businessLicenseUrl, 'giay-phep-kinh-doanh.pdf')}
-                                    />
-                                    <button
-                                      onClick={() => setShowBusinessLicensePDF(false)}
-                                      className="absolute top-2 right-2 bg-white hover:bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg shadow-md text-sm font-medium transition-colors z-10"
-                                    >
-                                      Đóng
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center justify-center h-32 bg-surface border-2 border-default rounded-xl">
-                                    <p className="text-text-light">Đang tải PDF...</p>
-                                  </div>
-                                )}
+                                <button
+                                  onClick={() => handleDownload(supplier.businessLicenseUrl, 'giay-phep-kinh-doanh.pdf')}
+                                  className="w-full flex items-center justify-center gap-2 btn-primary py-3 px-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 text-sm"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                  </svg>
+                                  Tải xuống file
+                                </button>
                               </div>
                             )}
                           </div>
@@ -363,35 +340,15 @@ export default function SupplierPendingDetail({
                               </div>
                             ) : (
                               <div className="space-y-3">
-                                {!showFoodSafetyCertPDF ? (
-                                  <button
-                                    onClick={() => setShowFoodSafetyCertPDF(true)}
-                                    className="w-full flex items-center justify-center gap-2 btn-primary py-3 px-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 text-sm"
-                                  >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                    </svg>
-                                    Xem file PDF
-                                  </button>
-                                ) : foodSafetyCertBlobUrl ? (
-                                  <div className="relative h-[500px] border-2 border-default rounded-xl overflow-hidden">
-                                    <PDFViewer
-                                      fileUrl={foodSafetyCertBlobUrl}
-                                      onDownload={() => handleDownload(supplier.foodSafetyCertificateUrl, 'chung-nhan-attp.pdf')}
-                                    />
-                                    <button
-                                      onClick={() => setShowFoodSafetyCertPDF(false)}
-                                      className="absolute top-2 right-2 bg-white hover:bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg shadow-md text-sm font-medium transition-colors z-10"
-                                    >
-                                      Đóng
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center justify-center h-32 bg-surface border-2 border-default rounded-xl">
-                                    <p className="text-text-light">Đang tải PDF...</p>
-                                  </div>
-                                )}
+                                <button
+                                  onClick={() => handleDownload(supplier.foodSafetyCertificateUrl, 'chung-nhan-attp.pdf')}
+                                  className="w-full flex items-center justify-center gap-2 btn-primary py-3 px-4 rounded-xl shadow-sm hover:shadow-md transition-all duration-200 text-sm"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                  </svg>
+                                  Tải xuống file
+                                </button>
                               </div>
                             )}
                           </div>
