@@ -50,11 +50,17 @@ public class GlobalExceptionHandler {
     // Xử lý các lỗi validation từ @Valid
     @ExceptionHandler(value = MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationException(MethodArgumentNotValidException e) {
-        log.error("Validation Exception: {}", e.getMessage());
+        // Build detailed error message with all field errors
+        StringBuilder detailedMessage = new StringBuilder("Validation errors: ");
+        e.getBindingResult().getFieldErrors().forEach(error -> {
+            detailedMessage.append(String.format("[%s: %s] ", error.getField(), error.getDefaultMessage()));
+        });
+
+        String errorDetails = detailedMessage.toString();
+        log.error("Validation Exception: {}", errorDetails);
+
         ErrorCode errorCode = ErrorCode.VALIDATION_ERROR;
-        // Lấy thông điệp lỗi validation chi tiết hơn (nếu cần)
-        String details = e.getBindingResult().getFieldError() != null ? e.getBindingResult().getFieldError().getDefaultMessage() : errorCode.getVietnameseMessage();
-        ErrorResponse response = new ErrorResponse(errorCode.getCode(), errorCode.getMessage(), details);
+        ErrorResponse response = new ErrorResponse(errorCode.getCode(), errorCode.getMessage(), errorDetails);
         return ResponseEntity.status(errorCode.getHttpStatus()).body(response);
     }
 

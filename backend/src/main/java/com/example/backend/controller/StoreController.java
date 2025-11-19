@@ -292,7 +292,7 @@ public class StoreController {
         Jwt jwt = (Jwt) authentication.getPrincipal();
         String keycloakId = JwtUtils.extractKeycloakId(jwt);
 
-        log.info("PUT /api/stores/{} - Updating store by supplier: {}", id, keycloakId);
+        log.info("PUT /api/stores/{} - Updating store by supplier: {}, Request: {}", id, keycloakId, request);
 
         StoreUpdateResponse response = storeService.updateStore(id, request, keycloakId);
 

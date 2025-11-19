@@ -1,6 +1,7 @@
 package com.example.backend.dto.request;
 
 import com.example.backend.entity.enums.StoreStatus;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -38,7 +39,7 @@ public class StoreUpdateRequest {
     @Size(max = 100, message = "Province must not exceed 100 characters")
     private String province;
 
-    @Pattern(regexp = "^(\\+84|0)[0-9]{9,10}$", message = "Invalid Vietnamese phone number")
+    @Pattern(regexp = "^$|^(\\+84|0)[0-9]{9,10}$", message = "Phone number must be empty or valid Vietnamese format (e.g., 0912345678 or +84912345678)")
     private String phoneNumber;
 
     @Size(max = 500, message = "Description must not exceed 500 characters")
@@ -47,13 +48,16 @@ public class StoreUpdateRequest {
     @Size(max = 500, message = "Image URL must not exceed 500 characters")
     private String imageUrl;
 
+    @JsonFormat(pattern = "HH:mm")
     private LocalTime openTime;
 
+    @JsonFormat(pattern = "HH:mm")
     private LocalTime closeTime;
 
     private Double latitude;
 
     private Double longitude;
 
-    private StoreStatus status;
+    // Note: Store status should be updated via the updateStoreStatus endpoint, not here
+    // private StoreStatus status;
 }
