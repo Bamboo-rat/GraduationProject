@@ -94,7 +94,8 @@ export default function CustomerBehavior() {
 
   const fetchCLVData = async () => {
     try {
-      const clvRes = await reportService.getCustomerLifetimeValue(clvPage, 20);
+      const { start, end } = buildDateRangePayload();
+      const clvRes = await reportService.getCustomerLifetimeValue(clvPage, 20, 'totalSpent', 'DESC', start, end);
       setClvData(clvRes.content);
       setClvTotalPages(clvRes.totalPages);
     } catch (err: any) {
@@ -263,7 +264,7 @@ export default function CustomerBehavior() {
                     {reportService.formatPercentage(summary.activeCustomerRate)}
                   </span>
                 </div>
-                <h3 className="text-sm text-gray-600 mb-1">KH Hoạt động</h3>
+                <h3 className="text-sm text-gray-600 mb-1">Khách hàng hoạt động</h3>
                 <p className="text-2xl font-bold text-green-600">{reportService.formatNumber(summary.activeCustomers)}</p>
                 <p className="text-xs text-gray-500 mt-1">
                   Tỷ lệ hoạt động
@@ -276,10 +277,10 @@ export default function CustomerBehavior() {
                     <UserPlus className="w-6 h-6 text-purple-600" />
                   </div>
                 </div>
-                <h3 className="text-sm text-gray-600 mb-1">KH Mới</h3>
+                <h3 className="text-sm text-gray-600 mb-1">Khách hàng mới</h3>
                 <p className="text-2xl font-bold text-purple-600">{reportService.formatNumber(summary.newCustomers)}</p>
                 <p className="text-xs text-gray-500 mt-1">
-                  Quay lại: {reportService.formatNumber(summary.returningCustomers)}
+                  Khách hàng quay lại: {reportService.formatNumber(summary.returningCustomers)}
                 </p>
               </div>
 
@@ -289,7 +290,7 @@ export default function CustomerBehavior() {
                     <TrendingDown className="w-6 h-6 text-red-600" />
                   </div>
                 </div>
-                <h3 className="text-sm text-gray-600 mb-1">Tỷ lệ Trả hàng</h3>
+                <h3 className="text-sm text-gray-600 mb-1">Tỷ lệ trả hàng</h3>
                 <p className="text-2xl font-bold text-red-600">{reportService.formatPercentage(summary.returnRate)}</p>
                 <p className="text-xs text-gray-500 mt-1">
                   Đơn hàng bị trả lại
@@ -305,12 +306,12 @@ export default function CustomerBehavior() {
                     <ShieldAlert className="w-5 h-5 text-orange-600" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium text-gray-900">KH bị Tạm khoá</h3>
+                    <h3 className="text-sm font-medium text-gray-900">Khách hàng bị tạm khóa</h3>
                     <p className="text-2xl font-bold text-orange-600">{reportService.formatNumber(summary.suspendedCustomers)}</p>
                   </div>
                 </div>
                 <p className="text-xs text-gray-500">
-                  {summary.totalCustomers > 0 ? reportService.formatPercentage((summary.suspendedCustomers / summary.totalCustomers) * 100) : '0%'} tổng KH
+                  {summary.totalCustomers > 0 ? reportService.formatPercentage((summary.suspendedCustomers / summary.totalCustomers) * 100) : '0%'} tổng khách hàng
                 </p>
               </div>
 
@@ -320,12 +321,12 @@ export default function CustomerBehavior() {
                     <Ban className="w-5 h-5 text-red-600" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium text-gray-900">KH bị Cấm</h3>
+                    <h3 className="text-sm font-medium text-gray-900">Khách hàng bị cấm</h3>
                     <p className="text-2xl font-bold text-red-600">{reportService.formatNumber(summary.bannedCustomers)}</p>
                   </div>
                 </div>
                 <p className="text-xs text-gray-500">
-                  {summary.totalCustomers > 0 ? reportService.formatPercentage((summary.bannedCustomers / summary.totalCustomers) * 100) : '0%'} tổng KH
+                  {summary.totalCustomers > 0 ? reportService.formatPercentage((summary.bannedCustomers / summary.totalCustomers) * 100) : '0%'} tổng khách hàng
                 </p>
               </div>
 
@@ -335,12 +336,12 @@ export default function CustomerBehavior() {
                     <DollarSign className="w-5 h-5 text-indigo-600" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium text-gray-900">CLV Trung bình</h3>
+                    <h3 className="text-sm font-medium text-gray-900">Giá trị vòng đời trung bình</h3>
                     <p className="text-2xl font-bold text-gray-900">{reportService.formatCurrency(summary.averageCustomerLifetimeValue)}</p>
                   </div>
                 </div>
                 <p className="text-xs text-gray-500">
-                  GT đơn TB: {reportService.formatCurrency(summary.averageOrderValue)}
+                  Giá trị đơn trung bình: {reportService.formatCurrency(summary.averageOrderValue)}
                 </p>
               </div>
 
@@ -350,12 +351,12 @@ export default function CustomerBehavior() {
                     <ShoppingBag className="w-5 h-5 text-yellow-600" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium text-gray-900">Đơn TB/KH</h3>
+                    <h3 className="text-sm font-medium text-gray-900">Đơn hàng trung bình/Khách hàng</h3>
                     <p className="text-2xl font-bold text-gray-900">{summary.averageOrdersPerCustomer.toFixed(1)}</p>
                   </div>
                 </div>
                 <p className="text-xs text-gray-500">
-                  Tỷ lệ giữ chân: {reportService.formatPercentage(summary.customerRetentionRate)}
+                  Tỷ lệ giữ chân khách hàng: {reportService.formatPercentage(summary.customerRetentionRate)}
                 </p>
               </div>
             </div>
@@ -367,7 +368,7 @@ export default function CustomerBehavior() {
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
             <h2 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
               <Award className="w-5 h-5 text-[#2F855A]" />
-              Phân phối Hạng thành viên
+              Phân phối hạng thành viên
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               {[
@@ -459,11 +460,11 @@ export default function CustomerBehavior() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hạng</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số KH</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">% KH</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tổng đơn</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số khách hàng</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phần trăm khách hàng</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tổng đơn hàng</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Doanh thu</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GT đơn TB</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Giá trị đơn trung bình</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -503,18 +504,18 @@ export default function CustomerBehavior() {
         {/* Customer Lifetime Value Table */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-            <h2 className="text-lg font-semibold text-gray-900">Top Khách hàng theo Giá trị Vòng đời</h2>
+            <h2 className="text-lg font-semibold text-gray-900">Top khách hàng theo giá trị vòng đời</h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khách hàng</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hạng</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hạng thành viên</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tổng chi tiêu</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Đơn hàng</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CLV dự đoán</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phân khúc</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Giá trị vòng đời dự đoán</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phân khúc khách hàng</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">

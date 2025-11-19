@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import DashboardLayout from '~/component/layout/DashboardLayout';
 import chatService from '~/service/chatService';
 import type { Conversation, ChatMessage } from '~/service/types';
 import { MessageType, MessageStatus } from '~/service/types';
-import { MessageSquare, Send, Search, User, Circle } from 'lucide-react';
+import { MessageSquare, Send, Search, User, Circle, CheckCircle2, CheckCheck, RefreshCw } from 'lucide-react';
 import Toast from '~/component/common/Toast';
 
 export default function SupportTickets() {
@@ -20,15 +20,26 @@ export default function SupportTickets() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const currentUserRef = useRef<string | null>(null);
+  const isAutoScrollEnabled = useRef(true);
 
-  // Auto-scroll to bottom when messages change
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  // Optimized auto-scroll
+  const scrollToBottom = useCallback(() => {
+    if (isAutoScrollEnabled.current && messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, []);
+
+  // Handle scroll events
+  const handleScroll = useCallback(() => {
+    if (!messagesContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+    isAutoScrollEnabled.current = isNearBottom;
+  }, []);
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, scrollToBottom]);
 
   // Get current user ID
   useEffect(() => {
@@ -48,16 +59,47 @@ export default function SupportTickets() {
     loadConversations();
   }, []);
 
-  // WebSocket connection
+  // WebSocket connection với optimized message handling
   useEffect(() => {
     let mounted = true;
+
+    const handleIncomingMessage = (message: ChatMessage) => {
+      if (!mounted) return;
+
+      // Check if message belongs to current conversation
+      const isForCurrentConversation = selectedConversation &&
+        (message.sender.userId === selectedConversation.otherUser.userId ||
+         message.receiver.userId === selectedConversation.otherUser.userId);
+
+      if (isForCurrentConversation) {
+        setMessages(prev => {
+          // Avoid duplicates and update existing messages
+          const exists = prev.some(m => m.messageId === message.messageId);
+          if (exists) {
+            return prev.map(m => m.messageId === message.messageId ? message : m);
+          }
+          return [...prev, message];
+        });
+
+        // Mark as read if we're the receiver
+        if (message.receiver.userId === currentUserRef.current && message.status !== MessageStatus.READ) {
+          setTimeout(() => {
+            chatService.markAsReadViaWebSocket(message.messageId);
+          }, 500);
+        }
+      }
+
+      // Refresh conversations to update last message
+      loadConversations();
+    };
 
     const connectWebSocket = async () => {
       try {
         await chatService.connect();
         if (mounted) {
           setIsConnected(true);
-          console.log('WebSocket connected successfully');
+          // Subscribe to messages
+          chatService.onMessage(handleIncomingMessage);
         }
       } catch (error) {
         console.error('WebSocket connection failed:', error);
@@ -69,35 +111,8 @@ export default function SupportTickets() {
 
     connectWebSocket();
 
-    // Handle incoming messages
-    const unsubscribeMessage = chatService.onMessage((message: ChatMessage) => {
-      console.log('Received message:', message);
-
-      // Add message to the current conversation if it matches
-      if (selectedConversation &&
-          (message.sender.userId === selectedConversation.otherUser.userId ||
-           message.receiver.userId === selectedConversation.otherUser.userId)) {
-        setMessages(prev => {
-          // Avoid duplicates
-          if (prev.some(m => m.messageId === message.messageId)) {
-            return prev;
-          }
-          return [...prev, message];
-        });
-
-        // Mark as read if we're the receiver
-        if (message.receiver.userId === currentUserRef.current) {
-          chatService.markAsReadViaWebSocket(message.messageId);
-        }
-      }
-
-      // Refresh conversations to update last message
-      loadConversations();
-    });
-
     return () => {
       mounted = false;
-      unsubscribeMessage();
       chatService.disconnect();
     };
   }, [selectedConversation]);
@@ -195,7 +210,7 @@ export default function SupportTickets() {
       console.error('Failed to send message:', error);
       showToast('Không thể gửi tin nhắn', 'error');
       // Remove temporary message on error
-      setMessages(prev => prev.filter(m => m.messageId !== `temp-${Date.now()}`));
+      setMessages(prev => prev.filter(m => !m.messageId.startsWith('temp-')));
       setMessageInput(messageContent); // Restore message
     } finally {
       setSending(false);
@@ -218,20 +233,16 @@ export default function SupportTickets() {
     const date = new Date(dateString);
     const now = new Date();
     const diff = now.getTime() - date.getTime();
+    const minutes = Math.floor(diff / (1000 * 60));
     const hours = Math.floor(diff / (1000 * 60 * 60));
 
-    if (hours < 1) {
-      const minutes = Math.floor(diff / (1000 * 60));
-      return minutes < 1 ? 'Vừa xong' : `${minutes} phút trước`;
-    } else if (hours < 24) {
-      return `${hours} giờ trước`;
-    } else {
-      return date.toLocaleDateString('vi-VN', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      });
-    }
+    if (minutes < 1) return 'Vừa xong';
+    if (minutes < 60) return `${minutes} phút`;
+    if (hours < 24) return `${hours} giờ`;
+    return date.toLocaleDateString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit'
+    });
   };
 
   const formatMessageTime = (dateString: string) => {
@@ -240,6 +251,28 @@ export default function SupportTickets() {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const getMessageStatus = (message: ChatMessage) => {
+    const isSentByMe = message.sender.userId === currentUserRef.current;
+    const isTemp = message.messageId.startsWith('temp-');
+
+    if (!isSentByMe) return null;
+
+    if (isTemp) {
+      return <Circle className="w-3 h-3 text-gray-400 animate-pulse" fill="currentColor" />;
+    }
+
+    switch (message.status) {
+      case MessageStatus.SENT:
+        return <Circle className="w-3 h-3 text-gray-400" fill="currentColor" />;
+      case MessageStatus.DELIVERED:
+        return <CheckCircle2 className="w-3 h-3 text-gray-400" />;
+      case MessageStatus.READ:
+        return <CheckCheck className="w-3 h-3 text-green-600" />;
+      default:
+        return <Circle className="w-3 h-3 text-gray-400" fill="currentColor" />;
+    }
   };
 
   const filteredConversations = conversations.filter(conv =>
@@ -254,15 +287,25 @@ export default function SupportTickets() {
         {/* Header */}
         <div className="bg-white border-b px-6 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-semibold text-gray-900">Hỗ trợ khách hàng</h1>
-              <div className="flex items-center gap-2 mt-1">
-                <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-                <p className="text-sm text-gray-600">
-                  {isConnected ? 'Đang kết nối' : 'Mất kết nối'}
-                </p>
+            <div className="flex items-center gap-3">
+              <MessageSquare className="text-[#A8D5BA]" size={28} />
+              <div>
+                <h1 className="text-xl font-semibold text-gray-900">Hỗ trợ khách hàng</h1>
+                <div className="flex items-center gap-2 mt-1">
+                  <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+                  <p className="text-sm text-gray-600">
+                    {isConnected ? '🟢 Đang kết nối' : '🔴 Mất kết nối'}
+                  </p>
+                </div>
               </div>
             </div>
+            <button
+              onClick={loadConversations}
+              disabled={loading}
+              className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 text-gray-600 ${loading ? 'animate-spin' : ''}`} />
+            </button>
           </div>
         </div>
 
@@ -278,7 +321,7 @@ export default function SupportTickets() {
                   placeholder="Tìm kiếm hội thoại..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#A8D5BA] focus:border-[#A8D5BA] transition-all"
                 />
               </div>
             </div>
@@ -287,7 +330,7 @@ export default function SupportTickets() {
             <div className="flex-1 overflow-y-auto">
               {loading ? (
                 <div className="flex items-center justify-center h-32">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                  <RefreshCw className="w-6 h-6 text-[#A8D5BA] animate-spin" />
                 </div>
               ) : filteredConversations.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
@@ -301,18 +344,18 @@ export default function SupportTickets() {
                     onClick={() => loadMessages(conv)}
                     className={`p-4 border-b cursor-pointer transition-colors ${
                       selectedConversation?.otherUser.userId === conv.otherUser.userId
-                        ? 'bg-blue-50 border-blue-200'
+                        ? 'bg-[#E8F5E9] border-l-4 border-l-[#A8D5BA]'
                         : 'hover:bg-gray-50 border-gray-100'
                     }`}
                   >
                     <div className="flex items-start gap-3">
                       <div className="relative">
-                        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center overflow-hidden">
                           {conv.otherUser.avatarUrl ? (
                             <img
                               src={conv.otherUser.avatarUrl}
                               alt={conv.otherUser.fullName || 'User'}
-                              className="w-full h-full rounded-full object-cover"
+                              className="w-full h-full object-cover"
                             />
                           ) : (
                             <User className="w-5 h-5 text-gray-500" />
@@ -321,14 +364,18 @@ export default function SupportTickets() {
                         {conv.unreadCount > 0 && (
                           <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
                             <span className="text-xs text-white font-medium">
-                              {conv.unreadCount}
+                              {conv.unreadCount > 9 ? '9+' : conv.unreadCount}
                             </span>
                           </div>
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-start mb-1">
-                          <h3 className="font-medium text-gray-900 truncate text-sm">
+                          <h3 className={`font-medium truncate text-sm ${
+                            selectedConversation?.otherUser.userId === conv.otherUser.userId
+                              ? 'text-[#2D7D46]'
+                              : 'text-gray-900'
+                          }`}>
                             {conv.otherUser.fullName || conv.otherUser.email}
                           </h3>
                           <span className="text-xs text-gray-500 flex-shrink-0 ml-2">
@@ -355,33 +402,41 @@ export default function SupportTickets() {
               <>
                 {/* Chat Header */}
                 <div className="bg-white border-b px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
-                      {selectedConversation.otherUser.avatarUrl ? (
-                        <img
-                          src={selectedConversation.otherUser.avatarUrl}
-                          alt={selectedConversation.otherUser.fullName || 'User'}
-                          className="w-full h-full rounded-full object-cover"
-                        />
-                      ) : (
-                        <User className="w-4 h-4 text-gray-500" />
-                      )}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center overflow-hidden">
+                        {selectedConversation.otherUser.avatarUrl ? (
+                          <img
+                            src={selectedConversation.otherUser.avatarUrl}
+                            alt={selectedConversation.otherUser.fullName || 'User'}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <User className="w-5 h-5 text-gray-500" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <h2 className="font-semibold text-gray-900">
+                          {selectedConversation.otherUser.fullName || selectedConversation.otherUser.email}
+                        </h2>
+                        <p className="text-sm text-gray-500">
+                          {selectedConversation.otherUser.email}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <h2 className="font-medium text-gray-900 text-sm">
-                        {selectedConversation.otherUser.fullName || selectedConversation.otherUser.email}
-                      </h2>
-                      <p className="text-xs text-gray-500">
-                        {selectedConversation.otherUser.email}
-                      </p>
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-300'}`} />
+                      <span className="text-xs text-gray-500">
+                        {isConnected ? 'Online' : 'Offline'}
+                      </span>
                     </div>
-                    <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-gray-300'}`} />
                   </div>
                 </div>
 
                 {/* Messages Container */}
                 <div 
                   ref={messagesContainerRef}
+                  onScroll={handleScroll}
                   className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50"
                 >
                   {messages.map((message) => {
@@ -393,35 +448,21 @@ export default function SupportTickets() {
                         key={message.messageId}
                         className={`flex ${isSentByMe ? 'justify-end' : 'justify-start'}`}
                       >
-                        <div className={`max-w-[80%] flex ${isSentByMe ? 'flex-row-reverse' : 'flex-row'} items-end gap-2`}>
-                          {/* Avatar for received messages */}
-                          {!isSentByMe && (
-                            <div className="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center flex-shrink-0">
-                              <User className="w-3 h-3 text-gray-600" />
-                            </div>
-                          )}
-                          
-                          {/* Message Bubble */}
-                          <div className={`rounded-2xl px-4 py-2 ${
-                            isSentByMe
-                              ? 'bg-blue-500 text-white rounded-br-sm'
-                              : 'bg-white text-gray-900 border border-gray-200 rounded-bl-sm'
-                          } ${isTemp ? 'opacity-70' : ''}`}>
+                        <div className={`max-w-[80%] ${isSentByMe ? 'items-end' : 'items-start'}`}>
+                          <div
+                            className={`px-4 py-2 rounded-2xl ${
+                              isSentByMe
+                                ? 'bg-[#A8D5BA] text-white'
+                                : 'bg-white text-gray-900 border border-gray-200'
+                            } ${isTemp ? 'opacity-80' : ''}`}
+                          >
                             <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
                           </div>
-
-                          {/* Time and Status */}
-                          <div className={`flex items-center gap-1 text-xs ${
-                            isSentByMe ? 'text-blue-500' : 'text-gray-500'
-                          }`}>
-                            <span>{formatMessageTime(message.sendTime)}</span>
-                            {isSentByMe && (
-                              <span className="text-xs">
-                                {message.status === MessageStatus.READ ? '✓✓' : 
-                                 message.status === MessageStatus.DELIVERED ? '✓✓' : 
-                                 isTemp ? <Circle className="w-3 h-3 animate-pulse" /> : '✓'}
-                              </span>
-                            )}
+                          <div className="flex items-center gap-1.5 px-1 mt-1">
+                            <span className="text-xs text-gray-500">
+                              {formatMessageTime(message.sendTime)}
+                            </span>
+                            {getMessageStatus(message)}
                           </div>
                         </div>
                       </div>
@@ -432,25 +473,24 @@ export default function SupportTickets() {
 
                 {/* Message Input */}
                 <div className="bg-white border-t p-4">
-                  <div className="flex items-end gap-2">
-                    <div className="flex-1 bg-gray-100 rounded-2xl px-4 py-2 focus-within:ring-2 focus-within:ring-blue-500 focus-within:bg-white transition-all">
-                      <textarea
+                  <div className="flex items-end gap-3">
+                    <div className="flex-1 bg-gray-100 rounded-xl px-4 py-2 focus-within:ring-2 focus-within:ring-[#A8D5BA] focus-within:bg-white transition-all">
+                      <input
+                        type="text"
                         value={messageInput}
                         onChange={(e) => setMessageInput(e.target.value)}
                         onKeyPress={handleKeyPress}
                         placeholder="Nhập tin nhắn..."
-                        rows={1}
-                        className="w-full resize-none bg-transparent border-none focus:outline-none text-sm placeholder-gray-500 max-h-32"
-                        style={{ minHeight: '20px' }}
+                        className="w-full bg-transparent border-none focus:outline-none text-sm placeholder-gray-500"
                       />
                     </div>
                     <button
                       onClick={sendMessage}
                       disabled={!messageInput.trim() || sending}
-                      className="bg-blue-500 text-white p-3 rounded-2xl hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                      className="bg-[#A8D5BA] text-white p-3 rounded-xl hover:bg-[#8BBF9E] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
                     >
                       {sending ? (
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <RefreshCw className="w-4 h-4 animate-spin" />
                       ) : (
                         <Send className="w-4 h-4" />
                       )}
@@ -461,8 +501,9 @@ export default function SupportTickets() {
             ) : (
               <div className="flex-1 flex items-center justify-center text-gray-500">
                 <div className="text-center">
-                  <MessageSquare className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                  <p className="text-sm">Chọn một hội thoại để bắt đầu trò chuyện</p>
+                  <MessageSquare className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                  <p className="text-lg font-medium text-gray-900 mb-2">Chọn một hội thoại</p>
+                  <p className="text-sm">Chọn từ danh sách để bắt đầu trò chuyện</p>
                 </div>
               </div>
             )}

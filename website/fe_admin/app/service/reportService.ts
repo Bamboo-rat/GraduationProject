@@ -315,10 +315,12 @@ class ReportService {
     page: number = 0,
     size: number = 20,
     sortBy: string = 'totalSpent',
-    sortDirection: string = 'DESC'
+    sortDirection: string = 'DESC',
+    startDate?: string,
+    endDate?: string
   ): Promise<PageResponse<CustomerLifetimeValue>> {
     const response = await axiosInstance.get('/reports/customer-behavior/lifetime-value', {
-      params: { page, size, sortBy, sortDirection }
+      params: { page, size, sortBy, sortDirection, startDate, endDate }
     });
     return response.data.data;
   }

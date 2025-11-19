@@ -11,6 +11,7 @@ export default function FinanceTransactions() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
   const [type, setType] = useState<string>('');
   const [supplierId, setSupplierId] = useState<string>('');
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionResponse | null>(null);
@@ -25,8 +26,11 @@ export default function FinanceTransactions() {
 
   useEffect(() => {
     loadTransactions();
-    loadSystemStats(); // Load system-wide stats instead of page-specific
   }, [page, type, supplierId]);
+
+  useEffect(() => {
+    loadSystemStats(); // Chỉ load một lần khi component mount
+  }, []);
 
   const loadTransactions = async () => {
     try {
@@ -39,6 +43,7 @@ export default function FinanceTransactions() {
       });
       setTransactions(data.content);
       setTotalPages(data.totalPages);
+      setTotalElements(data.totalElements); 
     } catch (err) {
       console.error('Failed to load transactions:', err);
     } finally {
@@ -53,9 +58,9 @@ export default function FinanceTransactions() {
       
       setStats({
         totalCommissionEarned: summary.totalCommissionEarned || 0,
-        totalPaidToSuppliers: summary.totalEarnings || 0, // Total earnings paid to suppliers
+        totalPaidToSuppliers: summary.totalEarnings || 0,
         totalRefunded: summary.totalRefunded || 0,
-        totalTransactions: transactions.length, // Keep page-specific count for context
+        totalTransactions: 0, 
       });
     } catch (err) {
       console.error('Failed to load system stats:', err);
@@ -142,8 +147,10 @@ export default function FinanceTransactions() {
                   <FileText className="w-4 h-4" />
                   <p className="text-purple-100 text-sm">Tổng GD</p>
                 </div>
-                <p className="text-2xl font-bold mt-1">{stats.totalTransactions}</p>
-                <p className="text-purple-100 text-xs mt-1">Trên toàn hệ thống</p>
+                <p className="text-2xl font-bold mt-1">{totalElements.toLocaleString('vi-VN')}</p>
+                <p className="text-purple-100 text-xs mt-1">
+                  {type || supplierId ? 'Theo bộ lọc' : 'Toàn hệ thống'}
+                </p>
               </div>
               <div className="bg-purple-400 bg-opacity-30 p-3 rounded-full">
                 <FileText className="w-6 h-6" />
@@ -285,7 +292,7 @@ export default function FinanceTransactions() {
           {totalPages > 1 && (
             <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
               <div className="text-sm text-gray-700">
-                Trang {page + 1} / {totalPages}
+                Trang {page + 1} / {totalPages} • Hiển thị {transactions.length} / {totalElements.toLocaleString('vi-VN')} giao dịch
               </div>
               <div className="flex gap-2">
                 <button

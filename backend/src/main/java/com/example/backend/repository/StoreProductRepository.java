@@ -103,7 +103,7 @@ public interface StoreProductRepository extends JpaRepository<StoreProduct, Stri
      * Count expiring products for a specific store
      */
     @Query("SELECT COUNT(sp) FROM StoreProduct sp JOIN sp.variant v WHERE sp.store.storeId = :storeId AND v.expiryDate IS NOT NULL AND v.expiryDate <= :expiryThreshold")
-    long countExpiringProductsByStore(@Param("storeId") String storeId, @Param("expiryThreshold") java.time.LocalDateTime expiryThreshold);
+    long countExpiringProductsByStore(@Param("storeId") String storeId, @Param("expiryThreshold") java.time.LocalDate expiryThreshold);
 
     /**
      * Find new products on sale today (created today with discount)

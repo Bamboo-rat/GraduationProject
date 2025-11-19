@@ -284,7 +284,7 @@ export default function PromotionsManagement() {
             </div>
           </div>
 
-          {can('marketing.createPromotion') && (
+          {can('marketing.promotions.create_large') && (
             <button
               onClick={openCreateModal}
               className="btn-primary flex items-center gap-2 whitespace-nowrap"
@@ -383,7 +383,7 @@ export default function PromotionsManagement() {
                             >
                               <Eye size={18} />
                             </button>
-                            {can('marketing.updatePromotion') && (
+                            {can('marketing.promotions.edit') && (
                               <button
                                 onClick={() => handleEdit(promotion)}
                                 className="text-text hover:text-secondary transition-colors p-1"
@@ -392,7 +392,7 @@ export default function PromotionsManagement() {
                                 <Edit2 size={18} />
                               </button>
                             )}
-                            {can('marketing.updatePromotion') && (
+                            {can('marketing.promotions.edit') && (
                               <button
                                 onClick={() =>
                                   handleToggleStatus(

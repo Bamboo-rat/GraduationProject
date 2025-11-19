@@ -124,7 +124,7 @@ public class SupplierDashboardServiceImpl implements SupplierDashboardService {
             log.info("Low stock products: {}", lowStockProducts);
 
             // Expiring products (within 7 days)
-            LocalDateTime expiryThreshold = now.plusDays(EXPIRING_DAYS_THRESHOLD);
+            LocalDate expiryThreshold = LocalDate.now().plusDays(EXPIRING_DAYS_THRESHOLD);
             Long expiringProducts = storeIds.stream()
                     .mapToLong(storeId -> storeProductRepository.countExpiringProductsByStore(storeId, expiryThreshold))
                     .sum();
