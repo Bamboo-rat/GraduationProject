@@ -274,6 +274,7 @@ public class OrderServiceImpl implements OrderService {
                 subtotal, totalDiscount, shippingFee, finalTotal);
 
         // Copy cart details to order details with current prices
+        final Order finalOrder = order; // Create final reference for lambda usage
         for (CartDetail cartDetail : cart.getCartDetails()) {
             // Validate quantity to prevent division by zero and invalid orders
             if (cartDetail.getQuantity() <= 0) {
@@ -295,11 +296,11 @@ public class OrderServiceImpl implements OrderService {
             BigDecimal itemAmount = currentUnitPrice.multiply(BigDecimal.valueOf(cartDetail.getQuantity()));
 
             OrderDetail orderDetail = new OrderDetail();
-            orderDetail.setOrder(order);
+            orderDetail.setOrder(finalOrder);
             orderDetail.setStoreProduct(cartDetail.getStoreProduct());
             orderDetail.setQuantity(cartDetail.getQuantity());
             orderDetail.setAmount(itemAmount);
-            order.getOrderDetails().add(orderDetail);
+            finalOrder.getOrderDetails().add(orderDetail);
             orderDetailRepository.save(orderDetail);
 
             // Deduct stock
@@ -344,9 +345,17 @@ public class OrderServiceImpl implements OrderService {
                 String.format("Bạn có đơn hàng mới #%s. Tổng tiền: %s VNĐ. Vui lòng xác nhận đơn hàng",
                         order.getOrderCode(), order.getTotalAmount()));
 
-        // Use optimized queries to prevent N+1 and MultipleBagFetchException
-        order = loadOrderWithAllDetails(order.getOrderId());
-        return mapToOrderResponse(order);
+        // Fetch order with orderDetails first 
+        Order reloadedOrder = orderRepository.findByIdWithDetails(order.getOrderId())
+                .orElseThrow(() -> new NotFoundException(ErrorCode.ORDER_NOT_FOUND));
+        
+        // Fetch promotions separately to avoid multiple bags issue
+        final Order finalReloadedOrder = reloadedOrder;
+        orderRepository.findByIdWithPromotions(reloadedOrder.getOrderId()).ifPresent(o -> {
+            finalReloadedOrder.setPromotionUsages(o.getPromotionUsages());
+        });
+        
+        return mapToOrderResponse(reloadedOrder);
     }
 
     @Override
@@ -653,7 +662,7 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(readOnly = true)
     public OrderResponse getOrderByCode(String orderCode) {
-        // Fetch order with orderDetails first (prevents MultipleBagFetchException)
+        // Fetch order with orderDetails first
         Order order = orderRepository.findByOrderCodeWithDetails(orderCode)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.ORDER_NOT_FOUND));
         
@@ -1528,11 +1537,6 @@ public class OrderServiceImpl implements OrderService {
         return result;
     }
 
-    @Override
-    public void handleDeliveryCompletionPublic(Order order) {
-        handleDeliveryCompletion(order);
-    }
-
     /**
      * Helper method to load Order with all details (orderDetails + promotionUsages)
      * Prevents MultipleBagFetchException by splitting into two queries
@@ -1548,5 +1552,10 @@ public class OrderServiceImpl implements OrderService {
         });
         
         return order;
+    }
+
+    @Override
+    public void handleDeliveryCompletionPublic(Order order) {
+        handleDeliveryCompletion(order);
     }
 }

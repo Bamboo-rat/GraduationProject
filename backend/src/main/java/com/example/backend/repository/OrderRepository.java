@@ -32,7 +32,6 @@ public interface OrderRepository extends JpaRepository<Order, String> {
         LEFT JOIN FETCH od.storeProduct sp
         LEFT JOIN FETCH sp.variant v
         LEFT JOIN FETCH v.product p
-        LEFT JOIN FETCH p.images
         LEFT JOIN FETCH od.review
         WHERE o.orderId = :orderId
     """)
@@ -63,7 +62,6 @@ public interface OrderRepository extends JpaRepository<Order, String> {
         LEFT JOIN FETCH od.storeProduct sp
         LEFT JOIN FETCH sp.variant v
         LEFT JOIN FETCH v.product p
-        LEFT JOIN FETCH p.images
         LEFT JOIN FETCH od.review
         WHERE o.orderCode = :orderCode
     """)
