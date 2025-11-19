@@ -607,13 +607,16 @@ public class ReportServiceImpl implements ReportService {
         BigDecimal unsoldValue = toBigDecimal(data[8]);
         BigDecimal wasteValue = toBigDecimal(data[9]);
 
-        Long deliveredOrders = orderRepository.countByStatus(OrderStatus.DELIVERED);
-        Long canceledOrders = orderRepository.countByStatus(OrderStatus.CANCELED);
+        // Calculate total sold quantity from delivered orders
+        Long totalSold = orderDetailRepository.findAll().stream()
+            .filter(od -> od.getOrder().getStatus() == OrderStatus.DELIVERED)
+            .mapToLong(od -> od.getQuantity())
+            .sum();
         
-        // totalListed = delivered + canceled + currentStock + expired
-        Long totalListed = deliveredOrders + canceledOrders + currentStock + expiredQuantity;
-        Long totalSold = deliveredOrders;  // Đã bán thành công
-        Long totalUnsold = canceledOrders + currentStock + expiredQuantity;  // Chưa bán được
+        // totalListed = số đã bán + số còn lại + số hết hạn
+        Long totalListed = totalSold + currentStock + expiredQuantity;
+        // totalUnsold = số còn lại + số hết hạn (chưa bán được)
+        Long totalUnsold = currentStock + expiredQuantity;
         
         // Legacy fields for backward compatibility
         Long totalStock = totalListed;
@@ -771,16 +774,33 @@ public class ReportServiceImpl implements ReportService {
         // Note: Date filtering would require modifying the query to join with order/delivery dates
         // For now, we apply post-processing filter if needed
         return results.stream().map(row -> {
+            String categoryId = (String) row[0];
             Long totalProducts = toLong(row[3]);
             Long unsoldProducts = toLong(row[4]);
-            Long totalStock = toLong(row[7]);
-            Long unsoldQuantity = toLong(row[8]);
+            Long currentStock = toLong(row[7]);
             Long expiredQuantity = toLong(row[9]);
             BigDecimal totalStockValue = toBigDecimal(row[10]);
             BigDecimal unsoldValue = toBigDecimal(row[11]);
 
-            Double wasteRate = totalStock > 0 ? (unsoldQuantity.doubleValue() / totalStock) * 100 : 0.0;
-            Double expiryRate = totalStock > 0 ? (expiredQuantity.doubleValue() / totalStock) * 100 : 0.0;
+            // Calculate totalSold for this category from OrderDetail
+            Long totalSold = orderDetailRepository.findAll().stream()
+                .filter(od -> {
+                    if (od.getOrder().getStatus() != OrderStatus.DELIVERED) return false;
+                    String odCategoryId = od.getStoreProduct().getVariant().getProduct().getCategory() != null 
+                        ? od.getStoreProduct().getVariant().getProduct().getCategory().getCategoryId() 
+                        : null;
+                    return categoryId.equals(odCategoryId);
+                })
+                .mapToLong(od -> od.getQuantity())
+                .sum();
+            
+            // totalListed = totalSold + currentStock + expired
+            Long totalListed = totalSold + currentStock + expiredQuantity;
+            Long totalUnsold = currentStock + expiredQuantity;
+
+            // WasteRate = (totalUnsold / totalListed) * 100
+            Double wasteRate = totalListed > 0 ? (totalUnsold.doubleValue() / totalListed) * 100 : 0.0;
+            Double expiryRate = totalListed > 0 ? (expiredQuantity.doubleValue() / totalListed) * 100 : 0.0;
             Double wasteIndex = (wasteRate * 0.6) + (expiryRate * 0.4); // Weighted composite
 
             return WasteByCategoryResponse.builder()
@@ -791,12 +811,12 @@ public class ReportServiceImpl implements ReportService {
                     .unsoldProducts(unsoldProducts)
                     .expiredProducts(toLong(row[5]))
                     .nearExpiryProducts(toLong(row[6]))
-                    .totalStockQuantity(totalStock)
-                    .unsoldQuantity(unsoldQuantity)
+                    .totalStockQuantity(totalListed)
+                    .unsoldQuantity(totalUnsold)
                     .expiredQuantity(expiredQuantity)
                     .totalStockValue(totalStockValue)
                     .unsoldValue(unsoldValue)
-                    .wasteValue(unsoldValue) // Simplified
+                    .wasteValue(unsoldValue)
                     .wasteRate(wasteRate)
                     .expiryRate(expiryRate)
                     .wasteIndex(wasteIndex)
@@ -816,12 +836,27 @@ public class ReportServiceImpl implements ReportService {
         // Note: Date filtering would require modifying the query to join with order/delivery dates
         // For now, we return all results (can be enhanced later with DB-level filtering)
         return results.stream().map(row -> {
-            Long totalStock = toLong(row[10]);
-            Long soldQuantity = toLong(row[11]);
-            Long unsoldQuantity = toLong(row[12]);
+            String supplierId = (String) row[0];
+            Long currentStock = toLong(row[10]);
+            Long expiredQuantity = toLong(row[13]);
 
-            Double sellThroughRate = totalStock > 0 ? (soldQuantity.doubleValue() / totalStock) * 100 : 0.0;
-            Double wasteRate = totalStock > 0 ? (unsoldQuantity.doubleValue() / totalStock) * 100 : 0.0;
+            // Calculate totalSold for this supplier from OrderDetail
+            Long totalSold = orderDetailRepository.findAll().stream()
+                .filter(od -> {
+                    if (od.getOrder().getStatus() != OrderStatus.DELIVERED) return false;
+                    String odSupplierId = od.getStoreProduct().getStore().getSupplier().getUserId();
+                    return supplierId.equals(odSupplierId);
+                })
+                .mapToLong(od -> od.getQuantity())
+                .sum();
+            
+            // totalListed = totalSold + currentStock + expired
+            Long totalListed = totalSold + currentStock + expiredQuantity;
+            Long totalUnsold = currentStock + expiredQuantity;
+
+            // WasteRate = (totalUnsold / totalListed) * 100
+            Double sellThroughRate = totalListed > 0 ? (totalSold.doubleValue() / totalListed) * 100 : 0.0;
+            Double wasteRate = totalListed > 0 ? (totalUnsold.doubleValue() / totalListed) * 100 : 0.0;
             Double wasteIndex = 100.0 - sellThroughRate;
 
             String rating = sellThroughRate >= 80 ? "EXCELLENT"
@@ -830,9 +865,9 @@ public class ReportServiceImpl implements ReportService {
 
             // Calculate financial metrics using real prices
             BigDecimal totalStockValue = row.length > 14 ? toBigDecimal(row[14]) : BigDecimal.ZERO;
-            BigDecimal wasteValue = totalStock > 0 && unsoldQuantity > 0
-                    ? totalStockValue.multiply(BigDecimal.valueOf(unsoldQuantity))
-                            .divide(BigDecimal.valueOf(totalStock), 2, java.math.RoundingMode.HALF_UP)
+            BigDecimal wasteValue = totalListed > 0 && totalUnsold > 0
+                    ? totalStockValue.multiply(BigDecimal.valueOf(totalUnsold))
+                            .divide(BigDecimal.valueOf(totalListed), 2, java.math.RoundingMode.HALF_UP)
                     : BigDecimal.ZERO;
 
             return WasteBySupplierResponse.builder()
@@ -845,11 +880,11 @@ public class ReportServiceImpl implements ReportService {
                     .expiredProducts(toLong(row[6]))
                     .totalStores(toLong(row[7]))
                     .activeStores(toLong(row[8]))
-                    .totalStockQuantity(totalStock)
-                    .soldQuantity(soldQuantity)
-                    .unsoldQuantity(unsoldQuantity)
-                    .expiredQuantity(toLong(row[13]))
-                    .totalRevenue(BigDecimal.ZERO) // Would need order join
+                    .totalStockQuantity(totalListed)
+                    .soldQuantity(totalSold)
+                    .unsoldQuantity(totalUnsold)
+                    .expiredQuantity(expiredQuantity)
+                    .totalRevenue(BigDecimal.ZERO)
                     .potentialRevenueLoss(wasteValue)
                     .wasteValue(wasteValue)
                     .sellThroughRate(sellThroughRate)

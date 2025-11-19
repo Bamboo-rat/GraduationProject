@@ -266,7 +266,20 @@ export default function StoreUpdateForm() {
       // create new store
       try {
         setSubmitting(true);
-        await storeService.createStore(formData as StoreCreateRequest);
+        // Clean the data: remove empty strings and ensure correct types
+        const cleanedData: StoreCreateRequest = {};
+        Object.keys(formData).forEach((key) => {
+          const value = formData[key as keyof typeof formData];
+          if (value !== '' && value !== null && value !== undefined) {
+            if (key === 'latitude' || key === 'longitude') {
+              // Ensure coordinates are numbers
+              cleanedData[key as keyof StoreCreateRequest] = Number(value) as any;
+            } else {
+              cleanedData[key as keyof StoreCreateRequest] = value as any;
+            }
+          }
+        });
+        await storeService.createStore(cleanedData);
         setToast({ type: 'success', message: 'Tạo cửa hàng thành công! Cửa hàng đang chờ admin phê duyệt' });
         setTimeout(() => navigate('/store/list'), 2000);
       } catch (error: any) {
@@ -282,7 +295,20 @@ export default function StoreUpdateForm() {
 
     try {
       setSubmitting(true);
-      const result = await storeService.updateStore(storeId, formData as StoreUpdateRequest);
+      // Clean the data: remove empty strings and ensure correct types
+      const cleanedData: StoreUpdateRequest = {};
+      Object.keys(formData).forEach((key) => {
+        const value = formData[key as keyof typeof formData];
+        if (value !== '' && value !== null && value !== undefined) {
+          if (key === 'latitude' || key === 'longitude') {
+            // Ensure coordinates are numbers
+            cleanedData[key as keyof StoreUpdateRequest] = Number(value) as any;
+          } else {
+            cleanedData[key as keyof StoreUpdateRequest] = value as any;
+          }
+        }
+      });
+      const result = await storeService.updateStore(storeId, cleanedData);
 
       if (result.updateType === 'IMMEDIATE') {
         // backend applied changes immediately

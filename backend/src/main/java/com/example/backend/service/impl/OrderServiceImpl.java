@@ -881,12 +881,16 @@ public class OrderServiceImpl implements OrderService {
         paymentRepository.save(payment);
         orderRepository.save(order);
 
-        // Deduct from supplier wallet (refund from pendingBalance since order not
-        // delivered yet)
+        // Calculate subtotal for refund
+        BigDecimal subtotal = order.getOrderDetails().stream()
+                .map(od -> od.getAmount().multiply(BigDecimal.valueOf(od.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Deduct from supplier wallet (refund from pendingBalance since order not delivered yet)
         walletService.refundOrder(
                 order.getStore().getSupplier().getUserId(),
                 order,
-                payment.getAmount(),
+                subtotal,  // Refund based on subtotal
                 true // isPending = true (order cancelled before delivery)
         );
 
@@ -939,11 +943,16 @@ public class OrderServiceImpl implements OrderService {
         log.info("Created point transaction record: transactionId={}, points={}",
                 pointTransaction.getTransactionId(), pointsToAward);
 
-        // Record supplier wallet pending balance (after commission deduction)
+        // Calculate subtotal from order details (product revenue only)
+        BigDecimal subtotal = order.getOrderDetails().stream()
+                .map(od -> od.getAmount().multiply(BigDecimal.valueOf(od.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Record supplier wallet pending balance (commission calculated on subtotal only)
         walletService.addPendingBalance(
                 order.getStore().getSupplier().getUserId(),
                 order,
-                order.getTotalAmount(),
+                subtotal,  // Pass subtotal, NOT totalAmount
                 "Doanh thu đơn hàng " + order.getOrderCode());
 
         // Update FavoriteStore metrics if store is favorited by customer
@@ -962,14 +971,17 @@ public class OrderServiceImpl implements OrderService {
         log.info("Handling order return: orderId={}", order.getOrderId());
 
         String supplierId = order.getStore().getSupplier().getUserId();
-        BigDecimal orderAmount = order.getTotalAmount();
+        // Calculate subtotal for refund (commission was on subtotal, not totalAmount)
+        BigDecimal subtotal = order.getOrderDetails().stream()
+                .map(od -> od.getAmount().multiply(BigDecimal.valueOf(od.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
         boolean isPending = !order.isBalanceReleased();
 
         // Refund will subtract from supplier wallet AND record commission refund for platform
-        walletService.refundOrder(supplierId, order, orderAmount, isPending);
+        walletService.refundOrder(supplierId, order, subtotal, isPending);
 
         log.info("Supplier wallet refunded for returned order: supplierId={}, orderId={}, amount={}, isPending={}", 
-                supplierId, order.getOrderId(), orderAmount, isPending);
+                supplierId, order.getOrderId(), subtotal, isPending);
 
         // Return inventory back to store
         for (OrderDetail detail : order.getOrderDetails()) {

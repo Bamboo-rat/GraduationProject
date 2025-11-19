@@ -14,13 +14,17 @@ import java.time.LocalTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class StorePendingUpdateResponse {
-    
+
     private String updateId;
-    
+
     // Store info
     private String storeId;
     private String currentStoreName;
-    
+
+    // Supplier info
+    private String supplierId;
+    private String supplierName;
+
     // Pending update fields
     private String storeName;
     private String address;
@@ -36,13 +40,13 @@ public class StorePendingUpdateResponse {
     private LocalTime openTime;
     private LocalTime closeTime;
     private String status;
-    
+
     // Update metadata
     private SuggestionStatus updateStatus;
     private String adminNotes;
     private LocalDateTime createdAt;
     private LocalDateTime processedAt;
-    
+
     // Admin info (người xử lý)
     private String adminId;
     private String adminName;

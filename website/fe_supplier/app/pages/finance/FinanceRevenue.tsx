@@ -18,6 +18,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import * as XLSX from 'xlsx';
 import walletService from '~/service/walletService';
 import type { WalletSummaryResponse } from '~/service/walletService';
+import reportService from '~/service/reportService';
 
 interface Transaction {
   id: string;
@@ -70,11 +71,11 @@ export default function FinanceRevenue() {
       // Load wallet summary and revenue data
       const [walletData, revenueTimeSeries] = await Promise.all([
         walletService.getWalletSummary(),
-        fetch(`/api/suppliers/me/dashboard/revenue?startDate=${startDateStr}&endDate=${endDateStr}`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-          },
-        }).then(res => res.json()).then(data => data.data)
+        reportService.getRevenueOverTime({
+          period: 'day',
+          startDate: startDateStr,
+          endDate: endDateStr
+        })
       ]);
       
       setSummary(walletData);

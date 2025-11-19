@@ -375,9 +375,9 @@ export default function BusinessUpdateRequests() {
                   <div className="flex items-center gap-3 mb-3">
                     <Store size={20} className="text-[#2F855A]" />
                     <h3 className="text-lg font-bold text-[#2D2D2D]">
-                      {update.storeName}
+                      {update.currentStoreName}
                     </h3>
-                    {getStatusBadge(update.status as UpdateStatus)}
+                    {getStatusBadge(update.updateStatus as UpdateStatus)}
                   </div>
 
                   {/* Info Grid */}
@@ -395,22 +395,22 @@ export default function BusinessUpdateRequests() {
                   {/* Changes Summary */}
                   <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
                     <span className="text-[#8B8B8B]">Thay đổi:</span>
-                    {update.requestedChanges?.name && (
+                    {update.storeName && (
                       <span className="bg-[#E8FFED] text-[#2F855A] px-2 py-1 rounded-lg font-medium">
                         Tên cửa hàng
                       </span>
                     )}
-                    {update.requestedChanges?.description && (
+                    {update.description && (
                       <span className="bg-[#E8FFED] text-[#2F855A] px-2 py-1 rounded-lg font-medium">
                         Mô tả
                       </span>
                     )}
-                    {update.requestedChanges?.address && (
+                    {update.address && (
                       <span className="bg-[#E8FFED] text-[#2F855A] px-2 py-1 rounded-lg font-medium">
                         Địa chỉ
                       </span>
                     )}
-                    {update.requestedChanges?.phoneNumber && (
+                    {update.phoneNumber && (
                       <span className="bg-[#E8FFED] text-[#2F855A] px-2 py-1 rounded-lg font-medium">
                         Số điện thoại
                       </span>
@@ -431,7 +431,7 @@ export default function BusinessUpdateRequests() {
                     Chi tiết
                   </button>
 
-                  {update.status === 'PENDING' && (
+                  {update.updateStatus === 'PENDING' && (
                     <>
                       <button
                         onClick={() => {
@@ -532,7 +532,7 @@ export default function BusinessUpdateRequests() {
 
               {/* Status */}
               <div className="mb-6">
-                {getStatusBadge((selectedSupplierUpdate?.updateStatus || selectedStoreUpdate?.status) as UpdateStatus)}
+                {getStatusBadge((selectedSupplierUpdate?.updateStatus || selectedStoreUpdate?.updateStatus) as UpdateStatus)}
               </div>
 
               {/* Supplier Update Details */}
@@ -637,60 +637,21 @@ export default function BusinessUpdateRequests() {
               {/* Store Update Details */}
               {selectedStoreUpdate && (
                 <>
-                  {/* Store Info */}
+                  {/* Basic Info */}
                   <div className="bg-[#E8FFED] border-2 border-[#B7E4C7] rounded-xl p-4 mb-6">
                     <h3 className="font-bold text-[#2D2D2D] mb-3 flex items-center gap-2">
                       <Store size={20} className="text-[#2F855A]" />
-                      Thông tin cửa hàng hiện tại
+                      Thông tin cơ bản
                     </h3>
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <div>
-                        <span className="text-[#6B6B6B]">Tên cửa hàng:</span>
-                        <p className="font-medium text-[#2D2D2D]">{selectedStoreUpdate.currentValues?.name || selectedStoreUpdate.storeName}</p>
+                        <span className="text-[#6B6B6B]">Tên cửa hàng hiện tại:</span>
+                        <p className="font-medium text-[#2D2D2D]">{selectedStoreUpdate.currentStoreName}</p>
                       </div>
                       <div>
                         <span className="text-[#6B6B6B]">Nhà cung cấp:</span>
                         <p className="font-medium text-[#2D2D2D]">{selectedStoreUpdate.supplierName}</p>
                       </div>
-                      <div>
-                        <span className="text-[#6B6B6B]">Số điện thoại:</span>
-                        <p className="font-medium text-[#2D2D2D]">{selectedStoreUpdate.currentValues?.phoneNumber || '-'}</p>
-                      </div>
-                      <div>
-                        <span className="text-[#6B6B6B]">Email:</span>
-                        <p className="font-medium text-[#2D2D2D]">{selectedStoreUpdate.currentValues?.email || '-'}</p>
-                      </div>
-                      <div className="col-span-2">
-                        <span className="text-[#6B6B6B]">Địa chỉ:</span>
-                        <p className="font-medium text-[#2D2D2D]">
-                          {[
-                            selectedStoreUpdate.currentValues?.address,
-                            selectedStoreUpdate.currentValues?.ward,
-                            selectedStoreUpdate.currentValues?.district,
-                            selectedStoreUpdate.currentValues?.city
-                          ].filter(Boolean).join(', ') || '-'}
-                        </p>
-                      </div>
-                      <div className="col-span-2">
-                        <span className="text-[#6B6B6B]">Mô tả:</span>
-                        <p className="font-medium text-[#2D2D2D]">{selectedStoreUpdate.currentValues?.description || '-'}</p>
-                      </div>
-                      {selectedStoreUpdate.currentValues?.openingHours && (
-                        <div className="col-span-2">
-                          <span className="text-[#6B6B6B]">Giờ mở cửa:</span>
-                          <p className="font-medium text-[#2D2D2D]">{selectedStoreUpdate.currentValues.openingHours}</p>
-                        </div>
-                      )}
-                      {selectedStoreUpdate.currentValues?.imageUrls && selectedStoreUpdate.currentValues.imageUrls.length > 0 && (
-                        <div className="col-span-2">
-                          <span className="text-[#6B6B6B]">Hình ảnh hiện tại:</span>
-                          <div className="flex gap-2 mt-2 flex-wrap">
-                            {selectedStoreUpdate.currentValues.imageUrls.map((url, idx) => (
-                              <img key={idx} src={url} alt={`Store ${idx + 1}`} className="w-20 h-20 object-cover rounded-lg border-2 border-[#B7E4C7]" />
-                            ))}
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </div>
 
@@ -701,103 +662,50 @@ export default function BusinessUpdateRequests() {
                       Thông tin muốn cập nhật
                     </h3>
                     <div className="space-y-4">
-                      {selectedStoreUpdate.requestedChanges?.name && (
-                        <div className="grid grid-cols-2 gap-4 pb-3 border-b border-[#FFD700]/30">
-                          <div>
-                            <span className="text-xs text-[#8B8B8B] block mb-1">Tên cửa hàng - Hiện tại</span>
-                            <p className="text-[#6B6B6B]">{selectedStoreUpdate.currentValues?.name || '-'}</p>
-                          </div>
-                          <div>
-                            <span className="text-xs text-[#8B8B8B] block mb-1">Tên cửa hàng - Mới</span>
-                            <p className="font-bold text-[#FF8C00]">{selectedStoreUpdate.requestedChanges.name}</p>
-                          </div>
+                      {selectedStoreUpdate.storeName && (
+                        <div>
+                          <span className="text-xs text-[#8B8B8B] block mb-1">Tên cửa hàng mới</span>
+                          <p className="font-bold text-[#FF8C00]">{selectedStoreUpdate.storeName}</p>
                         </div>
                       )}
-                      {selectedStoreUpdate.requestedChanges?.description && (
-                        <div className="grid grid-cols-2 gap-4 pb-3 border-b border-[#FFD700]/30">
-                          <div>
-                            <span className="text-xs text-[#8B8B8B] block mb-1">Mô tả - Hiện tại</span>
-                            <p className="text-[#6B6B6B]">{selectedStoreUpdate.currentValues?.description || '-'}</p>
-                          </div>
-                          <div>
-                            <span className="text-xs text-[#8B8B8B] block mb-1">Mô tả - Mới</span>
-                            <p className="font-bold text-[#FF8C00]">{selectedStoreUpdate.requestedChanges.description}</p>
-                          </div>
+                      {selectedStoreUpdate.description && (
+                        <div>
+                          <span className="text-xs text-[#8B8B8B] block mb-1">Mô tả mới</span>
+                          <p className="font-bold text-[#FF8C00]">{selectedStoreUpdate.description}</p>
                         </div>
                       )}
-                      {(selectedStoreUpdate.requestedChanges?.address || 
-                        selectedStoreUpdate.requestedChanges?.ward ||
-                        selectedStoreUpdate.requestedChanges?.district ||
-                        selectedStoreUpdate.requestedChanges?.city) && (
-                        <div className="grid grid-cols-2 gap-4 pb-3 border-b border-[#FFD700]/30">
-                          <div>
-                            <span className="text-xs text-[#8B8B8B] block mb-1">Địa chỉ - Hiện tại</span>
-                            <p className="text-[#6B6B6B]">
-                              {[
-                                selectedStoreUpdate.currentValues?.address,
-                                selectedStoreUpdate.currentValues?.ward,
-                                selectedStoreUpdate.currentValues?.district,
-                                selectedStoreUpdate.currentValues?.city
-                              ].filter(Boolean).join(', ') || '-'}
-                            </p>
-                          </div>
-                          <div>
-                            <span className="text-xs text-[#8B8B8B] block mb-1">Địa chỉ - Mới</span>
-                            <p className="font-bold text-[#FF8C00]">
-                              {[
-                                selectedStoreUpdate.requestedChanges?.address,
-                                selectedStoreUpdate.requestedChanges?.ward,
-                                selectedStoreUpdate.requestedChanges?.district,
-                                selectedStoreUpdate.requestedChanges?.city
-                              ].filter(Boolean).join(', ')}
-                            </p>
-                          </div>
+                      {(selectedStoreUpdate.address || selectedStoreUpdate.street || selectedStoreUpdate.ward || selectedStoreUpdate.district || selectedStoreUpdate.province) && (
+                        <div>
+                          <span className="text-xs text-[#8B8B8B] block mb-1">Địa chỉ mới</span>
+                          <p className="font-bold text-[#FF8C00]">
+                            {[
+                              selectedStoreUpdate.street,
+                              selectedStoreUpdate.ward,
+                              selectedStoreUpdate.district,
+                              selectedStoreUpdate.province,
+                              selectedStoreUpdate.address
+                            ].filter(Boolean).join(', ')}
+                          </p>
                         </div>
                       )}
-                      {selectedStoreUpdate.requestedChanges?.phoneNumber && (
-                        <div className="grid grid-cols-2 gap-4 pb-3 border-b border-[#FFD700]/30">
-                          <div>
-                            <span className="text-xs text-[#8B8B8B] block mb-1">Số điện thoại - Hiện tại</span>
-                            <p className="text-[#6B6B6B]">{selectedStoreUpdate.currentValues?.phoneNumber || '-'}</p>
-                          </div>
-                          <div>
-                            <span className="text-xs text-[#8B8B8B] block mb-1">Số điện thoại - Mới</span>
-                            <p className="font-bold text-[#FF8C00]">{selectedStoreUpdate.requestedChanges.phoneNumber}</p>
-                          </div>
+                      {selectedStoreUpdate.phoneNumber && (
+                        <div>
+                          <span className="text-xs text-[#8B8B8B] block mb-1">Số điện thoại mới</span>
+                          <p className="font-bold text-[#FF8C00]">{selectedStoreUpdate.phoneNumber}</p>
                         </div>
                       )}
-                      {selectedStoreUpdate.requestedChanges?.email && (
-                        <div className="grid grid-cols-2 gap-4 pb-3 border-b border-[#FFD700]/30">
-                          <div>
-                            <span className="text-xs text-[#8B8B8B] block mb-1">Email - Hiện tại</span>
-                            <p className="text-[#6B6B6B]">{selectedStoreUpdate.currentValues?.email || '-'}</p>
-                          </div>
-                          <div>
-                            <span className="text-xs text-[#8B8B8B] block mb-1">Email - Mới</span>
-                            <p className="font-bold text-[#FF8C00]">{selectedStoreUpdate.requestedChanges.email}</p>
-                          </div>
+                      {(selectedStoreUpdate.openTime || selectedStoreUpdate.closeTime) && (
+                        <div>
+                          <span className="text-xs text-[#8B8B8B] block mb-1">Giờ mở cửa mới</span>
+                          <p className="font-bold text-[#FF8C00]">
+                            {selectedStoreUpdate.openTime} - {selectedStoreUpdate.closeTime}
+                          </p>
                         </div>
                       )}
-                      {selectedStoreUpdate.requestedChanges?.openingHours && (
-                        <div className="grid grid-cols-2 gap-4 pb-3 border-b border-[#FFD700]/30">
-                          <div>
-                            <span className="text-xs text-[#8B8B8B] block mb-1">Giờ mở cửa - Hiện tại</span>
-                            <p className="text-[#6B6B6B]">{selectedStoreUpdate.currentValues?.openingHours || '-'}</p>
-                          </div>
-                          <div>
-                            <span className="text-xs text-[#8B8B8B] block mb-1">Giờ mở cửa - Mới</span>
-                            <p className="font-bold text-[#FF8C00]">{selectedStoreUpdate.requestedChanges.openingHours}</p>
-                          </div>
-                        </div>
-                      )}
-                      {selectedStoreUpdate.requestedChanges?.imageUrls && selectedStoreUpdate.requestedChanges.imageUrls.length > 0 && (
-                        <div className="pb-3">
-                          <span className="text-xs text-[#8B8B8B] block mb-2">Hình ảnh - Mới</span>
-                          <div className="flex gap-2 flex-wrap">
-                            {selectedStoreUpdate.requestedChanges.imageUrls.map((url, idx) => (
-                              <img key={idx} src={url} alt={`New ${idx + 1}`} className="w-20 h-20 object-cover rounded-lg border-2 border-[#FFD700]" />
-                            ))}
-                          </div>
+                      {selectedStoreUpdate.imageUrl && (
+                        <div>
+                          <span className="text-xs text-[#8B8B8B] block mb-2">Hình ảnh mới</span>
+                          <img src={selectedStoreUpdate.imageUrl} alt="Store" className="w-40 h-40 object-cover rounded-lg border-2 border-[#FFD700]" />
                         </div>
                       )}
                     </div>
@@ -808,14 +716,14 @@ export default function BusinessUpdateRequests() {
                     <div className="bg-[#FFF5E6] border-2 border-[#FFD700] rounded-xl p-4 mb-6">
                       <h3 className="font-bold text-[#2D2D2D] mb-3">Phản hồi từ Admin</h3>
                       <p className="text-[#2D2D2D] mb-2">{selectedStoreUpdate.adminNotes}</p>
-                      {selectedStoreUpdate.reviewedBy && (
+                      {selectedStoreUpdate.adminName && (
                         <p className="text-sm text-[#6B6B6B]">
-                          Xử lý bởi: <span className="font-medium">{selectedStoreUpdate.reviewedBy}</span>
+                          Xử lý bởi: <span className="font-medium">{selectedStoreUpdate.adminName}</span>
                         </p>
                       )}
-                      {selectedStoreUpdate.reviewedAt && (
+                      {selectedStoreUpdate.processedAt && (
                         <p className="text-xs text-[#8B8B8B] mt-1">
-                          Xử lý lúc: {formatDate(selectedStoreUpdate.reviewedAt)}
+                          Xử lý lúc: {formatDate(selectedStoreUpdate.processedAt)}
                         </p>
                       )}
                     </div>
@@ -824,7 +732,7 @@ export default function BusinessUpdateRequests() {
               )}
 
               {/* Actions */}
-              {((selectedSupplierUpdate?.updateStatus === 'PENDING') || (selectedStoreUpdate?.status === 'PENDING')) && (
+              {((selectedSupplierUpdate?.updateStatus === 'PENDING') || (selectedStoreUpdate?.updateStatus === 'PENDING')) && (
                 <div className="flex gap-3">
                   <button
                     onClick={() => {
@@ -861,7 +769,7 @@ export default function BusinessUpdateRequests() {
             <p className="text-[#6B6B6B] mb-4">
               Bạn có chắc chắn muốn phê duyệt yêu cầu cập nhật thông tin của{' '}
               <strong>
-                {selectedSupplierUpdate?.currentBusinessName || selectedStoreUpdate?.storeName}
+                {selectedSupplierUpdate?.currentBusinessName || selectedStoreUpdate?.currentStoreName}
               </strong>?
             </p>
             
@@ -919,7 +827,7 @@ export default function BusinessUpdateRequests() {
             <p className="text-[#6B6B6B] mb-4">
               Bạn có chắc chắn muốn từ chối yêu cầu cập nhật thông tin của{' '}
               <strong>
-                {selectedSupplierUpdate?.currentBusinessName || selectedStoreUpdate?.storeName}
+                {selectedSupplierUpdate?.currentBusinessName || selectedStoreUpdate?.currentStoreName}
               </strong>?
             </p>
             

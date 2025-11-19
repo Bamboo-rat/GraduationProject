@@ -51,11 +51,11 @@ const Sidebar: React.FC = () => {
       <div className="p-4 border-b border-green-200 flex items-center justify-between">
         {!isCollapsed && (
           <div className="flex items-center space-x-3">
-            <Link to="/">
+            <Link to="/dashboard/overview">
               <img src={logo} alt="SaveFood" className="w-10 h-10 object-contain" />
             </Link>
             <div>
-              <Link to="/">
+              <Link to="/dashboard/overview">
                 <h1 className="text-lg font-bold text-gray-800">SaveFood</h1>
                 <p className="text-xs text-gray-600">Admin Portal</p>
               </Link>
@@ -63,7 +63,9 @@ const Sidebar: React.FC = () => {
           </div>
         )}
         {isCollapsed && (
-          <img src={logo} alt="SaveFood" className="w-10 h-10 object-contain mx-auto" />
+          <Link to="/dashboard">
+            <img src={logo} alt="SaveFood" className="w-10 h-10 object-contain mx-auto" />
+          </Link>
         )}
       </div>
 

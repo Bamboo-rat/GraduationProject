@@ -30,44 +30,35 @@ export interface StoreResponse {
 export interface StorePendingUpdateResponse {
   updateId: string;
   storeId: string;
-  storeName: string;
+  currentStoreName: string;
   supplierId: string;
   supplierName?: string;
-  requestedChanges: {
-    name?: string;
-    description?: string;
-    address?: string;
-    ward?: string;
-    district?: string;
-    city?: string;
-    latitude?: number;
-    longitude?: number;
-    phoneNumber?: string;
-    email?: string;
-    imageUrls?: string[];
-    openingHours?: string;
-  };
-  currentValues: {
-    name?: string;
-    description?: string;
-    address?: string;
-    ward?: string;
-    district?: string;
-    city?: string;
-    latitude?: number;
-    longitude?: number;
-    phoneNumber?: string;
-    email?: string;
-    imageUrls?: string[];
-    openingHours?: string;
-  };
-  status: string; // PENDING, APPROVED, REJECTED
-  requiresApproval: boolean;
-  reviewedBy?: string;
-  reviewedAt?: string;
+
+  // Requested changes (new values)
+  storeName?: string;
+  address?: string;
+  street?: string;
+  ward?: string;
+  district?: string;
+  province?: string;
+  phoneNumber?: string;
+  description?: string;
+  latitude?: number;
+  longitude?: number;
+  imageUrl?: string;
+  openTime?: string;
+  closeTime?: string;
+  status?: string;
+
+  // Update metadata
+  updateStatus: 'PENDING' | 'APPROVED' | 'REJECTED';
   adminNotes?: string;
   createdAt: string;
-  updatedAt: string;
+  processedAt?: string;
+
+  // Admin info
+  adminId?: string;
+  adminName?: string;
 }
 
 /**

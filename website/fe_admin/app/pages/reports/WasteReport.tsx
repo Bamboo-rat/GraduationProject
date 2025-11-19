@@ -304,15 +304,15 @@ export default function WasteReportNew() {
                   <div className="flex items-center gap-6">
                     <div className="text-right">
                       <p className="text-sm text-gray-500">Nhập bán</p>
-                      <p className="font-semibold text-gray-900">{store.totalProducts.toLocaleString()}</p>
+                      <p className="font-semibold text-gray-900">{store.totalStockQuantity.toLocaleString()}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-sm text-gray-500">Đã bán</p>
-                      <p className="font-semibold text-green-600">{store.totalProducts - store.expiredProducts}</p>
+                      <p className="font-semibold text-green-600">{store.soldQuantity.toLocaleString()}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-sm text-gray-500">Lãng phí</p>
-                      <p className="font-semibold text-red-600">{store.expiredProducts}</p>
+                      <p className="font-semibold text-red-600">{store.unsoldQuantity.toLocaleString()}</p>
                     </div>
                     <div className="text-right min-w-[100px]">
                       <p className="text-lg font-bold text-amber-600">{storeWasteRate.toFixed(1)}%</p>
@@ -351,9 +351,9 @@ export default function WasteReportNew() {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {supplierData.map((store) => {
-                  const listed = store.totalProducts;
-                  const sold = listed - store.expiredProducts;
-                  const unsold = store.expiredProducts;
+                  const listed = store.totalStockQuantity;
+                  const sold = store.soldQuantity;
+                  const unsold = store.unsoldQuantity;
                   const rate = store.wasteRate;
 
                   return (

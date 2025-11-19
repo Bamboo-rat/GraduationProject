@@ -234,8 +234,8 @@ public interface OrderRepository extends JpaRepository<Order, String> {
                         COALESCE(SUM(o.totalAmount + o.shippingFee), 0),
                         COALESCE(SUM(o.totalAmount), 0),
                         COALESCE(SUM(o.shippingFee), 0),
-                        COALESCE(SUM(o.totalAmount * s.commissionRate), 0),
-                        COALESCE(SUM(o.totalAmount * (1 - s.commissionRate) + o.shippingFee), 0),
+                        COALESCE(SUM((SELECT SUM(od.quantity * od.amount) FROM OrderDetail od WHERE od.order = o) * s.commissionRate), 0),
+                        COALESCE(SUM((SELECT SUM(od.quantity * od.amount) FROM OrderDetail od WHERE od.order = o) * (1 - s.commissionRate)), 0),
                         (SELECT COUNT(DISTINCT sp2.variant.product.productId) 
                          FROM StoreProduct sp2 
                          WHERE sp2.store.supplier.userId = s.userId),
@@ -248,7 +248,7 @@ public interface OrderRepository extends JpaRepository<Order, String> {
                     AND o.deliveredAt IS NOT NULL
                     AND o.deliveredAt BETWEEN :startDate AND :endDate
                 GROUP BY s.userId, s.businessName, s.avatarUrl, s.commissionRate
-                ORDER BY COALESCE(SUM(o.totalAmount * (1 - s.commissionRate) + o.shippingFee), 0) DESC
+                ORDER BY COALESCE(SUM((SELECT SUM(od.quantity * od.amount) FROM OrderDetail od WHERE od.order = o) * (1 - s.commissionRate)), 0) DESC
     """)
     List<Object[]> findRevenueBySupplier(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
@@ -258,7 +258,7 @@ public interface OrderRepository extends JpaRepository<Order, String> {
                         FUNCTION('DATE', o.deliveredAt),
                         COUNT(DISTINCT o.orderId),
                         SUM(o.totalAmount),
-                        SUM(o.totalAmount * s.commissionRate),
+                        SUM((SELECT SUM(od.quantity * od.amount) FROM OrderDetail od WHERE od.order = o) * s.commissionRate),
                         AVG(o.totalAmount)
                 FROM Order o
                 JOIN o.store st
@@ -271,7 +271,13 @@ public interface OrderRepository extends JpaRepository<Order, String> {
     """)
     List<Object[]> findRevenueTimeSeries(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
-
+    /**
+     * Find revenue summary for a date range
+     * Commission calculation: 
+     * - subtotal = SUM(OrderDetail.quantity × OrderDetail.amount) = Tổng giá sản phẩm
+     * - commission = subtotal × commissionRate (KHÔNG tính trên giảm giá và phí ship)
+     * - supplierRevenue = subtotal × (1 - commissionRate) (Phí ship về đơn vị vận chuyển, không về nhà cung cấp)
+     */
     @Query("""
         SELECT
             COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED 
@@ -289,11 +295,11 @@ public interface OrderRepository extends JpaRepository<Order, String> {
             COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED 
                               AND o.deliveredAt IS NOT NULL 
                               AND o.deliveredAt BETWEEN :startDate AND :endDate 
-                         THEN o.totalAmount * s.commissionRate ELSE 0 END), 0),
+                         THEN (SELECT SUM(od.quantity * od.amount) FROM OrderDetail od WHERE od.order = o) * s.commissionRate ELSE 0 END), 0),
             COALESCE(SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED 
                               AND o.deliveredAt IS NOT NULL 
                               AND o.deliveredAt BETWEEN :startDate AND :endDate 
-                         THEN o.totalAmount * (1 - s.commissionRate) + o.shippingFee ELSE 0 END), 0),
+                         THEN (SELECT SUM(od.quantity * od.amount) FROM OrderDetail od WHERE od.order = o) * (1 - s.commissionRate) ELSE 0 END), 0),
             SUM(CASE WHEN o.status = com.example.backend.entity.enums.OrderStatus.DELIVERED 
                       AND o.deliveredAt IS NOT NULL 
                       AND o.deliveredAt BETWEEN :startDate AND :endDate 

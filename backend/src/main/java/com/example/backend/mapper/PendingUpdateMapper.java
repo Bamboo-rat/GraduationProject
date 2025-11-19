@@ -15,6 +15,8 @@ public interface PendingUpdateMapper {
     @Mapping(target = "updateId", source = "updateId")
     @Mapping(target = "storeId", source = "store.storeId")
     @Mapping(target = "currentStoreName", source = "store.storeName")
+    @Mapping(target = "supplierId", source = "store.supplier.userId")
+    @Mapping(target = "supplierName", source = "store.supplier.fullName")
     @Mapping(target = "storeName", source = "storeName")
     @Mapping(target = "address", source = "address")
     @Mapping(target = "street", source = "street")
