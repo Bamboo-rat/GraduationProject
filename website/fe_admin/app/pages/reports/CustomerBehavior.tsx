@@ -278,7 +278,7 @@ export default function CustomerBehavior() {
                 <h3 className="text-sm text-gray-600 mb-1">Tỷ lệ trả hàng</h3>
                 <p className="text-2xl font-bold text-red-600">{reportService.formatPercentage(summary.returnRate ?? 0)}</p>
                 <p className="text-xs text-gray-500 mt-1">
-                  Đơn hàng bị trả lại
+                  Đơn hàng bị trả / Tổng đơn hàng
                 </p>
               </div>
             </div>

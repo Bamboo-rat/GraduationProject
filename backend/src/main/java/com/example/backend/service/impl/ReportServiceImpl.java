@@ -353,9 +353,9 @@ public class ReportServiceImpl implements ReportService {
                 ? (returningCustomers.doubleValue() / activeCustomers) * 100
                 : 0.0;
         
-        // Calculate return rate
-        long totalOrders = orderRepository.countByDeliveredAtBetween(startDate, endDate);
-        long returnedOrders = orderRepository.countByStatusAndDeliveredAtBetween(OrderStatus.RETURNED, startDate, endDate);
+        // Calculate return rate based on created orders
+        long totalOrders = orderRepository.countByCreatedAtBetween(startDate, endDate);
+        long returnedOrders = orderRepository.countByStatusAndCreatedAtBetween(OrderStatus.RETURNED, startDate, endDate);
         Double returnRate = totalOrders > 0
                 ? ((double) returnedOrders / totalOrders) * 100
                 : 0.0;
