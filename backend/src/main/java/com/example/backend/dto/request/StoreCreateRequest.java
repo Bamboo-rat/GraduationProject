@@ -1,5 +1,6 @@
 package com.example.backend.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -50,8 +51,10 @@ public class StoreCreateRequest {
     @Size(max = 500, message = "Image URL must not exceed 500 characters")
     private String imageUrl;
 
+    @JsonFormat(pattern = "HH:mm:ss")
     private LocalTime openTime;
 
+    @JsonFormat(pattern = "HH:mm:ss")
     private LocalTime closeTime;
 
     private Double latitude;

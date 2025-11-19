@@ -7,8 +7,11 @@ import com.example.backend.dto.response.SupplierTopProductResponse;
 import com.example.backend.entity.Order;
 import com.example.backend.entity.OrderDetail;
 import com.example.backend.entity.Store;
+import com.example.backend.entity.Supplier;
 import com.example.backend.entity.enums.OrderStatus;
 import com.example.backend.entity.enums.ProductStatus;
+import com.example.backend.exception.ErrorCode;
+import com.example.backend.exception.custom.NotFoundException;
 import com.example.backend.repository.*;
 import com.example.backend.service.SupplierDashboardService;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +41,7 @@ public class SupplierDashboardServiceImpl implements SupplierDashboardService {
     private final ProductRepository productRepository;
     private final StoreProductRepository storeProductRepository;
     private final ReviewRepository reviewRepository;
+    private final SupplierRepository supplierRepository;
 
     private static final int LOW_STOCK_THRESHOLD = 10;
     private static final int EXPIRING_DAYS_THRESHOLD = 7;
@@ -45,10 +49,13 @@ public class SupplierDashboardServiceImpl implements SupplierDashboardService {
     @Override
     @Transactional(readOnly = true)
     public SupplierDashboardStatsResponse getDashboardStats(String supplierId) {
-        log.info("Getting dashboard stats for supplier: {}", supplierId);
+        Supplier supplier = getSupplierByKeycloakId(supplierId);
+        String supplierUserId = supplier.getUserId();
+
+        log.info("Getting dashboard stats for supplier: {}", supplierUserId);
 
         // Get all stores belonging to this supplier
-        List<Store> stores = storeRepository.findBySupplierUserId(supplierId);
+        List<Store> stores = storeRepository.findBySupplierUserId(supplierUserId);
         List<String> storeIds = stores.stream()
                 .map(Store::getStoreId)
                 .collect(Collectors.toList());
@@ -98,8 +105,8 @@ public class SupplierDashboardServiceImpl implements SupplierDashboardService {
         BigDecimal monthlyRevenue = calculateRevenue(monthlyOrders, OrderStatus.DELIVERED);
 
         // Product statistics
-        Long totalProducts = productRepository.countBySupplierUserId(supplierId);
-        Long activeProducts = productRepository.countBySupplierUserIdAndStatus(supplierId, ProductStatus.ACTIVE);
+        Long totalProducts = productRepository.countBySupplierUserId(supplierUserId);
+        Long activeProducts = productRepository.countBySupplierUserIdAndStatus(supplierUserId, ProductStatus.ACTIVE);
 
         // Low stock products across all stores
         Long lowStockProducts = storeIds.stream()
@@ -113,7 +120,7 @@ public class SupplierDashboardServiceImpl implements SupplierDashboardService {
                 .sum();
 
         // Unreplied 1-star reviews
-        Long unrepliedReviews = productRepository.findBySupplierUserId(supplierId).stream()
+        Long unrepliedReviews = productRepository.findBySupplierUserId(supplierUserId).stream()
                 .mapToLong(product -> reviewRepository.countByProductProductIdAndRatingAndReplyIsNull(
                         product.getProductId(), 1))
                 .sum();
@@ -137,10 +144,13 @@ public class SupplierDashboardServiceImpl implements SupplierDashboardService {
     @Transactional(readOnly = true)
     public List<SupplierRevenueTimeSeriesResponse> getRevenueOverTime(
             String supplierId, LocalDate startDate, LocalDate endDate) {
-        log.info("Getting revenue over time for supplier: {} from {} to {}", supplierId, startDate, endDate);
+        Supplier supplier = getSupplierByKeycloakId(supplierId);
+        String supplierUserId = supplier.getUserId();
+
+        log.info("Getting revenue over time for supplier: {} from {} to {}", supplierUserId, startDate, endDate);
 
         // Get all stores belonging to this supplier
-        List<Store> stores = storeRepository.findBySupplierUserId(supplierId);
+        List<Store> stores = storeRepository.findBySupplierUserId(supplierUserId);
         List<String> storeIds = stores.stream()
                 .map(Store::getStoreId)
                 .collect(Collectors.toList());
@@ -189,15 +199,21 @@ public class SupplierDashboardServiceImpl implements SupplierDashboardService {
     @Transactional(readOnly = true)
     public List<SupplierTopProductResponse> getTopProducts(
             String supplierId, int limit, LocalDate startDate, LocalDate endDate) {
-        log.info("Getting top {} products for supplier: {}", limit, supplierId);
+        Supplier supplier = getSupplierByKeycloakId(supplierId);
+        String supplierUserId = supplier.getUserId();
+
+        log.info("Getting top {} products for supplier: {}", limit, supplierUserId);
 
         // Get all stores belonging to this supplier
-        List<Store> stores = storeRepository.findBySupplierUserId(supplierId);
+        List<Store> stores = storeRepository.findBySupplierUserId(supplierUserId);
         List<String> storeIds = stores.stream()
                 .map(Store::getStoreId)
                 .collect(Collectors.toList());
 
+        log.info("Found {} stores for supplier: {}", stores.size(), supplierUserId);
+
         if (storeIds.isEmpty()) {
+            log.warn("No stores found for supplier: {}", supplierUserId);
             return new ArrayList<>();
         }
 
@@ -205,13 +221,27 @@ public class SupplierDashboardServiceImpl implements SupplierDashboardService {
         LocalDateTime startDateTime = startDate != null ? startDate.atStartOfDay() : LocalDateTime.of(2000, 1, 1, 0, 0);
         LocalDateTime endDateTime = endDate != null ? endDate.atTime(LocalTime.MAX) : LocalDateTime.now();
 
+        log.info("Date range: {} to {}", startDateTime, endDateTime);
+
         // Get all delivered orders for these stores
-        List<Order> orders = storeIds.stream()
+        List<Order> allOrders = storeIds.stream()
                 .flatMap(storeId -> orderRepository.findByStoreId(storeId).stream())
-                .filter(o -> o.getStatus() == OrderStatus.DELIVERED)
-                .filter(o -> o.getDeliveredAt() != null)
-                .filter(o -> o.getDeliveredAt().isAfter(startDateTime) && o.getDeliveredAt().isBefore(endDateTime))
                 .collect(Collectors.toList());
+
+        log.info("Total orders for supplier's stores: {}", allOrders.size());
+
+        List<Order> deliveredOrders = allOrders.stream()
+                .filter(o -> o.getStatus() == OrderStatus.DELIVERED)
+                .collect(Collectors.toList());
+
+        log.info("Delivered orders: {}", deliveredOrders.size());
+
+        List<Order> orders = deliveredOrders.stream()
+                .filter(o -> o.getDeliveredAt() != null)
+                .filter(o -> !o.getDeliveredAt().isBefore(startDateTime) && !o.getDeliveredAt().isAfter(endDateTime))
+                .collect(Collectors.toList());
+
+        log.info("Delivered orders in date range: {}", orders.size());
 
         // Get all order details
         Map<String, ProductStats> productStatsMap = new HashMap<>();
@@ -255,10 +285,13 @@ public class SupplierDashboardServiceImpl implements SupplierDashboardService {
     @Override
     @Transactional(readOnly = true)
     public List<SupplierOrderStatusResponse> getOrderStatusDistribution(String supplierId) {
-        log.info("Getting order status distribution for supplier: {}", supplierId);
+        Supplier supplier = getSupplierByKeycloakId(supplierId);
+        String supplierUserId = supplier.getUserId();
+
+        log.info("Getting order status distribution for supplier: {}", supplierUserId);
 
         // Get all stores belonging to this supplier
-        List<Store> stores = storeRepository.findBySupplierUserId(supplierId);
+        List<Store> stores = storeRepository.findBySupplierUserId(supplierUserId);
         List<String> storeIds = stores.stream()
                 .map(Store::getStoreId)
                 .collect(Collectors.toList());
@@ -329,6 +362,12 @@ public class SupplierDashboardServiceImpl implements SupplierDashboardService {
                 .expiringProducts(0L)
                 .overdueOrders(0L)
                 .build();
+    }
+
+    private Supplier getSupplierByKeycloakId(String keycloakId) {
+        return supplierRepository.findByKeycloakId(keycloakId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND,
+                        "Supplier not found for keycloak ID: " + keycloakId));
     }
 
     // Inner class to hold product statistics
