@@ -262,25 +262,29 @@ export default function FinanceReconciliation() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-[#E3F2FD] rounded-lg p-4 border border-[#BBDEFB]">
               <p className="text-sm font-medium text-[#1976D2] mb-2">Hoa hồng thu được</p>
-              <p className="text-2xl font-bold text-[#1976D2]">
+              <p className="text-2xl font-bold text-[#1976D2] mb-2">
                 {walletService.formatVND(reconciliation?.platformRevenue || 0)}
               </p>
+              <p className="text-xs text-[#1976D2]">Từ {reconciliation?.totalOrders || 0} đơn hàng</p>
             </div>
 
             <div className="bg-[#FFEBEE] rounded-lg p-4 border border-[#FFCDD2]">
-              <p className="text-sm font-medium text-[#C53030] mb-2">Hoàn hồng</p>
-              <p className="text-2xl font-bold text-[#C53030]">
+              <p className="text-sm font-medium text-[#C53030] mb-2">Hoàn hoa hồng</p>
+              <p className="text-2xl font-bold text-[#C53030] mb-2">
                 {walletService.formatVND(reconciliation?.platformExpenses || 0)}
               </p>
+              <p className="text-xs text-[#C53030]">Từ {reconciliation?.refundCount || 0} đơn hủy</p>
             </div>
 
             <div className="bg-[#E8F5E9] rounded-lg p-4 border border-[#C8E6C9]">
-              <p className="text-sm font-medium text-[#2D7D46] mb-2">Lợi nhuận ròng</p>
-              <p className="text-2xl font-bold text-[#2D7D46]">
+              <p className="text-sm font-medium text-[#2D7D46] mb-2">Lợi nhuận ròng Platform</p>
+              <p className="text-2xl font-bold text-[#2D7D46] mb-2">
                 {walletService.formatVND(reconciliation?.netPlatformRevenue || 0)}
               </p>
+              <p className="text-xs text-[#2D7D46]">Hoa hồng thu - Hoàn hồng</p>
             </div>
           </div>
+          
         </div>
 
         {/* Tình trạng thanh toán */}

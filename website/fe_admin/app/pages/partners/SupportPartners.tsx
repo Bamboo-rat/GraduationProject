@@ -8,7 +8,6 @@ import type { ChatMessage, ChatMessageRequest } from '~/service/types';
 import { MessageStatus, MessageType } from '~/service/types';
 
 interface SupplierWithUnread extends Supplier {
-  unreadCount?: number;
   lastMessageTime?: string;
 }
 
@@ -82,18 +81,6 @@ export default function SupportPartners() {
             chatService.markAsReadViaWebSocket(message.messageId);
           }, 500);
         }
-      } else {
-        // Update unread count for other conversations
-        setSuppliers(prev => prev.map(s => {
-          if (s.userId === message.sender.userId) {
-            return {
-              ...s,
-              unreadCount: (s.unreadCount || 0) + 1,
-              lastMessageTime: message.sendTime
-            };
-          }
-          return s;
-        }));
       }
     };
 
@@ -132,14 +119,13 @@ export default function SupportPartners() {
       const response = await supplierService.getAllSuppliers(0, 100, undefined, '', 'businessName', 'ASC');
       const suppliersData = response.content;
 
-      // Get conversations với unread counts
+      // Get conversations
       const conversations = await chatService.getConversations();
 
       const suppliersWithUnread: SupplierWithUnread[] = suppliersData.map(supplier => {
         const conv = conversations.find(c => c.otherUser.userId === supplier.userId);
         return {
           ...supplier,
-          unreadCount: conv?.unreadCount || 0,
           lastMessageTime: conv?.lastMessageTime
         };
       });
@@ -171,11 +157,6 @@ export default function SupportPartners() {
 
       // Mark conversation as read
       await chatService.markConversationAsRead(supplierId);
-
-      // Clear unread count
-      setSuppliers(prev => prev.map(s =>
-        s.userId === supplierId ? { ...s, unreadCount: 0 } : s
-      ));
     } catch (error) {
       console.error('Failed to load messages:', error);
       setMessages([]);
@@ -245,18 +226,10 @@ export default function SupportPartners() {
     setSending(true);
 
     try {
-      let sentMessage: ChatMessage;
-
       if (isConnected) {
         chatService.sendMessageViaWebSocket(request);
-        // For WebSocket, we'll rely on the incoming message to update the status
-        sentMessage = optimisticMessage;
       } else {
-        sentMessage = await chatService.sendMessage(request);
-        // Replace optimistic message with real one
-        setMessages(prev => prev.map(msg =>
-          msg.messageId === tempMessageId ? sentMessage : msg
-        ));
+        await chatService.sendMessage(request);
       }
 
       // Update last message time
@@ -362,7 +335,6 @@ export default function SupportPartners() {
               <div className="flex items-center gap-3 mb-3">
                 <div className="flex-1">
                   <h2 className="font-semibold text-[#2D3748]">Nhà cung cấp</h2>
-                  <p className="text-sm text-[#718096]">{filteredSuppliers.length} đối tác</p>
                 </div>
                 <button
                   onClick={loadSuppliers}
@@ -411,18 +383,11 @@ export default function SupportPartners() {
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className="relative">
-                          <img
-                            src={supplier.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(supplier.businessName || supplier.fullName || '')}&background=A8D5BA&color=fff`}
-                            alt={supplier.businessName || supplier.fullName}
-                            className="w-10 h-10 rounded-lg object-cover border border-gray-200"
-                          />
-                          {supplier.unreadCount && supplier.unreadCount > 0 && (
-                            <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full min-w-[18px] h-[18px] flex items-center justify-center font-semibold text-[10px] px-1">
-                              {supplier.unreadCount > 9 ? '9+' : supplier.unreadCount}
-                            </span>
-                          )}
-                        </div>
+                        <img
+                          src={supplier.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(supplier.businessName || supplier.fullName || '')}&background=A8D5BA&color=fff`}
+                          alt={supplier.businessName || supplier.fullName}
+                          className="w-10 h-10 rounded-lg object-cover border border-gray-200"
+                        />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between mb-1">
                             <h3 className={`font-medium text-sm truncate ${

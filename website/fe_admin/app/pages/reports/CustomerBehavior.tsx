@@ -3,8 +3,7 @@ import DashboardLayout from '~/component/layout/DashboardLayout';
 import reportService from '~/service/reportService';
 import type {
   CustomerBehaviorSummary,
-  CustomerSegmentation,
-  CustomerLifetimeValue
+  CustomerSegmentation
 } from '~/service/reportService';
 import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Download, Users, UserCheck, UserPlus, Ban, ShieldAlert, TrendingDown, Award, ShoppingBag, DollarSign, Calendar, Filter } from 'lucide-react';
@@ -37,9 +36,6 @@ export default function CustomerBehavior() {
   // Data
   const [summary, setSummary] = useState<CustomerBehaviorSummary | null>(null);
   const [segmentation, setSegmentation] = useState<CustomerSegmentation[]>([]);
-  const [clvData, setClvData] = useState<CustomerLifetimeValue[]>([]);
-  const [clvPage, setClvPage] = useState(0);
-  const [clvTotalPages, setClvTotalPages] = useState(0);
 
   // Initialize date range
   useEffect(() => {
@@ -55,13 +51,6 @@ export default function CustomerBehavior() {
     }
   }, [startDate, endDate]);
 
-  // Fetch CLV data when page changes
-  useEffect(() => {
-    if (startDate && endDate) {
-      fetchCLVData();
-    }
-  }, [clvPage]);
-
   const buildDateRangePayload = () => {
     const start = new Date(`${startDate}T00:00:00`).toISOString();
     const end = new Date(`${endDate}T23:59:59`).toISOString();
@@ -75,6 +64,15 @@ export default function CustomerBehavior() {
 
       const { start, end } = buildDateRangePayload();
 
+      // Validate date range
+      const startDateTime = new Date(start);
+      const endDateTime = new Date(end);
+      if (startDateTime > endDateTime) {
+        setError('Ngày bắt đầu phải trước ngày kết thúc');
+        setLoading(false);
+        return;
+      }
+
       const [summaryRes, segmentationRes] = await Promise.all([
         reportService.getCustomerBehaviorSummary(start, end),
         reportService.getCustomerSegmentation(start, end)
@@ -82,24 +80,11 @@ export default function CustomerBehavior() {
 
       setSummary(summaryRes);
       setSegmentation(segmentationRes);
-
-      await fetchCLVData();
     } catch (err: any) {
       console.error('Error fetching customer behavior report:', err);
       setError(err.message || 'Không thể tải báo cáo hành vi khách hàng');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchCLVData = async () => {
-    try {
-      const { start, end } = buildDateRangePayload();
-      const clvRes = await reportService.getCustomerLifetimeValue(clvPage, 20, 'totalSpent', 'DESC', start, end);
-      setClvData(clvRes.content);
-      setClvTotalPages(clvRes.totalPages);
-    } catch (err: any) {
-      console.error('Error fetching CLV data:', err);
     }
   };
 
@@ -162,7 +147,7 @@ export default function CustomerBehavior() {
         {/* Header */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Phân tích Hành vi Khách hàng</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Phân tích hành vi khách hàng</h1>
             <p className="text-gray-600">Phân khúc khách hàng, giá trị vòng đời và mô hình mua hàng</p>
           </div>
           <button
@@ -261,11 +246,11 @@ export default function CustomerBehavior() {
                     <UserCheck className="w-6 h-6 text-green-600" />
                   </div>
                   <span className="text-sm text-green-600 font-medium">
-                    {reportService.formatPercentage(summary.activeCustomerRate)}
+                    {reportService.formatPercentage(summary.activeCustomerRate ?? 0)}
                   </span>
                 </div>
                 <h3 className="text-sm text-gray-600 mb-1">Khách hàng hoạt động</h3>
-                <p className="text-2xl font-bold text-green-600">{reportService.formatNumber(summary.activeCustomers)}</p>
+                <p className="text-2xl font-bold text-green-600">{reportService.formatNumber(summary.activeCustomers ?? 0)}</p>
                 <p className="text-xs text-gray-500 mt-1">
                   Tỷ lệ hoạt động
                 </p>
@@ -278,9 +263,9 @@ export default function CustomerBehavior() {
                   </div>
                 </div>
                 <h3 className="text-sm text-gray-600 mb-1">Khách hàng mới</h3>
-                <p className="text-2xl font-bold text-purple-600">{reportService.formatNumber(summary.newCustomers)}</p>
+                <p className="text-2xl font-bold text-purple-600">{reportService.formatNumber(summary.newCustomers ?? 0)}</p>
                 <p className="text-xs text-gray-500 mt-1">
-                  Khách hàng quay lại: {reportService.formatNumber(summary.returningCustomers)}
+                  Khách hàng quay lại: {reportService.formatNumber(summary.returningCustomers ?? 0)}
                 </p>
               </div>
 
@@ -291,7 +276,7 @@ export default function CustomerBehavior() {
                   </div>
                 </div>
                 <h3 className="text-sm text-gray-600 mb-1">Tỷ lệ trả hàng</h3>
-                <p className="text-2xl font-bold text-red-600">{reportService.formatPercentage(summary.returnRate)}</p>
+                <p className="text-2xl font-bold text-red-600">{reportService.formatPercentage(summary.returnRate ?? 0)}</p>
                 <p className="text-xs text-gray-500 mt-1">
                   Đơn hàng bị trả lại
                 </p>
@@ -299,7 +284,7 @@ export default function CustomerBehavior() {
             </div>
 
             {/* Second Row Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="bg-orange-50 p-2 rounded-lg">
@@ -307,11 +292,11 @@ export default function CustomerBehavior() {
                   </div>
                   <div>
                     <h3 className="text-sm font-medium text-gray-900">Khách hàng bị tạm khóa</h3>
-                    <p className="text-2xl font-bold text-orange-600">{reportService.formatNumber(summary.suspendedCustomers)}</p>
+                    <p className="text-2xl font-bold text-orange-600">{reportService.formatNumber(summary.suspendedCustomers ?? 0)}</p>
                   </div>
                 </div>
                 <p className="text-xs text-gray-500">
-                  {summary.totalCustomers > 0 ? reportService.formatPercentage((summary.suspendedCustomers / summary.totalCustomers) * 100) : '0%'} tổng khách hàng
+                  {summary.totalCustomers && summary.totalCustomers > 0 ? reportService.formatPercentage(((summary.suspendedCustomers ?? 0) / summary.totalCustomers) * 100) : '0%'} tổng khách hàng
                 </p>
               </div>
 
@@ -322,26 +307,11 @@ export default function CustomerBehavior() {
                   </div>
                   <div>
                     <h3 className="text-sm font-medium text-gray-900">Khách hàng bị cấm</h3>
-                    <p className="text-2xl font-bold text-red-600">{reportService.formatNumber(summary.bannedCustomers)}</p>
+                    <p className="text-2xl font-bold text-red-600">{reportService.formatNumber(summary.bannedCustomers ?? 0)}</p>
                   </div>
                 </div>
                 <p className="text-xs text-gray-500">
-                  {summary.totalCustomers > 0 ? reportService.formatPercentage((summary.bannedCustomers / summary.totalCustomers) * 100) : '0%'} tổng khách hàng
-                </p>
-              </div>
-
-              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="bg-indigo-50 p-2 rounded-lg">
-                    <DollarSign className="w-5 h-5 text-indigo-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-900">Giá trị vòng đời trung bình</h3>
-                    <p className="text-2xl font-bold text-gray-900">{reportService.formatCurrency(summary.averageCustomerLifetimeValue)}</p>
-                  </div>
-                </div>
-                <p className="text-xs text-gray-500">
-                  Giá trị đơn trung bình: {reportService.formatCurrency(summary.averageOrderValue)}
+                  {summary.totalCustomers && summary.totalCustomers > 0 ? reportService.formatPercentage(((summary.bannedCustomers ?? 0) / summary.totalCustomers) * 100) : '0%'} tổng khách hàng
                 </p>
               </div>
 
@@ -352,11 +322,11 @@ export default function CustomerBehavior() {
                   </div>
                   <div>
                     <h3 className="text-sm font-medium text-gray-900">Đơn hàng trung bình/Khách hàng</h3>
-                    <p className="text-2xl font-bold text-gray-900">{summary.averageOrdersPerCustomer.toFixed(1)}</p>
+                    <p className="text-2xl font-bold text-gray-900">{(summary.averageOrdersPerCustomer ?? 0).toFixed(1)}</p>
                   </div>
                 </div>
                 <p className="text-xs text-gray-500">
-                  Tỷ lệ giữ chân khách hàng: {reportService.formatPercentage(summary.customerRetentionRate)}
+                  Tỷ lệ giữ chân khách hàng: {reportService.formatPercentage(summary.customerRetentionRate ?? 0)}
                 </p>
               </div>
             </div>
@@ -372,11 +342,11 @@ export default function CustomerBehavior() {
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               {[
-                { tier: 'Bronze', count: summary.bronzeTierCount, color: '#CD7F32' },
-                { tier: 'Silver', count: summary.silverTierCount, color: '#C0C0C0' },
-                { tier: 'Gold', count: summary.goldTierCount, color: '#FFD700' },
-                { tier: 'Platinum', count: summary.platinumTierCount, color: '#E5E4E2' },
-                { tier: 'Diamond', count: summary.diamondTierCount, color: '#B9F2FF' }
+                { tier: 'Bronze', count: summary.bronzeTierCount ?? 0, color: '#CD7F32' },
+                { tier: 'Silver', count: summary.silverTierCount ?? 0, color: '#C0C0C0' },
+                { tier: 'Gold', count: summary.goldTierCount ?? 0, color: '#FFD700' },
+                { tier: 'Platinum', count: summary.platinumTierCount ?? 0, color: '#E5E4E2' },
+                { tier: 'Diamond', count: summary.diamondTierCount ?? 0, color: '#B9F2FF' }
               ].map(({ tier, count, color }) => (
                 <div key={tier} className="text-center p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
                   <div className="w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center" style={{ backgroundColor: color }}>
@@ -385,7 +355,7 @@ export default function CustomerBehavior() {
                   <p className="text-sm font-medium text-gray-900">{tier}</p>
                   <p className="text-xl font-bold text-gray-800 mt-1">{reportService.formatNumber(count)}</p>
                   <p className="text-xs text-gray-500 mt-1">
-                    {summary.totalCustomers > 0 ? reportService.formatPercentage((count / summary.totalCustomers) * 100) : '0.00%'}
+                    {summary.totalCustomers && summary.totalCustomers > 0 ? reportService.formatPercentage((count / summary.totalCustomers) * 100) : '0.00%'}
                   </p>
                 </div>
               ))}
@@ -499,100 +469,6 @@ export default function CustomerBehavior() {
               </tbody>
             </table>
           </div>
-        </div>
-
-        {/* Customer Lifetime Value Table */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-            <h2 className="text-lg font-semibold text-gray-900">Top khách hàng theo giá trị vòng đời</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Khách hàng</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hạng thành viên</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tổng chi tiêu</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Đơn hàng</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Giá trị vòng đời dự đoán</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phân khúc khách hàng</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {clvData.map((customer) => (
-                  <tr key={customer.customerId} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{customer.fullName}</div>
-                        <div className="text-xs text-gray-500">{customer.email}</div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span 
-                        className="px-2 py-1 text-xs font-semibold rounded-full text-white"
-                        style={{
-                          backgroundColor: TIER_COLORS[customer.tier as keyof typeof TIER_COLORS] || '#999'
-                        }}
-                      >
-                        {customer.tier}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-[#2F855A]">
-                      {reportService.formatCurrency(customer.totalSpent)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      <div className="flex items-center gap-1">
-                        <span>{customer.completedOrders}</span>
-                        <span className="text-gray-300">/</span>
-                        <span className="text-gray-500">{customer.totalOrders}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-[#2F855A]">
-                      {reportService.formatCurrency(customer.predictedLifetimeValue)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span 
-                        className="px-2 py-1 text-xs font-semibold rounded-full"
-                        style={{
-                          backgroundColor: `${SEGMENT_COLORS[customer.customerSegment as keyof typeof SEGMENT_COLORS] || '#6B7280'}20`,
-                          color: SEGMENT_COLORS[customer.customerSegment as keyof typeof SEGMENT_COLORS] || '#6B7280'
-                        }}
-                      >
-                        {customer.customerSegment}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination */}
-          {clvTotalPages > 1 && (
-            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-700">
-                  Trang {clvPage + 1} / {clvTotalPages}
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setClvPage(Math.max(0, clvPage - 1))}
-                    disabled={clvPage === 0}
-                    className="px-4 py-2 text-sm border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
-                  >
-                    Trước
-                  </button>
-                  <button
-                    onClick={() => setClvPage(Math.min(clvTotalPages - 1, clvPage + 1))}
-                    disabled={clvPage >= clvTotalPages - 1}
-                    className="px-4 py-2 text-sm border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
-                  >
-                    Sau
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </DashboardLayout>

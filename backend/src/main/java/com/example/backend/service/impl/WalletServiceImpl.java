@@ -648,6 +648,12 @@ public class WalletServiceImpl implements WalletService {
                 .map(BigDecimal::abs)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        // Tính hoàn hoa hồng (khi có đơn hủy, platform hoàn lại hoa hồng cho supplier)
+        BigDecimal totalCommissionRefund = transactions.stream()
+                .filter(t -> t.getTransactionType() == TransactionType.COMMISSION_REFUND)
+                .map(WalletTransaction::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
         BigDecimal totalSupplierEarnings = transactions.stream()
                 .filter(t -> t.getTransactionType() == TransactionType.ORDER_COMPLETED)
                 .map(WalletTransaction::getAmount)
@@ -696,9 +702,13 @@ public class WalletServiceImpl implements WalletService {
                 .pendingPayments(pendingPayments)
                 .totalRefunded(totalRefunded)
                 .refundCount((int) refundCount)
+                // Platform revenue/expenses: 
+                // platformRevenue = Tổng hoa hồng thu được
+                // platformExpenses = Tổng hoa hồng hoàn lại (khi refund)
+                // netPlatformRevenue = Hoa hồng thu - Hoàn hồng
                 .platformRevenue(totalCommission)
-                .platformExpenses(totalRefunded)
-                .netPlatformRevenue(totalCommission.subtract(totalRefunded))
+                .platformExpenses(totalCommissionRefund)
+                .netPlatformRevenue(totalCommission.subtract(totalCommissionRefund))
                 .supplierBreakdown(supplierBreakdown)
                 .build();
     }

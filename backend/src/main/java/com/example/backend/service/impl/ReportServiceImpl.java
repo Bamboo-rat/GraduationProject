@@ -260,6 +260,14 @@ public class ReportServiceImpl implements ReportService {
     public CustomerBehaviorSummaryResponse getCustomerBehaviorSummary(LocalDateTime startDate, LocalDateTime endDate) {
         log.info("Generating customer behavior summary from {} to {}", startDate, endDate);
 
+        // Validate date range
+        if (startDate == null || endDate == null) {
+            throw new IllegalArgumentException("Start date and end date cannot be null");
+        }
+        if (startDate.isAfter(endDate)) {
+            throw new IllegalArgumentException("Start date must be before or equal to end date");
+        }
+
         long totalCustomers = customerRepository.count();
 
         // Get suspended and banned customers
@@ -284,6 +292,8 @@ public class ReportServiceImpl implements ReportService {
 
         Long bronzeTier = 0L, silverTier = 0L, goldTier = 0L, platinumTier = 0L, diamondTier = 0L;
         for (Object[] row : segmentationData) {
+            if (row == null || row.length < 2) continue; // Skip invalid rows
+            
             CustomerTier tier = row[0] instanceof CustomerTier ? (CustomerTier) row[0] : null;
             Long count = toLong(row[1]);
 
@@ -311,16 +321,23 @@ public class ReportServiceImpl implements ReportService {
         BigDecimal avgOrderValue = BigDecimal.ZERO;
 
         if (!clvData.isEmpty()) {
-            avgCLV = clvData.stream()
+            // Calculate average CLV
+            BigDecimal totalCLV = clvData.stream()
                     .map(row -> row.length > 9 ? toBigDecimal(row[9]) : BigDecimal.ZERO)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add)
-                    .divide(BigDecimal.valueOf(clvData.size()), 2, RoundingMode.HALF_UP);
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            avgCLV = totalCLV.divide(BigDecimal.valueOf(clvData.size()), 2, RoundingMode.HALF_UP);
 
-            avgOrderValue = clvData.stream()
+            // Calculate average order value - only from non-zero values
+            List<BigDecimal> nonZeroOrderValues = clvData.stream()
                     .map(row -> row.length > 10 ? toBigDecimal(row[10]) : BigDecimal.ZERO)
                     .filter(v -> v.compareTo(BigDecimal.ZERO) > 0)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add)
-                    .divide(BigDecimal.valueOf(clvData.size()), 2, RoundingMode.HALF_UP);
+                    .toList();
+            
+            if (!nonZeroOrderValues.isEmpty()) {
+                BigDecimal totalOrderValue = nonZeroOrderValues.stream()
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+                avgOrderValue = totalOrderValue.divide(BigDecimal.valueOf(nonZeroOrderValues.size()), 2, RoundingMode.HALF_UP);
+            }
         }
 
         Double avgOrdersPerCustomer = clvData.isEmpty() ? 0.0 : clvData.stream()
@@ -1080,7 +1097,8 @@ public class ReportServiceImpl implements ReportService {
     }
 
     private String determineWasteRiskLevel(Integer daysUntilExpiry, Integer currentStock, Integer initialStock) {
-        if (daysUntilExpiry == null) return "LOW";
+        if (daysUntilExpiry == null || currentStock == null || initialStock == null) return "LOW";
+        if (initialStock == 0) return "LOW"; // Avoid division by zero
 
         double stockRatio = currentStock.doubleValue() / initialStock;
 

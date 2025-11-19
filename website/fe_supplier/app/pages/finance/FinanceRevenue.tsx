@@ -133,7 +133,8 @@ export default function FinanceRevenue() {
       // Tính toán đúng:
       // Tổng thu nhập (thực nhận) = Doanh thu gốc - Hoàn tiền = Tiền khách hàng trả thực tế
       const totalIncome = grossRevenue - refundAmount;
-      // Tổng chi phí = Hoa hồng thực tế (đã trừ hoàn hồng)
+      // Tổng chi phí = CHỈ tính hoa hồng (đã trừ hoàn hồng), KHÔNG tính hoàn tiền vào chi phí
+      // Vì hoàn tiền đã được trừ ở totalIncome rồi
       const totalExpense = totalCommission;
       // Lợi nhuận ròng = Thu nhập thực - Hoa hồng
       const netProfit = totalIncome - totalExpense;
@@ -410,11 +411,11 @@ export default function FinanceRevenue() {
           <p className="text-2xl font-bold text-gray-900 mb-1">
             {walletService.formatVND(stats.totalExpense)}
           </p>
-          <p className="text-xs text-gray-500">Hoa hồng + Hoàn tiền</p>
+          <p className="text-xs text-gray-500">Hoa hồng nền tảng</p>
         </div>
       </div>
 
-      {/* Phân loại giao dịch */}
+      {/* Phân loại giao dịch - ĐÃ SỬA VỊ TRÍ SỐ TIỀN VÀ SỐ ĐƠN */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
           <FileText className="w-5 h-5 text-gray-700" />
@@ -428,10 +429,10 @@ export default function FinanceRevenue() {
               <ArrowUpCircle className="w-5 h-5 text-[#2D7D46]" />
             </div>
             <p className="text-2xl font-bold text-[#2D7D46] mb-1">
-              {stats.orderCompleted.count}
+              +{walletService.formatVND(stats.orderCompleted.amount)}
             </p>
             <p className="text-sm text-[#2D7D46]">
-              +{walletService.formatVND(stats.orderCompleted.amount)}
+              {stats.orderCompleted.count} đơn hàng
             </p>
           </div>
 
@@ -442,10 +443,10 @@ export default function FinanceRevenue() {
               <ArrowDownCircle className="w-5 h-5 text-[#F57C00]" />
             </div>
             <p className="text-2xl font-bold text-[#F57C00] mb-1">
-              {stats.orderRefund.count}
+              -{walletService.formatVND(stats.orderRefund.amount)}
             </p>
             <p className="text-sm text-[#F57C00]">
-              -{walletService.formatVND(stats.orderRefund.amount)}
+              {stats.orderRefund.count} đơn hàng
             </p>
           </div>
 
@@ -456,10 +457,10 @@ export default function FinanceRevenue() {
               <DollarSign className="w-5 h-5 text-[#C53030]" />
             </div>
             <p className="text-2xl font-bold text-[#C53030] mb-1">
-              {stats.commission.count}
+              -{walletService.formatVND(stats.commission.amount)}
             </p>
             <p className="text-sm text-[#C53030]">
-              -{walletService.formatVND(stats.commission.amount)}
+              {stats.commission.count} giao dịch
             </p>
           </div>
 
@@ -470,10 +471,10 @@ export default function FinanceRevenue() {
               <RefreshCw className="w-5 h-5 text-[#1976D2]" />
             </div>
             <p className="text-2xl font-bold text-[#1976D2] mb-1">
-              {stats.commissionRefund.count}
+              +{walletService.formatVND(stats.commissionRefund.amount)}
             </p>
             <p className="text-sm text-[#1976D2]">
-              +{walletService.formatVND(stats.commissionRefund.amount)}
+              {stats.commissionRefund.count} giao dịch
             </p>
           </div>
         </div>
