@@ -197,4 +197,25 @@ public interface OrderDetailRepository extends JpaRepository<OrderDetail, String
         ORDER BY revenue DESC
     """)
     List<Object[]> findRevenueByCategoryForSupplier(@Param("supplierId") String supplierId);
+
+    // ==================== WASTE REPORT QUERIES ====================
+
+    /**
+     * Calculate total sold quantity within a specific time window (for waste analysis)
+     * Returns total quantity of products sold in DELIVERED orders within the date range
+     * 
+     * Purpose: Used to calculate inventory turnover and waste rate accurately
+     * by comparing recent sales velocity against current stock levels
+     * 
+     * @param startDate Start of the time window (e.g., 90 days ago)
+     * @param endDate End of the time window (typically now)
+     * @return Total quantity sold in the specified period
+     */
+    @Query("""
+        SELECT COALESCE(SUM(od.quantity), 0)
+        FROM OrderDetail od
+        WHERE od.order.status = com.example.backend.entity.enums.OrderStatus.DELIVERED
+            AND od.order.deliveredAt BETWEEN :startDate AND :endDate
+    """)
+    Long sumSoldQuantityInPeriod(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 }

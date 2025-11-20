@@ -353,11 +353,13 @@ public class ReportServiceImpl implements ReportService {
                 ? (returningCustomers.doubleValue() / activeCustomers) * 100
                 : 0.0;
         
-        // Calculate return rate based on created orders
-        long totalOrders = orderRepository.countByCreatedAtBetween(startDate, endDate);
-        long returnedOrders = orderRepository.countByStatusAndCreatedAtBetween(OrderStatus.RETURNED, startDate, endDate);
-        Double returnRate = totalOrders > 0
-                ? ((double) returnedOrders / totalOrders) * 100
+        
+        long deliveredOrders = orderRepository.countByStatusAndCreatedAtBetween(OrderStatus.DELIVERED, startDate, endDate);
+        long returnedOrdersCount = orderRepository.countByStatusAndCreatedAtBetween(OrderStatus.RETURNED, startDate, endDate);
+
+        long completedProcessOrders = deliveredOrders + returnedOrdersCount;
+        Double returnRate = completedProcessOrders > 0
+                ? ((double) returnedOrdersCount / completedProcessOrders) * 100
                 : 0.0;
 
         BigDecimal totalValue = clvData.isEmpty() ? BigDecimal.ZERO : clvData.stream()
@@ -624,26 +626,25 @@ public class ReportServiceImpl implements ReportService {
         BigDecimal unsoldValue = toBigDecimal(data[8]);
         BigDecimal wasteValue = toBigDecimal(data[9]);
 
-        // Calculate total sold quantity from delivered orders
-        Long totalSold = orderDetailRepository.findAll().stream()
-            .filter(od -> od.getOrder().getStatus() == OrderStatus.DELIVERED)
-            .mapToLong(od -> od.getQuantity())
-            .sum();
+        LocalDateTime salesWindowStart = LocalDateTime.now().minusDays(90);
+        LocalDateTime salesWindowEnd = LocalDateTime.now();
         
-        // totalListed = số đã bán + số còn lại + số hết hạn
-        Long totalListed = totalSold + currentStock + expiredQuantity;
+        Long recentSold = orderDetailRepository.sumSoldQuantityInPeriod(salesWindowStart, salesWindowEnd);
+        
+        // totalListed = số đã bán (90 ngày) + số còn lại + số hết hạn
+        Long totalListed = recentSold + currentStock + expiredQuantity;
         // totalUnsold = số còn lại + số hết hạn (chưa bán được)
         Long totalUnsold = currentStock + expiredQuantity;
         
         // Legacy fields for backward compatibility
         Long totalStock = totalListed;
-        Long soldQuantity = totalSold;
+        Long soldQuantity = recentSold;
         Long unsoldQuantity = totalUnsold;
         BigDecimal soldValue = BigDecimal.ZERO;
 
-        // Calculate rates
+        // Calculate rates based on 90-day sales window
         // WasteRate = (totalUnsold / totalListed) × 100%
-        Double sellThroughRate = totalListed > 0 ? (totalSold.doubleValue() / totalListed) * 100 : 0.0;
+        Double sellThroughRate = totalListed > 0 ? (recentSold.doubleValue() / totalListed) * 100 : 0.0;
         Double wasteRate = totalListed > 0 ? (totalUnsold.doubleValue() / totalListed) * 100 : 0.0;
         Double expiryRate = totalListed > 0 ? (expiredQuantity.doubleValue() / totalListed) * 100 : 0.0;
 
@@ -667,11 +668,11 @@ public class ReportServiceImpl implements ReportService {
         BigDecimal topSupplierWasteValue = supplierWaste.isEmpty() ? BigDecimal.ZERO : toBigDecimal(supplierWaste.get(0)[12]);
 
         return WasteSummaryResponse.builder()
-                .startDate(LocalDateTime.now().minusMonths(1))
-                .endDate(LocalDateTime.now())
-                // NEW METRICS
+                .startDate(salesWindowStart)  // Reflect actual analysis period
+                .endDate(salesWindowEnd)
+                // NEW METRICS (based on 90-day sales velocity)
                 .totalListed(totalListed)
-                .totalSold(totalSold)
+                .totalSold(recentSold)  // Use recent sales, not all-time sales
                 .totalUnsold(totalUnsold)
                 // Legacy metrics
                 .totalProducts(totalProducts)

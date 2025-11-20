@@ -680,9 +680,10 @@ public class WalletServiceImpl implements WalletService {
                 .map(WalletTransaction::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // Fix: Pending payments should be ONLY pending balance, not pending + available
-        // Available balance is ready to withdraw, NOT "pending payment"
+        
         BigDecimal pendingPayments = walletRepository.getTotalPendingBalance();
+        BigDecimal totalAvailableBalance = walletRepository.getTotalAvailableBalance();
+        BigDecimal totalSupplierBalance = totalAvailableBalance.add(pendingPayments);
 
         Map<String, List<WalletTransaction>> groupedBySupplier = transactions.stream()
                 .collect(Collectors.groupingBy(t -> t.getWallet().getSupplier().getUserId()));
@@ -704,7 +705,8 @@ public class WalletServiceImpl implements WalletService {
                 .totalCommission(totalCommission)
                 .totalSupplierEarnings(totalSupplierEarnings)
                 .totalPaidToSuppliers(totalPaid)
-                .pendingPayments(pendingPayments)
+                .pendingPayments(pendingPayments)  // Chỉ pending (chờ 7 ngày)
+                .totalSupplierBalance(totalSupplierBalance)  // Available + Pending (tổng nợ NCC)
                 .totalRefunded(totalRefunded)
                 .refundCount((int) refundCount)
                 // Platform revenue/expenses: 

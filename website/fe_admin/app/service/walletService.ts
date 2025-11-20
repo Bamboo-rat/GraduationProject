@@ -90,7 +90,8 @@ export interface ReconciliationResponse {
   
   totalSupplierEarnings: number;
   totalPaidToSuppliers: number;
-  pendingPayments: number;
+  pendingPayments: number;  // ONLY pending balance (chờ 7 ngày)
+  totalSupplierBalance: number;  // Total balance = available + pending (tổng nợ NCC)
   
   totalRefunded: number;
   refundCount: number;

@@ -27,7 +27,8 @@ public class ReconciliationResponse {
     // Supplier earnings
     private BigDecimal totalSupplierEarnings;
     private BigDecimal totalPaidToSuppliers;
-    private BigDecimal pendingPayments;
+    private BigDecimal pendingPayments;  // ONLY pending balance (chờ 7 ngày)
+    private BigDecimal totalSupplierBalance;  // Total balance = available + pending (tổng nợ NCC)
     
     // Refunds
     private BigDecimal totalRefunded;

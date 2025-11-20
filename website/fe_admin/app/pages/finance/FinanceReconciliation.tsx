@@ -45,12 +45,16 @@ export default function FinanceReconciliation() {
   const actualRevenue = totalOrderValue - totalRefunded;
   const supplierPayment = actualRevenue - netPlatformRevenue; // Trừ hoa hồng THỰC, không phải hoa hồng gốc
   
-  // Tổng số dư toàn nền tảng = Tiền NCC + Hoa hồng Platform
-  const totalSystemBalance = (summary?.totalBalance || 0) + netPlatformRevenue;
+ 
+  const totalSupplierBalance = reconciliation?.totalSupplierBalance || 0;
+  // Tổng số dư toàn nền tảng = Tiền NCC (available + pending) + Hoa hồng Platform
+  const totalSystemBalance = totalSupplierBalance + netPlatformRevenue;
   // Khả dụng = Hoa hồng Platform (thực)
   const platformAvailable = netPlatformRevenue;
-  // Chờ xử lý = Tiền pending của NCC
-  const supplierPending = summary?.totalPendingBalance || 0;
+  // Chờ xử lý = Tiền pending của NCC (chờ 7 ngày)
+  const supplierPending = reconciliation?.pendingPayments || 0;
+  // Sẵn sàng thanh toán = Tiền available của NCC (có thể rút ngay)
+  const supplierAvailable = totalSupplierBalance - supplierPending;
 
   if (loading) {
     return (
@@ -83,7 +87,7 @@ export default function FinanceReconciliation() {
         </div>
 
         {/* Tổng quan hệ thống */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-lg bg-[#E8F5E9] flex items-center justify-center">
@@ -124,7 +128,22 @@ export default function FinanceReconciliation() {
                 <p className="text-2xl font-bold text-[#2D3748]">
                   {walletService.formatVND(supplierPending)}
                 </p>
-                <p className="text-xs text-gray-500">Pending NCC</p>
+                <p className="text-xs text-gray-500">Pending NCC (7 ngày)</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-lg bg-[#E8F5E9] flex items-center justify-center">
+                <CreditCard className="w-5 h-5 text-[#2D7D46]" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600">Sẵn sàng</p>
+                <p className="text-2xl font-bold text-[#2D3748]">
+                  {walletService.formatVND(supplierAvailable)}
+                </p>
+                <p className="text-xs text-gray-500">Available NCC</p>
               </div>
             </div>
           </div>
