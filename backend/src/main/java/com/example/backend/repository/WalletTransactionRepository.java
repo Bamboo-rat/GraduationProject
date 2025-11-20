@@ -82,10 +82,15 @@ public interface WalletTransactionRepository extends JpaRepository<WalletTransac
      * Find transactions by order delivered date range (for accurate reconciliation)
      * This ensures transactions are grouped by when orders were actually delivered,
      * not when wallet transactions were created (which may be delayed)
+     * IMPORTANT: Also includes ORDER_REFUND and COMMISSION_REFUND (from cancelled orders)
      */
     @Query("""
         SELECT wt FROM WalletTransaction wt
         WHERE (wt.order IS NOT NULL AND wt.order.deliveredAt BETWEEN :start AND :end)
+           OR (wt.transactionType = com.example.backend.entity.enums.TransactionType.ORDER_REFUND 
+               AND wt.createdAt BETWEEN :start AND :end)
+           OR (wt.transactionType = com.example.backend.entity.enums.TransactionType.COMMISSION_REFUND 
+               AND wt.createdAt BETWEEN :start AND :end)
            OR (wt.order IS NULL AND wt.createdAt BETWEEN :start AND :end)
         ORDER BY wt.createdAt DESC
     """)

@@ -42,6 +42,8 @@ export default function FinanceReconciliation() {
   // IMPORTANT: Admin và Supplier phải dùng CÙNG công thức từ WalletTransaction!
   const totalSupplierEarnings = reconciliation?.totalSupplierEarnings || 0; // sum(ORDER_COMPLETED) = NET
   const totalRefunded = reconciliation?.totalRefunded || 0; // sum(ORDER_REFUND) = NET refund
+  const platformRevenue = reconciliation?.platformRevenue || 0; // Commission paid
+  const platformExpenses = reconciliation?.platformExpenses || 0; // Commission refunded
   const netPlatformRevenue = reconciliation?.netPlatformRevenue || 0; // Commission - Commission Refund
   
   // Supplier thực nhận = Thu nhập NET - Hoàn tiền NET
@@ -50,11 +52,11 @@ export default function FinanceReconciliation() {
   // Tổng giá trị đơn hàng (for reference only) = NET + Commission
   const totalOrderValue = reconciliation?.totalOrderValue || 0;
   
- 
+  // Wallet balances
   const totalSupplierBalance = reconciliation?.totalSupplierBalance || 0;
-  // Tổng số dư toàn nền tảng = Tiền NCC (available + pending) + Hoa hồng Platform
+  // Tổng số dư toàn nền tảng = Tiền NCC (available + pending) + Hoa hồng Platform (đã trừ hoàn)
   const totalSystemBalance = totalSupplierBalance + netPlatformRevenue;
-  // Khả dụng = Hoa hồng Platform (thực)
+  // Khả dụng Platform = Hoa hồng thực (đã trừ hoàn hoa hồng)
   const platformAvailable = netPlatformRevenue;
   // Chờ xử lý = Tiền pending của NCC (chờ 7 ngày)
   const supplierPending = reconciliation?.pendingPayments || 0;
