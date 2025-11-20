@@ -41,9 +41,16 @@ export default function FinanceReconciliation() {
   // Tính toán các giá trị
   const totalOrderValue = reconciliation?.totalOrderValue || 0;
   const totalRefunded = reconciliation?.totalRefunded || 0;
-  const totalCommission = reconciliation?.totalCommission || 0;
+  const netPlatformRevenue = reconciliation?.netPlatformRevenue || 0; // Hoa hồng thực (sau khi trừ hoàn)
   const actualRevenue = totalOrderValue - totalRefunded;
-  const supplierPayment = actualRevenue - totalCommission;
+  const supplierPayment = actualRevenue - netPlatformRevenue; // Trừ hoa hồng THỰC, không phải hoa hồng gốc
+  
+  // Tổng số dư toàn nền tảng = Tiền NCC + Hoa hồng Platform
+  const totalSystemBalance = (summary?.totalBalance || 0) + netPlatformRevenue;
+  // Khả dụng = Hoa hồng Platform (thực)
+  const platformAvailable = netPlatformRevenue;
+  // Chờ xử lý = Tiền pending của NCC
+  const supplierPending = summary?.totalPendingBalance || 0;
 
   if (loading) {
     return (
@@ -85,8 +92,9 @@ export default function FinanceReconciliation() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Tổng số dư</p>
                 <p className="text-2xl font-bold text-[#2D3748]">
-                  {walletService.formatVND(summary?.totalBalance || 0)}
+                  {walletService.formatVND(totalSystemBalance)}
                 </p>
+                <p className="text-xs text-gray-500">NCC + Platform</p>
               </div>
             </div>
           </div>
@@ -99,8 +107,9 @@ export default function FinanceReconciliation() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Khả dụng</p>
                 <p className="text-2xl font-bold text-[#2D3748]">
-                  {walletService.formatVND(summary?.totalAvailableBalance || 0)}
+                  {walletService.formatVND(platformAvailable)}
                 </p>
+                <p className="text-xs text-gray-500">Hoa hồng Platform</p>
               </div>
             </div>
           </div>
@@ -113,8 +122,9 @@ export default function FinanceReconciliation() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Chờ xử lý</p>
                 <p className="text-2xl font-bold text-[#2D3748]">
-                  {walletService.formatVND(summary?.totalPendingBalance || 0)}
+                  {walletService.formatVND(supplierPending)}
                 </p>
+                <p className="text-xs text-gray-500">Pending NCC</p>
               </div>
             </div>
           </div>
@@ -228,12 +238,12 @@ export default function FinanceReconciliation() {
                   <DollarSign className="w-4 h-4 text-[#F57C00]" />
                 </div>
                 <div>
-                  <p className="font-medium text-gray-700">Hoa hồng nền tảng</p>
-                  <p className="text-sm text-gray-500">Phí dịch vụ SaveFood</p>
+                  <p className="font-medium text-gray-700">Hoa hồng nền tảng (thực)</p>
+                  <p className="text-sm text-gray-500">Đã trừ hoàn hoa hồng</p>
                 </div>
               </div>
               <p className="text-lg font-bold text-[#F57C00]">
-                -{walletService.formatVND(totalCommission)}
+                -{walletService.formatVND(netPlatformRevenue)}
               </p>
             </div>
 

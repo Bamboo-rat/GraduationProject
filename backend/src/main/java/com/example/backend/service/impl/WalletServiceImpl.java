@@ -1040,13 +1040,25 @@ public class WalletServiceImpl implements WalletService {
     }
 
     private BigDecimal calculateTotalCommission() {
+        // Tổng hoa hồng thu được
         List<WalletTransaction> commissionTxns = transactionRepository.findByTransactionType(
                 TransactionType.COMMISSION_FEE
         );
-        return commissionTxns.stream()
+        BigDecimal totalCommissionFee = commissionTxns.stream()
                 .map(WalletTransaction::getAmount)
                 .map(BigDecimal::abs)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Tổng hoa hồng hoàn lại (khi đơn hủy)
+        List<WalletTransaction> refundTxns = transactionRepository.findByTransactionType(
+                TransactionType.COMMISSION_REFUND
+        );
+        BigDecimal totalCommissionRefund = refundTxns.stream()
+                .map(WalletTransaction::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Hoa hồng thực tế = Hoa hồng thu - Hoa hồng hoàn
+        return totalCommissionFee.subtract(totalCommissionRefund);
     }
 
     private BigDecimal calculateMonthlyCommission() {
@@ -1054,12 +1066,22 @@ public class WalletServiceImpl implements WalletService {
         LocalDateTime start = currentMonth.atDay(1).atStartOfDay();
         LocalDateTime end = currentMonth.atEndOfMonth().atTime(23, 59, 59);
 
+        // Tổng hoa hồng thu được trong tháng
         List<WalletTransaction> commissionTxns = transactionRepository
                 .findByTransactionTypeAndCreatedAtBetween(TransactionType.COMMISSION_FEE, start, end);
-
-        return commissionTxns.stream()
+        BigDecimal monthlyCommissionFee = commissionTxns.stream()
                 .map(WalletTransaction::getAmount)
                 .map(BigDecimal::abs)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Tổng hoa hồng hoàn lại trong tháng (khi đơn hủy)
+        List<WalletTransaction> refundTxns = transactionRepository
+                .findByTransactionTypeAndCreatedAtBetween(TransactionType.COMMISSION_REFUND, start, end);
+        BigDecimal monthlyCommissionRefund = refundTxns.stream()
+                .map(WalletTransaction::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Hoa hồng thực tế trong tháng = Hoa hồng thu - Hoa hồng hoàn
+        return monthlyCommissionFee.subtract(monthlyCommissionRefund);
     }
 }

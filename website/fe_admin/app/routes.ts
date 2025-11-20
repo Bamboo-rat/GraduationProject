@@ -44,7 +44,6 @@ export default [
     route("finance/transactions", "routes/finance/transactions.tsx"),
 
     // Reports & Analytics
-    route("reports/revenue", "routes/reports/revenue.tsx"),
     route("reports/behavior", "routes/reports/behavior.tsx"),
     route("reports/waste", "routes/reports/waste.tsx"),
 

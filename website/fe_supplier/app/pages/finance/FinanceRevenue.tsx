@@ -104,28 +104,28 @@ export default function FinanceRevenue() {
       const commissionRefund = { count: 0, amount: 0 };
 
       txList.forEach((tx: any) => {
-        const amount = Math.abs(tx.amount || 0);
+        const amount = tx.amount || 0;
         
         switch (tx.transactionType) {
           case 'ORDER_COMPLETED':
             orderCompleted.count++;
-            orderCompleted.amount += amount;
+            orderCompleted.amount += amount; 
             grossRevenue += amount;
             break;
           case 'ORDER_REFUND':
             orderRefund.count++;
-            orderRefund.amount += amount;
-            refundAmount += amount;
+            orderRefund.amount += Math.abs(amount); // Hiển thị dương
+            refundAmount += Math.abs(amount); // Tính toán dương
             break;
           case 'COMMISSION_FEE':
             commission.count++;
-            commission.amount += amount;
-            totalCommission += amount;
+            commission.amount += Math.abs(amount); // Hiển thị dương
+            totalCommission += Math.abs(amount); // Tính toán dương
             break;
           case 'COMMISSION_REFUND':
             commissionRefund.count++;
-            commissionRefund.amount += amount;
-            totalCommission -= amount; // Trừ lại hoa hồng khi refund
+            commissionRefund.amount += amount; // amount dương
+            totalCommission -= amount; 
             break;
         }
       });
@@ -171,14 +171,14 @@ export default function FinanceRevenue() {
         } else if (tx.transactionType === 'ORDER_REFUND') {
           txByDate[date].refund += amount;
         } else if (tx.transactionType === 'COMMISSION_REFUND') {
-          txByDate[date].commission -= amount; // Trừ lại commission khi refund
+          txByDate[date].commission -= amount; 
         }
       });
 
       // Chuyển sang array và tính netIncome
       const chartData = Object.keys(txByDate).map(date => ({
         date,
-        revenue: txByDate[date].revenue - txByDate[date].refund, // Doanh thu thực = revenue - refund
+        revenue: txByDate[date].revenue - txByDate[date].refund,
         commission: txByDate[date].commission,
         netIncome: (txByDate[date].revenue - txByDate[date].refund) - txByDate[date].commission
       }));
@@ -453,14 +453,14 @@ export default function FinanceRevenue() {
           {/* Phí hoa hồng */}
           <div className="bg-[#FFEBEE] rounded-lg p-4 border border-[#FFCDD2]">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium text-[#C53030]">Phí hoa hồng</span>
+              <span className="text-sm font-medium text-[#C53030]">Phí hoa hồng (thực)</span>
               <DollarSign className="w-5 h-5 text-[#C53030]" />
             </div>
             <p className="text-2xl font-bold text-[#C53030] mb-1">
-              -{walletService.formatVND(stats.commission.amount)}
+              -{walletService.formatVND(stats.totalExpense)}
             </p>
             <p className="text-sm text-[#C53030]">
-              {stats.commission.count} giao dịch
+              {stats.commission.count} lần trừ - {stats.commissionRefund.count} lần hoàn
             </p>
           </div>
 
@@ -474,8 +474,27 @@ export default function FinanceRevenue() {
               +{walletService.formatVND(stats.commissionRefund.amount)}
             </p>
             <p className="text-sm text-[#1976D2]">
-              {stats.commissionRefund.count} giao dịch
+              {stats.commissionRefund.count} đơn hủy
             </p>
+          </div>
+        </div>
+
+        {/* Chi tiết tính hoa hồng */}
+        <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <p className="text-sm font-medium text-gray-700 mb-2">Chi tiết hoa hồng:</p>
+          <div className="grid grid-cols-3 gap-4 text-sm">
+            <div>
+              <span className="text-gray-600">Hoa hồng gốc:</span>
+              <span className="ml-2 font-semibold text-red-600">-{walletService.formatVND(stats.commission.amount)}</span>
+            </div>
+            <div>
+              <span className="text-gray-600">Hoàn lại:</span>
+              <span className="ml-2 font-semibold text-blue-600">+{walletService.formatVND(stats.commissionRefund.amount)}</span>
+            </div>
+            <div>
+              <span className="text-gray-600">Hoa hồng thực tế:</span>
+              <span className="ml-2 font-semibold text-orange-600">-{walletService.formatVND(stats.totalExpense)}</span>
+            </div>
           </div>
         </div>
 
@@ -487,14 +506,14 @@ export default function FinanceRevenue() {
               <p className="text-2xl font-bold text-[#2D7D46]">
                 {walletService.formatVND(stats.totalIncome)}
               </p>
-              <p className="text-xs text-gray-500 mt-1">Doanh thu - Hoàn tiền</p>
+              <p className="text-xs text-gray-500 mt-1">Doanh thu {walletService.formatVND(stats.orderCompleted.amount)} - Hoàn tiền {walletService.formatVND(stats.orderRefund.amount)}</p>
             </div>
             <div className="text-center">
               <p className="text-sm text-gray-600 mb-2">Tổng chi phí</p>
               <p className="text-2xl font-bold text-[#C53030]">
                 {walletService.formatVND(stats.totalExpense)}
               </p>
-              <p className="text-xs text-gray-500 mt-1">Hoa hồng thực tế</p>
+              <p className="text-xs text-gray-500 mt-1">Hoa hồng {walletService.formatVND(stats.commission.amount)} - Hoàn {walletService.formatVND(stats.commissionRefund.amount)}</p>
             </div>
             <div className="text-center">
               <p className="text-sm text-gray-600 mb-2">Lợi nhuận ròng</p>
