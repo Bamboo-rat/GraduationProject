@@ -8,12 +8,11 @@ export default function FinanceTransactions() {
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [type, setType] = useState<string>('');
-  const [status, setStatus] = useState<string>('');
   const [selectedTransaction, setSelectedTransaction] = useState<TransactionResponse | null>(null);
 
   useEffect(() => {
     loadTransactions();
-  }, [page, type, status]);
+  }, [page, type]);
 
   const loadTransactions = async () => {
     try {
@@ -35,19 +34,13 @@ export default function FinanceTransactions() {
     setPage(0);
   };
 
-  // Filter transactions on client side (status filter not supported by API)
-  const filteredTransactions = transactions.filter((tx) => {
-    if (status && tx.status !== status) return false;
-    return true;
-  });
-
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-6">Lịch sử giao dịch</h1>
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-4 mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Loại giao dịch</label>
             <select
@@ -68,23 +61,9 @@ export default function FinanceTransactions() {
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Trạng thái</label>
-            <select
-              value={status}
-              onChange={(e) => { setStatus(e.target.value); handleFilterChange(); }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Tất cả</option>
-              <option value="COMPLETED">Hoàn thành</option>
-              <option value="PENDING">Đang xử lý</option>
-              <option value="FAILED">Thất bại</option>
-            </select>
-          </div>
-
           <div className="flex items-end">
             <button
-              onClick={() => { setType(''); setStatus(''); setPage(0); }}
+              onClick={() => { setType(''); setPage(0); }}
               className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
             >
               Xóa bộ lọc
@@ -106,13 +85,6 @@ export default function FinanceTransactions() {
             </svg>
             <p>Không có giao dịch nào</p>
           </div>
-        ) : filteredTransactions.length === 0 ? (
-          <div className="p-12 text-center text-gray-500">
-            <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <p>Không tìm thấy giao dịch phù hợp với bộ lọc</p>
-          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -121,28 +93,22 @@ export default function FinanceTransactions() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mã GD</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loại</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số tiền</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thời gian</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hành động</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredTransactions.map((transaction) => (
-                  <tr key={transaction.id} className="hover:bg-gray-50">
+                {transactions.map((transaction) => (
+                  <tr key={transaction.transactionId} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      #{transaction.id}
+                      {transaction.transactionId?.substring(0, 8) || 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {walletService.getTransactionTypeLabel(transaction.transactionType)}
+                      {transaction.transactionTypeLabel}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <span className={transaction.amount >= 0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}>
-                        {transaction.amount >= 0 ? '+' : ''}{walletService.formatVND(transaction.amount)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${walletService.getTransactionStatusColor(transaction.status)}`}>
-                        {walletService.getTransactionStatusLabel(transaction.status)}
+                      <span className={transaction.isIncome ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'}>
+                        {transaction.displayAmount}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -191,7 +157,7 @@ export default function FinanceTransactions() {
 
       {/* Transaction Detail Modal */}
       {selectedTransaction && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center w-full h-full z-50 p-4 animate-fadeIn">
           <div className="bg-white rounded-lg p-6 max-w-lg w-full mx-4">
             <div className="flex justify-between items-start mb-4">
               <h3 className="text-xl font-bold">Chi tiết giao dịch</h3>
