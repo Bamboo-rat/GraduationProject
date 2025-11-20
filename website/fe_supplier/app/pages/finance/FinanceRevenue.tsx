@@ -95,9 +95,10 @@ export default function FinanceRevenue() {
       // Tính toán thống kê từ transactions thực tế
       const txList = transactionsData.content || [];
       
-      let grossRevenue = 0; // Doanh thu gốc từ đơn hàng
+    
+      let totalNetRevenue = 0; // Thu nhập NET từ đơn hàng (đã trừ hoa hồng)
       let refundAmount = 0; // Tiền hoàn trả
-      let totalCommission = 0; // Tổng hoa hồng
+      let totalCommissionPaid = 0; // Tổng hoa hồng đã trả (chỉ để hiển thị, không dùng tính toán)
       const orderCompleted = { count: 0, amount: 0 };
       const orderRefund = { count: 0, amount: 0 };
       const commission = { count: 0, amount: 0 };
@@ -110,7 +111,7 @@ export default function FinanceRevenue() {
           case 'ORDER_COMPLETED':
             orderCompleted.count++;
             orderCompleted.amount += amount; 
-            grossRevenue += amount;
+            totalNetRevenue += amount; // Đây là NET (đã trừ commission)
             break;
           case 'ORDER_REFUND':
             orderRefund.count++;
@@ -120,20 +121,20 @@ export default function FinanceRevenue() {
           case 'COMMISSION_FEE':
             commission.count++;
             commission.amount += Math.abs(amount); // Hiển thị dương
-            totalCommission += Math.abs(amount); // Tính toán dương
+            totalCommissionPaid += Math.abs(amount); // Chỉ để hiển thị
             break;
           case 'COMMISSION_REFUND':
             commissionRefund.count++;
             commissionRefund.amount += amount; // amount dương
-            totalCommission -= amount; 
+            totalCommissionPaid -= amount; // Giảm commission đã trả
             break;
         }
       });
 
 
-      const totalIncome = grossRevenue - refundAmount;
+      const totalIncome = totalNetRevenue - refundAmount;
       
-      const totalExpense = totalCommission;
+      const totalExpense = totalCommissionPaid;
  
       const netProfit = totalIncome; 
 

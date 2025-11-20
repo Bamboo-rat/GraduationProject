@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
@@ -76,4 +77,20 @@ public interface WalletTransactionRepository extends JpaRepository<WalletTransac
      * Find transactions by type and date range
      */
     List<WalletTransaction> findByTransactionTypeAndCreatedAtBetween(TransactionType type, LocalDateTime start, LocalDateTime end);
+
+    /**
+     * Find transactions by order delivered date range (for accurate reconciliation)
+     * This ensures transactions are grouped by when orders were actually delivered,
+     * not when wallet transactions were created (which may be delayed)
+     */
+    @Query("""
+        SELECT wt FROM WalletTransaction wt
+        WHERE (wt.order IS NOT NULL AND wt.order.deliveredAt BETWEEN :start AND :end)
+           OR (wt.order IS NULL AND wt.createdAt BETWEEN :start AND :end)
+        ORDER BY wt.createdAt DESC
+    """)
+    List<WalletTransaction> findByOrderDeliveredAtBetween(
+        @Param("start") LocalDateTime start,
+        @Param("end") LocalDateTime end
+    );
 }

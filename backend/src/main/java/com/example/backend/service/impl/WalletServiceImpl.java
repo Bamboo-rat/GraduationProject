@@ -632,8 +632,8 @@ public class WalletServiceImpl implements WalletService {
         LocalDateTime start = startDate.atStartOfDay();
         LocalDateTime end = endDate.atTime(23, 59, 59);
 
-
-        List<WalletTransaction> transactions = transactionRepository.findByCreatedAtBetween(start, end);
+      
+        List<WalletTransaction> transactions = transactionRepository.findByOrderDeliveredAtBetween(start, end);
 
         BigDecimal totalSupplierEarnings = transactions.stream()
                 .filter(t -> t.getTransactionType() == TransactionType.ORDER_COMPLETED)
@@ -882,7 +882,8 @@ public class WalletServiceImpl implements WalletService {
             String period
     ) {
         BigDecimal totalIncome = BigDecimal.ZERO;
-        BigDecimal totalExpense = BigDecimal.ZERO;
+        BigDecimal totalRefund = BigDecimal.ZERO;
+        BigDecimal totalCommission = BigDecimal.ZERO;
 
         Map<TransactionType, Integer> typeCount = new HashMap<>();
         Map<TransactionType, BigDecimal> typeAmount = new HashMap<>();
@@ -894,12 +895,18 @@ public class WalletServiceImpl implements WalletService {
             typeCount.merge(type, 1, Integer::sum);
             typeAmount.merge(type, amount, BigDecimal::add);
 
-            if (isIncomeTransaction(type)) {
+            if (type == TransactionType.ORDER_COMPLETED) {
                 totalIncome = totalIncome.add(amount);
-            } else {
-                totalExpense = totalExpense.add(amount);
+            } else if (type == TransactionType.ORDER_REFUND) {
+                totalRefund = totalRefund.add(amount);
+            } else if (type == TransactionType.COMMISSION_FEE) {
+                totalCommission = totalCommission.add(amount);
+            } else if (type == TransactionType.COMMISSION_REFUND) {
+                totalCommission = totalCommission.subtract(amount);
             }
         }
+        
+        BigDecimal netAmount = totalIncome.subtract(totalRefund);
 
         List<WalletStatsResponse.TransactionTypeStats> typeBreakdown = typeAmount.entrySet().stream()
                 .map(e -> WalletStatsResponse.TransactionTypeStats.builder()
@@ -928,8 +935,8 @@ public class WalletServiceImpl implements WalletService {
                 .month(month)
                 .period(period)
                 .totalIncome(totalIncome)
-                .totalExpense(totalExpense)
-                .netAmount(totalIncome.subtract(totalExpense))
+                .totalExpense(totalRefund)  // Changed: only refunds, not commission
+                .netAmount(netAmount)
                 .totalTransactions(transactions.size())
                 .transactionTypeCount(typeCountMap)
                 .monthlyBreakdown(monthlyBreakdown)
@@ -948,13 +955,15 @@ public class WalletServiceImpl implements WalletService {
                 .mapToObj(m -> {
                     List<WalletTransaction> monthTxns = byMonth.getOrDefault(m, Collections.emptyList());
 
+                    // Income = ORDER_COMPLETED (already NET)
                     BigDecimal income = monthTxns.stream()
-                            .filter(t -> isIncomeTransaction(t.getTransactionType()))
+                            .filter(t -> t.getTransactionType() == TransactionType.ORDER_COMPLETED)
                             .map(t -> t.getAmount().abs())
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+                    // Expense = only ORDER_REFUND (not commission because it's already deducted)
                     BigDecimal expense = monthTxns.stream()
-                            .filter(t -> !isIncomeTransaction(t.getTransactionType()))
+                            .filter(t -> t.getTransactionType() == TransactionType.ORDER_REFUND)
                             .map(t -> t.getAmount().abs())
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
