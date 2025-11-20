@@ -38,12 +38,17 @@ export default function FinanceReconciliation() {
     loadData();
   };
 
-  // Tính toán các giá trị
+  // Tính toán các giá trị - DÙNG CÙNG CÔNG THỨC VỚI SUPPLIER
+  // IMPORTANT: Admin và Supplier phải dùng CÙNG công thức từ WalletTransaction!
+  const totalSupplierEarnings = reconciliation?.totalSupplierEarnings || 0; // sum(ORDER_COMPLETED) = NET
+  const totalRefunded = reconciliation?.totalRefunded || 0; // sum(ORDER_REFUND) = NET refund
+  const netPlatformRevenue = reconciliation?.netPlatformRevenue || 0; // Commission - Commission Refund
+  
+  // Supplier thực nhận = Thu nhập NET - Hoàn tiền NET
+  const supplierPayment = totalSupplierEarnings - totalRefunded;
+  
+  // Tổng giá trị đơn hàng (for reference only) = NET + Commission
   const totalOrderValue = reconciliation?.totalOrderValue || 0;
-  const totalRefunded = reconciliation?.totalRefunded || 0;
-  const netPlatformRevenue = reconciliation?.netPlatformRevenue || 0; // Hoa hồng thực (sau khi trừ hoàn)
-  const actualRevenue = totalOrderValue - totalRefunded;
-  const supplierPayment = actualRevenue - netPlatformRevenue; // Trừ hoa hồng THỰC, không phải hoa hồng gốc
   
  
   const totalSupplierBalance = reconciliation?.totalSupplierBalance || 0;
@@ -197,24 +202,25 @@ export default function FinanceReconciliation() {
           </div>
         </div>
 
-        {/* Tính toán doanh thu - Phần quan trọng nhất */}
+        {/* Tính toán doanh thu - Khớp với NCC */}
         <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-[#2D3748] mb-6">Tính toán doanh thu</h3>
+          <h3 className="text-lg font-semibold text-[#2D3748] mb-2">Tính toán doanh thu (khớp với NCC)</h3>
+          <p className="text-sm text-gray-500 mb-6">Sử dụng WalletTransaction - Cùng nguồn dữ liệu với nhà cung cấp</p>
           
           <div className="space-y-4">
-            {/* Doanh thu gốc */}
+            {/* Thu nhập NCC (NET) */}
             <div className="flex justify-between items-center py-3 border-b border-gray-100">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-[#E3F2FD] flex items-center justify-center">
                   <Store className="w-4 h-4 text-[#1976D2]" />
                 </div>
                 <div>
-                  <p className="font-medium text-gray-700">Doanh thu gốc từ đơn hàng</p>
-                  <p className="text-sm text-gray-500">{reconciliation?.totalOrders || 0} đơn hàng (chỉ tiền sản phẩm, không bao gồm phí ship)</p>
+                  <p className="font-medium text-gray-700">Thu nhập đơn hàng (NET)</p>
+                  <p className="text-sm text-gray-500">{reconciliation?.totalOrders || 0} đơn hàng - Đã trừ hoa hồng</p>
                 </div>
               </div>
               <p className="text-lg font-bold text-[#1976D2]">
-                {walletService.formatVND(totalOrderValue)}
+                +{walletService.formatVND(totalSupplierEarnings)}
               </p>
             </div>
 
@@ -225,44 +231,12 @@ export default function FinanceReconciliation() {
                   <ArrowDownCircle className="w-4 h-4 text-[#C53030]" />
                 </div>
                 <div>
-                  <p className="font-medium text-gray-700">Hoàn tiền đơn hủy</p>
-                  <p className="text-sm text-gray-500">{reconciliation?.refundCount || 0} lần hoàn tiền</p>
+                  <p className="font-medium text-gray-700">Hoàn tiền đơn hủy (NET)</p>
+                  <p className="text-sm text-gray-500">{reconciliation?.refundCount || 0} lần hoàn - Đã trừ hoa hồng</p>
                 </div>
               </div>
               <p className="text-lg font-bold text-[#C53030]">
                 -{walletService.formatVND(totalRefunded)}
-              </p>
-            </div>
-
-            {/* Doanh thu thực */}
-            <div className="flex justify-between items-center py-3 border-b border-gray-200 bg-[#F8FFF9]">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-[#E8F5E9] flex items-center justify-center">
-                  <TrendingUp className="w-4 h-4 text-[#2D7D46]" />
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-800">Doanh thu thực nhận</p>
-                  <p className="text-sm text-[#2D7D46]">Sau khi trừ hoàn tiền</p>
-                </div>
-              </div>
-              <p className="text-xl font-bold text-[#2D7D46]">
-                {walletService.formatVND(actualRevenue)}
-              </p>
-            </div>
-
-            {/* Trừ hoa hồng */}
-            <div className="flex justify-between items-center py-3 border-b border-gray-100">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-[#FFF3E0] flex items-center justify-center">
-                  <DollarSign className="w-4 h-4 text-[#F57C00]" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-700">Hoa hồng nền tảng (thực)</p>
-                  <p className="text-sm text-gray-500">Đã trừ hoàn hoa hồng</p>
-                </div>
-              </div>
-              <p className="text-lg font-bold text-[#F57C00]">
-                -{walletService.formatVND(netPlatformRevenue)}
               </p>
             </div>
 
@@ -279,6 +253,22 @@ export default function FinanceReconciliation() {
               </div>
               <p className="text-2xl font-bold text-[#2D7D46]">
                 {walletService.formatVND(supplierPayment)}
+              </p>
+            </div>
+
+            {/* Hoa hồng Platform (reference) */}
+            <div className="flex justify-between items-center py-3 border-t-2 border-gray-200 pt-4">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-[#FFF3E0] flex items-center justify-center">
+                  <DollarSign className="w-4 h-4 text-[#F57C00]" />
+                </div>
+                <div>
+                  <p className="font-medium text-gray-700">Hoa hồng nền tảng (thực)</p>
+                  <p className="text-sm text-gray-500">Đã trừ ở thu nhập NCC - Chỉ để tham khảo</p>
+                </div>
+              </div>
+              <p className="text-lg font-bold text-[#F57C00]">
+                {walletService.formatVND(netPlatformRevenue)}
               </p>
             </div>
           </div>

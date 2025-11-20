@@ -79,9 +79,8 @@ export default function WasteReportNew() {
   const totalSold = summary?.totalSold || 0;
   const totalUnsold = summary?.totalUnsold || 0;
   const wasteRate = summary?.wasteRate || 0;
-  const platformAvgWasteRate = supplierData.length > 0 
-    ? supplierData.reduce((sum, s) => sum + s.wasteRate, 0) / supplierData.length 
-    : 0;
+  
+  const platformAvgWasteRate = wasteRate;
 
   const topWasteStores = supplierData
     .sort((a, b) => b.wasteRate - a.wasteRate)

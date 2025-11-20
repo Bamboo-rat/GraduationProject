@@ -130,14 +130,12 @@ export default function FinanceRevenue() {
         }
       });
 
-      // Tính toán đúng:
-      // Tổng thu nhập (thực nhận) = Doanh thu gốc - Hoàn tiền = Tiền khách hàng trả thực tế
+
       const totalIncome = grossRevenue - refundAmount;
-      // Tổng chi phí = CHỈ tính hoa hồng (đã trừ hoàn hồng), KHÔNG tính hoàn tiền vào chi phí
-      // Vì hoàn tiền đã được trừ ở totalIncome rồi
+      
       const totalExpense = totalCommission;
-      // Lợi nhuận ròng = Thu nhập thực - Hoa hồng
-      const netProfit = totalIncome - totalExpense;
+ 
+      const netProfit = totalIncome; 
 
       setStats({
         totalIncome,
@@ -150,7 +148,6 @@ export default function FinanceRevenue() {
         commissionRefund
       });
 
-      // Nhóm transactions theo ngày cho biểu đồ
       const txByDate: any = {};
       txList.forEach((tx: any) => {
         const date = new Date(tx.createdAt).toLocaleDateString('vi-VN', { 
@@ -175,12 +172,13 @@ export default function FinanceRevenue() {
         }
       });
 
-      // Chuyển sang array và tính netIncome
+
       const chartData = Object.keys(txByDate).map(date => ({
         date,
-        revenue: txByDate[date].revenue - txByDate[date].refund,
+        revenue: txByDate[date].revenue,
+        refund: txByDate[date].refund,
         commission: txByDate[date].commission,
-        netIncome: (txByDate[date].revenue - txByDate[date].refund) - txByDate[date].commission
+        netIncome: txByDate[date].revenue - txByDate[date].refund 
       }));
       
       setRevenueData(chartData);
@@ -415,24 +413,24 @@ export default function FinanceRevenue() {
         </div>
       </div>
 
-      {/* Phân loại giao dịch - ĐÃ SỬA VỊ TRÍ SỐ TIỀN VÀ SỐ ĐƠN */}
+      {/* Phân loại giao dịch */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
           <FileText className="w-5 h-5 text-gray-700" />
           Phân loại giao dịch
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Thu nhập đơn hàng */}
           <div className="bg-[#E8F5E9] rounded-lg p-4 border border-[#C8E6C9]">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium text-[#2D7D46]">Thu nhập đơn hàng</span>
+              <span className="text-sm font-medium text-[#2D7D46]">Thu nhập đơn hàng (NET)</span>
               <ArrowUpCircle className="w-5 h-5 text-[#2D7D46]" />
             </div>
             <p className="text-2xl font-bold text-[#2D7D46] mb-1">
               +{walletService.formatVND(stats.orderCompleted.amount)}
             </p>
             <p className="text-sm text-[#2D7D46]">
-              {stats.orderCompleted.count} đơn hàng
+              {stats.orderCompleted.count} đơn hàng (đã trừ hoa hồng)
             </p>
           </div>
 
@@ -453,7 +451,7 @@ export default function FinanceRevenue() {
           {/* Phí hoa hồng */}
           <div className="bg-[#FFEBEE] rounded-lg p-4 border border-[#FFCDD2]">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium text-[#C53030]">Phí hoa hồng (thực)</span>
+              <span className="text-sm font-medium text-[#C53030]">Hoa hồng (tham khảo)</span>
               <DollarSign className="w-5 h-5 text-[#C53030]" />
             </div>
             <p className="text-2xl font-bold text-[#C53030] mb-1">
@@ -463,25 +461,11 @@ export default function FinanceRevenue() {
               {stats.commission.count} lần trừ - {stats.commissionRefund.count} lần hoàn
             </p>
           </div>
-
-          {/* Hoàn hoa hồng */}
-          <div className="bg-[#E3F2FD] rounded-lg p-4 border border-[#BBDEFB]">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium text-[#1976D2]">Hoàn hoa hồng</span>
-              <RefreshCw className="w-5 h-5 text-[#1976D2]" />
-            </div>
-            <p className="text-2xl font-bold text-[#1976D2] mb-1">
-              +{walletService.formatVND(stats.commissionRefund.amount)}
-            </p>
-            <p className="text-sm text-[#1976D2]">
-              {stats.commissionRefund.count} đơn hủy
-            </p>
-          </div>
         </div>
 
         {/* Chi tiết tính hoa hồng */}
         <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-          <p className="text-sm font-medium text-gray-700 mb-2">Chi tiết hoa hồng:</p>
+          <p className="text-sm font-medium text-gray-700 mb-2">💡 Lưu ý: Thu nhập đơn hàng đã trừ hoa hồng</p>
           <div className="grid grid-cols-3 gap-4 text-sm">
             <div>
               <span className="text-gray-600">Hoa hồng gốc:</span>
@@ -492,7 +476,7 @@ export default function FinanceRevenue() {
               <span className="ml-2 font-semibold text-blue-600">+{walletService.formatVND(stats.commissionRefund.amount)}</span>
             </div>
             <div>
-              <span className="text-gray-600">Hoa hồng thực tế:</span>
+              <span className="text-gray-600">Hoa hồng thực:</span>
               <span className="ml-2 font-semibold text-orange-600">-{walletService.formatVND(stats.totalExpense)}</span>
             </div>
           </div>
@@ -500,27 +484,24 @@ export default function FinanceRevenue() {
 
         {/* Summary row */}
         <div className="mt-6 pt-6 border-t border-gray-200">
-          <div className="grid grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 gap-6">
             <div className="text-center">
-              <p className="text-sm text-gray-600 mb-2">Tổng thu nhập (thực nhận)</p>
+              <p className="text-sm text-gray-600 mb-2">Thực nhận (NET)</p>
               <p className="text-2xl font-bold text-[#2D7D46]">
                 {walletService.formatVND(stats.totalIncome)}
               </p>
-              <p className="text-xs text-gray-500 mt-1">Doanh thu {walletService.formatVND(stats.orderCompleted.amount)} - Hoàn tiền {walletService.formatVND(stats.orderRefund.amount)}</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Thu nhập {walletService.formatVND(stats.orderCompleted.amount)} - Hoàn {walletService.formatVND(stats.orderRefund.amount)}
+              </p>
             </div>
             <div className="text-center">
-              <p className="text-sm text-gray-600 mb-2">Tổng chi phí</p>
+              <p className="text-sm text-gray-600 mb-2">Hoa hồng (đã trừ)</p>
               <p className="text-2xl font-bold text-[#C53030]">
                 {walletService.formatVND(stats.totalExpense)}
               </p>
-              <p className="text-xs text-gray-500 mt-1">Hoa hồng {walletService.formatVND(stats.commission.amount)} - Hoàn {walletService.formatVND(stats.commissionRefund.amount)}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-sm text-gray-600 mb-2">Lợi nhuận ròng</p>
-              <p className="text-2xl font-bold text-[#1976D2]">
-                {walletService.formatVND(stats.netProfit)}
+              <p className="text-xs text-gray-500 mt-1">
+                Chỉ để tham khảo - đã trừ trong thu nhập
               </p>
-              <p className="text-xs text-gray-500 mt-1">Thu nhập - Chi phí</p>
             </div>
           </div>
         </div>
@@ -585,40 +566,40 @@ export default function FinanceRevenue() {
               }}
             />
             <Legend />
-            <Bar dataKey="revenue" fill="#A8D5BA" name="Doanh thu thực" />
-            <Bar dataKey="commission" fill="#FF9AA2" name="Hoa hồng" />
-            <Bar dataKey="netIncome" fill="#6C9A8F" name="Lợi nhuận ròng" />
+            <Bar dataKey="revenue" fill="#A8D5BA" name="Thu nhập (NET)" />
+            <Bar dataKey="refund" fill="#FF9AA2" name="Hoàn tiền" />
+            <Bar dataKey="netIncome" fill="#6C9A8F" name="Thực nhận" />
           </BarChart>
         </ResponsiveContainer>
 
         <div className="mt-6 grid grid-cols-4 gap-4">
           <div className="bg-[#E8F5E9] rounded-lg p-4 border border-[#C8E6C9]">
-            <p className="text-sm text-gray-600 font-medium mb-1">Doanh thu thực</p>
+            <p className="text-sm text-gray-600 font-medium mb-1">Thu nhập (NET)</p>
             <p className="text-xl font-bold text-gray-900">
               {walletService.formatVND(revenueData.reduce((sum, item) => sum + item.revenue, 0))}
             </p>
-            <p className="text-xs text-gray-500 mt-1">Đã trừ hoàn tiền</p>
+            <p className="text-xs text-gray-500 mt-1">Đã trừ hoa hồng</p>
           </div>
-          <div className="bg-[#FFEBEE] rounded-lg p-4 border border-[#FFCDD2]">
-            <p className="text-sm text-gray-600 font-medium mb-1">Tổng hoa hồng</p>
+          <div className="bg-[#FFF3E0] rounded-lg p-4 border border-[#FFE0B2]">
+            <p className="text-sm text-gray-600 font-medium mb-1">Hoàn tiền</p>
             <p className="text-xl font-bold text-gray-900">
-              {walletService.formatVND(revenueData.reduce((sum, item) => sum + item.commission, 0))}
+              {walletService.formatVND(revenueData.reduce((sum, item) => sum + item.refund, 0))}
             </p>
-            <p className="text-xs text-gray-500 mt-1">{((summary?.commissionRate || 0.1) * 100).toFixed(0)}% doanh thu</p>
+            <p className="text-xs text-gray-500 mt-1">Đơn hủy/trả</p>
           </div>
           <div className="bg-[#E3F2FD] rounded-lg p-4 border border-[#BBDEFB]">
-            <p className="text-sm text-gray-600 font-medium mb-1">Lợi nhuận ròng</p>
+            <p className="text-sm text-gray-600 font-medium mb-1">Thực nhận</p>
             <p className="text-xl font-bold text-gray-900">
               {walletService.formatVND(revenueData.reduce((sum, item) => sum + item.netIncome, 0))}
             </p>
             <p className="text-xs text-gray-500 mt-1">Tiền vào ví</p>
           </div>
-          <div className="bg-[#F3E5F5] rounded-lg p-4 border border-[#E1BEE7]">
-            <p className="text-sm text-gray-600 font-medium mb-1">Số giao dịch</p>
+          <div className="bg-[#FFEBEE] rounded-lg p-4 border border-[#FFCDD2]">
+            <p className="text-sm text-gray-600 font-medium mb-1">Hoa hồng (ref)</p>
             <p className="text-xl font-bold text-gray-900">
-              {stats.transactionCount}
+              {walletService.formatVND(revenueData.reduce((sum, item) => sum + (item.commission || 0), 0))}
             </p>
-            <p className="text-xs text-gray-500 mt-1">Trong kỳ báo cáo</p>
+            <p className="text-xs text-gray-500 mt-1">Đã trừ ở thu nhập</p>
           </div>
         </div>
       </div>
