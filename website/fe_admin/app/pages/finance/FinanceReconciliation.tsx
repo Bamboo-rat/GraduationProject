@@ -54,8 +54,8 @@ export default function FinanceReconciliation() {
   
   // Wallet balances
   const totalSupplierBalance = reconciliation?.totalSupplierBalance || 0;
-  // Tổng số dư toàn nền tảng = Tiền NCC (available + pending) + Hoa hồng Platform (đã trừ hoàn)
-  const totalSystemBalance = totalSupplierBalance + netPlatformRevenue;
+  // TỔNG SỐ DƯ = Thu nhập NCC (NET) + Hoa hồng Platform (trong kỳ)
+  const totalSystemBalance = totalSupplierEarnings + netPlatformRevenue;
   // Khả dụng Platform = Hoa hồng thực (đã trừ hoàn hoa hồng)
   const platformAvailable = netPlatformRevenue;
   // Chờ xử lý = Tiền pending của NCC (chờ 7 ngày)
