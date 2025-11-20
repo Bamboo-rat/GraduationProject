@@ -355,7 +355,7 @@ export default function SystemSettings() {
             ) : (
               <div className="text-center">
                 <div className="text-4xl font-bold text-gray-800 mb-4">{commissionRate}%</div>
-                {can('settings.update') && (
+                {can('settings.edit') && (
                   <button
                     onClick={() => setEditingCommission(true)}
                     className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium flex items-center justify-center"
@@ -419,7 +419,7 @@ export default function SystemSettings() {
             ) : (
               <div className="text-center">
                 <div className="text-4xl font-bold text-gray-800 mb-4">{pointsPercentage}%</div>
-                {can('settings.update') && (
+                {can('settings.edit') && (
                   <button
                     onClick={() => setEditingPoints(true)}
                     className="w-full px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium flex items-center justify-center"
@@ -497,7 +497,7 @@ export default function SystemSettings() {
                           <span className="font-semibold text-gray-900">
                             {formatValue(config)}
                           </span>
-                          {can('settings.update') && (
+                          {can('settings.edit') && (
                             <button
                               onClick={() => handleEdit(config)}
                               className="text-[#A4C3A2] hover:text-[#8FB491] p-1 rounded"

@@ -78,7 +78,7 @@
       "id": 9,
       "title": "Phân tích & báo cáo",
       "icon": "bar-chart-3",
-      "link": "/reports/revenue",
+      "link": "/reports/behavior",
       "subMenu": [
         { "title": "Phân tích khách hàng", "link": "/reports/behavior", "icon": "pie-chart" },
         { "title": "Báo cáo lãng phí", "link": "/reports/waste", "icon": "trash-2" }

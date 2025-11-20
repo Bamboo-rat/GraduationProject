@@ -225,7 +225,7 @@ export default function CategoriesManagement() {
             </select>
           </div>
 
-          {can('products.create') && (
+          {can('categories.create') && (
             <button
               onClick={openCreateModal}
               className="btn-primary flex items-center gap-2 whitespace-nowrap lg:ml-auto"
@@ -311,7 +311,7 @@ export default function CategoriesManagement() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <div className="flex justify-end gap-2">
-                            {can('products.update') && (
+                            {can('categories.edit') && (
                               <button
                                 onClick={() => handleEdit(category)}
                                 className="text-text hover:text-secondary transition-colors p-1"
@@ -320,7 +320,7 @@ export default function CategoriesManagement() {
                                 <Edit2 size={18} />
                               </button>
                             )}
-                            {can('products.update') && (
+                            {can('categories.edit') && (
                               <button
                                 onClick={() => handleToggleActive(category)}
                                 className="text-text hover:text-accent-warm transition-colors p-1"

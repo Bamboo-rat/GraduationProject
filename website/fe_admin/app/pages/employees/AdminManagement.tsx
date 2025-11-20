@@ -444,7 +444,7 @@ export default function AdminManagement() {
                           >
                             <Icons.Eye className="w-5 h-5" />
                           </button>
-                          {can('employees.update') && (
+                          {can('employees.edit') && (
                             <button
                               onClick={() => handleEditAdmin(admin)}
                               className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
@@ -453,7 +453,7 @@ export default function AdminManagement() {
                               <Icons.Edit className="w-5 h-5" />
                             </button>
                           )}
-                          {can('employees.updateStatus') && admin.status === 'INACTIVE' && (
+                          {can('employees.edit') && admin.status === 'INACTIVE' && (
                             <button
                               onClick={() => handleStatusChange(admin, 'activate')}
                               className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
@@ -462,7 +462,7 @@ export default function AdminManagement() {
                               <Icons.CheckCircle className="w-5 h-5" />
                             </button>
                           )}
-                          {can('employees.updateStatus') && admin.status === 'ACTIVE' && (
+                          {can('employees.edit') && admin.status === 'ACTIVE' && (
                             <button
                               onClick={() => handleStatusChange(admin, 'suspend')}
                               className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
@@ -471,7 +471,7 @@ export default function AdminManagement() {
                               <Icons.Ban className="w-5 h-5" />
                             </button>
                           )}
-                          {can('employees.approve') && admin.status === 'PENDING_APPROVAL' && (
+                          {can('employees.edit') && admin.status === 'PENDING_APPROVAL' && (
                             <button
                               onClick={() => handleStatusChange(admin, 'approve')}
                               className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
