@@ -466,7 +466,7 @@ export default function FinanceRevenue() {
 
         {/* Chi tiết tính hoa hồng */}
         <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-          <p className="text-sm font-medium text-gray-700 mb-2">💡 Lưu ý: Thu nhập đơn hàng đã trừ hoa hồng</p>
+          <p className="text-sm font-medium text-gray-700 mb-2">Lưu ý: Thu nhập đơn hàng đã trừ hoa hồng</p>
           <div className="grid grid-cols-3 gap-4 text-sm">
             <div>
               <span className="text-gray-600">Hoa hồng gốc:</span>

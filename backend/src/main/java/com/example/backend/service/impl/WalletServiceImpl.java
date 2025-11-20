@@ -635,29 +635,32 @@ public class WalletServiceImpl implements WalletService {
       
         List<WalletTransaction> transactions = transactionRepository.findByOrderDeliveredAtBetween(start, end);
 
-        BigDecimal totalSupplierEarnings = transactions.stream()
+        // ORDER_COMPLETED is already NET (commission deducted)
+        BigDecimal totalSupplierNetEarnings = transactions.stream()
                 .filter(t -> t.getTransactionType() == TransactionType.ORDER_COMPLETED)
                 .map(WalletTransaction::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal totalCommission = transactions.stream()
+        // COMMISSION_FEE - for reference and platform revenue calculation
+        BigDecimal totalCommissionPaid = transactions.stream()
                 .filter(t -> t.getTransactionType() == TransactionType.COMMISSION_FEE)
                 .map(WalletTransaction::getAmount)
                 .map(BigDecimal::abs)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-       
-        BigDecimal totalOrderValue = totalSupplierEarnings.add(totalCommission);
-
-        long totalOrders = transactions.stream()
-                .filter(t -> t.getTransactionType() == TransactionType.ORDER_COMPLETED)
-                .count();
-
-        // Tính hoàn hoa hồng (khi có đơn hủy, platform hoàn lại hoa hồng cho supplier)
+        // COMMISSION_REFUND - platform returns commission when order cancelled
         BigDecimal totalCommissionRefund = transactions.stream()
                 .filter(t -> t.getTransactionType() == TransactionType.COMMISSION_REFUND)
                 .map(WalletTransaction::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // Total order value = NET earnings + commission (for admin reference)
+        // But for supplier payment calculation, use NET only
+        BigDecimal totalOrderValueGross = totalSupplierNetEarnings.add(totalCommissionPaid);
+
+        long totalOrders = transactions.stream()
+                .filter(t -> t.getTransactionType() == TransactionType.ORDER_COMPLETED)
+                .count();
 
       
         BigDecimal totalRefunded = transactions.stream()
@@ -696,22 +699,22 @@ public class WalletServiceImpl implements WalletService {
                 .startDate(startDate)
                 .endDate(endDate)
                 .period(startDate.equals(endDate) ? startDate.toString() : startDate + " → " + endDate)
-                .totalOrderValue(totalOrderValue)  // Gross revenue (netEarnings + commission)
+                .totalOrderValue(totalOrderValueGross)  // Gross = NET + commission (for admin info)
                 .totalOrders((int) totalOrders)
-                .totalCommission(totalCommission)
-                .totalSupplierEarnings(totalSupplierEarnings)  // Net earnings (after commission deducted)
+                .totalCommission(totalCommissionPaid.subtract(totalCommissionRefund))  // Net commission (paid - refunded)
+                .totalSupplierEarnings(totalSupplierNetEarnings)  // NET earnings (commission already deducted)
                 .totalPaidToSuppliers(totalPaid)
-                .pendingPayments(pendingPayments)  // Chỉ pending (chờ 7 ngày)
-                .totalSupplierBalance(totalSupplierBalance)  // Available + Pending (tổng nợ NCC)
-                .totalRefunded(totalRefunded)  // Net refund (already commission-adjusted)
+                .pendingPayments(pendingPayments)  // Pending balance (waiting 7 days)
+                .totalSupplierBalance(totalSupplierBalance)  // Available + Pending
+                .totalRefunded(totalRefunded)  // Net refund (commission-adjusted)
                 .refundCount((int) refundCount)
-                // Platform revenue/expenses: 
-                // platformRevenue = Tổng hoa hồng thu được
-                // platformExpenses = Tổng hoa hồng hoàn lại (khi refund)
-                // netPlatformRevenue = Hoa hồng thu - Hoàn hồng
-                .platformRevenue(totalCommission)
+                // Platform revenue calculation:
+                // platformRevenue = Commission collected from orders
+                // platformExpenses = Commission refunded on cancellations
+                // netPlatformRevenue = Revenue - Expenses
+                .platformRevenue(totalCommissionPaid)
                 .platformExpenses(totalCommissionRefund)
-                .netPlatformRevenue(totalCommission.subtract(totalCommissionRefund))
+                .netPlatformRevenue(totalCommissionPaid.subtract(totalCommissionRefund))
                 .supplierBreakdown(supplierBreakdown)
                 .build();
     }
@@ -988,15 +991,22 @@ public class WalletServiceImpl implements WalletService {
 
         SupplierWallet wallet = walletOpt.get();
 
-        BigDecimal earnings = supplierTxns.stream()
+        // ORDER_COMPLETED is already NET (commission deducted)
+        BigDecimal netEarnings = supplierTxns.stream()
                 .filter(t -> t.getTransactionType() == TransactionType.ORDER_COMPLETED)
                 .map(WalletTransaction::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal commission = supplierTxns.stream()
+        // COMMISSION_FEE for reference only (already deducted from netEarnings)
+        BigDecimal commissionPaid = supplierTxns.stream()
                 .filter(t -> t.getTransactionType() == TransactionType.COMMISSION_FEE)
                 .map(WalletTransaction::getAmount)
                 .map(BigDecimal::abs)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal commissionRefund = supplierTxns.stream()
+                .filter(t -> t.getTransactionType() == TransactionType.COMMISSION_REFUND)
+                .map(WalletTransaction::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal refunded = supplierTxns.stream()
@@ -1013,13 +1023,16 @@ public class WalletServiceImpl implements WalletService {
         List<Store> stores = supplier.getStores();
         Store store = stores != null && !stores.isEmpty() ? stores.get(0) : null;
 
+        // Total commission = commission paid - commission refunded
+        BigDecimal totalCommission = commissionPaid.subtract(commissionRefund);
+
         return ReconciliationResponse.SupplierReconciliation.builder()
                 .supplierId(supplierId)
                 .supplierName(supplier.getFullName())
                 .storeName(store != null ? store.getStoreName() : "N/A")
-                .totalEarnings(earnings)
-                .commission(commission)
-                .netEarnings(earnings.subtract(commission))
+                .totalEarnings(netEarnings)  // Already NET
+                .commission(totalCommission)  // For reference only
+                .netEarnings(netEarnings.subtract(refunded))  // NET - refund
                 .orderCount(orderCount)
                 .refunded(refunded)
                 .build();
