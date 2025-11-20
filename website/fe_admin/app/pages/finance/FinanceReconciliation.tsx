@@ -191,7 +191,7 @@ export default function FinanceReconciliation() {
                 </div>
                 <div>
                   <p className="font-medium text-gray-700">Doanh thu gốc từ đơn hàng</p>
-                  <p className="text-sm text-gray-500">{reconciliation?.totalOrders || 0} đơn hàng</p>
+                  <p className="text-sm text-gray-500">{reconciliation?.totalOrders || 0} đơn hàng (chỉ tiền sản phẩm, không bao gồm phí ship)</p>
                 </div>
               </div>
               <p className="text-lg font-bold text-[#1976D2]">
@@ -356,9 +356,9 @@ export default function FinanceReconciliation() {
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Nhà cung cấp</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Số đơn</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Doanh thu</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Doanh thu<br/><span className="text-[10px] normal-case text-gray-500">(từ ví NCC)</span></th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Hoàn tiền</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Hoa hồng</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Hoa hồng<br/><span className="text-[10px] normal-case text-gray-500">(gộp)</span></th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Thực nhận</th>
                 </tr>
               </thead>

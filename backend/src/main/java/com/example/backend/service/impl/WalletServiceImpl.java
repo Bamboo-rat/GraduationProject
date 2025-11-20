@@ -636,8 +636,13 @@ public class WalletServiceImpl implements WalletService {
         // Query already filters for DELIVERED status
         List<Order> orders = orderRepository.findByDeliveredAtBetween(start, end);
 
+        // CRITICAL: Calculate revenue from product subtotal ONLY (excluding shippingFee)
+        // This matches the actual supplier wallet transaction amount
+        // Commission is calculated on subtotal, not totalAmount
         BigDecimal totalOrderValue = orders.stream()
-                .map(Order::getTotalAmount)
+                .map(order -> order.getOrderDetails().stream()
+                        .map(od -> od.getAmount().multiply(BigDecimal.valueOf(od.getQuantity())))
+                        .reduce(BigDecimal.ZERO, BigDecimal::add))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         List<WalletTransaction> transactions = transactionRepository.findByCreatedAtBetween(start, end);
