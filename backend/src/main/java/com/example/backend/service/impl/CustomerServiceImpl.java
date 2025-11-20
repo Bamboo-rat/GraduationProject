@@ -500,8 +500,9 @@ public class CustomerServiceImpl implements CustomerService {
         double cancellationRate = totalOrders > 0
                 ? (canceledOrders * 100.0) / totalOrders
                 : 0.0;
+        long failedOrders = canceledOrders + returnedOrders;
         double returnRate = totalOrders > 0
-                ? (returnedOrders * 100.0) / totalOrders
+                ? (failedOrders * 100.0) / totalOrders
                 : 0.0;
 
         // Calculate days since first/last order

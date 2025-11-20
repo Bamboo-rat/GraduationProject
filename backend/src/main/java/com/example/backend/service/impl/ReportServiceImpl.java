@@ -356,10 +356,14 @@ public class ReportServiceImpl implements ReportService {
         
         long deliveredOrders = orderRepository.countByStatusAndCreatedAtBetween(OrderStatus.DELIVERED, startDate, endDate);
         long returnedOrdersCount = orderRepository.countByStatusAndCreatedAtBetween(OrderStatus.RETURNED, startDate, endDate);
+        long canceledOrdersCount = orderRepository.countByStatusAndCreatedAtBetween(OrderStatus.CANCELED, startDate, endDate);
 
-        long completedProcessOrders = deliveredOrders + returnedOrdersCount;
+        // Total completed process orders = successfully delivered + returned + canceled
+        long completedProcessOrders = deliveredOrders + returnedOrdersCount + canceledOrdersCount;
+        
+        long failedOrders = returnedOrdersCount + canceledOrdersCount;
         Double returnRate = completedProcessOrders > 0
-                ? ((double) returnedOrdersCount / completedProcessOrders) * 100
+                ? ((double) failedOrders / completedProcessOrders) * 100
                 : 0.0;
 
         BigDecimal totalValue = clvData.isEmpty() ? BigDecimal.ZERO : clvData.stream()
@@ -579,9 +583,15 @@ public class ReportServiceImpl implements ReportService {
                 .orElse(null);
 
 
-        long totalReturns = orders.stream()
+        // Count both RETURNED and CANCELED orders as failed orders
+        long returnedOrders = orders.stream()
                 .filter(o -> o.getStatus() == OrderStatus.RETURNED)
                 .count();
+        long canceledOrders = orders.stream()
+                .filter(o -> o.getStatus() == OrderStatus.CANCELED)
+                .count();
+        
+        long totalReturns = returnedOrders + canceledOrders;
         double returnRate = totalOrders > 0 ? (double) totalReturns / totalOrders * 100 : 0.0;
 
         return PurchasePatternResponse.builder()
@@ -785,12 +795,14 @@ public class ReportServiceImpl implements ReportService {
     ) {
         log.info("Generating waste by category report - StartDate: {}, EndDate: {}", startDate, endDate);
 
+        // Use consistent 90-day sales window for waste analysis
+        LocalDateTime salesWindowStart = LocalDateTime.now().minusDays(90);
+        LocalDateTime salesWindowEnd = LocalDateTime.now();
+
         LocalDate nearExpiryDate = LocalDate.now().plusDays(7);
 
         List<Object[]> results = storeProductRepository.findWasteByCategory(nearExpiryDate);
 
-        // Note: Date filtering would require modifying the query to join with order/delivery dates
-        // For now, we apply post-processing filter if needed
         return results.stream().map(row -> {
             String categoryId = (String) row[0];
             Long totalProducts = toLong(row[3]);
@@ -800,20 +812,15 @@ public class ReportServiceImpl implements ReportService {
             BigDecimal totalStockValue = toBigDecimal(row[10]);
             BigDecimal unsoldValue = toBigDecimal(row[11]);
 
-            // Calculate totalSold for this category from OrderDetail
-            Long totalSold = orderDetailRepository.findAll().stream()
-                .filter(od -> {
-                    if (od.getOrder().getStatus() != OrderStatus.DELIVERED) return false;
-                    String odCategoryId = od.getStoreProduct().getVariant().getProduct().getCategory() != null 
-                        ? od.getStoreProduct().getVariant().getProduct().getCategory().getCategoryId() 
-                        : null;
-                    return categoryId.equals(odCategoryId);
-                })
-                .mapToLong(od -> od.getQuantity())
-                .sum();
+           
+            Long recentSold = orderDetailRepository.sumSoldQuantityByCategoryInPeriod(
+                categoryId,
+                salesWindowStart,
+                salesWindowEnd
+            );
             
-            // totalListed = totalSold + currentStock + expired
-            Long totalListed = totalSold + currentStock + expiredQuantity;
+            // totalListed = recent sales (90d) + currentStock + expired
+            Long totalListed = recentSold + currentStock + expiredQuantity;
             Long totalUnsold = currentStock + expiredQuantity;
 
             // WasteRate = (totalUnsold / totalListed) * 100
@@ -849,31 +856,32 @@ public class ReportServiceImpl implements ReportService {
     ) {
         log.info("Generating waste by supplier report - StartDate: {}, EndDate: {}", startDate, endDate);
 
+        // Use consistent 90-day sales window for waste analysis
+        LocalDateTime salesWindowStart = LocalDateTime.now().minusDays(90);
+        LocalDateTime salesWindowEnd = LocalDateTime.now();
+
         List<Object[]> results = storeProductRepository.findWasteBySupplier();
 
-        // Note: Date filtering would require modifying the query to join with order/delivery dates
-        // For now, we return all results (can be enhanced later with DB-level filtering)
         return results.stream().map(row -> {
             String supplierId = (String) row[0];
             Long currentStock = toLong(row[10]);
             Long expiredQuantity = toLong(row[13]);
 
-            // Calculate totalSold for this supplier from OrderDetail
-            Long totalSold = orderDetailRepository.findAll().stream()
-                .filter(od -> {
-                    if (od.getOrder().getStatus() != OrderStatus.DELIVERED) return false;
-                    String odSupplierId = od.getStoreProduct().getStore().getSupplier().getUserId();
-                    return supplierId.equals(odSupplierId);
-                })
-                .mapToLong(od -> od.getQuantity())
-                .sum();
+            // CRITICAL FIX: Use 90-day sales window (consistent with platform-wide waste summary)
+            // Previous bug: Used all-time sales causing wasteRate discrepancy between summary and by-supplier views
+            Long recentSold = orderDetailRepository.sumSoldQuantityBySupplierInPeriod(
+                supplierId, 
+                salesWindowStart, 
+                salesWindowEnd
+            );
             
-            // totalListed = totalSold + currentStock + expired
-            Long totalListed = totalSold + currentStock + expiredQuantity;
+            // totalListed = recent sales (90d) + currentStock + expired
+            // This represents inventory velocity based on recent market demand
+            Long totalListed = recentSold + currentStock + expiredQuantity;
             Long totalUnsold = currentStock + expiredQuantity;
 
             // WasteRate = (totalUnsold / totalListed) * 100
-            Double sellThroughRate = totalListed > 0 ? (totalSold.doubleValue() / totalListed) * 100 : 0.0;
+            Double sellThroughRate = totalListed > 0 ? (recentSold.doubleValue() / totalListed) * 100 : 0.0;
             Double wasteRate = totalListed > 0 ? (totalUnsold.doubleValue() / totalListed) * 100 : 0.0;
             Double wasteIndex = 100.0 - sellThroughRate;
 
@@ -899,7 +907,7 @@ public class ReportServiceImpl implements ReportService {
                     .totalStores(toLong(row[7]))
                     .activeStores(toLong(row[8]))
                     .totalStockQuantity(totalListed)
-                    .soldQuantity(totalSold)
+                    .soldQuantity(recentSold)  // Use 90-day sales, not all-time
                     .unsoldQuantity(totalUnsold)
                     .expiredQuantity(expiredQuantity)
                     .totalRevenue(BigDecimal.ZERO)

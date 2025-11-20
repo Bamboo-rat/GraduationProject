@@ -218,4 +218,55 @@ public interface OrderDetailRepository extends JpaRepository<OrderDetail, String
             AND od.order.deliveredAt BETWEEN :startDate AND :endDate
     """)
     Long sumSoldQuantityInPeriod(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    /**
+     * Calculate sold quantity for a specific supplier within a time window
+     * Used for per-supplier waste analysis to ensure consistency with platform-wide calculations
+     * 
+     * @param supplierId The supplier's user ID
+     * @param startDate Start of the time window (e.g., 90 days ago)
+     * @param endDate End of the time window (typically now)
+     * @return Total quantity sold for this supplier in the specified period
+     */
+    @Query("""
+        SELECT COALESCE(SUM(od.quantity), 0)
+        FROM OrderDetail od
+        JOIN od.storeProduct sp
+        JOIN sp.store st
+        JOIN st.supplier s
+        WHERE od.order.status = com.example.backend.entity.enums.OrderStatus.DELIVERED
+            AND od.order.deliveredAt BETWEEN :startDate AND :endDate
+            AND s.userId = :supplierId
+    """)
+    Long sumSoldQuantityBySupplierInPeriod(
+        @Param("supplierId") String supplierId,
+        @Param("startDate") LocalDateTime startDate,
+        @Param("endDate") LocalDateTime endDate
+    );
+
+    /**
+     * Calculate sold quantity for a specific category within a time window
+     * Used for per-category waste analysis to ensure consistency with platform-wide calculations
+     * 
+     * @param categoryId The category ID
+     * @param startDate Start of the time window (e.g., 90 days ago)
+     * @param endDate End of the time window (typically now)
+     * @return Total quantity sold for this category in the specified period
+     */
+    @Query("""
+        SELECT COALESCE(SUM(od.quantity), 0)
+        FROM OrderDetail od
+        JOIN od.storeProduct sp
+        JOIN sp.variant v
+        JOIN v.product p
+        LEFT JOIN p.category c
+        WHERE od.order.status = com.example.backend.entity.enums.OrderStatus.DELIVERED
+            AND od.order.deliveredAt BETWEEN :startDate AND :endDate
+            AND c.categoryId = :categoryId
+    """)
+    Long sumSoldQuantityByCategoryInPeriod(
+        @Param("categoryId") String categoryId,
+        @Param("startDate") LocalDateTime startDate,
+        @Param("endDate") LocalDateTime endDate
+    );
 }

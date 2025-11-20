@@ -632,20 +632,13 @@ public class WalletServiceImpl implements WalletService {
         LocalDateTime start = startDate.atStartOfDay();
         LocalDateTime end = endDate.atTime(23, 59, 59);
 
-        // Get orders by DELIVERED date, not created date (financial reconciliation needs completed orders)
-        // Query already filters for DELIVERED status
-        List<Order> orders = orderRepository.findByDeliveredAtBetween(start, end);
-
-        // CRITICAL: Calculate revenue from product subtotal ONLY (excluding shippingFee)
-        // This matches the actual supplier wallet transaction amount
-        // Commission is calculated on subtotal, not totalAmount
-        BigDecimal totalOrderValue = orders.stream()
-                .map(order -> order.getOrderDetails().stream()
-                        .map(od -> od.getAmount().multiply(BigDecimal.valueOf(od.getQuantity())))
-                        .reduce(BigDecimal.ZERO, BigDecimal::add))
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         List<WalletTransaction> transactions = transactionRepository.findByCreatedAtBetween(start, end);
+
+        BigDecimal totalSupplierEarnings = transactions.stream()
+                .filter(t -> t.getTransactionType() == TransactionType.ORDER_COMPLETED)
+                .map(WalletTransaction::getAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal totalCommission = transactions.stream()
                 .filter(t -> t.getTransactionType() == TransactionType.COMMISSION_FEE)
@@ -653,17 +646,20 @@ public class WalletServiceImpl implements WalletService {
                 .map(BigDecimal::abs)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+       
+        BigDecimal totalOrderValue = totalSupplierEarnings.add(totalCommission);
+
+        long totalOrders = transactions.stream()
+                .filter(t -> t.getTransactionType() == TransactionType.ORDER_COMPLETED)
+                .count();
+
         // Tính hoàn hoa hồng (khi có đơn hủy, platform hoàn lại hoa hồng cho supplier)
         BigDecimal totalCommissionRefund = transactions.stream()
                 .filter(t -> t.getTransactionType() == TransactionType.COMMISSION_REFUND)
                 .map(WalletTransaction::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        BigDecimal totalSupplierEarnings = transactions.stream()
-                .filter(t -> t.getTransactionType() == TransactionType.ORDER_COMPLETED)
-                .map(WalletTransaction::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
+      
         BigDecimal totalRefunded = transactions.stream()
                 .filter(t -> t.getTransactionType() == TransactionType.ORDER_REFUND)
                 .map(WalletTransaction::getAmount)
@@ -700,14 +696,14 @@ public class WalletServiceImpl implements WalletService {
                 .startDate(startDate)
                 .endDate(endDate)
                 .period(startDate.equals(endDate) ? startDate.toString() : startDate + " → " + endDate)
-                .totalOrderValue(totalOrderValue)
-                .totalOrders(orders.size())
+                .totalOrderValue(totalOrderValue)  // Gross revenue (netEarnings + commission)
+                .totalOrders((int) totalOrders)
                 .totalCommission(totalCommission)
-                .totalSupplierEarnings(totalSupplierEarnings)
+                .totalSupplierEarnings(totalSupplierEarnings)  // Net earnings (after commission deducted)
                 .totalPaidToSuppliers(totalPaid)
                 .pendingPayments(pendingPayments)  // Chỉ pending (chờ 7 ngày)
                 .totalSupplierBalance(totalSupplierBalance)  // Available + Pending (tổng nợ NCC)
-                .totalRefunded(totalRefunded)
+                .totalRefunded(totalRefunded)  // Net refund (already commission-adjusted)
                 .refundCount((int) refundCount)
                 // Platform revenue/expenses: 
                 // platformRevenue = Tổng hoa hồng thu được

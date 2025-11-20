@@ -25,10 +25,11 @@ public class ReconciliationResponse {
     private BigDecimal totalCommission;
     
     // Supplier earnings
+
     private BigDecimal totalSupplierEarnings;
     private BigDecimal totalPaidToSuppliers;
-    private BigDecimal pendingPayments;  // ONLY pending balance (chờ 7 ngày)
-    private BigDecimal totalSupplierBalance;  // Total balance = available + pending (tổng nợ NCC)
+    private BigDecimal pendingPayments;
+    private BigDecimal totalSupplierBalance;
     
     // Refunds
     private BigDecimal totalRefunded;
@@ -50,10 +51,11 @@ public class ReconciliationResponse {
         private String supplierId;
         private String supplierName;
         private String storeName;
-        private BigDecimal totalEarnings;
-        private BigDecimal commission;
-        private BigDecimal netEarnings;
-        private Integer orderCount;
-        private BigDecimal refunded;
+        // IMPORTANT: All values from WalletTransaction to match supplier's view
+        private BigDecimal totalEarnings;  // sum(ORDER_COMPLETED) = net after commission
+        private BigDecimal commission;  // sum(COMMISSION_FEE)
+        private BigDecimal netEarnings;  // totalEarnings - commission (for display)
+        private Integer orderCount;  // count(ORDER_COMPLETED)
+        private BigDecimal refunded;  // sum(ORDER_REFUND) = net refund
     }
 }
