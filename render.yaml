@@ -40,7 +40,7 @@ services:
       - key: PORT
         value: 3000
       - key: VITE_API_BASE_URL
-        value: https://graduationproject-81or.onrender.com/api
+        value: https://graduation-project-ftns.onrender.com
     buildFilter:
       paths:
         - website/fe_admin/**
@@ -57,7 +57,7 @@ services:
       - key: PORT
         value: 3000
       - key: VITE_API_BASE_URL
-        value: https://graduationproject-81or.onrender.com/api
+        value: https://graduation-project-ftns.onrender.com
       - key: VITE_GOONG_API_KEY
         value: PQrW93KH2byinPvRY3oWF4IhG7sY0oP5vSf4Ci0h
     buildFilter:
