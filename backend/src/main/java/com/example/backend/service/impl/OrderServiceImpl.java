@@ -883,7 +883,7 @@ public class OrderServiceImpl implements OrderService {
 
         // Calculate subtotal for refund
         BigDecimal subtotal = order.getOrderDetails().stream()
-                .map(od -> od.getAmount().multiply(BigDecimal.valueOf(od.getQuantity())))
+                .map(OrderDetail::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         // Deduct from supplier wallet (refund from pendingBalance since order not delivered yet)
@@ -945,7 +945,7 @@ public class OrderServiceImpl implements OrderService {
 
         // Calculate subtotal from order details (product revenue only)
         BigDecimal subtotal = order.getOrderDetails().stream()
-                .map(od -> od.getAmount().multiply(BigDecimal.valueOf(od.getQuantity())))
+                .map(OrderDetail::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         // Record supplier wallet pending balance (commission calculated on subtotal only)
@@ -973,7 +973,7 @@ public class OrderServiceImpl implements OrderService {
         String supplierId = order.getStore().getSupplier().getUserId();
         // Calculate subtotal for refund (commission was on subtotal, not totalAmount)
         BigDecimal subtotal = order.getOrderDetails().stream()
-                .map(od -> od.getAmount().multiply(BigDecimal.valueOf(od.getQuantity())))
+                .map(OrderDetail::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         boolean isPending = !order.isBalanceReleased();
 

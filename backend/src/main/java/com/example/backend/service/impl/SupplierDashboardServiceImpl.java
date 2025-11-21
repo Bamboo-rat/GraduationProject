@@ -281,8 +281,7 @@ public class SupplierDashboardServiceImpl implements SupplierDashboardService {
                         productId, productName, categoryName, imageUrl, 0L, BigDecimal.ZERO));
 
                 stats.totalSold += detail.getQuantity();
-                BigDecimal subtotal = detail.getAmount().multiply(BigDecimal.valueOf(detail.getQuantity()));
-                stats.totalRevenue = stats.totalRevenue.add(subtotal);
+                stats.totalRevenue = stats.totalRevenue.add(detail.getAmount());
 
                 productStatsMap.put(productId, stats);
             }
