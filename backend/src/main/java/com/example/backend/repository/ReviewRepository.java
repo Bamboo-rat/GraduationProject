@@ -71,7 +71,7 @@ public interface ReviewRepository extends JpaRepository<Review, String> {
     /**
      * Find all reviews for all stores of a supplier
      */
-    @Query("SELECT r FROM Review r WHERE r.store.supplier.supplierId = :supplierId " +
+    @Query("SELECT r FROM Review r WHERE r.store.supplier.userId = :supplierId " +
            "AND r.markedAsSpam = false " +
            "ORDER BY r.createdAt DESC")
     Page<Review> findBySupplierIdAndMarkedAsSpamFalseOrderByCreatedAtDesc(@Param("supplierId") String supplierId, Pageable pageable);
