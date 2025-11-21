@@ -75,23 +75,25 @@ export default function WasteReportNew() {
     );
   }
 
-  // Use backend-calculated values following SaveFood business model
-  const totalListed = summary?.totalListed || summary?.totalStockQuantity || 0;
-  const totalSold = summary?.totalSold || summary?.soldQuantity || 0;
-  const totalExpired = summary?.expiredQuantity || 0;
-  const totalRemaining = summary?.unsoldQuantity || (totalListed - totalSold - totalExpired);
 
-  // Use backend-calculated metrics directly (no need to recalculate)
-  const sellThroughRate = summary?.sellThroughRate || 0;
-  const expiryRate = summary?.expiryRate || 0;
-  const remainingRate = summary?.remainingRate || 0;
-  const wasteRate = summary?.wasteRate || 0;
-  const wasteIndex = summary?.overallWasteIndex || 0;
+  const totalListed = summary?.totalStockQuantity || 0; // Tổng tồn kho ban đầu
+  const totalSold = summary?.soldQuantity || 0; // Từ đơn hàng DELIVERED
+  const totalExpired = summary?.expiredQuantity || 0; // Sản phẩm hết hạn
+  const totalRemaining = summary?.unsoldQuantity || 0; // Sản phẩm ACTIVE
 
-  const platformAvgWasteRate = wasteIndex;
+  // Calculate rates
+  const sellThroughRate = totalListed > 0 ? (totalSold / totalListed) * 100 : 0;
+  const expiryRate = totalListed > 0 ? (totalExpired / totalListed) * 100 : 0;
+  const remainingRate = totalListed > 0 ? (totalRemaining / totalListed) * 100 : 0;
+
+  const platformAvgWasteRate = expiryRate;
 
   const topWasteStores = supplierData
-    .sort((a, b) => (b.wasteIndex || b.wasteRate) - (a.wasteIndex || a.wasteRate))
+    .map(s => ({
+      ...s,
+      calculatedExpiryRate: s.totalStockQuantity > 0 ? ((s.expiredQuantity || 0) / s.totalStockQuantity) * 100 : 0
+    }))
+    .sort((a, b) => b.calculatedExpiryRate - a.calculatedExpiryRate)
     .slice(0, 5);
 
   return (
@@ -100,7 +102,7 @@ export default function WasteReportNew() {
         {/* Header */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Báo Cáo Lãng Phí</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Báo cáo lãng phí</h1>
             <p className="text-gray-600">Theo dõi hiệu quả bán hàng và giảm thiểu lãng phí</p>
           </div>
           <div className="flex items-center gap-3">
@@ -178,19 +180,6 @@ export default function WasteReportNew() {
               </div>
             </div>
           </div>
-
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <div className="flex items-center gap-4">
-              <div className="bg-orange-50 p-3 rounded-lg">
-                <Percent className="w-6 h-6 text-orange-600" />
-              </div>
-              <div>
-                <h3 className="text-2xl font-bold text-orange-600">{wasteIndex.toFixed(1)}%</h3>
-                <p className="text-sm text-gray-600">Waste Index</p>
-                <p className="text-xs text-gray-500 mt-1">70% hết hạn + 30% tồn</p>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Formula Explanation */}
@@ -200,27 +189,25 @@ export default function WasteReportNew() {
               <Percent className="w-6 h-6 text-blue-700" />
             </div>
             <div className="flex-1">
-              <h3 className="text-lg font-bold text-gray-900 mb-3">Mô hình nghiệp vụ SaveFood</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <h3 className="font-bold text-gray-900 mb-3">Định nghĩa chỉ số</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                 <div className="bg-white/60 rounded-lg p-3">
                   <p className="font-semibold text-gray-800 mb-1">Sell-Through Rate</p>
-                  <p className="text-gray-600 font-mono">= Đã bán / Tổng niêm yết</p>
+                  <p className="text-gray-600">Đã bán / Tổng tồn kho ban đầu</p>
                   <p className="text-green-600 font-bold mt-1">{sellThroughRate.toFixed(2)}%</p>
+                  <p className="text-xs text-gray-500 mt-1">Từ đơn hàng DELIVERED</p>
                 </div>
                 <div className="bg-white/60 rounded-lg p-3">
                   <p className="font-semibold text-gray-800 mb-1">Expiry Rate (Waste)</p>
-                  <p className="text-gray-600 font-mono">= Hết hạn / Tổng niêm yết</p>
+                  <p className="text-gray-600">Hết hạn / Tổng tồn kho ban đầu</p>
                   <p className="text-red-600 font-bold mt-1">{expiryRate.toFixed(2)}%</p>
+                  <p className="text-xs text-gray-500 mt-1">Sản phẩm EXPIRED</p>
                 </div>
                 <div className="bg-white/60 rounded-lg p-3">
                   <p className="font-semibold text-gray-800 mb-1">Remaining Rate</p>
-                  <p className="text-gray-600 font-mono">= Tồn kho / Tổng niêm yết</p>
+                  <p className="text-gray-600">Tồn kho / Tổng tồn kho ban đầu</p>
                   <p className="text-amber-600 font-bold mt-1">{remainingRate.toFixed(2)}%</p>
-                </div>
-                <div className="bg-white/60 rounded-lg p-3">
-                  <p className="font-semibold text-gray-800 mb-1">Waste Index</p>
-                  <p className="text-gray-600 font-mono">= Expiry × 0.7 + Remaining × 0.3</p>
-                  <p className="text-orange-600 font-bold mt-1">{wasteIndex.toFixed(2)}%</p>
+                  <p className="text-xs text-gray-500 mt-1">Sản phẩm ACTIVE</p>
                 </div>
               </div>
             </div>
@@ -254,11 +241,13 @@ export default function WasteReportNew() {
           </h2>
           <div className="space-y-4">
             {topWasteStores.map((store, index) => {
-              // Tính toán các chỉ số theo mô hình SaveFood
-              const storeWasteIndex = store.wasteIndex || store.wasteRate || 0;
-              const storeSellThrough = store.totalStockQuantity > 0 
-                ? (store.soldQuantity / store.totalStockQuantity) * 100 
-                : 0;
+              // Tính toán các chỉ số
+              const listed = store.totalStockQuantity;
+              const sold = store.soldQuantity;
+              const expired = store.expiredQuantity || 0;
+              
+              const storeSellThrough = listed > 0 ? (sold / listed) * 100 : 0;
+              const storeExpiryRate = listed > 0 ? (expired / listed) * 100 : 0;
               
               return (
                 <div 
@@ -301,12 +290,12 @@ export default function WasteReportNew() {
                       <p className="font-semibold text-red-600">{(store.expiredQuantity || 0).toLocaleString()}</p>
                     </div>
                     <div className="text-right min-w-[120px]">
-                      <p className="text-xs text-gray-500 mb-1">Waste Index</p>
-                      <p className="text-lg font-bold text-amber-600">{storeWasteIndex.toFixed(1)}%</p>
+                      <p className="text-xs text-gray-500 mb-1">Expiry Rate</p>
+                      <p className="text-lg font-bold text-red-600">{storeExpiryRate.toFixed(1)}%</p>
                       <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
                         <div 
-                          className="bg-amber-500 h-1.5 rounded-full transition-all"
-                          style={{ width: `${Math.min(storeWasteIndex, 100)}%` }}
+                          className="bg-red-500 h-1.5 rounded-full transition-all"
+                          style={{ width: `${Math.min(storeExpiryRate, 100)}%` }}
                         />
                       </div>
                     </div>
@@ -330,11 +319,11 @@ export default function WasteReportNew() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cửa hàng</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Niêm yết</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Tồn kho ban đầu</th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Đã bán</th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Hết hạn</th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Sell-Through</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Waste Index</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Expiry Rate</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -342,11 +331,10 @@ export default function WasteReportNew() {
                   const listed = store.totalStockQuantity;
                   const sold = store.soldQuantity;
                   const expired = store.expiredQuantity || 0;
-                  const remaining = store.unsoldQuantity || (listed - sold - expired);
 
-                  // Use backend-calculated metrics directly
-                  const sellThrough = store.sellThroughRate || 0;
-                  const wasteIndex = store.wasteIndex || 0;
+                  // Calculate rates
+                  const sellThrough = listed > 0 ? (sold / listed) * 100 : 0;
+                  const expiryRate = listed > 0 ? (expired / listed) * 100 : 0;
 
                   return (
                     <tr key={store.supplierId} className="hover:bg-gray-50 transition-colors">
@@ -398,20 +386,20 @@ export default function WasteReportNew() {
                       <td className="px-6 py-4">
                         <div className="flex flex-col items-center gap-1">
                           <span className={`text-sm font-semibold ${
-                            wasteIndex >= 30 ? 'text-red-600' : 
-                            wasteIndex >= 15 ? 'text-amber-600' : 
+                            expiryRate >= 30 ? 'text-red-600' : 
+                            expiryRate >= 15 ? 'text-amber-600' : 
                             'text-green-600'
                           }`}>
-                            {wasteIndex.toFixed(1)}%
+                            {expiryRate.toFixed(1)}%
                           </span>
                           <div className="w-20 bg-gray-200 rounded-full h-1.5">
                             <div 
                               className={`h-1.5 rounded-full transition-all ${
-                                wasteIndex >= 30 ? 'bg-red-500' : 
-                                wasteIndex >= 15 ? 'bg-amber-500' : 
+                                expiryRate >= 30 ? 'bg-red-500' : 
+                                expiryRate >= 15 ? 'bg-amber-500' : 
                                 'bg-green-500'
                               }`}
-                              style={{ width: `${Math.min(wasteIndex, 100)}%` }}
+                              style={{ width: `${Math.min(expiryRate, 100)}%` }}
                             />
                           </div>
                         </div>

@@ -621,48 +621,48 @@ public class ReportServiceImpl implements ReportService {
         LocalDate nearExpiryDate = LocalDate.now().plusDays(7);
 
         Object[] data = storeProductRepository.findWasteSummary(nearExpiryDate);
-        if (data == null || data.length < 10) {
+        if (data == null || data.length < 11) {
             data = defaultWasteSummary();
         }
 
+        // Parse new data structure
         Long totalProducts = toLong(data[0]);
         Long activeProducts = toLong(data[1]);
         Long soldOutProducts = toLong(data[2]);
         Long expiredProducts = toLong(data[3]);
         Long nearExpiryProducts = toLong(data[4]);
-        Long currentStock = toLong(data[5]);      // Số còn lại hiện tại
-        Long expiredQuantity = toLong(data[6]);   // Số đã hết hạn
-        BigDecimal totalStockValue = toBigDecimal(data[7]);
-        BigDecimal unsoldValue = toBigDecimal(data[8]);
-        BigDecimal wasteValue = toBigDecimal(data[9]);
+        Long totalInitialStock = toLong(data[5]);   // Tổng tồn kho ban đầu
+        Long remainingStock = toLong(data[6]);       // Số lượng tồn kho ACTIVE + INACTIVE
+        Long expiredStock = toLong(data[7]);         // Số lượng hết hạn EXPIRED
+        BigDecimal totalStockValue = toBigDecimal(data[8]);
+        BigDecimal unsoldValue = toBigDecimal(data[9]);
+        BigDecimal wasteValue = toBigDecimal(data[10]);
 
-        LocalDateTime salesWindowStart = LocalDateTime.now().minusDays(90);
+        // Get sold quantity from DELIVERED orders (all time or recent period)
+        LocalDateTime salesWindowStart = LocalDateTime.now().minusDays(365); // Last year
         LocalDateTime salesWindowEnd = LocalDateTime.now();
+        Long soldQuantity = orderDetailRepository.sumSoldQuantityInPeriod(salesWindowStart, salesWindowEnd);
         
-        Long recentSold = orderDetailRepository.sumSoldQuantityInPeriod(salesWindowStart, salesWindowEnd);
+        // New logic based on requirements:
+        // totalStockQuantity = tổng initialStock
+        // soldQuantity = from DELIVERED orders
+        // expiredQuantity = stock của sản phẩm EXPIRED
+        // unsoldQuantity = stock của sản phẩm ACTIVE + INACTIVE
         
-        // totalListed = số đã bán (90 ngày) + số còn lại + số hết hạn
-        Long totalListed = recentSold + currentStock + expiredQuantity;
-        // totalUnsold = số còn lại + số hết hạn (chưa bán được)
-        Long totalUnsold = currentStock + expiredQuantity;
-        
-        // Legacy fields for backward compatibility
-        Long totalStock = totalListed;
-        Long soldQuantity = recentSold;
-        Long unsoldQuantity = totalUnsold;
-        BigDecimal soldValue = BigDecimal.ZERO;
+        Long totalStock = totalInitialStock;
+        Long unsoldQuantity = remainingStock;  // ACTIVE + INACTIVE
+        Long expiredQuantity = expiredStock;
 
-        // Calculate rates based on 90-day sales window using SaveFood business model
-        Double sellThroughRate = totalListed > 0 ? (recentSold.doubleValue() / totalListed) * 100 : 0.0;
-        Double expiryRate = totalListed > 0 ? (expiredQuantity.doubleValue() / totalListed) * 100 : 0.0;
-        Double remainingRate = totalListed > 0 ? (currentStock.doubleValue() / totalListed) * 100 : 0.0;
+        // Calculate rates based on initial stock
+        Double sellThroughRate = totalStock > 0 ? (soldQuantity.doubleValue() / totalStock) * 100 : 0.0;
+        Double expiryRate = totalStock > 0 ? (expiredQuantity.doubleValue() / totalStock) * 100 : 0.0;
+        Double remainingRate = totalStock > 0 ? (unsoldQuantity.doubleValue() / totalStock) * 100 : 0.0;
 
-        // In SaveFood model: waste = expired (true waste), remaining is unsold but can still be sold
+        // Waste rate = expiry rate (true waste)
         Double wasteRate = expiryRate;
 
-        // Waste index (0-100, lower is better) = expiryRate × 0.7 + remainingRate × 0.3
-        // This gives more weight to actual expired items (70%) and less to remaining stock (30%)
-        Double overallWasteIndex = (expiryRate * 0.7) + (remainingRate * 0.3);
+        // No more waste index calculation
+        Double overallWasteIndex = expiryRate;
 
         // Get top waste contributors
         List<Object[]> categoryWaste = storeProductRepository.findWasteByCategory(nearExpiryDate);
@@ -678,16 +678,14 @@ public class ReportServiceImpl implements ReportService {
         BigDecimal topCategoryWasteValue = categoryWaste.isEmpty() ? BigDecimal.ZERO : toBigDecimal(categoryWaste.get(0)[11]);
 
         String topWasteSupplier = supplierWaste.isEmpty() ? "N/A" : (String) supplierWaste.get(0)[1];
-        BigDecimal topSupplierWasteValue = supplierWaste.isEmpty() ? BigDecimal.ZERO : toBigDecimal(supplierWaste.get(0)[12]);
+        BigDecimal topSupplierWasteValue = supplierWaste.isEmpty() ? BigDecimal.ZERO : toBigDecimal(supplierWaste.get(0)[14]);
 
         return WasteSummaryResponse.builder()
-                .startDate(salesWindowStart)  // Reflect actual analysis period
+                .startDate(salesWindowStart)
                 .endDate(salesWindowEnd)
-                // NEW METRICS (based on 90-day sales velocity)
-                .totalListed(totalListed)
-                .totalSold(recentSold)  // Use recent sales, not all-time sales
-                .totalUnsold(totalUnsold)
-                // Legacy metrics
+                .totalListed(totalStock)
+                .totalSold(soldQuantity)
+                .totalUnsold(unsoldQuantity + expiredQuantity)
                 .totalProducts(totalProducts)
                 .activeProducts(activeProducts)
                 .soldOutProducts(soldOutProducts)
@@ -695,10 +693,10 @@ public class ReportServiceImpl implements ReportService {
                 .nearExpiryProducts(nearExpiryProducts)
                 .totalStockQuantity(totalStock)
                 .soldQuantity(soldQuantity)
-                .unsoldQuantity(unsoldQuantity)
-                .expiredQuantity(expiredQuantity)
+                .unsoldQuantity(unsoldQuantity)  // ACTIVE + INACTIVE stock
+                .expiredQuantity(expiredQuantity) // EXPIRED stock
                 .totalStockValue(totalStockValue)
-                .soldValue(soldValue)
+                .soldValue(BigDecimal.ZERO)
                 .unsoldValue(unsoldValue)
                 .wasteValue(wasteValue)
                 .potentialRevenueLoss(unsoldValue.add(wasteValue))
@@ -707,8 +705,8 @@ public class ReportServiceImpl implements ReportService {
                 .expiryRate(expiryRate)
                 .remainingRate(remainingRate)
                 .overallWasteIndex(overallWasteIndex)
-                .wasteRateChange(0.0) // Would need historical comparison
-                .wasteRateTrend(overallWasteIndex < 30 ? "IMPROVING" : overallWasteIndex < 50 ? "STABLE" : "WORSENING")
+                .wasteRateChange(0.0)
+                .wasteRateTrend(expiryRate < 15 ? "IMPROVING" : expiryRate < 30 ? "STABLE" : "WORSENING")
                 .topWasteCategoryName(topWasteCategory)
                 .topWasteCategoryValue(topCategoryWasteValue)
                 .topWasteSupplierName(topWasteSupplier)
@@ -866,51 +864,57 @@ public class ReportServiceImpl implements ReportService {
     ) {
         log.info("Generating waste by supplier report - StartDate: {}, EndDate: {}", startDate, endDate);
 
-        // Use consistent 90-day sales window for waste analysis
-        LocalDateTime salesWindowStart = LocalDateTime.now().minusDays(90);
+        // Use all-time sales for new logic
+        LocalDateTime salesWindowStart = LocalDateTime.of(2020, 1, 1, 0, 0);
         LocalDateTime salesWindowEnd = LocalDateTime.now();
 
         List<Object[]> results = storeProductRepository.findWasteBySupplier();
 
         return results.stream().map(row -> {
             String supplierId = (String) row[0];
-            Long currentStock = toLong(row[10]);
-            Long expiredQuantity = toLong(row[13]);
+            
+            // New data structure:
+            // Index: 9: totalInitialStock, 10: remainingStock (ACTIVE+INACTIVE), 11: allStock, 12: expiredStock
+            Long totalInitialStock = toLong(row[9]);
+            Long remainingStock = toLong(row[10]);  // ACTIVE + INACTIVE
+            Long allStock = toLong(row[11]);
+            Long expiredStock = toLong(row[12]);
 
-            // CRITICAL FIX: Use 90-day sales window (consistent with platform-wide waste summary)
-            // Previous bug: Used all-time sales causing wasteRate discrepancy between summary and by-supplier views
-            Long recentSold = orderDetailRepository.sumSoldQuantityBySupplierInPeriod(
+            // Get sold quantity from DELIVERED orders
+            Long soldQuantity = orderDetailRepository.sumSoldQuantityBySupplierInPeriod(
                 supplierId, 
                 salesWindowStart, 
                 salesWindowEnd
             );
             
-            // totalListed = recent sales (90d) + currentStock + expired
-            // This represents inventory velocity based on recent market demand
-            Long totalListed = recentSold + currentStock + expiredQuantity;
-            Long totalUnsold = currentStock + expiredQuantity;
+            // New logic:
+            // totalStockQuantity = totalInitialStock (tổng tồn kho ban đầu)
+            // soldQuantity = from DELIVERED orders
+            // expiredQuantity = stock của sản phẩm EXPIRED
+            // unsoldQuantity = stock của sản phẩm ACTIVE + INACTIVE
+            
+            Long totalStock = totalInitialStock;
+            Long expiredQuantity = expiredStock;
+            Long unsoldQuantity = remainingStock;  // ACTIVE + INACTIVE
 
-            // Calculate rates using SaveFood business model
-            Double sellThroughRate = totalListed > 0 ? (recentSold.doubleValue() / totalListed) * 100 : 0.0;
-            Double expiryRate = totalListed > 0 ? (expiredQuantity.doubleValue() / totalListed) * 100 : 0.0;
-            Double remainingRate = totalListed > 0 ? (currentStock.doubleValue() / totalListed) * 100 : 0.0;
+            // Calculate rates based on initial stock
+            Double sellThroughRate = totalStock > 0 ? (soldQuantity.doubleValue() / totalStock) * 100 : 0.0;
+            Double expiryRate = totalStock > 0 ? (expiredQuantity.doubleValue() / totalStock) * 100 : 0.0;
+            Double remainingRate = totalStock > 0 ? (unsoldQuantity.doubleValue() / totalStock) * 100 : 0.0;
 
-            // In SaveFood model: waste = expired (true waste)
+            // Waste rate = expiry rate
             Double wasteRate = expiryRate;
 
-            // Waste index = expiryRate × 0.7 + remainingRate × 0.3
-            Double wasteIndex = (expiryRate * 0.7) + (remainingRate * 0.3);
+            // No more waste index - use expiry rate for sorting
+            Double wasteIndex = expiryRate;
 
             String rating = sellThroughRate >= 80 ? "EXCELLENT"
                     : sellThroughRate >= 60 ? "GOOD"
                     : sellThroughRate >= 40 ? "FAIR" : "POOR";
 
-            // Calculate financial metrics using real prices
-            BigDecimal totalStockValue = row.length > 14 ? toBigDecimal(row[14]) : BigDecimal.ZERO;
-            BigDecimal wasteValue = totalListed > 0 && totalUnsold > 0
-                    ? totalStockValue.multiply(BigDecimal.valueOf(totalUnsold))
-                            .divide(BigDecimal.valueOf(totalListed), 2, java.math.RoundingMode.HALF_UP)
-                    : BigDecimal.ZERO;
+            // Calculate financial metrics
+            BigDecimal totalStockValue = row.length > 13 ? toBigDecimal(row[13]) : BigDecimal.ZERO;
+            BigDecimal wasteValue = row.length > 14 ? toBigDecimal(row[14]) : BigDecimal.ZERO;
 
             return WasteBySupplierResponse.builder()
                     .supplierId((String) row[0])
@@ -922,10 +926,10 @@ public class ReportServiceImpl implements ReportService {
                     .expiredProducts(toLong(row[6]))
                     .totalStores(toLong(row[7]))
                     .activeStores(toLong(row[8]))
-                    .totalStockQuantity(totalListed)
-                    .soldQuantity(recentSold)  // Use 90-day sales, not all-time
-                    .unsoldQuantity(totalUnsold)
-                    .expiredQuantity(expiredQuantity)
+                    .totalStockQuantity(totalStock)
+                    .soldQuantity(soldQuantity)
+                    .unsoldQuantity(unsoldQuantity)  // ACTIVE + INACTIVE stock
+                    .expiredQuantity(expiredQuantity) // EXPIRED stock
                     .totalRevenue(BigDecimal.ZERO)
                     .potentialRevenueLoss(wasteValue)
                     .wasteValue(wasteValue)
@@ -933,7 +937,7 @@ public class ReportServiceImpl implements ReportService {
                     .wasteRate(wasteRate)
                     .expiryRate(expiryRate)
                     .remainingRate(remainingRate)
-                    .wasteIndex(wasteIndex)
+                    .wasteIndex(wasteIndex)  // Now equals expiryRate
                     .performanceRating(rating)
                     .build();
         }).collect(Collectors.toList());
@@ -1058,16 +1062,15 @@ public class ReportServiceImpl implements ReportService {
                 0L, // soldOutProducts
                 0L, // expiredProducts
                 0L, // nearExpiryProducts
-                0L, // totalStock
-                0L, // soldQuantity
-                0L, // unsoldQuantity
-                0L, // expiredQuantity
+                0L, // totalInitialStock
+                0L, // remainingStock (ACTIVE + INACTIVE)
+                0L, // expiredStock
                 BigDecimal.ZERO, // totalStockValue
-                BigDecimal.ZERO, // soldValue
                 BigDecimal.ZERO, // unsoldValue
                 BigDecimal.ZERO // wasteValue
         };
     }
+    
 
     private BigDecimal toBigDecimal(Object value) {
         if (value == null) return BigDecimal.ZERO;

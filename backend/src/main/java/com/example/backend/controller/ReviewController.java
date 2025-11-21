@@ -8,6 +8,8 @@ import com.example.backend.dto.response.ReviewResponse;
 import com.example.backend.entity.enums.StorageBucket;
 import com.example.backend.service.FileStorageService;
 import com.example.backend.service.ReviewService;
+import com.example.backend.utils.JwtUtils;
+import org.springframework.security.oauth2.jwt.Jwt;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -203,7 +205,8 @@ public class ReviewController {
             @Parameter(description = "Page number (0-indexed)") @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Page size") @RequestParam(defaultValue = "10") int size
     ) {
-        String supplierId = authentication.getName();
+        Jwt jwt = (Jwt) authentication.getPrincipal();
+        String supplierId = JwtUtils.extractKeycloakId(jwt);
         log.info("Getting all reviews for supplier: supplierId={}, page={}, size={}", supplierId, page, size);
         
         Page<ReviewResponse> reviews = reviewService.getSupplierReviews(supplierId, page, size);

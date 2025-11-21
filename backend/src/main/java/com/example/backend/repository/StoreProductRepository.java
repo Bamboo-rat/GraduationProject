@@ -253,7 +253,12 @@ public interface StoreProductRepository extends JpaRepository<StoreProduct, Stri
     List<Object[]> findWasteByCategory(@Param("nearExpiryDate") LocalDate nearExpiryDate);
 
     /**
-     * Find waste metrics by supplier (JPQL-safe version)
+     * Find waste metrics by supplier 
+     * Index: 0: supplierId, 1: businessName, 2: avatarUrl
+     * Index: 3: totalProducts, 4: activeProducts, 5: unsoldProducts, 6: expiredProducts
+     * Index: 7: totalStores, 8: activeStores
+     * Index: 9: totalInitialStock, 10: remainingStock (ACTIVE+INACTIVE), 11: allStock, 12: expiredStock
+     * Index: 13: totalStockValue, 14: wasteValue
      */
     @Query("""
                 SELECT
@@ -263,44 +268,45 @@ public interface StoreProductRepository extends JpaRepository<StoreProduct, Stri
                     COUNT(DISTINCT p.productId),
                     SUM(CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.ACTIVE THEN 1 ELSE 0 END),
                     SUM(CASE WHEN sp.stockQuantity > 0 THEN 1 ELSE 0 END),
-                    SUM(CASE WHEN v.expiryDate IS NOT NULL AND v.expiryDate < CURRENT_DATE THEN 1 ELSE 0 END),
+                    SUM(CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.EXPIRED THEN 1 ELSE 0 END),
                     COUNT(DISTINCT s.storeId),
                     SUM(CASE WHEN s.status = com.example.backend.entity.enums.StoreStatus.ACTIVE THEN 1 ELSE 0 END),
-                    0L,
+                    COALESCE(SUM(sp.initialStock), 0),
+                    COALESCE(SUM(CASE WHEN p.status IN (com.example.backend.entity.enums.ProductStatus.ACTIVE, com.example.backend.entity.enums.ProductStatus.INACTIVE) THEN sp.stockQuantity ELSE 0 END), 0),
                     COALESCE(SUM(sp.stockQuantity), 0),
-                    0L,
-                    COALESCE(SUM(sp.stockQuantity), 0),
-                    COALESCE(SUM(CASE WHEN v.expiryDate IS NOT NULL AND v.expiryDate < CURRENT_DATE THEN sp.stockQuantity ELSE 0 END), 0),
-                    COALESCE(SUM(sp.stockQuantity * COALESCE(v.originalPrice, 0)), 0)
+                    COALESCE(SUM(CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.EXPIRED THEN sp.stockQuantity ELSE 0 END), 0),
+                    COALESCE(SUM(sp.initialStock * COALESCE(v.originalPrice, 0)), 0),
+                    COALESCE(SUM(CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.EXPIRED THEN sp.stockQuantity * COALESCE(v.originalPrice, 0) ELSE 0 END), 0)
                 FROM StoreProduct sp
                 JOIN sp.variant v
                 JOIN v.product p
                 JOIN sp.store s
                 JOIN s.supplier sup
                 GROUP BY sup.userId, sup.businessName, sup.avatarUrl
-                ORDER BY COALESCE(SUM(sp.stockQuantity), 0) DESC
+                ORDER BY COALESCE(SUM(CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.EXPIRED THEN sp.stockQuantity ELSE 0 END), 0) DESC
             """)
     List<Object[]> findWasteBySupplier();
 
     /**
-     * Find global waste summary metrics - SIMPLIFIED (no initialStock needed)
-     * totalListed and totalSold will be calculated from order data in service
+     * Find global waste summary metrics
      * Index 0: totalProducts, 1: activeProducts, 2: soldOutProducts, 3: expiredProducts
-     * Index 4: nearExpiryProducts, 5: currentStock, 6: expiredQuantity
-     * Index 7: totalStockValue, 8: unsoldValue, 9: wasteValue
+     * Index 4: nearExpiryProducts, 5: totalInitialStock (tổng tồn kho ban đầu)
+     * Index 6: remainingStock (ACTIVE + INACTIVE), 7: expiredStock (EXPIRED)
+     * Index 8: totalStockValue, 9: unsoldValue, 10: wasteValue
      */
     @Query("""
                 SELECT
                     COUNT(DISTINCT p.productId),
                     SUM(CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.ACTIVE THEN 1 ELSE 0 END),
                     SUM(CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.SOLD_OUT THEN 1 ELSE 0 END),
-                    SUM(CASE WHEN v.expiryDate IS NOT NULL AND v.expiryDate < CURRENT_DATE THEN 1 ELSE 0 END),
+                    SUM(CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.EXPIRED THEN 1 ELSE 0 END),
                     SUM(CASE WHEN v.expiryDate IS NOT NULL AND v.expiryDate BETWEEN CURRENT_DATE AND :nearExpiryDate THEN 1 ELSE 0 END),
-                    COALESCE(SUM(sp.stockQuantity), 0),
-                    COALESCE(SUM(CASE WHEN v.expiryDate IS NOT NULL AND v.expiryDate < CURRENT_DATE THEN sp.stockQuantity ELSE 0 END), 0),
+                    COALESCE(SUM(sp.initialStock), 0),
+                    COALESCE(SUM(CASE WHEN p.status IN (com.example.backend.entity.enums.ProductStatus.ACTIVE, com.example.backend.entity.enums.ProductStatus.INACTIVE) THEN sp.stockQuantity ELSE 0 END), 0),
+                    COALESCE(SUM(CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.EXPIRED THEN sp.stockQuantity ELSE 0 END), 0),
+                    COALESCE(SUM(sp.initialStock * COALESCE(v.originalPrice, 0)), 0),
                     COALESCE(SUM(sp.stockQuantity * COALESCE(v.originalPrice, 0)), 0),
-                    COALESCE(SUM(sp.stockQuantity * COALESCE(v.originalPrice, 0)), 0),
-                    COALESCE(SUM(CASE WHEN v.expiryDate IS NOT NULL AND v.expiryDate < CURRENT_DATE THEN sp.stockQuantity * COALESCE(v.originalPrice, 0) ELSE 0 END), 0)
+                    COALESCE(SUM(CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.EXPIRED THEN sp.stockQuantity * COALESCE(v.originalPrice, 0) ELSE 0 END), 0)
                 FROM StoreProduct sp
                 JOIN sp.variant v
                 JOIN v.product p
