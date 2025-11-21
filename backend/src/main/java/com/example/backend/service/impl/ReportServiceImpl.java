@@ -641,12 +641,29 @@ public class ReportServiceImpl implements ReportService {
         Long soldOutProducts = toLong(data[2]);
         Long expiredProducts = toLong(data[3]);
         Long nearExpiryProducts = toLong(data[4]);
-        Long remainingStock = toLong(data[5]);       // ACTIVE + INACTIVE stock
-        Long expiredStock = toLong(data[6]);         // EXPIRED stock
-        Long currentStock = remainingStock + expiredStock; // Tồn kho hiện tại
-        BigDecimal totalStockValue = toBigDecimal(data[7]);
-        BigDecimal unsoldValue = toBigDecimal(data[8]);
-        BigDecimal wasteValue = toBigDecimal(data[9]);
+        // Aggregate quantity & value metrics from the per-supplier breakdown
+        List<Object[]> supplierWaste = storeProductRepository.findWasteBySupplier();
+        if (supplierWaste == null) {
+            supplierWaste = Collections.emptyList();
+        }
+
+        Long remainingStock = supplierWaste.stream()
+                .map(row -> toLong(row[9]))
+                .reduce(0L, Long::sum);       // ACTIVE + INACTIVE stock
+        Long currentStock = supplierWaste.stream()
+                .map(row -> toLong(row[10]))
+                .reduce(0L, Long::sum);       // Tổng tồn kho hiện tại (mọi trạng thái)
+        Long expiredStock = supplierWaste.stream()
+                .map(row -> toLong(row[11]))
+                .reduce(0L, Long::sum);       // EXPIRED stock
+
+        BigDecimal totalStockValue = supplierWaste.stream()
+                .map(row -> row.length > 12 ? toBigDecimal(row[12]) : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal wasteValue = supplierWaste.stream()
+                .map(row -> row.length > 13 ? toBigDecimal(row[13]) : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal unsoldValue = totalStockValue.subtract(wasteValue);
 
         // Get sold quantity from DELIVERED orders
         Long soldQuantity = orderDetailRepository.sumSoldQuantityInPeriod(effectiveStart, effectiveEnd);
@@ -676,10 +693,6 @@ public class ReportServiceImpl implements ReportService {
         if (categoryWaste == null) {
             categoryWaste = Collections.emptyList();
         }
-        List<Object[]> supplierWaste = storeProductRepository.findWasteBySupplier();
-        if (supplierWaste == null) {
-            supplierWaste = Collections.emptyList();
-        }
 
         String topWasteCategory = categoryWaste.isEmpty() ? "N/A" : (String) categoryWaste.get(0)[1];
         BigDecimal topCategoryWasteValue = categoryWaste.isEmpty() ? BigDecimal.ZERO : toBigDecimal(categoryWaste.get(0)[11]);
@@ -688,11 +701,11 @@ public class ReportServiceImpl implements ReportService {
         BigDecimal topSupplierWasteValue = supplierWaste.isEmpty() ? BigDecimal.ZERO : toBigDecimal(supplierWaste.get(0)[13]);
 
         return WasteSummaryResponse.builder()
-            .startDate(effectiveStart)
-            .endDate(effectiveEnd)
-            .totalListed(totalInitialStock)
-            .totalSold(soldQuantity)
-            .totalUnsold(totalUnsold)
+                .startDate(effectiveStart)
+                .endDate(effectiveEnd)
+                .totalListed(totalInitialStock)
+                .totalSold(soldQuantity)
+                .totalUnsold(totalUnsold)
                 .totalProducts(totalProducts)
                 .activeProducts(activeProducts)
                 .soldOutProducts(soldOutProducts)
