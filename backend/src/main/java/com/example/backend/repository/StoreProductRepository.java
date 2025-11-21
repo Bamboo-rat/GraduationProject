@@ -266,24 +266,24 @@ public interface StoreProductRepository extends JpaRepository<StoreProduct, Stri
                     sup.businessName,
                     sup.avatarUrl,
                     COUNT(DISTINCT p.productId),
-                    SUM(CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.ACTIVE THEN 1 ELSE 0 END),
+                    SUM(CASE WHEN p.status = 'ACTIVE' THEN 1 ELSE 0 END),
                     SUM(CASE WHEN sp.stockQuantity > 0 THEN 1 ELSE 0 END),
-                    SUM(CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.EXPIRED THEN 1 ELSE 0 END),
+                    SUM(CASE WHEN p.status = 'EXPIRED' THEN 1 ELSE 0 END),
                     COUNT(DISTINCT s.storeId),
-                    SUM(CASE WHEN s.status = com.example.backend.entity.enums.StoreStatus.ACTIVE THEN 1 ELSE 0 END),
+                    SUM(CASE WHEN s.status = 'ACTIVE' THEN 1 ELSE 0 END),
                     COALESCE(SUM(sp.initialStock), 0),
-                    COALESCE(SUM(CASE WHEN (p.status = com.example.backend.entity.enums.ProductStatus.ACTIVE OR p.status = com.example.backend.entity.enums.ProductStatus.INACTIVE) THEN sp.stockQuantity ELSE 0 END), 0),
+                    COALESCE(SUM(CASE WHEN (p.status = 'ACTIVE' OR p.status = 'INACTIVE') THEN sp.stockQuantity ELSE 0 END), 0),
                     COALESCE(SUM(sp.stockQuantity), 0),
-                    COALESCE(SUM(CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.EXPIRED THEN sp.stockQuantity ELSE 0 END), 0),
+                    COALESCE(SUM(CASE WHEN p.status = 'EXPIRED' THEN sp.stockQuantity ELSE 0 END), 0),
                     COALESCE(SUM(sp.initialStock * COALESCE(v.originalPrice, 0)), 0),
-                    COALESCE(SUM(CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.EXPIRED THEN sp.stockQuantity * COALESCE(v.originalPrice, 0) ELSE 0 END), 0)
+                    COALESCE(SUM(CASE WHEN p.status = 'EXPIRED' THEN sp.stockQuantity * COALESCE(v.originalPrice, 0) ELSE 0 END), 0)
                 FROM StoreProduct sp
                 JOIN sp.variant v
                 JOIN v.product p
                 JOIN sp.store s
                 JOIN s.supplier sup
                 GROUP BY sup.userId, sup.businessName, sup.avatarUrl
-                ORDER BY COALESCE(SUM(CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.EXPIRED THEN sp.stockQuantity ELSE 0 END), 0) DESC
+                ORDER BY COALESCE(SUM(CASE WHEN p.status = 'EXPIRED' THEN sp.stockQuantity ELSE 0 END), 0) DESC
             """)
     List<Object[]> findWasteBySupplier();
 
@@ -297,16 +297,16 @@ public interface StoreProductRepository extends JpaRepository<StoreProduct, Stri
     @Query("""
                 SELECT
                     COUNT(DISTINCT p.productId),
-                    SUM(CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.ACTIVE THEN 1 ELSE 0 END),
-                    SUM(CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.SOLD_OUT THEN 1 ELSE 0 END),
-                    SUM(CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.EXPIRED THEN 1 ELSE 0 END),
+                    SUM(CASE WHEN p.status = 'ACTIVE' THEN 1 ELSE 0 END),
+                    SUM(CASE WHEN p.status = 'SOLD_OUT' THEN 1 ELSE 0 END),
+                    SUM(CASE WHEN p.status = 'EXPIRED' THEN 1 ELSE 0 END),
                     SUM(CASE WHEN v.expiryDate IS NOT NULL AND v.expiryDate BETWEEN CURRENT_DATE AND :nearExpiryDate THEN 1 ELSE 0 END),
                     COALESCE(SUM(sp.initialStock), 0),
-                    COALESCE(SUM(CASE WHEN (p.status = com.example.backend.entity.enums.ProductStatus.ACTIVE OR p.status = com.example.backend.entity.enums.ProductStatus.INACTIVE) THEN sp.stockQuantity ELSE 0 END), 0),
-                    COALESCE(SUM(CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.EXPIRED THEN sp.stockQuantity ELSE 0 END), 0),
+                    COALESCE(SUM(CASE WHEN (p.status = 'ACTIVE' OR p.status = 'INACTIVE') THEN sp.stockQuantity ELSE 0 END), 0),
+                    COALESCE(SUM(CASE WHEN p.status = 'EXPIRED' THEN sp.stockQuantity ELSE 0 END), 0),
                     COALESCE(SUM(sp.initialStock * COALESCE(v.originalPrice, 0)), 0),
                     COALESCE(SUM(sp.stockQuantity * COALESCE(v.originalPrice, 0)), 0),
-                    COALESCE(SUM(CASE WHEN p.status = com.example.backend.entity.enums.ProductStatus.EXPIRED THEN sp.stockQuantity * COALESCE(v.originalPrice, 0) ELSE 0 END), 0)
+                    COALESCE(SUM(CASE WHEN p.status = 'EXPIRED' THEN sp.stockQuantity * COALESCE(v.originalPrice, 0) ELSE 0 END), 0)
                 FROM StoreProduct sp
                 JOIN sp.variant v
                 JOIN v.product p
