@@ -1,5 +1,35 @@
 import axios from 'axios';
 
+const isBrowser = typeof window !== 'undefined';
+
+const safeStorage = {
+  get(key: string) {
+    if (!isBrowser) return null;
+    try {
+      return window.localStorage.getItem(key);
+    } catch (err) {
+      console.error('Storage get error:', err);
+      return null;
+    }
+  },
+  set(key: string, value: string) {
+    if (!isBrowser) return;
+    try {
+      window.localStorage.setItem(key, value);
+    } catch (err) {
+      console.error('Storage set error:', err);
+    }
+  },
+  remove(key: string) {
+    if (!isBrowser) return;
+    try {
+      window.localStorage.removeItem(key);
+    } catch (err) {
+      console.error('Storage remove error:', err);
+    }
+  }
+};
+
 // Create axios instance with default config
 const axiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api',
@@ -29,7 +59,7 @@ axiosInstance.interceptors.request.use(
     );
     
     if (!isPublicEndpoint) {
-      const token = localStorage.getItem('access_token');
+      const token = safeStorage.get('access_token');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -90,14 +120,14 @@ axiosInstance.interceptors.response.use(
         originalRequest._retry = true;
         isRefreshing = true;
 
-        const refreshToken = localStorage.getItem('refresh_token');
+        const refreshToken = safeStorage.get('refresh_token');
 
         if (!refreshToken) {
           // No refresh token, clear auth and reject
           console.error('No refresh token available');
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-          localStorage.removeItem('user_info');
+          safeStorage.remove('access_token');
+          safeStorage.remove('refresh_token');
+          safeStorage.remove('user_info');
           isRefreshing = false;
           processQueue(error, null);
           return Promise.reject(error);
@@ -116,8 +146,8 @@ axiosInstance.interceptors.response.use(
           const { accessToken, refreshToken: newRefreshToken } = response.data.data;
 
           // Update tokens in localStorage
-          localStorage.setItem('access_token', accessToken);
-          localStorage.setItem('refresh_token', newRefreshToken);
+          safeStorage.set('access_token', accessToken);
+          safeStorage.set('refresh_token', newRefreshToken);
 
           // Update the authorization header
           axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
@@ -133,9 +163,9 @@ axiosInstance.interceptors.response.use(
         } catch (refreshError) {
           // Refresh failed, clear auth
           console.error('Token refresh failed');
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-          localStorage.removeItem('user_info');
+          safeStorage.remove('access_token');
+          safeStorage.remove('refresh_token');
+          safeStorage.remove('user_info');
           processQueue(refreshError, null);
           isRefreshing = false;
           return Promise.reject(refreshError);
