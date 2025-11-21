@@ -81,8 +81,13 @@ public class SecurityConfig {
                         // Public customer-facing endpoints
                         .requestMatchers("/api/products/**", "/api/categories/**", "/api/stores/public", "/api/stores/top-stores", "/api/stores/*/products","/api/stores/nearby").permitAll()
 
-                        // Review endpoints (public read access)
-                        .requestMatchers("/api/reviews/**").permitAll()
+                        // Review endpoints - separate public and protected
+                        .requestMatchers("/api/reviews/supplier").hasRole("SUPPLIER")  // Supplier-specific endpoint
+                        .requestMatchers("/api/reviews/*/reply").hasRole("SUPPLIER")  // Reply endpoints
+                        .requestMatchers("/api/reviews/*/report").hasRole("SUPPLIER") // Report endpoints
+                        .requestMatchers("/api/reviews/my-reviews").hasRole("CUSTOMER") // Customer reviews
+                        .requestMatchers("/api/reviews/admin/**").hasAnyRole("SUPER_ADMIN", "MODERATOR", "STAFF") // Admin endpoints
+                        .requestMatchers("/api/reviews/**").permitAll() // Public read access
 
                         // Partner/Promotion endpoints (temporary permitAll for development)
                         .requestMatchers("/api/partners/**", "/api/promotions/**").permitAll()
