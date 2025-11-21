@@ -188,9 +188,12 @@ public class ReportController {
     @GetMapping("/waste/summary")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF')")
     @Operation(summary = "Get waste summary")
-    public ResponseEntity<ApiResponse<WasteSummaryResponse>> getWasteSummary() {
-        log.info("GET /api/reports/waste/summary");
-        WasteSummaryResponse response = reportService.getWasteSummary();
+    public ResponseEntity<ApiResponse<WasteSummaryResponse>> getWasteSummary(
+            @Parameter(description = "Start date (ISO format)") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @Parameter(description = "End date (ISO format)") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate
+    ) {
+        log.info("GET /api/reports/waste/summary - StartDate: {}, EndDate: {}", startDate, endDate);
+        WasteSummaryResponse response = reportService.getWasteSummary(startDate, endDate);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
@@ -236,9 +239,12 @@ public class ReportController {
     @GetMapping("/waste/export")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'MODERATOR', 'STAFF')")
     @Operation(summary = "Export waste report to CSV")
-    public ResponseEntity<byte[]> exportWasteReport() {
-        log.info("GET /api/reports/waste/export");
-        byte[] csvData = reportService.exportWasteReportToCsv();
+    public ResponseEntity<byte[]> exportWasteReport(
+            @Parameter(description = "Start date (ISO format)") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @Parameter(description = "End date (ISO format)") @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate
+    ) {
+        log.info("GET /api/reports/waste/export - StartDate: {}, EndDate: {}", startDate, endDate);
+        byte[] csvData = reportService.exportWasteReportToCsv(startDate, endDate);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.parseMediaType("text/csv; charset=UTF-8"));

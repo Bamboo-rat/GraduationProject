@@ -615,8 +615,18 @@ public class ReportServiceImpl implements ReportService {
     // ==================== WASTE REPORTS ====================
 
     @Override
-    public WasteSummaryResponse getWasteSummary() {
-        log.info("Generating waste summary");
+    public WasteSummaryResponse getWasteSummary(LocalDateTime startDate, LocalDateTime endDate) {
+        LocalDateTime defaultStart = LocalDateTime.of(2020, 1, 1, 0, 0);
+        LocalDateTime now = LocalDateTime.now();
+
+        LocalDateTime effectiveEnd = endDate != null ? endDate : now;
+        LocalDateTime effectiveStart = startDate != null ? startDate : defaultStart;
+
+        if (effectiveStart.isAfter(effectiveEnd)) {
+            throw new IllegalArgumentException("Start date must be before end date");
+        }
+
+        log.info("Generating waste summary - StartDate: {}, EndDate: {}", effectiveStart, effectiveEnd);
 
         LocalDate nearExpiryDate = LocalDate.now().plusDays(7);
 
@@ -639,14 +649,16 @@ public class ReportServiceImpl implements ReportService {
         BigDecimal wasteValue = toBigDecimal(data[9]);
 
         // Get sold quantity from DELIVERED orders
-        LocalDateTime salesWindowStart = LocalDateTime.of(2020, 1, 1, 0, 0);
-        LocalDateTime salesWindowEnd = LocalDateTime.now();
-        Long soldQuantity = orderDetailRepository.sumSoldQuantityInPeriod(salesWindowStart, salesWindowEnd);
+        Long soldQuantity = orderDetailRepository.sumSoldQuantityInPeriod(effectiveStart, effectiveEnd);
+        if (soldQuantity == null) {
+            soldQuantity = 0L;
+        }
 
         // Calculate tổng tồn kho ban đầu = đã bán + tồn kho hiện tại
         Long totalInitialStock = soldQuantity + currentStock;
         Long unsoldQuantity = remainingStock;  // ACTIVE + INACTIVE
         Long expiredQuantity = expiredStock;
+        Long totalUnsold = unsoldQuantity + expiredQuantity;
 
         // Calculate rates dựa trên tổng tồn kho ban đầu
         Double sellThroughRate = totalInitialStock > 0 ? (soldQuantity.doubleValue() / totalInitialStock) * 100 : 0.0;
@@ -676,11 +688,11 @@ public class ReportServiceImpl implements ReportService {
         BigDecimal topSupplierWasteValue = supplierWaste.isEmpty() ? BigDecimal.ZERO : toBigDecimal(supplierWaste.get(0)[13]);
 
         return WasteSummaryResponse.builder()
-                .startDate(salesWindowStart)
-                .endDate(salesWindowEnd)
-                .totalListed(currentStock)
-                .totalSold(soldQuantity)
-                .totalUnsold(currentStock)
+            .startDate(effectiveStart)
+            .endDate(effectiveEnd)
+            .totalListed(totalInitialStock)
+            .totalSold(soldQuantity)
+            .totalUnsold(totalUnsold)
                 .totalProducts(totalProducts)
                 .activeProducts(activeProducts)
                 .soldOutProducts(soldOutProducts)
@@ -1012,8 +1024,8 @@ public class ReportServiceImpl implements ReportService {
     }
 
     @Override
-    public byte[] exportWasteReportToCsv() {
-        log.info("Exporting waste report to CSV");
+    public byte[] exportWasteReportToCsv(LocalDateTime startDate, LocalDateTime endDate) {
+        log.info("Exporting waste report to CSV - StartDate: {}, EndDate: {}", startDate, endDate);
 
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
              PrintWriter writer = new PrintWriter(baos, true, StandardCharsets.UTF_8)) {
@@ -1023,7 +1035,7 @@ public class ReportServiceImpl implements ReportService {
 
             writer.println("Category,Total Products,Unsold Products,Expired,Near Expiry,Total Stock,Unsold Qty,Expired Qty,Waste Rate %,Expiry Rate %,Waste Index");
 
-            List<WasteByCategoryResponse> data = getWasteByCategory(null, null);
+            List<WasteByCategoryResponse> data = getWasteByCategory(startDate, endDate);
             for (WasteByCategoryResponse item : data) {
                 writer.printf("%s,%d,%d,%d,%d,%d,%d,%d,%.2f,%.2f,%.2f%n",
                         escapeCSV(item.getCategoryName()),

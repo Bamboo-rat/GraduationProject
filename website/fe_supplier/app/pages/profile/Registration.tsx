@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import authService from '../../service/authService';
 import locationService from '../../service/locationService';
 import { 
@@ -1219,9 +1219,9 @@ const Registration: React.FC = () => {
 
               {/* Address Autocomplete */}
               <div className="md:col-span-2">
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                {/* <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Địa chỉ cửa hàng <span className="text-red-500">*</span>
-                </label>
+                </label> */}
                 <AddressAutocomplete
                   value={step4Data.storeAddress}
                   onChange={(value) => setStep4Data(prev => ({ ...prev, storeAddress: value }))}
@@ -1334,16 +1334,16 @@ const Registration: React.FC = () => {
                     <MapPin className="w-4 h-4 mr-2" />
                     <strong>Vị trí đã được xác định!</strong>
                   </p>
-                  <p className="text-xs text-[#2F855A] ml-6 mt-1">
+                  {/* <p className="text-xs text-[#2F855A] ml-6 mt-1">
                     Tọa độ: {step4Data.latitude}, {step4Data.longitude}
-                  </p>
+                  </p> */}
                   <a
                     href={`https://www.google.com/maps?q=${step4Data.latitude},${step4Data.longitude}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-xs text-[#2F855A] hover:text-[#2F855A] underline ml-6 mt-1 inline-block"
                   >
-                    📍 Xem trên Google Maps →
+                    Xem trên Google Maps →
                   </a>
                 </div>
               )}
@@ -1382,8 +1382,8 @@ const Registration: React.FC = () => {
                   <input type="checkbox" required className="w-5 h-5 text-[#2F855A] rounded mt-0.5" />
                   <span className="text-sm text-gray-700">
                     Tôi xác nhận rằng tất cả thông tin đã cung cấp là chính xác và đồng ý với{' '}
-                    <a href="#" className="text-[#2F855A] font-semibold hover:underline">Điều khoản</a> và{' '}
-                    <a href="#" className="text-[#2F855A] font-semibold hover:underline">Chính sách</a> của SaveFood
+                    <Link to="/clause" className="text-[#2F855A] font-semibold hover:underline">Điều khoản</Link> và{' '}
+                    <Link to="/policy" className="text-[#2F855A] font-semibold hover:underline">Chính sách</Link> của SaveFood
                   </span>
                 </label>
               </div>

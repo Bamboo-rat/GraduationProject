@@ -54,6 +54,9 @@ export default [
 
   // Legal & Privacy routes
   route("privacy-policy", "routes/mobile/privacy-policy.tsx"),
-  route("delete-data", "routes/mobile/delete-data.tsx")
+  route("delete-data", "routes/mobile/delete-data.tsx"),
+
+  route("policy", "routes/profile/policy.tsx"),
+  route("clause", "routes/profile/clause.tsx")
 
 ] satisfies RouteConfig;

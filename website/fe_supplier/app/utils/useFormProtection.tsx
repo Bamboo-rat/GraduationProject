@@ -32,18 +32,6 @@ export function useFormProtection<T>({
       isDirty && currentLocation.pathname !== nextLocation.pathname
   );
 
-  // Auto-save to localStorage
-  const saveToLocalStorage = useCallback(() => {
-    if (isDirty) {
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(formData));
-        localStorage.setItem(`${storageKey}_timestamp`, Date.now().toString());
-      } catch (error) {
-        console.error('[Form Protection] Failed to save to localStorage:', error);
-      }
-    }
-  }, [formData, isDirty, storageKey]);
-
   // Clear localStorage backup
   const clearBackup = useCallback(() => {
     try {
@@ -53,6 +41,21 @@ export function useFormProtection<T>({
       console.error('[Form Protection] Failed to clear localStorage:', error);
     }
   }, [storageKey]);
+
+  // Auto-save to localStorage
+  const saveToLocalStorage = useCallback(() => {
+    if (!isDirty) {
+      clearBackup();
+      return;
+    }
+
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(formData));
+      localStorage.setItem(`${storageKey}_timestamp`, Date.now().toString());
+    } catch (error) {
+      console.error('[Form Protection] Failed to save to localStorage:', error);
+    }
+  }, [formData, isDirty, storageKey, clearBackup]);
 
   // Restore from localStorage on mount (only once)
   useEffect(() => {
@@ -71,14 +74,19 @@ export function useFormProtection<T>({
           const parsed = JSON.parse(savedData);
           
           // Ask user if they want to restore
-          const shouldRestore = window.confirm(
-            `Phát hiện dữ liệu form chưa lưu từ ${Math.round(age / 60000)} phút trước. Bạn có muốn khôi phục?`
-          );
-
-          if (shouldRestore && onRestore) {
+          if (!isDirty && onRestore) {
             onRestore(parsed);
-          } else {
             clearBackup();
+          } else {
+            const shouldRestore = window.confirm(
+              `Phát hiện dữ liệu form chưa lưu từ ${Math.round(age / 60000)} phút trước. Bạn có muốn khôi phục?`
+            );
+
+            if (shouldRestore && onRestore) {
+              onRestore(parsed);
+            } else {
+              clearBackup();
+            }
           }
         } else {
           // Data too old, clear it

@@ -58,7 +58,7 @@ public interface ReportService {
     /**
      * Get waste summary
      */
-    WasteSummaryResponse getWasteSummary();
+        WasteSummaryResponse getWasteSummary(LocalDateTime startDate, LocalDateTime endDate);
 
     /**
      * Get unsold inventory details with optional date filtering
@@ -100,5 +100,5 @@ public interface ReportService {
     /**
      * Export waste report to CSV
      */
-    byte[] exportWasteReportToCsv();
+        byte[] exportWasteReportToCsv(LocalDateTime startDate, LocalDateTime endDate);
 }
