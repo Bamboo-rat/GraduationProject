@@ -35,28 +35,82 @@ export default function ReviewsAnalysis() {
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState<TimeRange>('month');
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
+  const [selectedStoreId, setSelectedStoreId] = useState<string>('all');
+  const [stores, setStores] = useState<any[]>([]);
 
   useEffect(() => {
-    loadData();
-  }, [timeRange]);
+    loadStores();
+  }, []);
+
+  useEffect(() => {
+    if (stores.length > 0) {
+      loadData();
+    }
+  }, [timeRange, selectedStoreId, stores]);
+
+  const loadStores = async () => {
+    try {
+      const storesResponse = await storeService.getMyStores({ page: 0, size: 100 });
+      setStores(storesResponse.content);
+    } catch (err) {
+      console.error('Failed to load stores:', err);
+    }
+  };
+
+  const filterByTimeRange = (reviews: ReviewResponse[], range: TimeRange): ReviewResponse[] => {
+    const now = new Date();
+    const filterDate = new Date();
+
+    switch (range) {
+      case 'week':
+        filterDate.setDate(now.getDate() - 7);
+        break;
+      case 'month':
+        filterDate.setMonth(now.getMonth() - 1);
+        break;
+      case 'quarter':
+        filterDate.setMonth(now.getMonth() - 3);
+        break;
+      case 'year':
+        filterDate.setFullYear(now.getFullYear() - 1);
+        break;
+      case 'all':
+        return reviews;
+    }
+
+    return reviews.filter(review => new Date(review.createdAt) >= filterDate);
+  };
 
   const loadData = async () => {
     try {
       setLoading(true);
       
-      // Get user's stores first
-      const storesResponse = await storeService.getMyStores({ page: 0, size: 10 });
-      if (storesResponse.content.length === 0) {
+      if (stores.length === 0) {
         setLoading(false);
         return;
       }
 
-      // Get reviews for first store (or combine all stores)
-      const storeId = storesResponse.content[0].storeId;
-      const reviewsResponse = await reviewService.getStoreReviews(storeId, 0, 100);
+      // Get reviews from all stores or selected store
+      let allReviews: ReviewResponse[] = [];
+      
+      if (selectedStoreId === 'all') {
+        // Load reviews from all stores
+        const reviewPromises = stores.map(store => 
+          reviewService.getStoreReviews(store.storeId, 0, 1000)
+        );
+        const reviewsResponses = await Promise.all(reviewPromises);
+        allReviews = reviewsResponses.flatMap(response => response.content);
+      } else {
+        // Load reviews from selected store only
+        const reviewsResponse = await reviewService.getStoreReviews(selectedStoreId, 0, 1000);
+        allReviews = reviewsResponse.content;
+      }
+
+      // Filter by time range
+      const filteredReviews = filterByTimeRange(allReviews, timeRange);
       
       // Calculate statistics
-      const reviews = reviewsResponse.content;
+      const reviews = filteredReviews;
       const totalReviews = reviews.length;
       
       // Rating distribution
@@ -65,7 +119,7 @@ export default function ReviewsAnalysis() {
       let withComment = 0;
       let withReply = 0;
 
-      reviews.forEach(review => {
+      reviews.forEach((review: ReviewResponse) => {
         distribution[review.rating] = (distribution[review.rating] || 0) + 1;
         sumRating += review.rating;
         if (review.comment) withComment++;
@@ -172,6 +226,55 @@ export default function ReviewsAnalysis() {
           <RefreshCw className="w-4 h-4" />
           Làm mới
         </button>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white rounded-2xl shadow-sm border border-[#E8FFED] p-6">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex-1">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Cửa hàng
+            </label>
+            <select
+              value={selectedStoreId}
+              onChange={(e) => setSelectedStoreId(e.target.value)}
+              className="w-full px-4 py-2 border border-[#B7E4C7] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#A4C3A2]"
+            >
+              <option value="all">Tất cả cửa hàng ({stores.length})</option>
+              {stores.map((store) => (
+                <option key={store.storeId} value={store.storeId}>
+                  {store.storeName}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex-1">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Khoảng thời gian
+            </label>
+            <div className="flex gap-2">
+              {[
+                { value: 'week', label: '7 ngày' },
+                { value: 'month', label: '30 ngày' },
+                { value: 'quarter', label: '3 tháng' },
+                { value: 'year', label: '1 năm' },
+                { value: 'all', label: 'Tất cả' },
+              ].map((range) => (
+                <button
+                  key={range.value}
+                  onClick={() => setTimeRange(range.value as TimeRange)}
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                    timeRange === range.value
+                      ? 'bg-[#2F855A] text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {range.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Overall Performance Card */}
