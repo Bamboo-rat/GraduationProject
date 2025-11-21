@@ -10,6 +10,7 @@ public enum OrderStatus {
     SHIPPING("Đang giao hàng", "Order is being delivered to customer"),
     DELIVERED("Đã giao thành công", "Order has been successfully delivered"),
     CANCELED("Đã hủy", "Order has been canceled"),
+    PENDING_RETURN("Đang chờ xác nhận hoàn hàng", "Order return request is pending review"),
     RETURNED("Đã trả lại", "Order has been returned by customer");
 
     private final String displayName;

@@ -49,6 +49,7 @@ public class StoreServiceImpl implements StoreService {
     private final CategoryRepository categoryRepository;
     private final CategoryMapper categoryMapper;
     private final UserRepository userRepository;
+    private final AdminRepository adminRepository;
     private final com.example.backend.repository.OrderRepository orderRepository;
     private final PendingUpdateMapper updateMapper;
     private final StoreMapper storeMapper;
@@ -192,6 +193,29 @@ public class StoreServiceImpl implements StoreService {
         store = storeRepository.save(store);
         log.info("Store created successfully with ID: {} (status: PENDING, awaiting admin approval)",
                 store.getStoreId());
+
+        // Send notification to all active admins about new store pending approval
+        try {
+            List<Admin> activeAdmins = adminRepository.findByStatus(com.example.backend.entity.enums.AdminStatus.ACTIVE);
+            String notificationContent = String.format(
+                "Có cửa hàng mới '%s' từ nhà cung cấp '%s' đang chờ phê duyệt.",
+                store.getStoreName(),
+                supplier.getFullName()
+            );
+            
+            for (Admin admin : activeAdmins) {
+                inAppNotificationService.createNotificationForUser(
+                    admin.getUserId(),
+                    NotificationType.STORE_PENDING_APPROVAL,
+                    notificationContent,
+                    "/admin/stores?status=PENDING"
+                );
+            }
+            log.info("Notification sent to {} active admins about new store pending approval", activeAdmins.size());
+        } catch (Exception e) {
+            log.error("Failed to send notification to admins about new store: {}", store.getStoreId(), e);
+            // Don't fail the operation if notification fails
+        }
 
         return storeMapper.toResponse(store);
     }
@@ -454,6 +478,28 @@ public class StoreServiceImpl implements StoreService {
             pendingUpdate = pendingUpdateRepository.save(pendingUpdate);
 
             log.info("Pending update created: {}", pendingUpdate.getUpdateId());
+
+            // Send notification to all active admins about pending store update
+            try {
+                List<Admin> activeAdmins = adminRepository.findByStatus(com.example.backend.entity.enums.AdminStatus.ACTIVE);
+                String notificationContent = String.format(
+                    "Cửa hàng '%s' có yêu cầu cập nhật thông tin đang chờ phê duyệt.",
+                    store.getStoreName()
+                );
+                
+                for (Admin admin : activeAdmins) {
+                    inAppNotificationService.createNotificationForUser(
+                        admin.getUserId(),
+                        NotificationType.STORE_UPDATE_PENDING,
+                        notificationContent,
+                        "/admin/stores/pending-updates"
+                    );
+                }
+                log.info("Notification sent to {} active admins about pending store update", activeAdmins.size());
+            } catch (Exception e) {
+                log.error("Failed to send notification to admins about pending update: {}", pendingUpdate.getUpdateId(), e);
+                // Don't fail the operation if notification fails
+            }
 
             return StoreUpdateResponse.builder()
                     .updateType(StoreUpdateResponse.UpdateType.PENDING)

@@ -98,6 +98,22 @@ public class ReturnRequestServiceImpl implements ReturnRequestService {
             }
         }
 
+        // Check if products have expired - không cho phép hoàn hàng nếu sản phẩm đã hết hạn
+        var orderDetails = orderDetailRepository.findByOrder(order);
+        for (OrderDetail detail : orderDetails) {
+            var variant = detail.getStoreProduct().getVariant();
+            if (variant != null && variant.getExpiryDate() != null) {
+                // Kiểm tra nếu hôm nay là ngày hết hạn hoặc sau ngày hết hạn
+                if (!variant.getExpiryDate().isAfter(java.time.LocalDate.now())) {
+                    throw new BadRequestException(ErrorCode.PRODUCT_EXPIRED,
+                        String.format("Không thể hoàn trả hàng vì sản phẩm '%s' đã hết hạn sử dụng (ngày %s)",
+                            variant.getName(),
+                            variant.getExpiryDate().toString())
+                    );
+                }
+            }
+        }
+
         // Get customer entity
         Customer customer = customerRepository.findById(customerId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.CUSTOMER_NOT_FOUND));
@@ -113,6 +129,27 @@ public class ReturnRequestServiceImpl implements ReturnRequestService {
         returnRequest.setStatus(CancelRequestStatus.PENDING_REVIEW);
 
         returnRequest = cancelRequestRepository.save(returnRequest);
+        
+        // Update order status to PENDING_RETURN
+        order.setStatus(OrderStatus.PENDING_RETURN);
+        orderRepository.save(order);
+        
+        // Send notification to supplier about new return request
+        String supplierId = order.getStore().getSupplier().getUserId();
+        String notificationContentForSupplier = String.format(
+            "Có yêu cầu hoàn hàng mới cho đơn hàng #%s từ khách hàng %s. " +
+            "Vui lòng kiểm tra và xử lý yêu cầu.",
+            order.getOrderCode(),
+            customer.getFullName()
+        );
+        
+        notificationService.createNotificationForUser(
+            supplierId,
+            NotificationType.ORDER_STATUS_UPDATE,
+            notificationContentForSupplier,
+            "/orders/returns"
+        );
+        
         log.info("Return request created: {}", returnRequest.getCancelRequestId());
 
         return mapToResponse(returnRequest);
@@ -265,9 +302,13 @@ public class ReturnRequestServiceImpl implements ReturnRequestService {
         returnRequest.setReviewedAt(LocalDateTime.now());
 
         returnRequest = cancelRequestRepository.save(returnRequest);
+        
+        // Restore order status to DELIVERED when return request is rejected
+        Order order = returnRequest.getOrder();
+        order.setStatus(OrderStatus.DELIVERED);
+        orderRepository.save(order);
 
         // Send notification to customer
-        Order order = returnRequest.getOrder();
         String notificationContent = String.format(
             "Yêu cầu trả hàng của bạn cho đơn hàng #%s đã bị từ chối. " +
             "Lý do: %s",

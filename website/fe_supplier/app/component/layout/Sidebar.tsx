@@ -27,8 +27,20 @@ const Sidebar: React.FC = () => {
     setExpandedMenu(expandedMenu === menuId ? null : menuId);
   };
 
-  const isActive = (link: string) => {
-    return location.pathname === link || location.pathname.startsWith(link + '/');
+  const isActive = (link: string, isSubMenu: boolean = false) => {
+    if (isSubMenu) {
+      // Kiểm tra chính xác cho menu con
+      return location.pathname === link;
+    } else {
+      // Kiểm tra cho menu chính: khớp chính xác hoặc bất kỳ menu con nào
+      const menu = menuData.mainMenu.find(menu => menu.link === link);
+      const isSubMenuActive = menu?.subMenu?.some(sub => 
+        location.pathname === sub.link || location.pathname.startsWith(sub.link + '/')
+      );
+      return location.pathname === link || 
+             location.pathname.startsWith(link + '/') ||
+             isSubMenuActive;
+    }
   };
 
   // Dynamic icon component getter
@@ -84,8 +96,9 @@ const Sidebar: React.FC = () => {
         <div className="space-y-1.5">
           {menuData.mainMenu.map((menu: MenuItem) => {
             const IconComponent = getIcon(menu.icon);
-            const isMenuActive = isActive(menu.link);
+            const isMainMenuActive = isActive(menu.link, false);
             const isMenuExpanded = expandedMenu === menu.id;
+            const hasSubMenu = menu.subMenu && menu.subMenu.length > 0;
 
             return (
               <div key={menu.id} className="relative">
@@ -93,15 +106,15 @@ const Sidebar: React.FC = () => {
                 <button
                   onClick={() => toggleMenu(menu.id)}
                   className={`w-full flex items-center justify-between p-3 rounded-xl transition-all duration-200 group ${
-                    isMenuActive
+                    isMainMenuActive
                       ? 'bg-primary-lighter text-secondary border border-primary shadow-sm'
                       : 'text-text-muted hover:bg-surface-light hover:text-text border border-transparent'
                   } ${isCollapsed ? 'justify-center' : ''}`}
                 >
                   <div className={`flex items-center ${isCollapsed ? '' : 'space-x-3'}`}>
-                    <div className={`relative ${isMenuActive ? 'text-secondary' : 'text-text-light group-hover:text-primary'}`}>
+                    <div className={`relative ${isMainMenuActive ? 'text-secondary' : 'text-text-light group-hover:text-primary'}`}>
                       <IconComponent className="w-5 h-5 flex-shrink-0" size={20} />
-                      {isMenuActive && (
+                      {isMainMenuActive && (
                         <div className="absolute -top-1 -right-1 w-2 h-2 bg-secondary rounded-full"></div>
                       )}
                     </div>
@@ -110,7 +123,7 @@ const Sidebar: React.FC = () => {
                     )}
                   </div>
                   
-                  {!isCollapsed && menu.subMenu && (
+                  {!isCollapsed && hasSubMenu && (
                     <Icons.ChevronDown
                       className={`w-4 h-4 transition-transform duration-200 ${
                         isMenuExpanded ? 'rotate-180 text-secondary' : 'text-text-light'
@@ -121,10 +134,10 @@ const Sidebar: React.FC = () => {
                 </button>
 
                 {/* Sub Menu Items */}
-                {!isCollapsed && menu.subMenu && isMenuExpanded && (
+                {!isCollapsed && hasSubMenu && isMenuExpanded && (
                   <div className="mt-2 ml-4 space-y-1.5 animate-fade-in">
                     {menu.subMenu.map((subItem, index) => {
-                      const isSubActive = isActive(subItem.link);
+                      const isSubMenuActive = isActive(subItem.link, true);
                       const SubIconComponent = subItem.icon ? getIcon(subItem.icon) : null;
                       
                       return (
@@ -132,23 +145,23 @@ const Sidebar: React.FC = () => {
                           key={index}
                           to={subItem.link}
                           className={`block p-3 text-sm rounded-lg transition-all duration-200 border ${
-                            isSubActive
-                              ? 'bg-primary-lighter text-secondary border-primary shadow-sm'
+                            isSubMenuActive
+                              ? 'bg-primary-lighter/70 text-secondary border-primary/50 shadow-sm' // Màu nhẹ hơn menu chính
                               : 'text-text-muted hover:bg-surface-light hover:text-text border-transparent'
                           }`}
                         >
                           <div className="flex items-center space-x-3">
                             {SubIconComponent ? (
                               <SubIconComponent 
-                                className={`w-4 h-4 flex-shrink-0 ${isSubActive ? 'text-secondary' : 'text-text-light'}`} 
+                                className={`w-4 h-4 flex-shrink-0 ${isSubMenuActive ? 'text-secondary' : 'text-text-light'}`} 
                                 size={16} 
                               />
                             ) : (
                               <div className={`w-1.5 h-1.5 rounded-full ${
-                                isSubActive ? 'bg-secondary' : 'bg-text-light'
+                                isSubMenuActive ? 'bg-secondary' : 'bg-text-light'
                               }`}></div>
                             )}
-                            <span className={isSubActive ? 'font-medium' : ''}>{subItem.title}</span>
+                            <span className={isSubMenuActive ? 'font-medium' : ''}>{subItem.title}</span>
                           </div>
                         </Link>
                       );
@@ -157,7 +170,7 @@ const Sidebar: React.FC = () => {
                 )}
 
                 {/* Tooltip for collapsed state */}
-                {isCollapsed && menu.subMenu && (
+                {isCollapsed && hasSubMenu && (
                   <div className="absolute left-full top-0 ml-2 px-3 py-2 bg-text text-surface text-sm rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 min-w-48">
                     <div className="font-medium mb-1">{menu.title}</div>
                     <div className="space-y-1">

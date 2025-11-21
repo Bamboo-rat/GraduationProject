@@ -27,11 +27,20 @@ const Sidebar: React.FC = () => {
     setExpandedMenu(expandedMenu === menuId ? null : menuId);
   };
 
-  const isActive = (link: string) => {
-    return location.pathname === link || location.pathname.startsWith(link + '/');
+  const isActive = (link: string, isSubMenu: boolean = false) => {
+    if (isSubMenu) {
+      // Kiểm tra chính xác cho menu con
+      return location.pathname === link;
+    } else {
+      // Kiểm tra cho menu chính: khớp chính xác hoặc bất kỳ menu con nào
+      return location.pathname === link || 
+             location.pathname.startsWith(link + '/') ||
+             (menuData.mainMenu.find(menu => menu.link === link)?.subMenu?.some(sub => 
+                location.pathname === sub.link || location.pathname.startsWith(sub.link + '/')
+             ) ?? false);
+    }
   };
 
-  // Dynamic icon component getter
   const getIcon = (iconName: string) => {
     const iconKey = iconName
       .split('-')
@@ -82,68 +91,76 @@ const Sidebar: React.FC = () => {
 
       {/* Menu Items */}
       <nav className="flex-1 overflow-y-auto py-4 px-2 scrollbar-thin scrollbar-thumb-green-300 scrollbar-track-transparent">
-        {menuData.mainMenu.map((menu: MenuItem) => (
-          <div key={menu.id} className="mb-2">
-            {/* Main Menu Item */}
-            <div className="flex items-center gap-1">
-              <Link
-                to={menu.link}
-                className={`flex-1 flex items-center px-3 py-2.5 rounded-lg transition-all ${isActive(menu.link)
-                    ? 'bg-white text-green-700 shadow-md'
-                    : 'text-gray-700 hover:bg-white/50'
-                  }`}
-              >
-                <div className="flex items-center space-x-3">
-                  {React.createElement(getIcon(menu.icon), {
-                    className: 'w-5 h-5 flex-shrink-0',
-                    size: 20
-                  })}
-                  {!isCollapsed && <span className="font-medium text-sm">{menu.title}</span>}
-                </div>
-              </Link>
-              {!isCollapsed && menu.subMenu && (
-                <button
-                  onClick={() => toggleMenu(menu.id)}
-                  className="p-2 rounded-lg hover:bg-white/50 transition-colors"
+        {menuData.mainMenu.map((menu: MenuItem) => {
+          const isMainMenuActive = isActive(menu.link, false);
+          const hasSubMenu = menu.subMenu && menu.subMenu.length > 0;
+          
+          return (
+            <div key={menu.id} className="mb-2">
+              {/* Main Menu Item */}
+              <div className="flex items-center gap-1">
+                <Link
+                  to={menu.link}
+                  className={`flex-1 flex items-center px-3 py-2.5 rounded-lg transition-all ${isMainMenuActive
+                      ? 'bg-white text-green-700 shadow-md'
+                      : 'text-gray-700 hover:bg-white/50'
+                    }`}
                 >
-                  <Icons.ChevronDown
-                    className={`w-4 h-4 transition-transform ${expandedMenu === menu.id ? 'rotate-180' : ''
-                      }`}
-                    size={16}
-                  />
-                </button>
+                  <div className="flex items-center space-x-3">
+                    {React.createElement(getIcon(menu.icon), {
+                      className: 'w-5 h-5 flex-shrink-0',
+                      size: 20
+                    })}
+                    {!isCollapsed && <span className="font-medium text-sm">{menu.title}</span>}
+                  </div>
+                </Link>
+                {!isCollapsed && hasSubMenu && (
+                  <button
+                    onClick={() => toggleMenu(menu.id)}
+                    className="p-2 rounded-lg hover:bg-white/50 transition-colors"
+                  >
+                    <Icons.ChevronDown
+                      className={`w-4 h-4 transition-transform ${expandedMenu === menu.id ? 'rotate-180' : ''
+                        }`}
+                      size={16}
+                    />
+                  </button>
+                )}
+              </div>
+
+              {/* Sub Menu Items */}
+              {!isCollapsed && hasSubMenu && expandedMenu === menu.id && (
+                <div className="mt-1 ml-4 space-y-1">
+                  {menu.subMenu?.map((subItem, index) => {
+                    const isSubMenuActive = isActive(subItem.link, true);
+                    return (
+                      <Link
+                        key={index}
+                        to={subItem.link}
+                        className={`block px-4 py-2 text-sm rounded-lg transition-colors ${isSubMenuActive
+                            ? 'bg-green-50 text-green-600 font-medium border border-green-100' // Màu nhẹ hơn menu chính
+                            : 'text-gray-600 hover:bg-white/50 hover:text-gray-800'
+                          }`}
+                      >
+                        <div className="flex items-center space-x-2.5">
+                          {subItem.icon ? (
+                            React.createElement(getIcon(subItem.icon), {
+                              className: `w-4 h-4 flex-shrink-0 ${isSubMenuActive ? 'opacity-90' : 'opacity-70'}`,
+                              size: 16
+                            })
+                          ) : (
+                            <span className="w-1.5 h-1.5 rounded-full bg-current opacity-50"></span>
+                          )}
+                          <span>{subItem.title}</span>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
               )}
             </div>
-
-            {/* Sub Menu Items */}
-            {!isCollapsed && menu.subMenu && expandedMenu === menu.id && (
-              <div className="mt-1 ml-4 space-y-1">
-                {menu.subMenu.map((subItem, index) => (
-                  <Link
-                    key={index}
-                    to={subItem.link}
-                    className={`block px-4 py-2 text-sm rounded-lg transition-colors ${isActive(subItem.link)
-                        ? 'bg-green-100 text-green-700 font-medium'
-                        : 'text-gray-600 hover:bg-white/50 hover:text-gray-800'
-                      }`}
-                  >
-                    <div className="flex items-center space-x-2.5">
-                      {subItem.icon ? (
-                        React.createElement(getIcon(subItem.icon), {
-                          className: 'w-4 h-4 flex-shrink-0 opacity-70',
-                          size: 16
-                        })
-                      ) : (
-                        <span className="w-1.5 h-1.5 rounded-full bg-current opacity-50"></span>
-                      )}
-                      <span>{subItem.title}</span>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </nav>
 
       {/* Footer */}

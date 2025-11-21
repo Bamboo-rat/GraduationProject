@@ -74,6 +74,7 @@ export type OrderStatus =
   | 'SHIPPING'
   | 'DELIVERED'
   | 'CANCELED'
+  | 'PENDING_RETURN'
   | 'RETURNED';
 
 export interface OrderStatusHistory {
@@ -261,7 +262,8 @@ class SupplierOrderService {
       SHIPPING: 'bg-indigo-100 text-indigo-800',
       DELIVERED: 'bg-green-100 text-green-800',
       CANCELED: 'bg-red-100 text-red-800',
-      RETURNED: 'bg-orange-100 text-orange-800',
+      PENDING_RETURN: 'bg-orange-100 text-orange-800',
+      RETURNED: 'bg-gray-100 text-gray-800',
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
   }
@@ -277,6 +279,7 @@ class SupplierOrderService {
       SHIPPING: 'Đang giao hàng',
       DELIVERED: 'Đã giao hàng',
       CANCELED: 'Đã hủy',
+      PENDING_RETURN: 'Đang chờ xác nhận hoàn hàng',
       RETURNED: 'Đã trả hàng',
     };
     return labels[status] || status;
@@ -320,6 +323,7 @@ class SupplierOrderService {
       SHIPPING: 'DELIVERED',
       DELIVERED: null,
       CANCELED: null,
+      PENDING_RETURN: null,
       RETURNED: null,
     };
     return flow[currentStatus];
@@ -336,6 +340,7 @@ class SupplierOrderService {
       SHIPPING: 'Xác nhận đã giao',
       DELIVERED: null,
       CANCELED: null,
+      PENDING_RETURN: null,
       RETURNED: null,
     };
     return labels[currentStatus];

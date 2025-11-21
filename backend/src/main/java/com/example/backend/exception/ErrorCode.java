@@ -101,6 +101,7 @@ public enum ErrorCode {
     ORDER_ALREADY_RETURNED("5025", "Order has already been returned", "Đơn hàng đã được trả hàng", HttpStatus.BAD_REQUEST),
     REFUND_PROCESSING_FAILED("5026", "Refund processing failed", "Xử lý hoàn tiền thất bại", HttpStatus.INTERNAL_SERVER_ERROR),
     INVENTORY_RESTORATION_FAILED("5027", "Failed to restore inventory", "Khôi phục tồn kho thất bại", HttpStatus.INTERNAL_SERVER_ERROR),
+    PRODUCT_EXPIRED("5028", "Product has expired", "Sản phẩm đã hết hạn sử dụng", HttpStatus.BAD_REQUEST),
 
     // ===== 6xxx: Wallet Errors =====
     WALLET_NOT_FOUND("6001", "Wallet not found", "Không tìm thấy ví tiền", HttpStatus.NOT_FOUND),

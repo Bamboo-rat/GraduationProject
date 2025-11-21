@@ -16,6 +16,7 @@ public enum NotificationType {
     SUPPLIER_UPDATE_REJECTED("Cập nhật thông tin bị từ chối", "Supplier business info update rejected"),
 
     // Store related (for suppliers)
+    STORE_PENDING_APPROVAL("Cửa hàng mới chờ phê duyệt", "New store pending approval"),
     STORE_UPDATE_PENDING("Đề xuất cập nhật thông tin cửa hàng", "Store update pending"),
     STORE_UPDATE_APPROVED("Cập nhật cửa hàng được phê duyệt", "Store update approved"),
     STORE_UPDATE_REJECTED("Cập nhật cửa hàng bị từ chối", "Store update rejected"),
