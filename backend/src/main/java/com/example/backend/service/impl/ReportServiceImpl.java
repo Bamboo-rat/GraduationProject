@@ -871,11 +871,17 @@ public class ReportServiceImpl implements ReportService {
             LocalDateTime startDate, 
             LocalDateTime endDate
     ) {
-        log.info("Generating waste by supplier report - StartDate: {}, EndDate: {}", startDate, endDate);
+        LocalDateTime defaultStart = LocalDateTime.of(2020, 1, 1, 0, 0);
+        LocalDateTime now = LocalDateTime.now();
 
-        // Use all-time sales for new logic
-        LocalDateTime salesWindowStart = LocalDateTime.of(2020, 1, 1, 0, 0);
-        LocalDateTime salesWindowEnd = LocalDateTime.now();
+        LocalDateTime effectiveEnd = endDate != null ? endDate : now;
+        LocalDateTime effectiveStart = startDate != null ? startDate : defaultStart;
+
+        if (effectiveStart.isAfter(effectiveEnd)) {
+            throw new IllegalArgumentException("Start date must be before end date");
+        }
+
+        log.info("Generating waste by supplier report - StartDate: {}, EndDate: {}", effectiveStart, effectiveEnd);
 
         List<Object[]> results = storeProductRepository.findWasteBySupplier();
 
@@ -891,9 +897,12 @@ public class ReportServiceImpl implements ReportService {
             // Get sold quantity from DELIVERED orders
             Long soldQuantity = orderDetailRepository.sumSoldQuantityBySupplierInPeriod(
                 supplierId, 
-                salesWindowStart, 
-                salesWindowEnd
+                effectiveStart, 
+                effectiveEnd
             );
+            if (soldQuantity == null) {
+                soldQuantity = 0L;
+            }
             
             // Calculate tồn kho hiện tại & tồn kho ban đầu
             Long currentStock = allStock;

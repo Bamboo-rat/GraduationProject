@@ -75,14 +75,13 @@ export default function WasteReportNew() {
     );
   }
 
-
-  const totalInitial = summary?.initialStockQuantity ?? summary?.totalStockQuantity ?? 0; // Tổng tồn kho ban đầu
+  const totalInitial = summary?.initialStockQuantity ?? summary?.totalStockQuantity ?? 0;
   const currentStock = summary?.currentStockQuantity ?? ((summary?.unsoldQuantity || 0) + (summary?.expiredQuantity || 0));
-  const totalSold = summary?.soldQuantity || 0; // Từ đơn hàng DELIVERED
-  const totalExpired = summary?.expiredQuantity || 0; // Sản phẩm hết hạn
-  const totalRemaining = summary?.unsoldQuantity || 0; // Sản phẩm ACTIVE
+  const totalSold = summary?.soldQuantity || 0;
+  const totalExpired = summary?.expiredQuantity || 0;
+  const totalRemaining = summary?.unsoldQuantity || 0;
 
-  // Calculate rates dựa trên tồn kho ban đầu
+  // Calculate rates
   const sellThroughRate = totalInitial > 0 ? (totalSold / totalInitial) * 100 : 0;
   const expiryRate = totalInitial > 0 ? (totalExpired / totalInitial) * 100 : 0;
   const remainingRate = totalInitial > 0 ? (totalRemaining / totalInitial) * 100 : 0;
@@ -99,14 +98,42 @@ export default function WasteReportNew() {
     .sort((a, b) => b.calculatedExpiryRate - a.calculatedExpiryRate)
     .slice(0, 5);
 
+  // Color definitions - Pastel colors
+  const colors = {
+    sold: {
+      bg: 'bg-[#E8FFED]',
+      text: 'text-[#2F855A]',
+      border: 'border-[#B7E4C7]',
+      icon: 'text-[#2F855A]'
+    },
+    expired: {
+      bg: 'bg-[#FFE8E8]',
+      text: 'text-[#E63946]',
+      border: 'border-[#FFC7C7]',
+      icon: 'text-[#E63946]'
+    },
+    remaining: {
+      bg: 'bg-[#FFF3E8]',
+      text: 'text-[#FF6B35]',
+      border: 'border-[#FFD8C7]',
+      icon: 'text-[#FF6B35]'
+    },
+    stock: {
+      bg: 'bg-[#E8F4FF]',
+      text: 'text-[#2D2D2D]',
+      border: 'border-[#C7E0FF]',
+      icon: 'text-[#2D2D2D]'
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="p-6 space-y-6">
         {/* Header */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Báo cáo lãng phí</h1>
-            <p className="text-gray-600">Theo dõi hiệu quả bán hàng và giảm thiểu lãng phí</p>
+            <h1 className="heading-primary">Báo cáo lãng phí</h1>
+            <p className="text-muted">Theo dõi hiệu quả bán hàng và giảm thiểu lãng phí</p>
           </div>
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -114,7 +141,7 @@ export default function WasteReportNew() {
               <select
                 value={period}
                 onChange={(e) => setPeriod(e.target.value as any)}
-                className="pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2F855A] focus:border-transparent appearance-none bg-white"
+                className="input-field pl-10 pr-4 appearance-none"
               >
                 <option value="7days">7 ngày qua</option>
                 <option value="30days">30 ngày qua</option>
@@ -123,7 +150,7 @@ export default function WasteReportNew() {
             </div>
             <button
               onClick={handleExport}
-              className="px-4 py-2.5 bg-[#2F855A] text-white rounded-lg hover:bg-[#276749] transition-colors flex items-center gap-2 font-medium"
+              className="btn-primary"
             >
               <Download className="w-4 h-4" />
               Xuất CSV
@@ -131,87 +158,96 @@ export default function WasteReportNew() {
           </div>
         </div>
 
-        {/* Main Metrics - Mô hình SaveFood */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        {/* Main Metrics */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Current Stock */}
+          <div className={`card p-6 ${colors.stock.bg} ${colors.stock.border} border-2`}>
             <div className="flex items-center gap-4">
-              <div className="bg-blue-50 p-3 rounded-lg">
-                <Package className="w-6 h-6 text-blue-600" />
+              <div className={`p-3 rounded-lg bg-white/50`}>
+                <Package className={`w-6 h-6 ${colors.stock.icon}`} />
               </div>
               <div>
                 <h3 className="text-2xl font-bold text-gray-900">{currentStock.toLocaleString()}</h3>
                 <p className="text-sm text-gray-600">Tồn kho hiện tại</p>
-                <p className="text-xs text-gray-400 mt-1">Tổng tồn kho ban đầu: {totalInitial.toLocaleString()}</p>
+                <p className="text-xs text-gray-500 mt-1">Ban đầu: {totalInitial.toLocaleString()}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+          {/* Sold */}
+          <div className={`card p-6 ${colors.sold.bg} ${colors.sold.border} border-2`}>
             <div className="flex items-center gap-4">
-              <div className="bg-green-50 p-3 rounded-lg">
-                <TrendingUp className="w-6 h-6 text-green-600" />
+              <div className={`p-3 rounded-lg bg-white/50`}>
+                <TrendingUp className={`w-6 h-6 ${colors.sold.icon}`} />
               </div>
               <div>
-                <h3 className="text-2xl font-bold text-green-600">{totalSold.toLocaleString()}</h3>
+                <h3 className={`text-2xl font-bold ${colors.sold.text}`}>{totalSold.toLocaleString()}</h3>
                 <p className="text-sm text-gray-600">Đã bán</p>
-                <p className="text-xs text-green-600 mt-1">{sellThroughRate.toFixed(1)}% sell-through</p>
+                <p className={`text-xs ${colors.sold.text} mt-1`}>{sellThroughRate.toFixed(1)}% sell-through</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+          {/* Remaining */}
+          <div className={`card p-6 ${colors.remaining.bg} ${colors.remaining.border} border-2`}>
             <div className="flex items-center gap-4">
-              <div className="bg-amber-50 p-3 rounded-lg">
-                <Archive className="w-6 h-6 text-amber-600" />
+              <div className={`p-3 rounded-lg bg-white/50`}>
+                <Archive className={`w-6 h-6 ${colors.remaining.icon}`} />
               </div>
               <div>
-                <h3 className="text-2xl font-bold text-amber-600">{totalRemaining.toLocaleString()}</h3>
+                <h3 className={`text-2xl font-bold ${colors.remaining.text}`}>{totalRemaining.toLocaleString()}</h3>
                 <p className="text-sm text-gray-600">Tồn kho</p>
-                <p className="text-xs text-amber-600 mt-1">{remainingRate.toFixed(1)}% chưa bán</p>
+                <p className={`text-xs ${colors.remaining.text} mt-1`}>{remainingRate.toFixed(1)}% chưa bán</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+          {/* Expired */}
+          <div className={`card p-6 ${colors.expired.bg} ${colors.expired.border} border-2`}>
             <div className="flex items-center gap-4">
-              <div className="bg-red-50 p-3 rounded-lg">
-                <AlertTriangle className="w-6 h-6 text-red-600" />
+              <div className={`p-3 rounded-lg bg-white/50`}>
+                <AlertTriangle className={`w-6 h-6 ${colors.expired.icon}`} />
               </div>
               <div>
-                <h3 className="text-2xl font-bold text-red-600">{totalExpired.toLocaleString()}</h3>
+                <h3 className={`text-2xl font-bold ${colors.expired.text}`}>{totalExpired.toLocaleString()}</h3>
                 <p className="text-sm text-gray-600">Đã hết hạn</p>
-                <p className="text-xs text-red-600 mt-1">{expiryRate.toFixed(1)}% lãng phí</p>
+                <p className={`text-xs ${colors.expired.text} mt-1`}>{expiryRate.toFixed(1)}% lãng phí</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Formula Explanation */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
+        <div className="card p-6">
           <div className="flex items-start gap-4">
-            <div className="bg-blue-100 p-3 rounded-lg">
-              <Percent className="w-6 h-6 text-blue-700" />
+            <div className="bg-[#E8F4FF] p-3 rounded-lg">
+              <Percent className="w-6 h-6 text-[#2D2D2D]" />
             </div>
             <div className="flex-1">
-              <h3 className="font-bold text-gray-900 mb-3">Định nghĩa chỉ số</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div className="bg-white/60 rounded-lg p-3">
-                  <p className="font-semibold text-gray-800 mb-1">Sell-Through Rate</p>
-                  <p className="text-gray-600">Đã bán / Tổng tồn kho ban đầu</p>
-                  <p className="text-green-600 font-bold mt-1">{sellThroughRate.toFixed(2)}%</p>
-                  <p className="text-xs text-gray-500 mt-1">Từ đơn hàng DELIVERED</p>
+              <h3 className="heading-secondary">Định nghĩa chỉ số</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Sell-Through Rate */}
+                <div className={`p-4 rounded-xl border-2 ${colors.sold.border} ${colors.sold.bg}`}>
+                  <p className="font-semibold text-gray-800 mb-2">Sell-Through Rate</p>
+                  <p className="text-sm text-gray-600 mb-3">Đã bán / Tổng tồn kho ban đầu</p>
+                  <p className={`text-lg font-bold ${colors.sold.text}`}>{sellThroughRate.toFixed(2)}%</p>
+                  <p className="text-xs text-gray-500 mt-2">Từ đơn hàng DELIVERED</p>
                 </div>
-                <div className="bg-white/60 rounded-lg p-3">
-                  <p className="font-semibold text-gray-800 mb-1">Expiry Rate (Waste)</p>
-                  <p className="text-gray-600">Hết hạn / Tổng tồn kho ban đầu</p>
-                  <p className="text-red-600 font-bold mt-1">{expiryRate.toFixed(2)}%</p>
-                  <p className="text-xs text-gray-500 mt-1">Sản phẩm EXPIRED</p>
+
+                {/* Expiry Rate */}
+                <div className={`p-4 rounded-xl border-2 ${colors.expired.border} ${colors.expired.bg}`}>
+                  <p className="font-semibold text-gray-800 mb-2">Expiry Rate (Waste)</p>
+                  <p className="text-sm text-gray-600 mb-3">Hết hạn / Tổng tồn kho ban đầu</p>
+                  <p className={`text-lg font-bold ${colors.expired.text}`}>{expiryRate.toFixed(2)}%</p>
+                  <p className="text-xs text-gray-500 mt-2">Sản phẩm EXPIRED</p>
                 </div>
-                <div className="bg-white/60 rounded-lg p-3">
-                  <p className="font-semibold text-gray-800 mb-1">Remaining Rate</p>
-                  <p className="text-gray-600">Tồn kho / Tổng tồn kho ban đầu</p>
-                  <p className="text-amber-600 font-bold mt-1">{remainingRate.toFixed(2)}%</p>
-                  <p className="text-xs text-gray-500 mt-1">Sản phẩm ACTIVE</p>
+
+                {/* Remaining Rate */}
+                <div className={`p-4 rounded-xl border-2 ${colors.remaining.border} ${colors.remaining.bg}`}>
+                  <p className="font-semibold text-gray-800 mb-2">Remaining Rate</p>
+                  <p className="text-sm text-gray-600 mb-3">Tồn kho / Tổng tồn kho ban đầu</p>
+                  <p className={`text-lg font-bold ${colors.remaining.text}`}>{remainingRate.toFixed(2)}%</p>
+                  <p className="text-xs text-gray-500 mt-2">Sản phẩm ACTIVE</p>
                 </div>
               </div>
             </div>
@@ -219,11 +255,11 @@ export default function WasteReportNew() {
         </div>
 
         {/* Platform Average */}
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+        <div className="card p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="bg-purple-50 p-3 rounded-lg">
-                <Store className="w-6 h-6 text-purple-600" />
+              <div className="bg-[#E8F4FF] p-3 rounded-lg">
+                <Store className="w-6 h-6 text-[#2D2D2D]" />
               </div>
               <div>
                 <h3 className="text-xl font-bold text-gray-900">{platformAvgWasteRate.toFixed(1)}%</h3>
@@ -238,8 +274,8 @@ export default function WasteReportNew() {
         </div>
 
         {/* Top 5 Waste Stores */}
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
+        <div className="card p-6">
+          <h2 className="heading-secondary flex items-center gap-2">
             <AlertTriangle className="w-5 h-5 text-amber-500" />
             Top 5 cửa hàng có tỉ lệ lãng phí cao nhất
           </h2>
@@ -256,7 +292,7 @@ export default function WasteReportNew() {
               return (
                 <div 
                   key={store.supplierId} 
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="flex items-center justify-between p-4 bg-surface-light rounded-lg hover:bg-surface transition-colors card-hover"
                 >
                   <div className="flex items-center gap-4 flex-1">
                     <div className={`
@@ -291,18 +327,18 @@ export default function WasteReportNew() {
                     </div>
                     <div className="text-right">
                       <p className="text-sm text-gray-500">Đã bán</p>
-                      <p className="font-semibold text-green-600">{sold.toLocaleString()}</p>
+                      <p className={`font-semibold ${colors.sold.text}`}>{sold.toLocaleString()}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-sm text-gray-500">Hết hạn</p>
-                      <p className="font-semibold text-red-600">{expired.toLocaleString()}</p>
+                      <p className={`font-semibold ${colors.expired.text}`}>{expired.toLocaleString()}</p>
                     </div>
                     <div className="text-right min-w-[120px]">
                       <p className="text-xs text-gray-500 mb-1">Expiry Rate</p>
-                      <p className="text-lg font-bold text-red-600">{storeExpiryRate.toFixed(1)}%</p>
+                      <p className={`text-lg font-bold ${colors.expired.text}`}>{storeExpiryRate.toFixed(1)}%</p>
                       <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
                         <div 
-                          className="bg-red-500 h-1.5 rounded-full transition-all"
+                          className={`h-1.5 rounded-full transition-all ${colors.expired.bg.replace('bg-', 'bg-')}`}
                           style={{ width: `${Math.min(storeExpiryRate, 100)}%` }}
                         />
                       </div>
@@ -315,16 +351,16 @@ export default function WasteReportNew() {
         </div>
 
         {/* All Stores Waste Rate Table */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+        <div className="card overflow-hidden">
+          <div className="px-6 py-4 border-b border-default bg-surface-light">
+            <h2 className="heading-secondary flex items-center gap-2">
               <Store className="w-5 h-5 text-[#2F855A]" />
               Tỉ lệ lãng phí theo cửa hàng
             </h2>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50">
+              <thead className="bg-surface-light">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cửa hàng</th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Tồn kho ban đầu</th>
@@ -346,7 +382,7 @@ export default function WasteReportNew() {
                   const expiryRate = initialStock > 0 ? (expired / initialStock) * 100 : 0;
 
                   return (
-                    <tr key={store.supplierId} className="hover:bg-gray-50 transition-colors">
+                    <tr key={store.supplierId} className="hover:bg-surface-light transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           {store.avatarUrl && (
@@ -369,27 +405,19 @@ export default function WasteReportNew() {
                         <span className="font-medium text-blue-600">{currentStock.toLocaleString()}</span>
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <span className="font-medium text-green-600">{sold.toLocaleString()}</span>
+                        <span className={`font-medium ${colors.sold.text}`}>{sold.toLocaleString()}</span>
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <span className="font-medium text-red-600">{expired.toLocaleString()}</span>
+                        <span className={`font-medium ${colors.expired.text}`}>{expired.toLocaleString()}</span>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col items-center gap-1">
-                          <span className={`text-sm font-semibold ${
-                            sellThrough >= 80 ? 'text-green-600' : 
-                            sellThrough >= 50 ? 'text-amber-600' : 
-                            'text-red-600'
-                          }`}>
+                          <span className={`text-sm font-semibold ${colors.sold.text}`}>
                             {sellThrough.toFixed(1)}%
                           </span>
                           <div className="w-20 bg-gray-200 rounded-full h-1.5">
                             <div 
-                              className={`h-1.5 rounded-full transition-all ${
-                                sellThrough >= 80 ? 'bg-green-500' : 
-                                sellThrough >= 50 ? 'bg-amber-500' : 
-                                'bg-red-500'
-                              }`}
+                              className={`h-1.5 rounded-full transition-all ${colors.sold.bg.replace('bg-', 'bg-')}`}
                               style={{ width: `${Math.min(sellThrough, 100)}%` }}
                             />
                           </div>
@@ -397,20 +425,12 @@ export default function WasteReportNew() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col items-center gap-1">
-                          <span className={`text-sm font-semibold ${
-                            expiryRate >= 30 ? 'text-red-600' : 
-                            expiryRate >= 15 ? 'text-amber-600' : 
-                            'text-green-600'
-                          }`}>
+                          <span className={`text-sm font-semibold ${colors.expired.text}`}>
                             {expiryRate.toFixed(1)}%
                           </span>
                           <div className="w-20 bg-gray-200 rounded-full h-1.5">
                             <div 
-                              className={`h-1.5 rounded-full transition-all ${
-                                expiryRate >= 30 ? 'bg-red-500' : 
-                                expiryRate >= 15 ? 'bg-amber-500' : 
-                                'bg-green-500'
-                              }`}
+                              className={`h-1.5 rounded-full transition-all ${colors.expired.bg.replace('bg-', 'bg-')}`}
                               style={{ width: `${Math.min(expiryRate, 100)}%` }}
                             />
                           </div>
