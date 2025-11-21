@@ -257,8 +257,8 @@ public interface StoreProductRepository extends JpaRepository<StoreProduct, Stri
      * Index: 0: supplierId, 1: businessName, 2: avatarUrl
      * Index: 3: totalProducts, 4: activeProducts, 5: unsoldProducts, 6: expiredProducts
      * Index: 7: totalStores, 8: activeStores
-     * Index: 9: totalInitialStock, 10: remainingStock (ACTIVE+INACTIVE), 11: allStock, 12: expiredStock
-     * Index: 13: totalStockValue, 14: wasteValue
+     * Index: 9: remainingStock (ACTIVE+INACTIVE), 10: allStock, 11: expiredStock
+     * Index: 12: totalStockValue, 13: wasteValue
      */
     @Query("""
                 SELECT
@@ -271,11 +271,10 @@ public interface StoreProductRepository extends JpaRepository<StoreProduct, Stri
                     SUM(CASE WHEN p.status = 'EXPIRED' THEN 1 ELSE 0 END),
                     COUNT(DISTINCT s.storeId),
                     SUM(CASE WHEN s.status = 'ACTIVE' THEN 1 ELSE 0 END),
-                    COALESCE(SUM(sp.initialStock), 0),
                     COALESCE(SUM(CASE WHEN (p.status = 'ACTIVE' OR p.status = 'INACTIVE') THEN sp.stockQuantity ELSE 0 END), 0),
                     COALESCE(SUM(sp.stockQuantity), 0),
                     COALESCE(SUM(CASE WHEN p.status = 'EXPIRED' THEN sp.stockQuantity ELSE 0 END), 0),
-                    COALESCE(SUM(sp.initialStock * COALESCE(v.originalPrice, 0)), 0),
+                    COALESCE(SUM(sp.stockQuantity * COALESCE(v.originalPrice, 0)), 0),
                     COALESCE(SUM(CASE WHEN p.status = 'EXPIRED' THEN sp.stockQuantity * COALESCE(v.originalPrice, 0) ELSE 0 END), 0)
                 FROM StoreProduct sp
                 JOIN sp.variant v
@@ -290,9 +289,8 @@ public interface StoreProductRepository extends JpaRepository<StoreProduct, Stri
     /**
      * Find global waste summary metrics
      * Index 0: totalProducts, 1: activeProducts, 2: soldOutProducts, 3: expiredProducts
-     * Index 4: nearExpiryProducts, 5: totalInitialStock (tổng tồn kho ban đầu)
-     * Index 6: remainingStock (ACTIVE + INACTIVE), 7: expiredStock (EXPIRED)
-     * Index 8: totalStockValue, 9: unsoldValue, 10: wasteValue
+     * Index 4: nearExpiryProducts, 5: remainingStock (ACTIVE + INACTIVE), 6: expiredStock (EXPIRED)
+     * Index 7: totalStockValue, 8: unsoldValue, 9: wasteValue
      */
     @Query("""
                 SELECT
@@ -301,11 +299,10 @@ public interface StoreProductRepository extends JpaRepository<StoreProduct, Stri
                     SUM(CASE WHEN p.status = 'SOLD_OUT' THEN 1 ELSE 0 END),
                     SUM(CASE WHEN p.status = 'EXPIRED' THEN 1 ELSE 0 END),
                     SUM(CASE WHEN v.expiryDate IS NOT NULL AND v.expiryDate BETWEEN CURRENT_DATE AND :nearExpiryDate THEN 1 ELSE 0 END),
-                    COALESCE(SUM(sp.initialStock), 0),
                     COALESCE(SUM(CASE WHEN (p.status = 'ACTIVE' OR p.status = 'INACTIVE') THEN sp.stockQuantity ELSE 0 END), 0),
                     COALESCE(SUM(CASE WHEN p.status = 'EXPIRED' THEN sp.stockQuantity ELSE 0 END), 0),
-                    COALESCE(SUM(sp.initialStock * COALESCE(v.originalPrice, 0)), 0),
                     COALESCE(SUM(sp.stockQuantity * COALESCE(v.originalPrice, 0)), 0),
+                    COALESCE(SUM(CASE WHEN (p.status = 'ACTIVE' OR p.status = 'INACTIVE') THEN sp.stockQuantity * COALESCE(v.originalPrice, 0) ELSE 0 END), 0),
                     COALESCE(SUM(CASE WHEN p.status = 'EXPIRED' THEN sp.stockQuantity * COALESCE(v.originalPrice, 0) ELSE 0 END), 0)
                 FROM StoreProduct sp
                 JOIN sp.variant v

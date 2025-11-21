@@ -631,29 +631,23 @@ public class ReportServiceImpl implements ReportService {
         Long soldOutProducts = toLong(data[2]);
         Long expiredProducts = toLong(data[3]);
         Long nearExpiryProducts = toLong(data[4]);
-        Long totalInitialStock = toLong(data[5]);   // Tổng tồn kho ban đầu
-        Long remainingStock = toLong(data[6]);       // Số lượng tồn kho ACTIVE + INACTIVE
-        Long expiredStock = toLong(data[7]);         // Số lượng hết hạn EXPIRED
-        BigDecimal totalStockValue = toBigDecimal(data[8]);
-        BigDecimal unsoldValue = toBigDecimal(data[9]);
-        BigDecimal wasteValue = toBigDecimal(data[10]);
+        Long remainingStock = toLong(data[5]);       // ACTIVE + INACTIVE stock
+        Long expiredStock = toLong(data[6]);         // EXPIRED stock
+        BigDecimal totalStockValue = toBigDecimal(data[7]);
+        BigDecimal unsoldValue = toBigDecimal(data[8]);
+        BigDecimal wasteValue = toBigDecimal(data[9]);
 
-        // Get sold quantity from DELIVERED orders (all time or recent period)
-        LocalDateTime salesWindowStart = LocalDateTime.now().minusDays(365); // Last year
+        // Get sold quantity from DELIVERED orders
+        LocalDateTime salesWindowStart = LocalDateTime.now().minusDays(365);
         LocalDateTime salesWindowEnd = LocalDateTime.now();
         Long soldQuantity = orderDetailRepository.sumSoldQuantityInPeriod(salesWindowStart, salesWindowEnd);
         
-        // New logic based on requirements:
-        // totalStockQuantity = tổng initialStock
-        // soldQuantity = from DELIVERED orders
-        // expiredQuantity = stock của sản phẩm EXPIRED
-        // unsoldQuantity = stock của sản phẩm ACTIVE + INACTIVE
-        
-        Long totalStock = totalInitialStock;
+        // Calculate total = sold + remaining + expired
+        Long totalStock = soldQuantity + remainingStock + expiredStock;
         Long unsoldQuantity = remainingStock;  // ACTIVE + INACTIVE
         Long expiredQuantity = expiredStock;
 
-        // Calculate rates based on initial stock
+        // Calculate rates
         Double sellThroughRate = totalStock > 0 ? (soldQuantity.doubleValue() / totalStock) * 100 : 0.0;
         Double expiryRate = totalStock > 0 ? (expiredQuantity.doubleValue() / totalStock) * 100 : 0.0;
         Double remainingRate = totalStock > 0 ? (unsoldQuantity.doubleValue() / totalStock) * 100 : 0.0;
@@ -873,12 +867,11 @@ public class ReportServiceImpl implements ReportService {
         return results.stream().map(row -> {
             String supplierId = (String) row[0];
             
-            // New data structure:
-            // Index: 9: totalInitialStock, 10: remainingStock (ACTIVE+INACTIVE), 11: allStock, 12: expiredStock
-            Long totalInitialStock = toLong(row[9]);
-            Long remainingStock = toLong(row[10]);  // ACTIVE + INACTIVE
-            Long allStock = toLong(row[11]);
-            Long expiredStock = toLong(row[12]);
+            // New data structure (no initialStock):
+            // Index: 9: remainingStock (ACTIVE+INACTIVE), 10: allStock, 11: expiredStock
+            Long remainingStock = toLong(row[9]);  // ACTIVE + INACTIVE
+            Long allStock = toLong(row[10]);
+            Long expiredStock = toLong(row[11]);
 
             // Get sold quantity from DELIVERED orders
             Long soldQuantity = orderDetailRepository.sumSoldQuantityBySupplierInPeriod(
@@ -887,17 +880,12 @@ public class ReportServiceImpl implements ReportService {
                 salesWindowEnd
             );
             
-            // New logic:
-            // totalStockQuantity = totalInitialStock (tổng tồn kho ban đầu)
-            // soldQuantity = from DELIVERED orders
-            // expiredQuantity = stock của sản phẩm EXPIRED
-            // unsoldQuantity = stock của sản phẩm ACTIVE + INACTIVE
-            
-            Long totalStock = totalInitialStock;
+            // Calculate total = sold + remaining + expired
+            Long totalStock = soldQuantity + remainingStock + expiredStock;
             Long expiredQuantity = expiredStock;
             Long unsoldQuantity = remainingStock;  // ACTIVE + INACTIVE
 
-            // Calculate rates based on initial stock
+            // Calculate rates
             Double sellThroughRate = totalStock > 0 ? (soldQuantity.doubleValue() / totalStock) * 100 : 0.0;
             Double expiryRate = totalStock > 0 ? (expiredQuantity.doubleValue() / totalStock) * 100 : 0.0;
             Double remainingRate = totalStock > 0 ? (unsoldQuantity.doubleValue() / totalStock) * 100 : 0.0;
