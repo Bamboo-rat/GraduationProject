@@ -621,7 +621,7 @@ public class ReportServiceImpl implements ReportService {
         LocalDate nearExpiryDate = LocalDate.now().plusDays(7);
 
         Object[] data = storeProductRepository.findWasteSummary(nearExpiryDate);
-        if (data == null || data.length < 11) {
+        if (data == null || data.length < 10) {
             data = defaultWasteSummary();
         }
 
@@ -672,7 +672,7 @@ public class ReportServiceImpl implements ReportService {
         BigDecimal topCategoryWasteValue = categoryWaste.isEmpty() ? BigDecimal.ZERO : toBigDecimal(categoryWaste.get(0)[11]);
 
         String topWasteSupplier = supplierWaste.isEmpty() ? "N/A" : (String) supplierWaste.get(0)[1];
-        BigDecimal topSupplierWasteValue = supplierWaste.isEmpty() ? BigDecimal.ZERO : toBigDecimal(supplierWaste.get(0)[14]);
+        BigDecimal topSupplierWasteValue = supplierWaste.isEmpty() ? BigDecimal.ZERO : toBigDecimal(supplierWaste.get(0)[13]);
 
         return WasteSummaryResponse.builder()
                 .startDate(salesWindowStart)
@@ -1045,17 +1045,16 @@ public class ReportServiceImpl implements ReportService {
 
     private Object[] defaultWasteSummary() {
         return new Object[]{
-                0L, // totalProducts
-                0L, // activeProducts
-                0L, // soldOutProducts
-                0L, // expiredProducts
-                0L, // nearExpiryProducts
-                0L, // totalInitialStock
-                0L, // remainingStock (ACTIVE + INACTIVE)
-                0L, // expiredStock
-                BigDecimal.ZERO, // totalStockValue
-                BigDecimal.ZERO, // unsoldValue
-                BigDecimal.ZERO // wasteValue
+                0L, // 0: totalProducts
+                0L, // 1: activeProducts
+                0L, // 2: soldOutProducts
+                0L, // 3: expiredProducts
+                0L, // 4: nearExpiryProducts
+                0L, // 5: remainingStock (ACTIVE + INACTIVE)
+                0L, // 6: expiredStock
+                BigDecimal.ZERO, // 7: totalStockValue
+                BigDecimal.ZERO, // 8: unsoldValue
+                BigDecimal.ZERO // 9: wasteValue
         };
     }
     
