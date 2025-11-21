@@ -31,6 +31,8 @@ public class WasteBySupplierResponse {
     private Long soldQuantity;
     private Long unsoldQuantity;
     private Long expiredQuantity;
+    private Long initialStockQuantity;
+    private Long currentStockQuantity;
 
     // Financial metrics
     private BigDecimal totalRevenue;

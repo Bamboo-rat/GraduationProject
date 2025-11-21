@@ -304,14 +304,15 @@ public class ReviewServiceImpl implements ReviewService {
         log.info("Getting all reviews for supplier: supplierId={}", supplierId);
 
         // Verify supplier exists
-        Supplier supplier = supplierRepository.findById(supplierId)
+        Supplier supplier = supplierRepository.findByKeycloakId(supplierId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND,
                         "Không tìm thấy nhà cung cấp"));
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<Review> reviews = reviewRepository.findBySupplierIdAndMarkedAsSpamFalseOrderByCreatedAtDesc(supplierId, pageable);
+        Page<Review> reviews = reviewRepository
+                .findBySupplierIdAndMarkedAsSpamFalseOrderByCreatedAtDesc(supplier.getUserId(), pageable);
 
-        return reviews.map(review -> mapToResponse(review, supplierId));
+        return reviews.map(review -> mapToResponse(review, supplier.getUserId()));
     }
 
     @Override

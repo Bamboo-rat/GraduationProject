@@ -165,6 +165,8 @@ export interface WasteSummary {
   soldQuantity: number;
   unsoldQuantity: number;
   expiredQuantity: number;
+  initialStockQuantity: number;
+  currentStockQuantity: number;
   totalStockValue: number;
   soldValue: number;
   unsoldValue: number;
@@ -239,6 +241,8 @@ export interface WasteBySupplier {
   soldQuantity: number;
   unsoldQuantity: number;
   expiredQuantity: number;
+  initialStockQuantity: number;
+  currentStockQuantity: number;
   totalRevenue: number;
   potentialRevenueLoss: number;
   wasteValue: number;

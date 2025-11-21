@@ -34,6 +34,8 @@ public class WasteSummaryResponse {
     private Long soldQuantity;
     private Long unsoldQuantity;
     private Long expiredQuantity;
+    private Long initialStockQuantity;   // Tổng tồn kho ban đầu (sold + current stock)
+    private Long currentStockQuantity;   // Tồn kho hiện tại (ACTIVE + INACTIVE + EXPIRED)
 
     // Financial metrics
     private BigDecimal totalStockValue;

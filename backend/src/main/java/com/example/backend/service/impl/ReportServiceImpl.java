@@ -633,24 +633,25 @@ public class ReportServiceImpl implements ReportService {
         Long nearExpiryProducts = toLong(data[4]);
         Long remainingStock = toLong(data[5]);       // ACTIVE + INACTIVE stock
         Long expiredStock = toLong(data[6]);         // EXPIRED stock
+        Long currentStock = remainingStock + expiredStock; // Tồn kho hiện tại
         BigDecimal totalStockValue = toBigDecimal(data[7]);
         BigDecimal unsoldValue = toBigDecimal(data[8]);
         BigDecimal wasteValue = toBigDecimal(data[9]);
 
         // Get sold quantity from DELIVERED orders
-        LocalDateTime salesWindowStart = LocalDateTime.now().minusDays(365);
+        LocalDateTime salesWindowStart = LocalDateTime.of(2020, 1, 1, 0, 0);
         LocalDateTime salesWindowEnd = LocalDateTime.now();
         Long soldQuantity = orderDetailRepository.sumSoldQuantityInPeriod(salesWindowStart, salesWindowEnd);
-        
-        // Calculate total = sold + remaining + expired
-        Long totalStock = soldQuantity + remainingStock + expiredStock;
+
+        // Calculate tổng tồn kho ban đầu = đã bán + tồn kho hiện tại
+        Long totalInitialStock = soldQuantity + currentStock;
         Long unsoldQuantity = remainingStock;  // ACTIVE + INACTIVE
         Long expiredQuantity = expiredStock;
 
-        // Calculate rates
-        Double sellThroughRate = totalStock > 0 ? (soldQuantity.doubleValue() / totalStock) * 100 : 0.0;
-        Double expiryRate = totalStock > 0 ? (expiredQuantity.doubleValue() / totalStock) * 100 : 0.0;
-        Double remainingRate = totalStock > 0 ? (unsoldQuantity.doubleValue() / totalStock) * 100 : 0.0;
+        // Calculate rates dựa trên tổng tồn kho ban đầu
+        Double sellThroughRate = totalInitialStock > 0 ? (soldQuantity.doubleValue() / totalInitialStock) * 100 : 0.0;
+        Double expiryRate = totalInitialStock > 0 ? (expiredQuantity.doubleValue() / totalInitialStock) * 100 : 0.0;
+        Double remainingRate = totalInitialStock > 0 ? (unsoldQuantity.doubleValue() / totalInitialStock) * 100 : 0.0;
 
         // Waste rate = expiry rate (true waste)
         Double wasteRate = expiryRate;
@@ -677,18 +678,20 @@ public class ReportServiceImpl implements ReportService {
         return WasteSummaryResponse.builder()
                 .startDate(salesWindowStart)
                 .endDate(salesWindowEnd)
-                .totalListed(totalStock)
+                .totalListed(currentStock)
                 .totalSold(soldQuantity)
-                .totalUnsold(unsoldQuantity + expiredQuantity)
+                .totalUnsold(currentStock)
                 .totalProducts(totalProducts)
                 .activeProducts(activeProducts)
                 .soldOutProducts(soldOutProducts)
                 .expiredProducts(expiredProducts)
                 .nearExpiryProducts(nearExpiryProducts)
-                .totalStockQuantity(totalStock)
+                .totalStockQuantity(totalInitialStock)
                 .soldQuantity(soldQuantity)
                 .unsoldQuantity(unsoldQuantity)  // ACTIVE + INACTIVE stock
                 .expiredQuantity(expiredQuantity) // EXPIRED stock
+                .initialStockQuantity(totalInitialStock)
+                .currentStockQuantity(currentStock)
                 .totalStockValue(totalStockValue)
                 .soldValue(BigDecimal.ZERO)
                 .unsoldValue(unsoldValue)
@@ -870,7 +873,7 @@ public class ReportServiceImpl implements ReportService {
             // New data structure (no initialStock):
             // Index: 9: remainingStock (ACTIVE+INACTIVE), 10: allStock, 11: expiredStock
             Long remainingStock = toLong(row[9]);  // ACTIVE + INACTIVE
-            Long allStock = toLong(row[10]);
+            Long allStock = toLong(row[10]);       // Tổng tồn kho hiện tại (mọi trạng thái)
             Long expiredStock = toLong(row[11]);
 
             // Get sold quantity from DELIVERED orders
@@ -880,15 +883,16 @@ public class ReportServiceImpl implements ReportService {
                 salesWindowEnd
             );
             
-            // Calculate total = sold + remaining + expired
-            Long totalStock = soldQuantity + remainingStock + expiredStock;
+            // Calculate tồn kho hiện tại & tồn kho ban đầu
+            Long currentStock = allStock;
+            Long totalInitialStock = soldQuantity + currentStock;
             Long expiredQuantity = expiredStock;
             Long unsoldQuantity = remainingStock;  // ACTIVE + INACTIVE
 
-            // Calculate rates
-            Double sellThroughRate = totalStock > 0 ? (soldQuantity.doubleValue() / totalStock) * 100 : 0.0;
-            Double expiryRate = totalStock > 0 ? (expiredQuantity.doubleValue() / totalStock) * 100 : 0.0;
-            Double remainingRate = totalStock > 0 ? (unsoldQuantity.doubleValue() / totalStock) * 100 : 0.0;
+            // Calculate rates dựa trên tổng tồn kho ban đầu
+            Double sellThroughRate = totalInitialStock > 0 ? (soldQuantity.doubleValue() / totalInitialStock) * 100 : 0.0;
+            Double expiryRate = totalInitialStock > 0 ? (expiredQuantity.doubleValue() / totalInitialStock) * 100 : 0.0;
+            Double remainingRate = totalInitialStock > 0 ? (unsoldQuantity.doubleValue() / totalInitialStock) * 100 : 0.0;
 
             // Waste rate = expiry rate
             Double wasteRate = expiryRate;
@@ -914,10 +918,12 @@ public class ReportServiceImpl implements ReportService {
                     .expiredProducts(toLong(row[6]))
                     .totalStores(toLong(row[7]))
                     .activeStores(toLong(row[8]))
-                    .totalStockQuantity(totalStock)
+                    .totalStockQuantity(totalInitialStock)
                     .soldQuantity(soldQuantity)
                     .unsoldQuantity(unsoldQuantity)  // ACTIVE + INACTIVE stock
                     .expiredQuantity(expiredQuantity) // EXPIRED stock
+                    .initialStockQuantity(totalInitialStock)
+                    .currentStockQuantity(currentStock)
                     .totalRevenue(BigDecimal.ZERO)
                     .potentialRevenueLoss(wasteValue)
                     .wasteValue(wasteValue)
