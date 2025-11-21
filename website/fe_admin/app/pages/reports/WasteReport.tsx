@@ -75,21 +75,19 @@ export default function WasteReportNew() {
     );
   }
 
-  // Mô hình nghiệp vụ SaveFood
+  // Use backend-calculated values following SaveFood business model
   const totalListed = summary?.totalListed || summary?.totalStockQuantity || 0;
   const totalSold = summary?.totalSold || summary?.soldQuantity || 0;
   const totalExpired = summary?.expiredQuantity || 0;
   const totalRemaining = summary?.unsoldQuantity || (totalListed - totalSold - totalExpired);
-  
-  // Core metrics
-  const sellThroughRate = totalListed > 0 ? (totalSold / totalListed) * 100 : 0;
-  const expiryRate = totalListed > 0 ? (totalExpired / totalListed) * 100 : 0;
-  const remainingRate = totalListed > 0 ? (totalRemaining / totalListed) * 100 : 0;
-  
-  // Waste metrics (expiryRate là waste thực sự)
-  const wasteRate = expiryRate;
-  const wasteIndex = expiryRate * 0.7 + remainingRate * 0.3;
-  
+
+  // Use backend-calculated metrics directly (no need to recalculate)
+  const sellThroughRate = summary?.sellThroughRate || 0;
+  const expiryRate = summary?.expiryRate || 0;
+  const remainingRate = summary?.remainingRate || 0;
+  const wasteRate = summary?.wasteRate || 0;
+  const wasteIndex = summary?.overallWasteIndex || 0;
+
   const platformAvgWasteRate = wasteIndex;
 
   const topWasteStores = supplierData
@@ -345,12 +343,10 @@ export default function WasteReportNew() {
                   const sold = store.soldQuantity;
                   const expired = store.expiredQuantity || 0;
                   const remaining = store.unsoldQuantity || (listed - sold - expired);
-                  
-                  // Tính các chỉ số
-                  const sellThrough = listed > 0 ? (sold / listed) * 100 : 0;
-                  const expiryRate = listed > 0 ? (expired / listed) * 100 : 0;
-                  const remainingRate = listed > 0 ? (remaining / listed) * 100 : 0;
-                  const wasteIndex = expiryRate * 0.7 + remainingRate * 0.3;
+
+                  // Use backend-calculated metrics directly
+                  const sellThrough = store.sellThroughRate || 0;
+                  const wasteIndex = store.wasteIndex || 0;
 
                   return (
                     <tr key={store.supplierId} className="hover:bg-gray-50 transition-colors">

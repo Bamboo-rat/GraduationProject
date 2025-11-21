@@ -173,6 +173,7 @@ export interface WasteSummary {
   sellThroughRate: number;
   wasteRate: number;
   expiryRate: number;
+  remainingRate: number;
   overallWasteIndex: number;
   wasteRateChange: number;
   wasteRateTrend: string;
@@ -220,6 +221,7 @@ export interface WasteByCategory {
   wasteValue: number;
   wasteRate: number;
   expiryRate: number;
+  remainingRate: number;
   wasteIndex: number;
 }
 
@@ -242,6 +244,8 @@ export interface WasteBySupplier {
   wasteValue: number;
   sellThroughRate: number;
   wasteRate: number;
+  expiryRate: number;
+  remainingRate: number;
   wasteIndex: number;
   performanceRating: string;
 }

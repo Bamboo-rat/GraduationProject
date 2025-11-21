@@ -44,9 +44,10 @@ public class WasteSummaryResponse {
 
     // Performance metrics
     private Double sellThroughRate; // percentage
-    private Double wasteRate; // percentage
+    private Double wasteRate; // percentage (equals expiryRate in SaveFood model)
     private Double expiryRate; // percentage
-    private Double overallWasteIndex; // 0-100
+    private Double remainingRate; // percentage (unsold but not expired)
+    private Double overallWasteIndex; // 0-100 (expiryRate × 0.7 + remainingRate × 0.3)
 
     // Comparison to previous period
     private Double wasteRateChange; // percentage change

@@ -69,6 +69,14 @@ public interface ReviewRepository extends JpaRepository<Review, String> {
     Page<Review> findByStoreAndMarkedAsSpamFalseOrderByCreatedAtDesc(Store store, Pageable pageable);
 
     /**
+     * Find all reviews for all stores of a supplier
+     */
+    @Query("SELECT r FROM Review r WHERE r.store.supplier.supplierId = :supplierId " +
+           "AND r.markedAsSpam = false " +
+           "ORDER BY r.createdAt DESC")
+    Page<Review> findBySupplierIdAndMarkedAsSpamFalseOrderByCreatedAtDesc(@Param("supplierId") String supplierId, Pageable pageable);
+
+    /**
      * Calculate average rating for product variant (excluding spam)
      */
     @Query("SELECT AVG(r.rating) FROM Review r WHERE r.productVariant = :variant AND r.markedAsSpam = false")

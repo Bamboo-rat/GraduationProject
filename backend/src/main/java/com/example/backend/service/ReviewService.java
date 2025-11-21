@@ -49,6 +49,11 @@ public interface ReviewService {
     Page<ReviewResponse> getStoreReviews(String storeId, int page, int size);
 
     /**
+     * Get all reviews for all stores of a supplier
+     */
+    Page<ReviewResponse> getSupplierReviews(String supplierId, int page, int size);
+
+    /**
      * Get product rating statistics
      */
     ProductRatingResponse getProductRating(String productId);

@@ -300,6 +300,22 @@ public class ReviewServiceImpl implements ReviewService {
 
     @Override
     @Transactional(readOnly = true)
+    public Page<ReviewResponse> getSupplierReviews(String supplierId, int page, int size) {
+        log.info("Getting all reviews for supplier: supplierId={}", supplierId);
+
+        // Verify supplier exists
+        Supplier supplier = supplierRepository.findById(supplierId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND,
+                        "Không tìm thấy nhà cung cấp"));
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<Review> reviews = reviewRepository.findBySupplierIdAndMarkedAsSpamFalseOrderByCreatedAtDesc(supplierId, pageable);
+
+        return reviews.map(review -> mapToResponse(review, supplierId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public ProductRatingResponse getProductRating(String productVariantId) {
         log.info("Getting product variant rating: variantId={}", productVariantId);
 

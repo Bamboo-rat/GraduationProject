@@ -55,6 +55,14 @@ export interface PageResponse<T> {
 }
 
 export const reviewService = {
+  // Get all reviews for supplier (all stores)
+  getSupplierReviews: async (page: number = 0, size: number = 10): Promise<PageResponse<ReviewResponse>> => {
+    const response = await api.get('/reviews/supplier', {
+      params: { page, size }
+    });
+    return response.data.data ?? response.data;
+  },
+
   // Get reviews for supplier's store
   getStoreReviews: async (storeId: string, page: number = 0, size: number = 10): Promise<PageResponse<ReviewResponse>> => {
     const response = await api.get(`/reviews/store/${storeId}`, {

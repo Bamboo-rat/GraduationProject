@@ -39,7 +39,9 @@ public class WasteBySupplierResponse {
 
     // Performance metrics
     private Double sellThroughRate; // sold / total stock (percentage)
-    private Double wasteRate; // waste / total stock (percentage)
-    private Double wasteIndex; // composite waste performance (0-100)
+    private Double wasteRate; // equals expiryRate in SaveFood model (percentage)
+    private Double expiryRate; // expired / total stock (percentage)
+    private Double remainingRate; // remaining stock / total stock (unsold but not expired)
+    private Double wasteIndex; // composite waste performance (expiryRate × 0.7 + remainingRate × 0.3)
     private String performanceRating; // EXCELLENT, GOOD, FAIR, POOR
 }

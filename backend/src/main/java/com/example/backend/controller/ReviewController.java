@@ -2,6 +2,7 @@ package com.example.backend.controller;
 
 import com.example.backend.dto.request.CreateReviewRequest;
 import com.example.backend.dto.request.UpdateReviewRequest;
+import com.example.backend.dto.response.ApiResponse;
 import com.example.backend.dto.response.ProductRatingResponse;
 import com.example.backend.dto.response.ReviewResponse;
 import com.example.backend.entity.enums.StorageBucket;
@@ -179,7 +180,7 @@ public class ReviewController {
             summary = "Get store reviews",
             description = "Public endpoint to get all reviews for a store"
     )
-    public ResponseEntity<Page<ReviewResponse>> getStoreReviews(
+    public ResponseEntity<ApiResponse<Page<ReviewResponse>>> getStoreReviews(
             @PathVariable String storeId,
             @Parameter(description = "Page number (0-indexed)") @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "Page size") @RequestParam(defaultValue = "10") int size
@@ -187,7 +188,26 @@ public class ReviewController {
         log.info("Getting reviews by store: storeId={}, page={}, size={}", storeId, page, size);
         
         Page<ReviewResponse> reviews = reviewService.getStoreReviews(storeId, page, size);
-        return ResponseEntity.ok(reviews);
+        return ResponseEntity.ok(ApiResponse.success("Reviews retrieved successfully", reviews));
+    }
+
+    @GetMapping("/supplier")
+    @PreAuthorize("hasRole('SUPPLIER')")
+    @Operation(
+            summary = "Get all supplier reviews",
+            description = "Get all reviews for all stores of the authenticated supplier",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    public ResponseEntity<ApiResponse<Page<ReviewResponse>>> getSupplierReviews(
+            Authentication authentication,
+            @Parameter(description = "Page number (0-indexed)") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Page size") @RequestParam(defaultValue = "10") int size
+    ) {
+        String supplierId = authentication.getName();
+        log.info("Getting all reviews for supplier: supplierId={}, page={}, size={}", supplierId, page, size);
+        
+        Page<ReviewResponse> reviews = reviewService.getSupplierReviews(supplierId, page, size);
+        return ResponseEntity.ok(ApiResponse.success("All supplier reviews retrieved successfully", reviews));
     }
 
     @GetMapping("/product/{productVariantId}/search")

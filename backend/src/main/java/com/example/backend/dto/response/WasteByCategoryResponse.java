@@ -33,7 +33,8 @@ public class WasteByCategoryResponse {
     private BigDecimal wasteValue;
 
     // Waste index (percentage)
-    private Double wasteRate; // unsold / total stock
+    private Double wasteRate; // equals expiryRate in SaveFood model
     private Double expiryRate; // expired / total stock
-    private Double wasteIndex; // composite waste metric (0-100)
+    private Double remainingRate; // remaining stock / total stock (unsold but not expired)
+    private Double wasteIndex; // composite waste metric (expiryRate × 0.7 + remainingRate × 0.3)
 }

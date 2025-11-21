@@ -652,14 +652,17 @@ public class ReportServiceImpl implements ReportService {
         Long unsoldQuantity = totalUnsold;
         BigDecimal soldValue = BigDecimal.ZERO;
 
-        // Calculate rates based on 90-day sales window
-        // WasteRate = (totalUnsold / totalListed) × 100%
+        // Calculate rates based on 90-day sales window using SaveFood business model
         Double sellThroughRate = totalListed > 0 ? (recentSold.doubleValue() / totalListed) * 100 : 0.0;
-        Double wasteRate = totalListed > 0 ? (totalUnsold.doubleValue() / totalListed) * 100 : 0.0;
         Double expiryRate = totalListed > 0 ? (expiredQuantity.doubleValue() / totalListed) * 100 : 0.0;
+        Double remainingRate = totalListed > 0 ? (currentStock.doubleValue() / totalListed) * 100 : 0.0;
 
-        // Waste index (0-100, lower is better)
-        Double overallWasteIndex = (wasteRate + expiryRate) / 2;
+        // In SaveFood model: waste = expired (true waste), remaining is unsold but can still be sold
+        Double wasteRate = expiryRate;
+
+        // Waste index (0-100, lower is better) = expiryRate × 0.7 + remainingRate × 0.3
+        // This gives more weight to actual expired items (70%) and less to remaining stock (30%)
+        Double overallWasteIndex = (expiryRate * 0.7) + (remainingRate * 0.3);
 
         // Get top waste contributors
         List<Object[]> categoryWaste = storeProductRepository.findWasteByCategory(nearExpiryDate);
@@ -702,6 +705,7 @@ public class ReportServiceImpl implements ReportService {
                 .sellThroughRate(sellThroughRate)
                 .wasteRate(wasteRate)
                 .expiryRate(expiryRate)
+                .remainingRate(remainingRate)
                 .overallWasteIndex(overallWasteIndex)
                 .wasteRateChange(0.0) // Would need historical comparison
                 .wasteRateTrend(overallWasteIndex < 30 ? "IMPROVING" : overallWasteIndex < 50 ? "STABLE" : "WORSENING")
@@ -823,10 +827,15 @@ public class ReportServiceImpl implements ReportService {
             Long totalListed = recentSold + currentStock + expiredQuantity;
             Long totalUnsold = currentStock + expiredQuantity;
 
-            // WasteRate = (totalUnsold / totalListed) * 100
-            Double wasteRate = totalListed > 0 ? (totalUnsold.doubleValue() / totalListed) * 100 : 0.0;
+            // Calculate rates using SaveFood business model
             Double expiryRate = totalListed > 0 ? (expiredQuantity.doubleValue() / totalListed) * 100 : 0.0;
-            Double wasteIndex = (wasteRate * 0.6) + (expiryRate * 0.4); // Weighted composite
+            Double remainingRate = totalListed > 0 ? (currentStock.doubleValue() / totalListed) * 100 : 0.0;
+
+            // In SaveFood model: waste = expired (true waste)
+            Double wasteRate = expiryRate;
+
+            // Waste index = expiryRate × 0.7 + remainingRate × 0.3
+            Double wasteIndex = (expiryRate * 0.7) + (remainingRate * 0.3);
 
             return WasteByCategoryResponse.builder()
                     .categoryId((String) row[0])
@@ -844,6 +853,7 @@ public class ReportServiceImpl implements ReportService {
                     .wasteValue(unsoldValue)
                     .wasteRate(wasteRate)
                     .expiryRate(expiryRate)
+                    .remainingRate(remainingRate)
                     .wasteIndex(wasteIndex)
                     .build();
         }).collect(Collectors.toList());
@@ -880,10 +890,16 @@ public class ReportServiceImpl implements ReportService {
             Long totalListed = recentSold + currentStock + expiredQuantity;
             Long totalUnsold = currentStock + expiredQuantity;
 
-            // WasteRate = (totalUnsold / totalListed) * 100
+            // Calculate rates using SaveFood business model
             Double sellThroughRate = totalListed > 0 ? (recentSold.doubleValue() / totalListed) * 100 : 0.0;
-            Double wasteRate = totalListed > 0 ? (totalUnsold.doubleValue() / totalListed) * 100 : 0.0;
-            Double wasteIndex = 100.0 - sellThroughRate;
+            Double expiryRate = totalListed > 0 ? (expiredQuantity.doubleValue() / totalListed) * 100 : 0.0;
+            Double remainingRate = totalListed > 0 ? (currentStock.doubleValue() / totalListed) * 100 : 0.0;
+
+            // In SaveFood model: waste = expired (true waste)
+            Double wasteRate = expiryRate;
+
+            // Waste index = expiryRate × 0.7 + remainingRate × 0.3
+            Double wasteIndex = (expiryRate * 0.7) + (remainingRate * 0.3);
 
             String rating = sellThroughRate >= 80 ? "EXCELLENT"
                     : sellThroughRate >= 60 ? "GOOD"
@@ -915,6 +931,8 @@ public class ReportServiceImpl implements ReportService {
                     .wasteValue(wasteValue)
                     .sellThroughRate(sellThroughRate)
                     .wasteRate(wasteRate)
+                    .expiryRate(expiryRate)
+                    .remainingRate(remainingRate)
                     .wasteIndex(wasteIndex)
                     .performanceRating(rating)
                     .build();

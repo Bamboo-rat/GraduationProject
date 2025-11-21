@@ -10,7 +10,6 @@ export default function CustomerReviews() {
   const [reviews, setReviews] = useState<ReviewResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [storeId, setStoreId] = useState<string>('');
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(0);
@@ -35,37 +34,16 @@ export default function CustomerReviews() {
     pendingReply: 0,
   });
 
-  // Fetch store info
-  useEffect(() => {
-    const fetchStoreInfo = async () => {
-      try {
-        const stores = await storeService.getStoreBySupplier();
-        if (stores.length > 0) {
-          setStoreId(stores[0].storeId);
-        } else {
-          setError('Bạn chưa có cửa hàng nào');
-          setLoading(false);
-        }
-      } catch (err: any) {
-        console.error('Failed to fetch store:', err);
-        setError('Không thể tải thông tin cửa hàng');
-        setLoading(false);
-      }
-    };
-    fetchStoreInfo();
-  }, []);
-
   // Fetch reviews
   useEffect(() => {
-    if (!storeId) return;
     fetchReviews();
-  }, [storeId, currentPage, selectedRating]);
+  }, [currentPage, selectedRating]);
 
   const fetchReviews = async () => {
     try {
       setLoading(true);
       setError('');
-      const response = await reviewService.getStoreReviews(storeId, currentPage, 10);
+      const response = await reviewService.getSupplierReviews(currentPage, 10);
       
       let filteredReviews = response.content;
       if (selectedRating !== null) {
