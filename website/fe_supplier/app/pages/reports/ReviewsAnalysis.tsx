@@ -51,9 +51,12 @@ export default function ReviewsAnalysis() {
   const loadStores = async () => {
     try {
       const storesResponse = await storeService.getMyStores({ page: 0, size: 100 });
-      setStores(storesResponse.content);
+      // Filter out any undefined/null stores
+      const validStores = (storesResponse.content || []).filter(store => store && store.storeId);
+      setStores(validStores);
     } catch (err) {
       console.error('Failed to load stores:', err);
+      setStores([]); // Set empty array on error
     }
   };
 

@@ -139,7 +139,7 @@ export default function EditProduct() {
           product.variants.forEach((variant: any, index: number) => {
             if (variant.storeStocks && variant.storeStocks.length > 0) {
               mappedInventory[index.toString()] = variant.storeStocks.map((stock: any) => ({
-                storeId: stock.store.storeId,
+                storeId: stock.storeId || stock.store?.storeId, // Handle both direct storeId and nested store.storeId
                 stockQuantity: stock.stockQuantity,
                 priceOverride: stock.priceOverride,
               }));
