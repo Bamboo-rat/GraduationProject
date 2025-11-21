@@ -60,7 +60,7 @@ export const reviewService = {
     const response = await api.get(`/reviews/store/${storeId}`, {
       params: { page, size }
     });
-    return response.data;
+    return response.data.data ?? response.data;
   },
 
   // Get review by ID

@@ -400,6 +400,285 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
+    public ProductResponse fullUpdateProduct(String productId, ProductFullUpdateRequest request, String keycloakId) {
+        log.info("Full update product: {} by keycloakId: {}", productId, keycloakId);
+
+        // 1. Validate supplier ownership
+        Supplier supplier = (Supplier) userRepository.findByKeycloakId(keycloakId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));
+
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND));
+
+        if (!product.getSupplier().getUserId().equals(supplier.getUserId())) {
+            throw new BadRequestException(ErrorCode.UNAUTHORIZED, "You do not have permission to update this product");
+        }
+
+        // 2. Update basic product info
+        product.setName(request.getName());
+        product.setDescription(request.getDescription());
+
+        if (!request.getCategoryId().equals(product.getCategory().getCategoryId())) {
+            Category category = categoryRepository.findById(request.getCategoryId())
+                    .orElseThrow(() -> new NotFoundException(ErrorCode.CATEGORY_NOT_FOUND));
+            product.setCategory(category);
+        }
+
+        // 3. Update attributes
+        updateAttributes(product, request.getAttributes());
+
+        // 4. Update product-level images
+        updateProductImages(product, request.getProductImages());
+
+        // 5. Update variants (add new, update existing, delete marked)
+        updateVariants(product, request.getVariants(), supplier);
+
+        // 6. Save product
+        product = productRepository.save(product);
+
+        // 7. Check and update product status
+        checkAndUpdateProductStatus(productId);
+
+        // 8. Return updated product
+        Product updatedProduct = productRepository.findById(productId)
+                .orElseThrow(() -> new NotFoundException(ErrorCode.PRODUCT_NOT_FOUND));
+
+        log.info("Product {} fully updated by supplier {}", productId, keycloakId);
+        return productMapper.toResponse(updatedProduct);
+    }
+
+    private void updateAttributes(Product product, List<ProductFullUpdateRequest.AttributeUpdateRequest> attributeRequests) {
+        // Delete marked attributes
+        product.getAttributes().removeIf(attr -> 
+            attributeRequests.stream()
+                .anyMatch(req -> req.getAttributeId() != null 
+                    && req.getAttributeId().equals(attr.getAttributeId()) 
+                    && req.getDelete()));
+
+        // Update existing and add new attributes
+        for (ProductFullUpdateRequest.AttributeUpdateRequest attrReq : attributeRequests) {
+            if (attrReq.getDelete()) continue;
+
+            if (attrReq.getAttributeId() != null) {
+                // Update existing attribute
+                product.getAttributes().stream()
+                    .filter(attr -> attr.getAttributeId().equals(attrReq.getAttributeId()))
+                    .findFirst()
+                    .ifPresent(attr -> {
+                        attr.setAttributeName(attrReq.getAttributeName());
+                        attr.setAttributeValue(attrReq.getAttributeValue());
+                    });
+            } else {
+                // Add new attribute
+                ProductAttribute newAttr = new ProductAttribute();
+                newAttr.setAttributeName(attrReq.getAttributeName());
+                newAttr.setAttributeValue(attrReq.getAttributeValue());
+                newAttr.setProduct(product);
+                product.getAttributes().add(newAttr);
+            }
+        }
+    }
+
+    private void updateProductImages(Product product, List<ProductFullUpdateRequest.ImageUpdateRequest> imageRequests) {
+        // Delete marked images (and remove from Cloudinary)
+        List<ProductImage> imagesToDelete = product.getImages().stream()
+            .filter(img -> imageRequests.stream()
+                .anyMatch(req -> req.getImageId() != null 
+                    && req.getImageId().equals(img.getImageId()) 
+                    && req.getDelete()))
+            .toList();
+
+        for (ProductImage img : imagesToDelete) {
+            try {
+                fileStorageService.deleteFile(img.getImageUrl(), StorageBucket.PRODUCTS);
+            } catch (Exception e) {
+                log.warn("Failed to delete image from Cloudinary: {}", img.getImageUrl(), e);
+            }
+            product.getImages().remove(img);
+        }
+
+        // Update existing images
+        for (ProductFullUpdateRequest.ImageUpdateRequest imgReq : imageRequests) {
+            if (imgReq.getDelete()) continue;
+
+            if (imgReq.getImageId() != null) {
+                // Update existing image
+                product.getImages().stream()
+                    .filter(img -> img.getImageId().equals(imgReq.getImageId()))
+                    .findFirst()
+                    .ifPresent(img -> {
+                        img.setImageUrl(imgReq.getImageUrl());
+                        img.setPrimary(imgReq.getIsPrimary());
+                    });
+            } else {
+                // Add new image
+                ProductImage newImg = new ProductImage();
+                newImg.setImageUrl(imgReq.getImageUrl());
+                newImg.setPrimary(imgReq.getIsPrimary());
+                newImg.setProduct(product);
+                newImg.setVariant(null);
+                product.getImages().add(newImg);
+            }
+        }
+    }
+
+    private void updateVariants(Product product, List<ProductFullUpdateRequest.VariantUpdateRequest> variantRequests, Supplier supplier) {
+        // Delete marked variants
+        List<ProductVariant> variantsToDelete = product.getVariants().stream()
+            .filter(variant -> variantRequests.stream()
+                .anyMatch(req -> req.getVariantId() != null 
+                    && req.getVariantId().equals(variant.getVariantId()) 
+                    && req.getDelete()))
+            .toList();
+
+        for (ProductVariant variant : variantsToDelete) {
+            // Delete variant images from Cloudinary
+            for (ProductImage img : variant.getVariantImages()) {
+                try {
+                    fileStorageService.deleteFile(img.getImageUrl(), StorageBucket.PRODUCTS);
+                } catch (Exception e) {
+                    log.warn("Failed to delete variant image from Cloudinary: {}", img.getImageUrl(), e);
+                }
+            }
+            product.getVariants().remove(variant);
+        }
+
+        // Update existing and add new variants
+        for (ProductFullUpdateRequest.VariantUpdateRequest varReq : variantRequests) {
+            if (varReq.getDelete()) continue;
+
+            if (varReq.getVariantId() != null) {
+                // Update existing variant
+                ProductVariant existingVariant = product.getVariants().stream()
+                    .filter(v -> v.getVariantId().equals(varReq.getVariantId()))
+                    .findFirst()
+                    .orElseThrow(() -> new NotFoundException(ErrorCode.RESOURCE_NOT_FOUND, "Variant not found"));
+
+                existingVariant.setName(varReq.getName());
+                existingVariant.setOriginalPrice(varReq.getOriginalPrice());
+                existingVariant.setDiscountPrice(varReq.getDiscountPrice());
+                existingVariant.setManufacturingDate(varReq.getManufacturingDate());
+                existingVariant.setExpiryDate(varReq.getExpiryDate());
+
+                // Update variant images
+                updateVariantImages(existingVariant, varReq.getVariantImages());
+
+                // Update store inventory
+                updateStoreInventory(existingVariant, varReq.getStoreInventory(), supplier);
+
+            } else {
+                // Add new variant
+                ProductVariant newVariant = new ProductVariant();
+                newVariant.setName(varReq.getName());
+                newVariant.setSku(varReq.getSku() != null ? varReq.getSku() : SkuGenerator.generateSku(product, varReq.getName()));
+                newVariant.setOriginalPrice(varReq.getOriginalPrice());
+                newVariant.setDiscountPrice(varReq.getDiscountPrice());
+                newVariant.setManufacturingDate(varReq.getManufacturingDate());
+                newVariant.setExpiryDate(varReq.getExpiryDate());
+                newVariant.setProduct(product);
+
+                // Add variant images
+                for (ProductFullUpdateRequest.ImageUpdateRequest imgReq : varReq.getVariantImages()) {
+                    ProductImage img = new ProductImage();
+                    img.setImageUrl(imgReq.getImageUrl());
+                    img.setPrimary(imgReq.getIsPrimary());
+                    img.setVariant(newVariant);
+                    img.setProduct(null);
+                    newVariant.getVariantImages().add(img);
+                }
+
+                // Add store inventory
+                for (ProductFullUpdateRequest.StoreInventoryUpdateRequest invReq : varReq.getStoreInventory()) {
+                    Store store = storeRepository.findById(invReq.getStoreId())
+                        .orElseThrow(() -> new NotFoundException(ErrorCode.STORE_NOT_FOUND));
+
+                    if (!store.getSupplier().getUserId().equals(supplier.getUserId())) {
+                        throw new BadRequestException(ErrorCode.UNAUTHORIZED, "Store does not belong to you");
+                    }
+
+                    StoreProduct storeProduct = new StoreProduct();
+                    storeProduct.setStore(store);
+                    storeProduct.setVariant(newVariant);
+                    storeProduct.setStockQuantity(invReq.getStockQuantity());
+                    storeProduct.setPriceOverride(invReq.getPriceOverride());
+                    newVariant.getStoreProducts().add(storeProduct);
+                }
+
+                product.getVariants().add(newVariant);
+            }
+        }
+    }
+
+    private void updateVariantImages(ProductVariant variant, List<ProductFullUpdateRequest.ImageUpdateRequest> imageRequests) {
+        // Delete marked images
+        List<ProductImage> imagesToDelete = variant.getVariantImages().stream()
+            .filter(img -> imageRequests.stream()
+                .anyMatch(req -> req.getImageId() != null 
+                    && req.getImageId().equals(img.getImageId()) 
+                    && req.getDelete()))
+            .toList();
+
+        for (ProductImage img : imagesToDelete) {
+            try {
+                fileStorageService.deleteFile(img.getImageUrl(), StorageBucket.PRODUCTS);
+            } catch (Exception e) {
+                log.warn("Failed to delete variant image from Cloudinary: {}", img.getImageUrl(), e);
+            }
+            variant.getVariantImages().remove(img);
+        }
+
+        // Update existing and add new images
+        for (ProductFullUpdateRequest.ImageUpdateRequest imgReq : imageRequests) {
+            if (imgReq.getDelete()) continue;
+
+            if (imgReq.getImageId() != null) {
+                // Update existing image
+                variant.getVariantImages().stream()
+                    .filter(img -> img.getImageId().equals(imgReq.getImageId()))
+                    .findFirst()
+                    .ifPresent(img -> {
+                        img.setImageUrl(imgReq.getImageUrl());
+                        img.setPrimary(imgReq.getIsPrimary());
+                    });
+            } else {
+                // Add new image
+                ProductImage newImg = new ProductImage();
+                newImg.setImageUrl(imgReq.getImageUrl());
+                newImg.setPrimary(imgReq.getIsPrimary());
+                newImg.setVariant(variant);
+                newImg.setProduct(null);
+                variant.getVariantImages().add(newImg);
+            }
+        }
+    }
+
+    private void updateStoreInventory(ProductVariant variant, List<ProductFullUpdateRequest.StoreInventoryUpdateRequest> inventoryRequests, Supplier supplier) {
+        // Update or create store inventory
+        for (ProductFullUpdateRequest.StoreInventoryUpdateRequest invReq : inventoryRequests) {
+            Store store = storeRepository.findById(invReq.getStoreId())
+                .orElseThrow(() -> new NotFoundException(ErrorCode.STORE_NOT_FOUND));
+
+            if (!store.getSupplier().getUserId().equals(supplier.getUserId())) {
+                throw new BadRequestException(ErrorCode.UNAUTHORIZED, "Store does not belong to you");
+            }
+
+            StoreProduct storeProduct = storeProductRepository
+                .findByStoreStoreIdAndVariantVariantId(invReq.getStoreId(), variant.getVariantId())
+                .orElseGet(() -> {
+                    StoreProduct newSp = new StoreProduct();
+                    newSp.setStore(store);
+                    newSp.setVariant(variant);
+                    variant.getStoreProducts().add(newSp);
+                    return newSp;
+                });
+
+            storeProduct.setStockQuantity(invReq.getStockQuantity());
+            storeProduct.setPriceOverride(invReq.getPriceOverride());
+        }
+    }
+
+    @Override
+    @Transactional
     public ProductResponse toggleProductVisibility(String productId, String keycloakId, boolean makeActive) {
         Supplier supplier = (Supplier) userRepository.findByKeycloakId(keycloakId)
                 .orElseThrow(() -> new NotFoundException(ErrorCode.USER_NOT_FOUND));

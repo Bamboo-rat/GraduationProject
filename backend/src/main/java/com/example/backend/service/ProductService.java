@@ -79,6 +79,15 @@ public interface ProductService {
     ProductResponse updateProduct(String productId, ProductUpdateRequest request, String keycloakId);
 
     /**
+     * Full update product including variants, images, attributes, and inventory
+     * @param productId Product ID
+     * @param request Full update request with all product data
+     * @param keycloakId Keycloak ID from JWT (for ownership validation)
+     * @return Updated product
+     */
+    ProductResponse fullUpdateProduct(String productId, com.example.backend.dto.request.ProductFullUpdateRequest request, String keycloakId);
+
+    /**
      * Supplier toggles product visibility (ACTIVE ↔ INACTIVE)
      * @param productId Product ID
      * @param keycloakId Keycloak ID from JWT (for ownership validation)

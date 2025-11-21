@@ -237,6 +237,28 @@ public class ProductController {
         return ResponseEntity.ok(ApiResponse.success("Product updated successfully", product));
     }
 
+    @PutMapping("/{id}/full")
+    @PreAuthorize("hasRole('SUPPLIER')")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @Operation(
+            summary = "Full update product",
+            description = "Update all product information including variants, images, attributes, and inventory"
+    )
+    public ResponseEntity<ApiResponse<ProductResponse>> fullUpdateProduct(
+            @PathVariable String id,
+            @Valid @RequestBody com.example.backend.dto.request.ProductFullUpdateRequest request,
+            Authentication authentication) {
+
+        Jwt jwt = (Jwt) authentication.getPrincipal();
+        String keycloakId = JwtUtils.extractKeycloakId(jwt);
+
+        log.info("PUT /api/products/{}/full - Full update product by supplier {}", id, keycloakId);
+
+        ProductResponse product = productService.fullUpdateProduct(id, request, keycloakId);
+
+        return ResponseEntity.ok(ApiResponse.success("Product fully updated successfully", product));
+    }
+
     @PatchMapping("/{id}/visibility")
     @PreAuthorize("hasRole('SUPPLIER')")
     @SecurityRequirement(name = "Bearer Authentication")

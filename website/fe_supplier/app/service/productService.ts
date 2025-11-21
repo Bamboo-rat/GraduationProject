@@ -96,6 +96,49 @@ export interface UpdateProductRequest {
   categoryId: string;
 }
 
+// Full update request types
+export interface AttributeUpdateRequest {
+  attributeId?: string;  // null if new attribute
+  attributeName: string;
+  attributeValue: string;
+  delete?: boolean;      // true to mark for deletion
+}
+
+export interface ImageUpdateRequest {
+  imageId?: string;      // null if new image
+  imageUrl: string;
+  isPrimary?: boolean;
+  delete?: boolean;      // true to mark for deletion
+}
+
+export interface StoreInventoryUpdateRequest {
+  storeId: string;
+  stockQuantity: number;
+  priceOverride?: number;
+}
+
+export interface VariantUpdateRequest {
+  variantId?: string;    // null if new variant
+  name: string;
+  sku?: string;          // can be auto-generated if null
+  originalPrice: number;
+  discountPrice?: number;
+  manufacturingDate?: string;
+  expiryDate: string;
+  delete?: boolean;      // true to mark for deletion
+  variantImages?: ImageUpdateRequest[];
+  storeInventory?: StoreInventoryUpdateRequest[];
+}
+
+export interface ProductFullUpdateRequest {
+  name: string;
+  description?: string;
+  categoryId: string;
+  attributes?: AttributeUpdateRequest[];
+  variants: VariantUpdateRequest[];
+  productImages?: ImageUpdateRequest[];
+}
+
 export interface ProductResponse {
   productId: string;
   name: string;
@@ -168,6 +211,12 @@ class ProductService {
   // Update product (basic info only: name, description, category)
   async updateProduct(id: string, data: UpdateProductRequest): Promise<ProductResponse> {
     const response = await apiClient.put<ApiResponse<ProductResponse>>(`${this.BASE_URL}/${id}`, data);
+    return response.data.data;
+  }
+
+  // Full update product (all fields: variants, images, attributes, inventory)
+  async fullUpdateProduct(id: string, data: ProductFullUpdateRequest): Promise<ProductResponse> {
+    const response = await apiClient.put<ApiResponse<ProductResponse>>(`${this.BASE_URL}/${id}/full`, data);
     return response.data.data;
   }
 

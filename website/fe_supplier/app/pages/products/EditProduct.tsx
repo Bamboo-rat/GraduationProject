@@ -1,9 +1,22 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import productService from '~/service/productService';
-import type { ProductResponse, UpdateProductRequest, StoreStockInfo } from '~/service/productService';
-import StockUpdateModal from '~/component/features/product/StockUpdateModal';
-import { ArrowLeft, Package, Image, Layers, Tag, Store, Calendar, AlertCircle, Edit3 } from 'lucide-react';
+import type {
+  ProductFullUpdateRequest,
+  ProductInfoRequest,
+  AttributeUpdateRequest,
+  VariantUpdateRequest,
+  ImageUpdateRequest,
+  StoreInventoryUpdateRequest,
+  ProductResponse,
+} from '~/service/productService';
+
+// Local interface for form state (includes UI-only fields)
+interface VariantFormData extends Omit<VariantUpdateRequest, 'variantImages' | 'storeInventory'> {
+  // State stores images and inventory separately
+}
+import fileStorageService from '~/service/fileStorageService';
+import { PlusCircle, Trash2, Upload, Image as ImageIcon, ArrowLeft } from 'lucide-react';
 import Toast, { type ToastType } from '~/component/common/Toast';
 import { useFormProtection } from '~/utils/useFormProtection';
 import { useCategories } from '~/hooks/useCategories';
@@ -14,7 +27,6 @@ export default function EditProduct() {
   const { productId } = useParams<{ productId: string }>();
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
-  const [product, setProduct] = useState<ProductResponse | null>(null);
   
   // Use React Query hooks for cached data
   const { data: categories = [], isLoading: loadingCategories, error: categoriesError } = useCategories();
@@ -27,112 +39,856 @@ export default function EditProduct() {
     setToast({ message, type });
   };
 
-  // Stock update modal state
-  const [stockModalOpen, setStockModalOpen] = useState(false);
-  const [selectedStock, setSelectedStock] = useState<{
-    variantId: string;
-    variantName: string;
-    store: StoreStockInfo;
-  } | null>(null);
-
-  // Form data
-  const [formData, setFormData] = useState<UpdateProductRequest>({
+  // Form data matching backend CreateProductRequest
+  const [productInfo, setProductInfo] = useState<ProductInfoRequest>({
     name: '',
     description: '',
     categoryId: '',
   });
 
-  // Original data for dirty checking
-  const [originalData, setOriginalData] = useState<UpdateProductRequest>({
-    name: '',
-    description: '',
-    categoryId: '',
-  });
+  const [attributes, setAttributes] = useState<AttributeUpdateRequest[]>([]);
+  const [variants, setVariants] = useState<VariantFormData[]>([
+    {
+      name: '',
+      originalPrice: 0,
+      discountPrice: 0,
+      expiryDate: '',
+      manufacturingDate: '',
+    },
+  ]);
+  const [productImages, setProductImages] = useState<ImageUpdateRequest[]>([]); // Ảnh chung sản phẩm
+  const [variantImages, setVariantImages] = useState<{ [variantIndex: number]: ImageUpdateRequest[] }>({}); // Ảnh từng biến thể
+  // Store inventory keyed by variantIndex-storeId
+  const [storeInventory, setStoreInventory] = useState<{ [key: string]: StoreInventoryUpdateRequest[] }>({});
+  const [uploadingImages, setUploadingImages] = useState<{ type: 'product' | 'variant'; index?: number } | null>(null);
+
+  // Load existing product data
+  useEffect(() => {
+    const loadProduct = async () => {
+      if (!productId) {
+        showToast('Không tìm thấy ID sản phẩm', 'error');
+        navigate('/products/list');
+        return;
+      }
+
+      setLoadingData(true);
+      try {
+        const product = await productService.getProductById(productId);
+        
+        // Map product info
+        setProductInfo({
+          name: product.name,
+          description: product.description || '',
+          categoryId: product.categoryId,
+        });
+
+        // Map attributes
+        if (product.attributes && product.attributes.length > 0) {
+          setAttributes(
+            product.attributes.map((attr: any) => ({
+              attributeId: attr.attributeId,
+              attributeName: attr.attributeName,
+              attributeValue: attr.attributeValue,
+              delete: false,
+            }))
+          );
+        }
+
+        // Map product images
+        if (product.images && product.images.length > 0) {
+          setProductImages(
+            product.images.map((img: any) => ({
+              imageId: img.imageId,
+              imageUrl: img.imageUrl,
+              primary: img.primary,
+              delete: false,
+            }))
+          );
+        }
+
+        // Map variants
+        if (product.variants && product.variants.length > 0) {
+          const mappedVariants: VariantFormData[] = product.variants.map((variant: any) => ({
+            variantId: variant.variantId,
+            name: variant.name,
+            sku: variant.sku,
+            originalPrice: variant.originalPrice,
+            discountPrice: variant.discountPrice,
+            manufacturingDate: variant.manufacturingDate,
+            expiryDate: variant.expiryDate,
+            delete: false,
+          }));
+          setVariants(mappedVariants);
+
+          // Map variant images
+          const mappedVariantImages: { [key: number]: ImageUpdateRequest[] } = {};
+          product.variants.forEach((variant: any, index: number) => {
+            if (variant.variantImages && variant.variantImages.length > 0) {
+              mappedVariantImages[index] = variant.variantImages.map((img: any) => ({
+                imageId: img.imageId,
+                imageUrl: img.imageUrl,
+                primary: img.primary,
+                delete: false,
+              }));
+            }
+          });
+          setVariantImages(mappedVariantImages);
+
+          // Map store inventory
+          const mappedInventory: { [key: string]: StoreInventoryUpdateRequest[] } = {};
+          product.variants.forEach((variant: any, index: number) => {
+            if (variant.storeStocks && variant.storeStocks.length > 0) {
+              mappedInventory[index.toString()] = variant.storeStocks.map((stock: any) => ({
+                storeId: stock.store.storeId,
+                stockQuantity: stock.stockQuantity,
+                priceOverride: stock.priceOverride,
+              }));
+            }
+          });
+          setStoreInventory(mappedInventory);
+        }
+
+        showToast('Đã tải dữ liệu sản phẩm', 'success');
+      } catch (error: any) {
+        console.error('Error loading product:', error);
+        showToast('Lỗi khi tải sản phẩm: ' + (error.response?.data?.message || error.message), 'error');
+        navigate('/products/list');
+      } finally {
+        setLoadingData(false);
+      }
+    };
+
+    loadProduct();
+  }, [productId, navigate]);
 
   // Track if form is dirty (has unsaved changes)
   const isDirty = useMemo(() => {
     return (
-      formData.name !== originalData.name ||
-      formData.description !== originalData.description ||
-      formData.categoryId !== originalData.categoryId
+      productInfo.name !== '' ||
+      productInfo.description !== '' ||
+      productInfo.categoryId !== '' ||
+      attributes.length > 0 ||
+      variants.length > 1 ||
+      variants[0].name !== '' ||
+      variants[0].originalPrice !== 0 ||
+      productImages.length > 0 ||
+      Object.keys(variantImages).length > 0 ||
+      Object.keys(storeInventory).length > 0
     );
-  }, [formData, originalData]);
+  }, [productInfo, attributes, variants, productImages, variantImages, storeInventory]);
 
   // Restore form data from backup
-  const restoreFormData = (backup: UpdateProductRequest) => {
-    setFormData(backup);
+  const restoreFormData = (backup: any) => {
+    if (backup.productInfo) setProductInfo(backup.productInfo);
+    if (backup.attributes) setAttributes(backup.attributes);
+    if (backup.variants) setVariants(backup.variants);
+    if (backup.productImages) setProductImages(backup.productImages);
+    if (backup.variantImages) setVariantImages(backup.variantImages);
+    if (backup.storeInventory) setStoreInventory(backup.storeInventory);
     showToast('Đã khôi phục dữ liệu form', 'success');
   };
 
   // Form protection hook
   const { clearBackup } = useFormProtection({
-    formData,
+    formData: {
+      productInfo,
+      attributes,
+      variants,
+      productImages,
+      variantImages,
+      storeInventory,
+    },
     isDirty,
-    storageKey: `edit-product-${productId}`,
+    storageKey: 'create-product-backup',
     autoSaveInterval: 30000, // 30 seconds
     onRestore: restoreFormData,
   });
+  
+  // Show error toast if data loading fails
+  if (categoriesError) {
+    showToast('Không thể tải danh mục: ' + (categoriesError as any).message, 'error');
+  }
+  if (storesError) {
+    showToast('Không thể tải danh sách cửa hàng: ' + (storesError as any).message, 'error');
+  }
 
-  // Load product data on mount
-  useEffect(() => {
-    if (productId) {
-      loadProduct();
+  // Product Info Form
+  const renderProductInfoForm = () => (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-text mb-2">
+          Tên sản phẩm <span className="text-accent-red">*</span>
+        </label>
+        <input
+          type="text"
+          value={productInfo.name}
+          onChange={(e) => setProductInfo({ ...productInfo, name: e.target.value })}
+          className="input-field w-full"
+          placeholder="VD: Sữa chua vị dâu Vinamilk 100ml"
+          maxLength={200}
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-text mb-2">
+          Mô tả sản phẩm
+        </label>
+        <textarea
+          value={productInfo.description}
+          onChange={(e) => setProductInfo({ ...productInfo, description: e.target.value })}
+          className="input-field w-full resize-none"
+          rows={4}
+          placeholder="Mô tả chi tiết về sản phẩm..."
+          maxLength={2000}
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-text mb-2">
+          Danh mục <span className="text-accent-red">*</span>
+        </label>
+        <select
+          value={productInfo.categoryId}
+          onChange={(e) => setProductInfo({ ...productInfo, categoryId: e.target.value })}
+          className="input-field w-full"
+        >
+          <option value="">-- Chọn danh mục --</option>
+          {Array.isArray(categories) && categories.map((cat) => (
+            <option key={cat.categoryId} value={cat.categoryId}>
+              {cat.name}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+
+  // Step 2: Attributes
+  const addAttribute = () => {
+    setAttributes([...attributes, { attributeName: '', attributeValue: '' }]);
+  };
+
+  const removeAttribute = (index: number) => {
+    setAttributes(attributes.filter((_, i) => i !== index));
+  };
+
+  const updateAttribute = (index: number, field: 'attributeName' | 'attributeValue', value: string) => {
+    const updated = [...attributes];
+    updated[index][field] = value;
+    setAttributes(updated);
+  };
+
+  const renderAttributesForm = () => (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center mb-4">
+        <p className="text-muted">Thêm các thuộc tính mô tả cho sản phẩm</p>
+        <button
+          type="button"
+          onClick={addAttribute}
+          className="btn-secondary flex items-center gap-2"
+        >
+          <PlusCircle size={18} /> Thêm thuộc tính
+        </button>
+      </div>
+
+      {attributes.length === 0 && (
+        <div className="text-center py-8 border-2 border-dashed border-default rounded-lg bg-surface-light">
+          <ImageIcon size={48} className="mx-auto text-light mb-2" />
+          <p className="text-muted">Chưa có thuộc tính nào</p>
+          <p className="text-light text-sm mt-1">Bấm "Thêm thuộc tính" để bắt đầu</p>
+        </div>
+      )}
+
+      {attributes.map((attr, index) => (
+        <div key={index} className="flex gap-3 items-start p-4 border border-default rounded-lg bg-surface card-hover">
+          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
+            <input
+              type="text"
+              placeholder="Tên thuộc tính (VD: Thương hiệu, Xuất xứ)"
+              value={attr.attributeName}
+              onChange={(e) => updateAttribute(index, 'attributeName', e.target.value)}
+              className="input-field"
+              maxLength={100}
+            />
+            <input
+              type="text"
+              placeholder="Giá trị (VD: Vinamilk, Việt Nam)"
+              value={attr.attributeValue}
+              onChange={(e) => updateAttribute(index, 'attributeValue', e.target.value)}
+              className="input-field"
+              maxLength={500}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => removeAttribute(index)}
+            className="text-accent-red hover:text-red-700 transition-colors p-2"
+          >
+            <Trash2 size={20} />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+
+  // Step 3: Variants
+  const addVariant = () => {
+    setVariants([
+      ...variants,
+      {
+        name: '',
+        originalPrice: 0,
+        discountPrice: 0,
+        expiryDate: '',
+        manufacturingDate: '',
+      },
+    ]);
+  };
+
+  const removeVariant = (index: number) => {
+    if (variants.length === 1) {
+      showToast('Phải có ít nhất 1 biến thể', 'warning');
+      return;
     }
-  }, [productId]);
+    setVariants(variants.filter((_, i) => i !== index));
+    const updatedVariantImages = { ...variantImages };
+    delete updatedVariantImages[index];
+    const reindexed: { [key: number]: ImageUpdateRequest[] } = {};
+    Object.keys(updatedVariantImages).forEach((key) => {
+      const oldIndex = parseInt(key);
+      const newIndex = oldIndex > index ? oldIndex - 1 : oldIndex;
+      reindexed[newIndex] = updatedVariantImages[oldIndex];
+    });
+    setVariantImages(reindexed);
+    
+    // Remove inventory for deleted variant and reindex remaining
+    setStoreInventory((prevInventory) => {
+      const updated: { [key: string]: StoreInventoryUpdateRequest[] } = {};
+      Object.entries(prevInventory).forEach(([key, invs]) => {
+        const vIndex = parseInt(key);
+        if (vIndex === index) return; // Skip deleted variant
+        const newIndex = vIndex > index ? vIndex - 1 : vIndex;
+        updated[newIndex.toString()] = invs;
+      });
+      return updated;
+    });
+  };
 
-  // Show error toasts for cached data errors
-  useEffect(() => {
-    if (categoriesError) {
-      showToast('Không thể tải danh mục: ' + categoriesError.message, 'error');
-    }
-  }, [categoriesError]);
+  const updateVariant = <K extends keyof VariantFormData>(index: number, field: K, value: VariantFormData[K]) => {
+    const updated = [...variants];
+    updated[index] = { ...updated[index], [field]: value } as VariantFormData;
+    setVariants(updated);
+  };
 
-  useEffect(() => {
-    if (storesError) {
-      showToast('Không thể tải cửa hàng: ' + storesError.message, 'error');
-    }
-  }, [storesError]);
+  const renderVariantsForm = () => (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center mb-4">
+        <p className="text-muted">Thêm các biến thể (kích thước, hương vị, dung tích)</p>
+        <button
+          type="button"
+          onClick={addVariant}
+          className="btn-secondary flex items-center gap-2"
+        >
+          <PlusCircle size={18} /> Thêm biến thể
+        </button>
+      </div>
 
-  const loadProduct = async () => {
+      {variants.map((variant, index) => (
+        <div key={index} className="p-4 border border-default rounded-lg bg-surface card-hover space-y-4">
+          <div className="flex justify-between items-center">
+            <h3 className="font-semibold text-text">Biến thể {index + 1}</h3>
+            {variants.length > 1 && (
+              <button
+                type="button"
+                onClick={() => removeVariant(index)}
+                className="text-accent-red hover:text-red-700 transition-colors p-2"
+              >
+                <Trash2 size={18} />
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-text mb-2">
+                Tên biến thể <span className="text-accent-red">*</span>
+              </label>
+              <input
+                type="text"
+                placeholder="VD: 100ml, 200ml, vị dâu"
+                value={variant.name}
+                onChange={(e) => updateVariant(index, 'name', e.target.value)}
+                className="input-field w-full"
+                maxLength={200}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-text mb-2">
+                Giá gốc (VNĐ) <span className="text-accent-red">*</span>
+              </label>
+              <input
+                type="number"
+                placeholder="50000"
+                value={variant.originalPrice || ''}
+                onChange={(e) => updateVariant(index, 'originalPrice', parseFloat(e.target.value) || 0)}
+                className="input-field w-full"
+                min="0"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-text mb-2">
+                Giá giảm (VNĐ)
+              </label>
+              <input
+                type="number"
+                placeholder="30000"
+                value={variant.discountPrice || ''}
+                onChange={(e) => updateVariant(index, 'discountPrice', parseFloat(e.target.value) || 0)}
+                className="input-field w-full"
+                min="0"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-text mb-2">
+                Hạn sử dụng <span className="text-accent-red">*</span>
+              </label>
+              <input
+                type="date"
+                value={variant.expiryDate}
+                onChange={(e) => updateVariant(index, 'expiryDate', e.target.value)}
+                className="input-field w-full"
+                min={new Date().toISOString().split('T')[0]}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-text mb-2">
+                Ngày sản xuất
+              </label>
+              <input
+                type="date"
+                value={variant.manufacturingDate || ''}
+                onChange={(e) => updateVariant(index, 'manufacturingDate', e.target.value)}
+                className="input-field w-full"
+                max={new Date().toISOString().split('T')[0]}
+              />
+            </div>
+          </div>
+
+          {/* Ảnh riêng cho biến thể này */}
+          <div className="mt-4 pt-4 border-t border-default">
+            <label className="block text-sm font-medium text-text mb-3">
+              📸 Ảnh riêng cho biến thể này <span className="text-light text-xs font-normal">(Tùy chọn)</span>
+            </label>
+            
+            {/* Upload button */}
+            <div className="mb-3">
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={(e) => handleVariantImageUpload(e, index)}
+                className="hidden"
+                id={`variant-image-upload-${index}`}
+                disabled={uploadingImages?.type === 'variant' && uploadingImages.index === index}
+              />
+              <label
+                htmlFor={`variant-image-upload-${index}`}
+                className={`inline-flex items-center gap-2 px-4 py-2 bg-surface-light border border-default rounded-lg cursor-pointer hover:bg-surface transition-colors ${
+                  uploadingImages?.type === 'variant' && uploadingImages.index === index ? 'opacity-50' : ''
+                }`}
+              >
+                <Upload size={16} />
+                <span className="text-sm">
+                  {uploadingImages?.type === 'variant' && uploadingImages.index === index ? 'Đang tải...' : 'Tải ảnh lên'}
+                </span>
+              </label>
+            </div>
+
+            {/* Image grid */}
+            {variantImages[index] && variantImages[index].length > 0 && (
+              <div className="grid grid-cols-3 md:grid-cols-4 gap-2">
+                {variantImages[index].map((img, imgIndex) => (
+                  <div key={imgIndex} className="relative group bg-surface rounded border border-default overflow-hidden">
+                    <img
+                      src={img.imageUrl}
+                      alt={`Variant ${index + 1} - ${imgIndex + 1}`}
+                      className="w-full h-20 object-cover"
+                    />
+                    <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        type="button"
+                        onClick={() => removeVariantImage(index, imgIndex)}
+                        className="p-1 bg-accent-red text-surface rounded hover:bg-red-600 transition-colors"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                    {img.isPrimary && (
+                      <div className="absolute bottom-0 left-0 right-0 bg-primary/90 text-surface text-xs text-center py-0.5">
+                        Ảnh chính
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {(!variantImages[index] || variantImages[index].length === 0) && (
+              <p className="text-xs text-muted italic">Chưa có ảnh cho biến thể này</p>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  // Step 4: Product-level Images (Ảnh chung)
+  const handleProductImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploadingImages({ type: 'product' });
     try {
-      setLoadingData(true);
-      const data = await productService.getProductById(productId!);
-      setProduct(data);
-      const initialData = {
-        name: data.name,
-        description: data.description || '',
-        categoryId: data.categoryId,
-      };
-      setFormData(initialData);
-      setOriginalData(initialData);
+      for (const file of Array.from(files)) {
+        const validation = fileStorageService.validateFile(file, 5, ['image/jpeg', 'image/png', 'image/jpg']);
+        if (!validation.valid) {
+          showToast(validation.error || 'File không hợp lệ', 'error');
+          continue;
+        }
+
+        const url = await fileStorageService.uploadProductImage(file);
+        setProductImages((prev) => [
+          ...prev,
+          {
+            imageUrl: url,
+            isPrimary: prev.length === 0, // First image is primary
+          },
+        ]);
+      }
     } catch (error: any) {
-      console.error('Error loading product:', error);
-      showToast('Không thể tải thông tin sản phẩm: ' + (error.response?.data?.message || error.message), 'error');
-      setTimeout(() => navigate('/products/list'), 1500);
+      console.error('Error uploading images:', error);
+      showToast('Lỗi khi tải ảnh: ' + error.message, 'error');
     } finally {
-      setLoadingData(false);
+      setUploadingImages(null);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const removeProductImage = (index: number) => {
+    const updated = productImages.filter((_, i) => i !== index);
+    // If removed image was primary, make first image primary
+    if (updated.length > 0 && productImages[index].isPrimary) {
+      updated[0].isPrimary = true;
+    }
+    setProductImages(updated);
+  };
 
-    if (!formData.name.trim()) {
+  const setPrimaryProductImage = (index: number) => {
+    const updated = productImages.map((img, i) => ({
+      ...img,
+      isPrimary: i === index,
+    }));
+    setProductImages(updated);
+  };
+
+  // Variant-level Images (Ảnh riêng biến thể)
+  const handleVariantImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, variantIndex: number) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploadingImages({ type: 'variant', index: variantIndex });
+    try {
+      const newImages: ImageUpdateRequest[] = [];
+      for (const file of Array.from(files)) {
+        const validation = fileStorageService.validateFile(file, 5, ['image/jpeg', 'image/png', 'image/jpg']);
+        if (!validation.valid) {
+          showToast(validation.error || 'File không hợp lệ', 'error');
+          continue;
+        }
+
+        const url = await fileStorageService.uploadProductImage(file);
+        newImages.push({
+          imageUrl: url,
+          isPrimary: false,
+        });
+      }
+
+      setVariantImages((prev) => {
+        const currentImages = prev[variantIndex] || [];
+        const updatedImages = [...currentImages, ...newImages];
+        // If this is the first image, make it primary
+        if (currentImages.length === 0 && updatedImages.length > 0) {
+          updatedImages[0].isPrimary = true;
+        }
+        return {
+          ...prev,
+          [variantIndex]: updatedImages,
+        };
+      });
+    } catch (error: any) {
+      console.error('Error uploading variant images:', error);
+      showToast('Lỗi khi tải ảnh: ' + error.message, 'error');
+    } finally {
+      setUploadingImages(null);
+    }
+  };
+
+  const removeVariantImage = (variantIndex: number, imageIndex: number) => {
+    setVariantImages((prev) => {
+      const currentImages = prev[variantIndex] || [];
+      const updated = currentImages.filter((_, i) => i !== imageIndex);
+      // If removed image was primary, make first image primary
+      if (updated.length > 0 && currentImages[imageIndex].isPrimary) {
+        updated[0].isPrimary = true;
+      }
+      return {
+        ...prev,
+        [variantIndex]: updated,
+      };
+    });
+  };
+
+  const renderProductImagesForm = () => (
+    <div className="space-y-4">
+      <p className="text-sm text-muted mb-3">
+        Ảnh chung sẽ hiển thị cho tất cả biến thể. Bạn cũng có thể thêm ảnh riêng cho từng biến thể ở bước 3.
+      </p>
+
+      <div className="border-2 border-dashed border-default rounded-lg p-8 text-center bg-surface-light transition-colors hover:border-primary">
+        <input
+          type="file"
+          multiple
+          accept="image/*"
+          onChange={handleProductImageUpload}
+          className="hidden"
+          id="product-image-upload"
+          disabled={uploadingImages?.type === 'product'}
+        />
+        <label
+          htmlFor="product-image-upload"
+          className={`cursor-pointer flex flex-col items-center gap-3 ${uploadingImages?.type === 'product' ? 'opacity-50' : ''}`}
+        >
+          <Upload size={48} className="text-light" />
+          <div>
+            <p className="text-text font-medium">
+              {uploadingImages?.type === 'product' ? 'Đang tải ảnh...' : 'Bấm để chọn ảnh chung cho sản phẩm'}
+            </p>
+            <p className="text-sm text-muted mt-1">PNG, JPG, JPEG (tối đa 5MB mỗi ảnh)</p>
+          </div>
+        </label>
+      </div>
+
+      {productImages.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {productImages.map((img, index) => (
+            <div key={index} className="relative group bg-surface rounded-lg border border-default overflow-hidden card-hover">
+              <img
+                src={img.imageUrl}
+                alt={`Product ${index + 1}`}
+                className="w-full h-32 object-cover"
+              />
+              <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  type="button"
+                  onClick={() => removeProductImage(index)}
+                  className="p-1 bg-accent-red text-surface rounded hover:bg-red-600 transition-colors"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+              <div className="p-2 bg-surface-light">
+                <label className="flex items-center gap-2 text-xs text-text cursor-pointer">
+                  <input
+                    type="radio"
+                    name="primary-product-image"
+                    checked={img.isPrimary}
+                    onChange={() => setPrimaryProductImage(index)}
+                    className="text-primary focus:ring-primary"
+                  />
+                  <span className={img.isPrimary ? 'font-semibold text-primary' : ''}>
+                    Ảnh chính
+                  </span>
+                </label>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  // Store Inventory Form
+  const renderInventoryForm = () => (
+    <div className="space-y-4">
+      {stores.length === 0 && (
+        <div className="text-center py-8 border-2 border-dashed border-default rounded-lg bg-surface-light">
+          <p className="text-muted">Bạn chưa có cửa hàng nào được kích hoạt.</p>
+          <p className="text-light text-sm mt-1">Vui lòng tạo cửa hàng trước khi thêm tồn kho</p>
+        </div>
+      )}
+
+      {stores.length > 0 && variants.map((variant, vIndex) => (
+        <div key={vIndex} className="border border-default rounded-lg p-4 space-y-4 bg-surface card-hover">
+          <h3 className="font-semibold text-text border-b border-default pb-2">
+            📦 Biến thể: {variant.name || `Biến thể ${vIndex + 1}`}
+          </h3>
+
+          {stores.map((store) => {
+            const variantInventory = storeInventory[vIndex.toString()] || [];
+            const existingInventory = variantInventory.find((inv) => inv.storeId === store.storeId);
+
+            return (
+              <div key={store.storeId} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center p-3 bg-surface-light rounded-lg">
+                <div className="text-sm font-medium text-text">{store.storeName}</div>
+                <div>
+                  <label className="block text-xs text-muted mb-1">Số lượng</label>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={existingInventory?.stockQuantity || ''}
+                    onChange={(e) => {
+                      const quantity = parseInt(e.target.value) || 0;
+                      setStoreInventory((prev) => {
+                        const updated = { ...prev };
+                        const key = vIndex.toString();
+                        const variantInvs = updated[key] || [];
+                        const filtered = variantInvs.filter((inv) => inv.storeId !== store.storeId);
+                        
+                        if (quantity > 0) {
+                          updated[key] = [
+                            ...filtered,
+                            {
+                              storeId: store.storeId,
+                              stockQuantity: quantity,
+                            },
+                          ];
+                        } else {
+                          updated[key] = filtered;
+                        }
+                        return updated;
+                      });
+                    }}
+                    className="input-field w-full"
+                    min="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-muted mb-1">Giá đặc biệt (tùy chọn)</label>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={existingInventory?.priceOverride || ''}
+                    onChange={(e) => {
+                      const price = parseFloat(e.target.value) || 0;
+                      setStoreInventory((prev) => {
+                        const updated = { ...prev };
+                        const key = vIndex.toString();
+                        const variantInvs = updated[key] || [];
+                        const existing = variantInvs.find((inv) => inv.storeId === store.storeId);
+                        
+                        if (existing) {
+                          updated[key] = variantInvs.map((inv) =>
+                            inv.storeId === store.storeId
+                              ? { ...inv, priceOverride: price > 0 ? price : undefined }
+                              : inv
+                          );
+                        }
+                        return updated;
+                      });
+                    }}
+                    className="input-field w-full"
+                    min="0"
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
+  );
+
+  // Validation
+  const validateForm = () => {
+    // Validate product info
+    if (!productInfo.name.trim()) {
       showToast('Vui lòng nhập tên sản phẩm', 'warning');
-      return;
+      return false;
+    }
+    if (!productInfo.categoryId) {
+      showToast('Vui lòng chọn danh mục', 'warning');
+      return false;
     }
 
-    if (!formData.categoryId) {
-      showToast('Vui lòng chọn danh mục', 'warning');
+    // Validate variants
+    if (variants.length === 0) {
+      showToast('Phải có ít nhất 1 biến thể', 'warning');
+      return false;
+    }
+
+    for (const variant of variants) {
+      if (!variant.name.trim()) {
+        showToast('Vui lòng nhập tên cho tất cả biến thể', 'warning');
+        return false;
+      }
+      if (variant.originalPrice <= 0) {
+        showToast('Giá gốc phải lớn hơn 0', 'warning');
+        return false;
+      }
+      if (!variant.expiryDate) {
+        showToast('Vui lòng nhập hạn sử dụng cho tất cả biến thể', 'warning');
+        return false;
+      }
+      // Check expiry date is in the future
+      const expiryDate = new Date(variant.expiryDate);
+      if (expiryDate <= new Date()) {
+        showToast('Hạn sử dụng phải là ngày trong tương lai', 'warning');
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  // Submit
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+    if (!productId) {
+      showToast('Không tìm thấy ID sản phẩm', 'error');
       return;
     }
 
     setLoading(true);
     try {
-      await productService.updateProduct(productId!, formData);
+      // Build variant update requests with images and inventory
+      const variantRequests: VariantUpdateRequest[] = variants.map((variant, index) => {
+        const images = variantImages[index] || [];
+        const inventory = storeInventory[index.toString()] || [];
+        
+        return {
+          ...variant,
+          variantImages: images, // All variant images (existing + new)
+          storeInventory: inventory,
+        };
+      });
+
+      const request: ProductFullUpdateRequest = {
+        name: productInfo.name,
+        description: productInfo.description,
+        categoryId: productInfo.categoryId,
+        attributes: attributes.filter((a) => a.attributeName && a.attributeValue),
+        variants: variantRequests,
+        productImages: productImages, // Product-level images
+      };
+
+      await productService.fullUpdateProduct(productId, request);
       showToast('Cập nhật sản phẩm thành công!', 'success');
       
-      // Clear backup after successful update
+      // Clear backup after successful submission
       clearBackup();
       
       setTimeout(() => navigate('/products/list'), 1500);
@@ -144,414 +900,101 @@ export default function EditProduct() {
     }
   };
 
-  // Open stock update modal
-  const handleOpenStockModal = (variantId: string, variantName: string, store: StoreStockInfo) => {
-    setSelectedStock({ variantId, variantName, store });
-    setStockModalOpen(true);
-  };
-
-  // Confirm stock update
-  const handleConfirmStockUpdate = async (newStock: number, note?: string) => {
-    if (!selectedStock) return;
-
-    try {
-      const updatedProduct = await productService.updateVariantStock(
-        productId!,
-        selectedStock.variantId,
-        selectedStock.store.storeId,
-        newStock,
-        note
-      );
-      
-      setProduct(updatedProduct);
-      showToast('Cập nhật tồn kho thành công!', 'success');
-    } catch (error: any) {
-      console.error('Error updating stock:', error);
-      throw new Error(error.response?.data?.message || 'Cập nhật tồn kho thất bại');
-    }
-  };
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
-  };
-
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('vi-VN');
-  };
-
-  const getVariantStatus = (variant: any) => {
-    if (variant.isExpired) return { label: 'Hết hạn', class: 'badge-error' };
-    if (variant.isOutOfStock) return { label: 'Hết hàng', class: 'badge-warning' };
-    if (variant.isAvailable) return { label: 'Còn hàng', class: 'badge-success' };
-    return { label: 'Không xác định', class: 'badge-neutral' };
-  };
-
-  if (loadingData || loadingCategories || loadingStores) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        <p className="text-muted ml-4">Đang tải thông tin sản phẩm...</p>
-      </div>
-    );
-  }
-
-  if (!product) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-muted">Không tìm thấy sản phẩm</div>
-      </div>
-    );
-  }
-
   return (
     <div className="p-6 animate-fade-in">
-      {/* Header */}
-      <div className="mb-6">
-        <button
-          onClick={() => navigate('/products/list')}
-          className="btn-secondary mb-4 flex items-center gap-2"
-        >
-          <ArrowLeft size={18} />
-          Quay lại danh sách
-        </button>
-        <h1 className="heading-primary mb-2">Chỉnh sửa sản phẩm</h1>
-        <p className="text-muted">
-          Chỉ có thể cập nhật thông tin cơ bản. Để thay đổi biến thể, hình ảnh hoặc thuộc tính, vui lòng xóa và tạo lại sản phẩm.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-        {/* Product Info Form */}
-        <div className="xl:col-span-2">
-          <div className="card p-6">
-            <h2 className="heading-secondary mb-4 flex items-center gap-2">
-              <Edit3 size={20} className="text-primary" />
-              Thông tin cơ bản
-            </h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-text mb-2">
-                  Tên sản phẩm <span className="text-accent-red">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="input-field w-full"
-                  placeholder="VD: Sữa chua vị dâu Vinamilk 100ml"
-                  maxLength={200}
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-text mb-2">
-                  Mô tả sản phẩm
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="input-field w-full resize-none"
-                  rows={6}
-                  placeholder="Mô tả chi tiết về sản phẩm..."
-                  maxLength={2000}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-text mb-2">
-                  Danh mục <span className="text-accent-red">*</span>
-                </label>
-                <select
-                  value={formData.categoryId}
-                  onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-                  className="input-field w-full"
-                  required
-                >
-                  <option value="">-- Chọn danh mục --</option>
-                  {Array.isArray(categories) && categories.map((cat) => (
-                    <option key={cat.categoryId} value={cat.categoryId}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex gap-3 pt-4 border-t border-default">
-                <button
-                  type="button"
-                  onClick={() => navigate('/products/list')}
-                  className="btn-secondary px-6 py-2"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="btn-primary px-6 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loading ? (
-                    <span className="flex items-center gap-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-surface border-t-transparent"></div>
-                      Đang lưu...
-                    </span>
-                  ) : (
-                    'Lưu thay đổi'
-                  )}
-                </button>
-              </div>
-            </form>
+      {/* Loading state */}
+      {loadingData && (
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent mx-auto mb-4"></div>
+            <p className="text-muted">Đang tải dữ liệu sản phẩm...</p>
           </div>
         </div>
-
-        {/* Product Preview */}
-        <div className="xl:col-span-2 space-y-6">
-          {/* Stock Overview */}
-          {(product.totalInventory !== undefined || product.availableVariantCount !== undefined) && (
-            <div className="card p-6">
-              <h3 className="heading-secondary mb-4 flex items-center gap-2">
-                <Package size={20} className="text-primary" />
-                Tổng quan tồn kho
-              </h3>
-              <div className="grid grid-cols-2 gap-4">
-                {product.totalInventory !== undefined && (
-                  <div className="text-center p-4 bg-surface-light rounded-lg border border-default">
-                    <p className="text-2xl font-bold text-primary mb-1">{product.totalInventory}</p>
-                    <p className="text-sm text-muted">Tổng tồn kho</p>
-                  </div>
-                )}
-                {product.availableVariantCount !== undefined && product.totalVariantCount !== undefined && (
-                  <div className="text-center p-4 bg-surface-light rounded-lg border border-default">
-                    <p className="text-2xl font-bold text-secondary mb-1">
-                      {product.availableVariantCount}/{product.totalVariantCount}
-                    </p>
-                    <p className="text-sm text-muted">Biến thể khả dụng</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Images */}
-          {product.images && product.images.length > 0 && (
-            <div className="card p-6">
-              <h3 className="heading-secondary mb-4 flex items-center gap-2">
-                <Image size={20} className="text-primary" />
-                Hình ảnh chung ({product.images.length})
-              </h3>
-              <div className="grid grid-cols-2 gap-3">
-                {product.images.slice(0, 4).map((img, index) => (
-                  <div key={index} className="relative group">
-                    <img
-                      src={img.imageUrl}
-                      alt={`Product ${index + 1}`}
-                      className="w-full h-24 object-cover rounded-lg border-2 border-default group-hover:border-primary transition-colors"
-                    />
-                    {img.isPrimary && (
-                      <span className="absolute top-2 right-2 bg-primary text-surface text-xs px-2 py-1 rounded-full">
-                        Chính
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-              {product.images.length > 4 && (
-                <div className="text-sm text-muted text-center mt-3">
-                  +{product.images.length - 4} ảnh khác
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Variants */}
-          <div className="card p-6">
-            <h3 className="heading-secondary mb-4 flex items-center gap-2">
-              <Layers size={20} className="text-primary" />
-              Biến thể ({product.variants.length})
-            </h3>
-            <div className="space-y-4 max-h-96 overflow-y-auto">
-              {product.variants.map((variant, index) => {
-                const variantStatus = getVariantStatus(variant);
-                return (
-                  <div key={index} className="border border-default rounded-lg overflow-hidden">
-                    {/* Variant Header */}
-                    <div className="bg-surface-light p-4 border-b border-default">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h4 className="font-semibold text-text">{variant.name}</h4>
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${variantStatus.class}`}>
-                              {variantStatus.label}
-                            </span>
-                          </div>
-                          <p className="text-sm text-muted">SKU: {variant.sku}</p>
-                        </div>
-                        
-                        {/* Variant Images */}
-                        {variant.variantImages && variant.variantImages.length > 0 && (
-                          <div className="flex gap-2">
-                            {variant.variantImages.slice(0, 2).map((img, imgIndex) => (
-                              <img
-                                key={imgIndex}
-                                src={img.imageUrl}
-                                alt={`Variant ${imgIndex + 1}`}
-                                className="w-10 h-10 object-cover rounded border border-default"
-                              />
-                            ))}
-                            {variant.variantImages.length > 2 && (
-                              <div className="w-10 h-10 bg-surface rounded border border-default flex items-center justify-center text-xs text-muted">
-                                +{variant.variantImages.length - 2}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Variant Details */}
-                    <div className="p-4">
-                      <div className="grid grid-cols-2 gap-4 mb-4">
-                        <div className="text-center p-3 bg-surface-light rounded-lg">
-                          <p className="text-xs text-muted mb-1">Giá gốc</p>
-                          <p className="text-sm font-semibold text-text">{formatPrice(variant.originalPrice)}</p>
-                        </div>
-                        {variant.discountPrice && variant.discountPrice > 0 && (
-                          <div className="text-center p-3 bg-surface-light rounded-lg">
-                            <p className="text-xs text-muted mb-1">Giá ưu đãi</p>
-                            <p className="text-sm font-semibold text-accent-red">{formatPrice(variant.discountPrice)}</p>
-                          </div>
-                        )}
-                        {variant.manufacturingDate && (
-                          <div className="text-center p-3 bg-surface-light rounded-lg">
-                            <p className="text-xs text-muted mb-1">Ngày SX</p>
-                            <p className="text-sm text-text flex items-center justify-center gap-1">
-                              <Calendar size={12} />
-                              {formatDate(variant.manufacturingDate)}
-                            </p>
-                          </div>
-                        )}
-                        <div className="text-center p-3 bg-surface-light rounded-lg">
-                          <p className="text-xs text-muted mb-1">Hạn SD</p>
-                          <p className="text-sm text-text flex items-center justify-center gap-1">
-                            <Calendar size={12} />
-                            {formatDate(variant.expiryDate)}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Store Stocks */}
-                      <div className="bg-surface-light rounded-lg p-4">
-                        <div className="flex items-center gap-2 mb-3">
-                          <Store size={16} className="text-secondary" />
-                          <p className="text-sm font-medium text-text">Tồn kho theo cửa hàng</p>
-                        </div>
-                        {stores.length === 0 ? (
-                          <p className="text-sm text-light text-center py-2">Bạn chưa có cửa hàng nào</p>
-                        ) : (
-                          <div className="space-y-2">
-                            {stores.map((store) => {
-                              const existingStock = variant.storeStocks?.find(
-                                (s) => s.storeId === store.storeId
-                              );
-                              const stockQuantity = existingStock?.stockQuantity || 0;
-
-                              const storeStockInfo: StoreStockInfo = {
-                                storeId: store.storeId,
-                                storeName: store.storeName,
-                                stockQuantity: stockQuantity,
-                                priceOverride: existingStock?.priceOverride,
-                              };
-
-                              return (
-                                <div key={store.storeId} className="flex items-center justify-between p-3 bg-surface rounded-lg border border-default group hover:bg-surface-light transition-colors">
-                                  <div className="flex-1">
-                                    <span className="text-sm font-medium text-text">{store.storeName}</span>
-                                    <span className={`text-sm ml-2 ${
-                                      stockQuantity > 0 ? 'text-secondary font-semibold' : 'text-light'
-                                    }`}>
-                                      {stockQuantity > 0 ? `${stockQuantity} sản phẩm` : '0 sản phẩm'}
-                                    </span>
-                                  </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenStockModal(variant.variantId, variant.name, storeStockInfo)}
-                                    className="btn-secondary text-xs px-3 py-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  >
-                                    {stockQuantity > 0 ? 'Cập nhật' : 'Thêm'}
-                                  </button>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Attributes */}
-          {product.attributes && product.attributes.length > 0 && (
-            <div className="card p-6">
-              <h3 className="heading-secondary mb-4 flex items-center gap-2">
-                <Tag size={20} className="text-primary" />
-                Thuộc tính ({product.attributes.length})
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {product.attributes.map((attr, index) => (
-                  <div key={index} className="flex items-center gap-3 p-3 bg-surface-light rounded-lg border border-default">
-                    <div className="w-2 h-8 bg-primary rounded-full"></div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-text">{attr.attributeName}</p>
-                      <p className="text-sm text-muted mt-1">{attr.attributeValue}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Product Status */}
-          <div className="card p-6">
-            <h3 className="heading-secondary mb-4 flex items-center gap-2">
-              <AlertCircle size={20} className="text-primary" />
-              Thông tin hệ thống
-            </h3>
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-sm text-muted">Trạng thái:</span>
-                <span className="text-sm font-medium text-text">{product.status}</span>
-              </div>
-              {product.createdAt && (
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted">Ngày tạo:</span>
-                  <span className="text-sm text-text flex items-center gap-1">
-                    <Calendar size={14} />
-                    {formatDate(product.createdAt)}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Stock Update Modal */}
-      {selectedStock && (
-        <StockUpdateModal
-          isOpen={stockModalOpen}
-          onClose={() => {
-            setStockModalOpen(false);
-            setSelectedStock(null);
-          }}
-          onConfirm={handleConfirmStockUpdate}
-          storeName={selectedStock.store.storeName}
-          variantName={selectedStock.variantName}
-          currentStock={selectedStock.store.stockQuantity}
-        />
       )}
+
+      {!loadingData && (
+        <>
+          {/* Header */}
+          <div className="mb-6">
+            <button
+              onClick={() => navigate('/products/list')}
+              className="btn-secondary mb-4 flex items-center gap-2"
+            >
+              <ArrowLeft size={18} />
+              Quay lại danh sách
+            </button>
+            <h1 className="heading-primary mb-2">Chỉnh sửa sản phẩm</h1>
+            <p className="text-muted">Điều chỉnh thông tin sản phẩm bên dưới</p>
+          </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Product Basic Info */}
+        <div className="card p-6">
+          <h2 className="heading-secondary mb-4 pb-3 border-b border-default">
+            1. Thông tin cơ bản <span className="text-accent-red">*</span>
+          </h2>
+          {renderProductInfoForm()}
+        </div>
+
+        {/* Attributes */}
+        <div className="card p-6">
+          <h2 className="heading-secondary mb-4 pb-3 border-b border-default">
+            2. Thuộc tính sản phẩm <span className="text-light text-sm font-normal">(Tùy chọn)</span>
+          </h2>
+          {renderAttributesForm()}
+        </div>
+
+        {/* Variants */}
+        <div className="card p-6">
+          <h2 className="heading-secondary mb-4 pb-3 border-b border-default">
+            3. Biến thể sản phẩm <span className="text-accent-red">*</span>
+          </h2>
+          {renderVariantsForm()}
+        </div>
+
+        {/* Product Images */}
+        <div className="card p-6">
+          <h2 className="heading-secondary mb-4 pb-3 border-b border-default">
+            4. Hình ảnh chung sản phẩm <span className="text-light text-sm font-normal">(Tùy chọn)</span>
+          </h2>
+          {renderProductImagesForm()}
+        </div>
+
+        {/* Store Inventory */}
+        <div className="card p-6">
+          <h2 className="heading-secondary mb-4 pb-3 border-b border-default">
+            5. Tồn kho tại cửa hàng <span className="text-light text-sm font-normal">(Tùy chọn)</span>
+          </h2>
+          {renderInventoryForm()}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="card p-6">
+          <div className="flex flex-col sm:flex-row gap-3 justify-end">
+            <button
+              type="button"
+              onClick={() => navigate('/products/list')}
+              className="btn-secondary px-6 py-3 font-medium"
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              disabled={loading || loadingData}
+              className="btn-primary px-6 py-3 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-surface border-t-transparent"></div>
+                  Đang lưu thay đổi...
+                </span>
+              ) : (
+                'Lưu thay đổi'
+              )}
+            </button>
+          </div>
+        </div>
+      </form>
 
       {/* Toast Notification */}
       {toast && (
@@ -560,6 +1003,8 @@ export default function EditProduct() {
           type={toast.type}
           onClose={() => setToast(null)}
         />
+      )}
+      </>
       )}
     </div>
   );
