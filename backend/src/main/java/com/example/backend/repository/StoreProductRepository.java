@@ -220,7 +220,7 @@ public interface StoreProductRepository extends JpaRepository<StoreProduct, Stri
                 JOIN s.supplier sup
                 LEFT JOIN p.category c
                 WHERE sp.stockQuantity > 0
-                    AND p.status != com.example.backend.entity.enums.ProductStatus.SOLD_OUT
+                    AND p.status != 'SOLD_OUT'
                 ORDER BY v.expiryDate ASC NULLS LAST
             """)
     List<Object[]> findUnsoldInventory();
