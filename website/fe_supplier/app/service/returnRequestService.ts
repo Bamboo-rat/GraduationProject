@@ -63,11 +63,16 @@ class ReturnRequestService {
       if (params?.page !== undefined) queryParams.append('page', params.page.toString());
       if (params?.size) queryParams.append('size', params.size.toString());
 
-      const { data } = await axiosInstance.get<Page<ReturnRequestResponse>>(
-        `/return-requests/my-stores-requests?${queryParams.toString()}`
-      );
+      const url = `/return-requests/my-stores-requests?${queryParams.toString()}`;
+      console.log('Calling API:', url);
+
+      const { data } = await axiosInstance.get<Page<ReturnRequestResponse>>(url);
+      
+      console.log('API Response:', data);
+      
       return data;
     } catch (error) {
+      console.error('API Error:', error);
       throw this.handleError(error);
     }
   }

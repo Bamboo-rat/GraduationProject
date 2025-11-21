@@ -197,13 +197,103 @@ export default function ReviewsAnalysis() {
   }
 
   if (!stats || stats.totalReviews === 0) {
+    const selectedStore = stores.find(s => s.storeId === selectedStoreId);
+    const storeName = selectedStoreId === 'all' ? 'tất cả cửa hàng' : selectedStore?.storeName || 'cửa hàng này';
+    
     return (
-      <div className="p-6">
-        <h1 className="text-3xl font-bold text-[#2D2D2D] mb-6">Phân tích đánh giá</h1>
-        <div className="bg-white rounded-2xl shadow-sm border border-[#E8FFED] p-12 text-center">
-          <MessageSquare className="w-20 h-20 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500 text-lg">Chưa có đánh giá nào</p>
-          <p className="text-gray-400 text-sm mt-2">Đánh giá từ khách hàng sẽ xuất hiện ở đây</p>
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-[#2D2D2D]">Phân tích đánh giá</h1>
+            <p className="text-[#6B6B6B] mt-1">Thống kê và phân tích đánh giá từ khách hàng</p>
+          </div>
+          <button
+            onClick={loadData}
+            className="flex items-center gap-2 px-4 py-2 bg-[#2F855A] text-white rounded-xl hover:bg-[#8FB491] transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Làm mới
+          </button>
+        </div>
+
+        {/* Filters */}
+        <div className="bg-white rounded-2xl shadow-sm border border-[#E8FFED] p-6">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Cửa hàng
+              </label>
+              <select
+                value={selectedStoreId}
+                onChange={(e) => setSelectedStoreId(e.target.value)}
+                className="w-full px-4 py-2 border border-[#B7E4C7] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#A4C3A2]"
+              >
+                <option value="all">Tất cả cửa hàng ({stores.length})</option>
+                {stores.map((store) => (
+                  <option key={store.storeId} value={store.storeId}>
+                    {store.storeName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex-1">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Khoảng thời gian
+              </label>
+              <div className="flex gap-2">
+                {[
+                  { value: 'week', label: '7 ngày' },
+                  { value: 'month', label: '30 ngày' },
+                  { value: 'quarter', label: '3 tháng' },
+                  { value: 'year', label: '1 năm' },
+                  { value: 'all', label: 'Tất cả' },
+                ].map((range) => (
+                  <button
+                    key={range.value}
+                    onClick={() => setTimeRange(range.value as TimeRange)}
+                    className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                      timeRange === range.value
+                        ? 'bg-[#2F855A] text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {range.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Empty State */}
+        <div className="bg-white rounded-2xl shadow-sm border border-[#E8FFED] p-16 text-center">
+          <div className="max-w-md mx-auto">
+            <MessageSquare className="w-24 h-24 text-gray-300 mx-auto mb-6" />
+            <h2 className="text-2xl font-bold text-gray-700 mb-3">Chưa có đánh giá nào</h2>
+            <p className="text-gray-500 mb-2">
+              {selectedStoreId === 'all' 
+                ? `Chưa có đánh giá nào từ khách hàng trong ${timeRange === 'all' ? 'tất cả thời gian' : 
+                    timeRange === 'week' ? '7 ngày qua' : 
+                    timeRange === 'month' ? '30 ngày qua' : 
+                    timeRange === 'quarter' ? '3 tháng qua' : '1 năm qua'}.`
+                : `Cửa hàng "${storeName}" chưa có đánh giá nào trong ${timeRange === 'all' ? 'tất cả thời gian' : 
+                    timeRange === 'week' ? '7 ngày qua' : 
+                    timeRange === 'month' ? '30 ngày qua' : 
+                    timeRange === 'quarter' ? '3 tháng qua' : '1 năm qua'}.`
+              }
+            </p>
+            <p className="text-gray-400 text-sm mt-4">
+              Đánh giá từ khách hàng sẽ xuất hiện ở đây sau khi họ mua hàng và đánh giá sản phẩm
+            </p>
+            {selectedStoreId !== 'all' && (
+              <button
+                onClick={() => setSelectedStoreId('all')}
+                className="mt-6 px-6 py-2 bg-[#2F855A] text-white rounded-xl hover:bg-[#8FB491] transition-colors"
+              >
+                Xem tất cả cửa hàng
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -459,7 +549,7 @@ export default function ReviewsAnalysis() {
         <div className="bg-white rounded-2xl shadow-sm border border-[#E8FFED] p-6">
           <h2 className="text-xl font-semibold text-[#2D2D2D] mb-6 flex items-center gap-2">
             <PieChart className="w-6 h-6 text-[#2F855A]" />
-            Thông tin chi tiết
+            Đánh giá chi tiết
           </h2>
           <div className="space-y-4">
             {stats.averageRating >= 4.5 && (
@@ -496,36 +586,6 @@ export default function ReviewsAnalysis() {
               </div>
             )}
           </div>
-        </div>
-
-        {/* Recommendations */}
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <ThumbsUp className="w-6 h-6 text-blue-600" />
-            <h3 className="text-lg font-semibold text-blue-900">Khuyến nghị</h3>
-          </div>
-          <ul className="space-y-3 text-sm text-blue-800">
-            <li className="flex items-start gap-2">
-              <span className="text-blue-600 font-bold">•</span>
-              <span>Phản hồi tất cả đánh giá trong vòng 24h để tăng uy tín</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-blue-600 font-bold">•</span>
-              <span>Cảm ơn khách hàng có đánh giá tích cực</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-blue-600 font-bold">•</span>
-              <span>Giải quyết khiếu nại từ đánh giá tiêu cực một cách chuyên nghiệp</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-blue-600 font-bold">•</span>
-              <span>Phân tích feedback để cải thiện sản phẩm và dịch vụ</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="text-blue-600 font-bold">•</span>
-              <span>Khuyến khích khách hàng viết đánh giá sau khi mua hàng</span>
-            </li>
-          </ul>
         </div>
       </div>
     </div>

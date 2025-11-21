@@ -342,30 +342,37 @@ class ReportService {
 
   // ==================== WASTE REPORTS ====================
 
-  async getWasteSummary(): Promise<WasteSummary> {
-    const response = await axiosInstance.get('/reports/waste/summary');
-    return response.data.data;
-  }
-
-  async getUnsoldInventory(page: number = 0, size: number = 20): Promise<PageResponse<UnsoldInventory>> {
-    const response = await axiosInstance.get('/reports/waste/unsold-inventory', {
-      params: { page, size }
+  async getWasteSummary(startDate?: string, endDate?: string): Promise<WasteSummary> {
+    const response = await axiosInstance.get('/reports/waste/summary', {
+      params: { startDate, endDate }
     });
     return response.data.data;
   }
 
-  async getWasteByCategory(): Promise<WasteByCategory[]> {
-    const response = await axiosInstance.get('/reports/waste/by-category');
+  async getUnsoldInventory(page: number = 0, size: number = 20, startDate?: string, endDate?: string): Promise<PageResponse<UnsoldInventory>> {
+    const response = await axiosInstance.get('/reports/waste/unsold-inventory', {
+      params: { page, size, startDate, endDate }
+    });
     return response.data.data;
   }
 
-  async getWasteBySupplier(): Promise<WasteBySupplier[]> {
-    const response = await axiosInstance.get('/reports/waste/by-supplier');
+  async getWasteByCategory(startDate?: string, endDate?: string): Promise<WasteByCategory[]> {
+    const response = await axiosInstance.get('/reports/waste/by-category', {
+      params: { startDate, endDate }
+    });
     return response.data.data;
   }
 
-  async exportWasteReport(): Promise<Blob> {
+  async getWasteBySupplier(startDate?: string, endDate?: string): Promise<WasteBySupplier[]> {
+    const response = await axiosInstance.get('/reports/waste/by-supplier', {
+      params: { startDate, endDate }
+    });
+    return response.data.data;
+  }
+
+  async exportWasteReport(startDate?: string, endDate?: string): Promise<Blob> {
     const response = await axiosInstance.get('/reports/waste/export', {
+      params: { startDate, endDate },
       responseType: 'blob'
     });
     return response.data;

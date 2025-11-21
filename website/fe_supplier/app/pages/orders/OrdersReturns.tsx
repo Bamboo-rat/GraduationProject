@@ -21,18 +21,28 @@ export default function OrdersReturns() {
   const loadReturns = async () => {
     try {
       setLoading(true);
+      
+      const pending = filter === 'pending';
+
+      console.log('Loading returns with filter:', filter, 'pending:', pending);
+
       const data = await returnRequestService.getMyStoresRequests({
-        pending: filter === 'pending',
+        pending,
         page,
         size: 10,
       });
 
+      console.log('Received data:', data);
+
+      // Lọc thêm trên client side nếu cần
       let filteredContent = data.content;
       if (filter === 'approved') {
         filteredContent = data.content.filter(r => r.status === 'APPROVED' || r.status === 'COMPLETED');
       } else if (filter === 'rejected') {
         filteredContent = data.content.filter(r => r.status === 'REJECTED');
       }
+
+      console.log('Filtered content:', filteredContent);
 
       setRequests(filteredContent);
       setTotalPages(data.totalPages);
@@ -234,8 +244,48 @@ export default function OrdersReturns() {
         ) : filteredRequests.length === 0 ? (
           <div className="p-12 text-center text-gray-500">
             <Package className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-            <p className="text-lg font-semibold mb-2">Không có yêu cầu trả hàng</p>
-            <p className="text-sm">Chưa có yêu cầu trả hàng nào phù hợp với bộ lọc</p>
+            <p className="text-lg font-semibold mb-2">
+              {requests.length === 0 
+                ? 'Chưa có yêu cầu trả hàng nào' 
+                : 'Không tìm thấy yêu cầu phù hợp'}
+            </p>
+            <p className="text-sm">
+              {requests.length === 0
+                ? filter === 'all' 
+                  ? 'Chưa có khách hàng nào yêu cầu trả hàng. Các yêu cầu trả hàng sẽ xuất hiện ở đây.'
+                  : filter === 'pending'
+                  ? 'Hiện không có yêu cầu trả hàng nào đang chờ xử lý.'
+                  : filter === 'approved'
+                  ? 'Chưa có yêu cầu trả hàng nào được chấp nhận.'
+                  : 'Chưa có yêu cầu trả hàng nào bị từ chối.'
+                : 'Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc'}
+            </p>
+            {requests.length === 0 && (
+              <div className="mt-6 p-4 bg-blue-50 rounded-lg max-w-2xl mx-auto text-left">
+                <p className="text-sm text-blue-900 mb-3 font-semibold">
+                  💡 Tại sao chưa có yêu cầu trả hàng?
+                </p>
+                <div className="text-sm text-blue-800 space-y-2 mb-4">
+                  <p>1. <strong>Chưa có khách hàng nào yêu cầu trả hàng</strong> cho các cửa hàng của bạn</p>
+                  <p>2. Khách hàng chỉ có thể yêu cầu trả hàng khi:</p>
+                  <ul className="ml-6 space-y-1 list-disc">
+                    <li>Đơn hàng đã giao thành công (trạng thái: <strong>Đã giao</strong>)</li>
+                    <li>Trong vòng <strong>7 ngày</strong> kể từ ngày giao hàng</li>
+                    <li>Sản phẩm chưa hết hạn sử dụng</li>
+                  </ul>
+                  <p>3. Yêu cầu trả hàng được tạo từ <strong>ứng dụng khách hàng</strong>, không phải từ portal nhà cung cấp</p>
+                </div>
+                <div className="border-t border-blue-200 pt-3 mt-3">
+                  <p className="text-xs text-blue-700 font-medium mb-1">Debug Information:</p>
+                  <div className="text-xs text-blue-600 space-y-1 font-mono bg-blue-100 p-2 rounded">
+                    <p>Filter: <strong>{filter}</strong></p>
+                    <p>Total pages: <strong>{totalPages}</strong></p>
+                    <p>Current page: <strong>{page}</strong></p>
+                    <p>Mở Console (F12) để xem API response</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">

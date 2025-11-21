@@ -3,32 +3,48 @@ import DashboardLayout from '~/component/layout/DashboardLayout';
 import reportService from '~/service/reportService';
 import type { WasteSummary, WasteBySupplier } from '~/service/reportService';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { Download, Package, TrendingUp, AlertTriangle, Store, Calendar, Filter } from 'lucide-react';
+import { Download, Package, TrendingUp, AlertTriangle, Store, Calendar, Filter, Percent, Archive } from 'lucide-react';
 
 export default function WasteReportNew() {
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<WasteSummary | null>(null);
   const [supplierData, setSupplierData] = useState<WasteBySupplier[]>([]);
-  const [timeSeriesData, setTimeSeriesData] = useState<any[]>([]);
   const [period, setPeriod] = useState<'7days' | '30days' | 'thisMonth'>('30days');
 
   useEffect(() => {
     fetchData();
   }, [period]);
 
+  const getDateRange = () => {
+    const endDate = new Date();
+    const startDate = new Date();
+    
+    if (period === '7days') {
+      startDate.setDate(startDate.getDate() - 7);
+    } else if (period === '30days') {
+      startDate.setDate(startDate.getDate() - 30);
+    } else {
+      startDate.setDate(1); // First day of current month
+    }
+    
+    return {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString()
+    };
+  };
+
   const fetchData = async () => {
     try {
       setLoading(true);
+      const { startDate, endDate } = getDateRange();
+      
       const [summaryRes, supplierRes] = await Promise.all([
-        reportService.getWasteSummary(),
-        reportService.getWasteBySupplier()
+        reportService.getWasteSummary(startDate, endDate),
+        reportService.getWasteBySupplier(startDate, endDate)
       ]);
+      
       setSummary(summaryRes);
       setSupplierData(supplierRes);
-      
-      // Mock time series data
-      const mockTimeSeries = generateMockTimeSeries(period);
-      setTimeSeriesData(mockTimeSeries);
     } catch (err) {
       console.error('Error fetching waste data:', err);
     } finally {
@@ -36,26 +52,10 @@ export default function WasteReportNew() {
     }
   };
 
-  const generateMockTimeSeries = (period: string) => {
-    const days = period === '7days' ? 7 : period === '30days' ? 30 : 30;
-    const data = [];
-    for (let i = days - 1; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      data.push({
-        date: date.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
-        wasteRate: Math.random() * 30 + 10,
-        listed: Math.floor(Math.random() * 100 + 50),
-        sold: Math.floor(Math.random() * 60 + 20),
-        unsold: Math.floor(Math.random() * 30 + 5)
-      });
-    }
-    return data;
-  };
-
   const handleExport = async () => {
     try {
-      const blob = await reportService.exportWasteReport();
+      const { startDate, endDate } = getDateRange();
+      const blob = await reportService.exportWasteReport(startDate, endDate);
       reportService.downloadFile(blob, `waste-report-${new Date().toISOString().split('T')[0]}.csv`);
     } catch (err) {
       alert('Không thể xuất báo cáo');
@@ -75,15 +75,25 @@ export default function WasteReportNew() {
     );
   }
 
-  const totalListed = summary?.totalListed || 0;
-  const totalSold = summary?.totalSold || 0;
-  const totalUnsold = summary?.totalUnsold || 0;
-  const wasteRate = summary?.wasteRate || 0;
+  // Mô hình nghiệp vụ SaveFood
+  const totalListed = summary?.totalListed || summary?.totalStockQuantity || 0;
+  const totalSold = summary?.totalSold || summary?.soldQuantity || 0;
+  const totalExpired = summary?.expiredQuantity || 0;
+  const totalRemaining = summary?.unsoldQuantity || (totalListed - totalSold - totalExpired);
   
-  const platformAvgWasteRate = wasteRate;
+  // Core metrics
+  const sellThroughRate = totalListed > 0 ? (totalSold / totalListed) * 100 : 0;
+  const expiryRate = totalListed > 0 ? (totalExpired / totalListed) * 100 : 0;
+  const remainingRate = totalListed > 0 ? (totalRemaining / totalListed) * 100 : 0;
+  
+  // Waste metrics (expiryRate là waste thực sự)
+  const wasteRate = expiryRate;
+  const wasteIndex = expiryRate * 0.7 + remainingRate * 0.3;
+  
+  const platformAvgWasteRate = wasteIndex;
 
   const topWasteStores = supplierData
-    .sort((a, b) => b.wasteRate - a.wasteRate)
+    .sort((a, b) => (b.wasteIndex || b.wasteRate) - (a.wasteIndex || a.wasteRate))
     .slice(0, 5);
 
   return (
@@ -118,8 +128,8 @@ export default function WasteReportNew() {
           </div>
         </div>
 
-        {/* Main Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Main Metrics - Mô hình SaveFood */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
             <div className="flex items-center gap-4">
               <div className="bg-blue-50 p-3 rounded-lg">
@@ -127,7 +137,7 @@ export default function WasteReportNew() {
               </div>
               <div>
                 <h3 className="text-2xl font-bold text-gray-900">{totalListed.toLocaleString()}</h3>
-                <p className="text-sm text-gray-600">Tổng nhập bán</p>
+                <p className="text-sm text-gray-600">Tổng niêm yết</p>
               </div>
             </div>
           </div>
@@ -140,6 +150,20 @@ export default function WasteReportNew() {
               <div>
                 <h3 className="text-2xl font-bold text-green-600">{totalSold.toLocaleString()}</h3>
                 <p className="text-sm text-gray-600">Đã bán</p>
+                <p className="text-xs text-green-600 mt-1">{sellThroughRate.toFixed(1)}% sell-through</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <div className="flex items-center gap-4">
+              <div className="bg-amber-50 p-3 rounded-lg">
+                <Archive className="w-6 h-6 text-amber-600" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-amber-600">{totalRemaining.toLocaleString()}</h3>
+                <p className="text-sm text-gray-600">Tồn kho</p>
+                <p className="text-xs text-amber-600 mt-1">{remainingRate.toFixed(1)}% chưa bán</p>
               </div>
             </div>
           </div>
@@ -150,8 +174,9 @@ export default function WasteReportNew() {
                 <AlertTriangle className="w-6 h-6 text-red-600" />
               </div>
               <div>
-                <h3 className="text-2xl font-bold text-red-600">{totalUnsold.toLocaleString()}</h3>
-                <p className="text-sm text-gray-600">Không bán được</p>
+                <h3 className="text-2xl font-bold text-red-600">{totalExpired.toLocaleString()}</h3>
+                <p className="text-sm text-gray-600">Đã hết hạn</p>
+                <p className="text-xs text-red-600 mt-1">{expiryRate.toFixed(1)}% lãng phí</p>
               </div>
             </div>
           </div>
@@ -159,11 +184,46 @@ export default function WasteReportNew() {
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
             <div className="flex items-center gap-4">
               <div className="bg-orange-50 p-3 rounded-lg">
-                <AlertTriangle className="w-6 h-6 text-orange-600" />
+                <Percent className="w-6 h-6 text-orange-600" />
               </div>
               <div>
-                <h3 className="text-2xl font-bold text-orange-600">{wasteRate.toFixed(1)}%</h3>
-                <p className="text-sm text-gray-600">Tỉ lệ lãng phí</p>
+                <h3 className="text-2xl font-bold text-orange-600">{wasteIndex.toFixed(1)}%</h3>
+                <p className="text-sm text-gray-600">Waste Index</p>
+                <p className="text-xs text-gray-500 mt-1">70% hết hạn + 30% tồn</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Formula Explanation */}
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
+          <div className="flex items-start gap-4">
+            <div className="bg-blue-100 p-3 rounded-lg">
+              <Percent className="w-6 h-6 text-blue-700" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-gray-900 mb-3">Mô hình nghiệp vụ SaveFood</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div className="bg-white/60 rounded-lg p-3">
+                  <p className="font-semibold text-gray-800 mb-1">Sell-Through Rate</p>
+                  <p className="text-gray-600 font-mono">= Đã bán / Tổng niêm yết</p>
+                  <p className="text-green-600 font-bold mt-1">{sellThroughRate.toFixed(2)}%</p>
+                </div>
+                <div className="bg-white/60 rounded-lg p-3">
+                  <p className="font-semibold text-gray-800 mb-1">Expiry Rate (Waste)</p>
+                  <p className="text-gray-600 font-mono">= Hết hạn / Tổng niêm yết</p>
+                  <p className="text-red-600 font-bold mt-1">{expiryRate.toFixed(2)}%</p>
+                </div>
+                <div className="bg-white/60 rounded-lg p-3">
+                  <p className="font-semibold text-gray-800 mb-1">Remaining Rate</p>
+                  <p className="text-gray-600 font-mono">= Tồn kho / Tổng niêm yết</p>
+                  <p className="text-amber-600 font-bold mt-1">{remainingRate.toFixed(2)}%</p>
+                </div>
+                <div className="bg-white/60 rounded-lg p-3">
+                  <p className="font-semibold text-gray-800 mb-1">Waste Index</p>
+                  <p className="text-gray-600 font-mono">= Expiry × 0.7 + Remaining × 0.3</p>
+                  <p className="text-orange-600 font-bold mt-1">{wasteIndex.toFixed(2)}%</p>
+                </div>
               </div>
             </div>
           </div>
@@ -188,82 +248,6 @@ export default function WasteReportNew() {
           </div>
         </div>
 
-        {/* Waste Rate Time Series Chart */}
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-[#2F855A]" />
-              Xu hướng lãng phí theo thời gian
-            </h2>
-          </div>
-          <ResponsiveContainer width="100%" height={350}>
-            <LineChart data={timeSeriesData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
-              <XAxis 
-                dataKey="date" 
-                fontSize={12}
-                stroke="#6b7280"
-              />
-              <YAxis 
-                yAxisId="left"
-                fontSize={12}
-                stroke="#6b7280"
-              />
-              <YAxis 
-                yAxisId="right"
-                orientation="right"
-                fontSize={12}
-                stroke="#f97316"
-              />
-              <Tooltip 
-                contentStyle={{ 
-                  borderRadius: '8px', 
-                  border: 'none', 
-                  boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                  background: 'white'
-                }}
-              />
-              <Legend />
-              <Line 
-                yAxisId="left"
-                type="monotone" 
-                dataKey="listed" 
-                stroke="#3b82f6" 
-                strokeWidth={2}
-                name="Nhập bán"
-                dot={{ fill: '#3b82f6', r: 3 }}
-              />
-              <Line 
-                yAxisId="left"
-                type="monotone" 
-                dataKey="sold" 
-                stroke="#10b981" 
-                strokeWidth={2}
-                name="Đã bán"
-                dot={{ fill: '#10b981', r: 3 }}
-              />
-              <Line 
-                yAxisId="left"
-                type="monotone" 
-                dataKey="unsold" 
-                stroke="#ef4444" 
-                strokeWidth={2}
-                name="Không bán được"
-                dot={{ fill: '#ef4444', r: 3 }}
-              />
-              <Line 
-                yAxisId="right"
-                type="monotone" 
-                dataKey="wasteRate" 
-                stroke="#f97316" 
-                strokeWidth={2}
-                name="Tỉ lệ lãng phí (%)"
-                dot={{ fill: '#f97316', r: 4 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-
         {/* Top 5 Waste Stores */}
         <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
           <h2 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
@@ -272,7 +256,12 @@ export default function WasteReportNew() {
           </h2>
           <div className="space-y-4">
             {topWasteStores.map((store, index) => {
-              const storeWasteRate = store.wasteRate;
+              // Tính toán các chỉ số theo mô hình SaveFood
+              const storeWasteIndex = store.wasteIndex || store.wasteRate || 0;
+              const storeSellThrough = store.totalStockQuantity > 0 
+                ? (store.soldQuantity / store.totalStockQuantity) * 100 
+                : 0;
+              
               return (
                 <div 
                   key={store.supplierId} 
@@ -295,14 +284,14 @@ export default function WasteReportNew() {
                       )}
                       <div>
                         <p className="font-medium text-gray-900">{store.supplierName}</p>
-                        <p className="text-sm text-gray-500">{store.totalStores} cửa hàng</p>
+                        <p className="text-sm text-gray-500">{store.totalStores} cửa hàng • Sell-through: {storeSellThrough.toFixed(1)}%</p>
                       </div>
                     </div>
                   </div>
                   
                   <div className="flex items-center gap-6">
                     <div className="text-right">
-                      <p className="text-sm text-gray-500">Nhập bán</p>
+                      <p className="text-sm text-gray-500">Niêm yết</p>
                       <p className="font-semibold text-gray-900">{store.totalStockQuantity.toLocaleString()}</p>
                     </div>
                     <div className="text-right">
@@ -310,15 +299,16 @@ export default function WasteReportNew() {
                       <p className="font-semibold text-green-600">{store.soldQuantity.toLocaleString()}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm text-gray-500">Lãng phí</p>
-                      <p className="font-semibold text-red-600">{store.unsoldQuantity.toLocaleString()}</p>
+                      <p className="text-sm text-gray-500">Hết hạn</p>
+                      <p className="font-semibold text-red-600">{(store.expiredQuantity || 0).toLocaleString()}</p>
                     </div>
-                    <div className="text-right min-w-[100px]">
-                      <p className="text-lg font-bold text-amber-600">{storeWasteRate.toFixed(1)}%</p>
+                    <div className="text-right min-w-[120px]">
+                      <p className="text-xs text-gray-500 mb-1">Waste Index</p>
+                      <p className="text-lg font-bold text-amber-600">{storeWasteIndex.toFixed(1)}%</p>
                       <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
                         <div 
                           className="bg-amber-500 h-1.5 rounded-full transition-all"
-                          style={{ width: `${Math.min(storeWasteRate, 100)}%` }}
+                          style={{ width: `${Math.min(storeWasteIndex, 100)}%` }}
                         />
                       </div>
                     </div>
@@ -342,18 +332,25 @@ export default function WasteReportNew() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cửa hàng</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Nhập bán</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Niêm yết</th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Đã bán</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Lãng phí</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Tỉ lệ</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Hết hạn</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Sell-Through</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Waste Index</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {supplierData.map((store) => {
                   const listed = store.totalStockQuantity;
                   const sold = store.soldQuantity;
-                  const unsold = store.unsoldQuantity;
-                  const rate = store.wasteRate;
+                  const expired = store.expiredQuantity || 0;
+                  const remaining = store.unsoldQuantity || (listed - sold - expired);
+                  
+                  // Tính các chỉ số
+                  const sellThrough = listed > 0 ? (sold / listed) * 100 : 0;
+                  const expiryRate = listed > 0 ? (expired / listed) * 100 : 0;
+                  const remainingRate = listed > 0 ? (remaining / listed) * 100 : 0;
+                  const wasteIndex = expiryRate * 0.7 + remainingRate * 0.3;
 
                   return (
                     <tr key={store.supplierId} className="hover:bg-gray-50 transition-colors">
@@ -379,25 +376,46 @@ export default function WasteReportNew() {
                         <span className="font-medium text-green-600">{sold.toLocaleString()}</span>
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <span className="font-medium text-red-600">{unsold.toLocaleString()}</span>
+                        <span className="font-medium text-red-600">{expired.toLocaleString()}</span>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col items-center gap-1">
                           <span className={`text-sm font-semibold ${
-                            rate >= 30 ? 'text-red-600' : 
-                            rate >= 15 ? 'text-amber-600' : 
-                            'text-green-600'
+                            sellThrough >= 80 ? 'text-green-600' : 
+                            sellThrough >= 50 ? 'text-amber-600' : 
+                            'text-red-600'
                           }`}>
-                            {rate.toFixed(1)}%
+                            {sellThrough.toFixed(1)}%
                           </span>
                           <div className="w-20 bg-gray-200 rounded-full h-1.5">
                             <div 
                               className={`h-1.5 rounded-full transition-all ${
-                                rate >= 30 ? 'bg-red-500' : 
-                                rate >= 15 ? 'bg-amber-500' : 
+                                sellThrough >= 80 ? 'bg-green-500' : 
+                                sellThrough >= 50 ? 'bg-amber-500' : 
+                                'bg-red-500'
+                              }`}
+                              style={{ width: `${Math.min(sellThrough, 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col items-center gap-1">
+                          <span className={`text-sm font-semibold ${
+                            wasteIndex >= 30 ? 'text-red-600' : 
+                            wasteIndex >= 15 ? 'text-amber-600' : 
+                            'text-green-600'
+                          }`}>
+                            {wasteIndex.toFixed(1)}%
+                          </span>
+                          <div className="w-20 bg-gray-200 rounded-full h-1.5">
+                            <div 
+                              className={`h-1.5 rounded-full transition-all ${
+                                wasteIndex >= 30 ? 'bg-red-500' : 
+                                wasteIndex >= 15 ? 'bg-amber-500' : 
                                 'bg-green-500'
                               }`}
-                              style={{ width: `${Math.min(rate, 100)}%` }}
+                              style={{ width: `${Math.min(wasteIndex, 100)}%` }}
                             />
                           </div>
                         </div>
