@@ -76,22 +76,25 @@ export default function WasteReportNew() {
   }
 
 
-  const totalListed = summary?.totalStockQuantity || 0; // Tổng tồn kho ban đầu
+  const totalInitial = summary?.initialStockQuantity ?? summary?.totalStockQuantity ?? 0; // Tổng tồn kho ban đầu
+  const currentStock = summary?.currentStockQuantity ?? ((summary?.unsoldQuantity || 0) + (summary?.expiredQuantity || 0));
   const totalSold = summary?.soldQuantity || 0; // Từ đơn hàng DELIVERED
   const totalExpired = summary?.expiredQuantity || 0; // Sản phẩm hết hạn
   const totalRemaining = summary?.unsoldQuantity || 0; // Sản phẩm ACTIVE
 
-  // Calculate rates
-  const sellThroughRate = totalListed > 0 ? (totalSold / totalListed) * 100 : 0;
-  const expiryRate = totalListed > 0 ? (totalExpired / totalListed) * 100 : 0;
-  const remainingRate = totalListed > 0 ? (totalRemaining / totalListed) * 100 : 0;
+  // Calculate rates dựa trên tồn kho ban đầu
+  const sellThroughRate = totalInitial > 0 ? (totalSold / totalInitial) * 100 : 0;
+  const expiryRate = totalInitial > 0 ? (totalExpired / totalInitial) * 100 : 0;
+  const remainingRate = totalInitial > 0 ? (totalRemaining / totalInitial) * 100 : 0;
 
   const platformAvgWasteRate = expiryRate;
 
   const topWasteStores = supplierData
     .map(s => ({
       ...s,
-      calculatedExpiryRate: s.totalStockQuantity > 0 ? ((s.expiredQuantity || 0) / s.totalStockQuantity) * 100 : 0
+      calculatedExpiryRate: (s.initialStockQuantity ?? s.totalStockQuantity ?? 0) > 0
+        ? ((s.expiredQuantity || 0) / (s.initialStockQuantity ?? s.totalStockQuantity ?? 0)) * 100
+        : 0
     }))
     .sort((a, b) => b.calculatedExpiryRate - a.calculatedExpiryRate)
     .slice(0, 5);
@@ -136,8 +139,9 @@ export default function WasteReportNew() {
                 <Package className="w-6 h-6 text-blue-600" />
               </div>
               <div>
-                <h3 className="text-2xl font-bold text-gray-900">{totalListed.toLocaleString()}</h3>
-                <p className="text-sm text-gray-600">Tổng niêm yết</p>
+                <h3 className="text-2xl font-bold text-gray-900">{currentStock.toLocaleString()}</h3>
+                <p className="text-sm text-gray-600">Tồn kho hiện tại</p>
+                <p className="text-xs text-gray-400 mt-1">Tổng tồn kho ban đầu: {totalInitial.toLocaleString()}</p>
               </div>
             </div>
           </div>
@@ -241,13 +245,13 @@ export default function WasteReportNew() {
           </h2>
           <div className="space-y-4">
             {topWasteStores.map((store, index) => {
-              // Tính toán các chỉ số
-              const listed = store.totalStockQuantity;
-              const sold = store.soldQuantity;
-              const expired = store.expiredQuantity || 0;
-              
-              const storeSellThrough = listed > 0 ? (sold / listed) * 100 : 0;
-              const storeExpiryRate = listed > 0 ? (expired / listed) * 100 : 0;
+              const initialStock = store.initialStockQuantity ?? store.totalStockQuantity ?? 0;
+              const currentStock = store.currentStockQuantity ?? (store.unsoldQuantity ?? 0);
+              const sold = store.soldQuantity ?? 0;
+              const expired = store.expiredQuantity ?? 0;
+
+              const storeSellThrough = initialStock > 0 ? (sold / initialStock) * 100 : 0;
+              const storeExpiryRate = initialStock > 0 ? (expired / initialStock) * 100 : 0;
               
               return (
                 <div 
@@ -278,16 +282,20 @@ export default function WasteReportNew() {
                   
                   <div className="flex items-center gap-6">
                     <div className="text-right">
-                      <p className="text-sm text-gray-500">Niêm yết</p>
-                      <p className="font-semibold text-gray-900">{store.totalStockQuantity.toLocaleString()}</p>
+                      <p className="text-sm text-gray-500">Tồn kho ban đầu</p>
+                      <p className="font-semibold text-gray-900">{initialStock.toLocaleString()}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-gray-500">Tồn kho hiện tại</p>
+                      <p className="font-semibold text-blue-600">{currentStock.toLocaleString()}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-sm text-gray-500">Đã bán</p>
-                      <p className="font-semibold text-green-600">{store.soldQuantity.toLocaleString()}</p>
+                      <p className="font-semibold text-green-600">{sold.toLocaleString()}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-sm text-gray-500">Hết hạn</p>
-                      <p className="font-semibold text-red-600">{(store.expiredQuantity || 0).toLocaleString()}</p>
+                      <p className="font-semibold text-red-600">{expired.toLocaleString()}</p>
                     </div>
                     <div className="text-right min-w-[120px]">
                       <p className="text-xs text-gray-500 mb-1">Expiry Rate</p>
@@ -320,6 +328,7 @@ export default function WasteReportNew() {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cửa hàng</th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Tồn kho ban đầu</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Tồn kho hiện tại</th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Đã bán</th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Hết hạn</th>
                   <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Sell-Through</th>
@@ -328,13 +337,13 @@ export default function WasteReportNew() {
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {supplierData.map((store) => {
-                  const listed = store.totalStockQuantity;
-                  const sold = store.soldQuantity;
-                  const expired = store.expiredQuantity || 0;
+                  const initialStock = store.initialStockQuantity ?? store.totalStockQuantity ?? 0;
+                  const currentStock = store.currentStockQuantity ?? (store.unsoldQuantity ?? 0);
+                  const sold = store.soldQuantity ?? 0;
+                  const expired = store.expiredQuantity ?? 0;
 
-                  // Calculate rates
-                  const sellThrough = listed > 0 ? (sold / listed) * 100 : 0;
-                  const expiryRate = listed > 0 ? (expired / listed) * 100 : 0;
+                  const sellThrough = initialStock > 0 ? (sold / initialStock) * 100 : 0;
+                  const expiryRate = initialStock > 0 ? (expired / initialStock) * 100 : 0;
 
                   return (
                     <tr key={store.supplierId} className="hover:bg-gray-50 transition-colors">
@@ -354,7 +363,10 @@ export default function WasteReportNew() {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <span className="font-medium text-gray-900">{listed.toLocaleString()}</span>
+                        <span className="font-medium text-gray-900">{initialStock.toLocaleString()}</span>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className="font-medium text-blue-600">{currentStock.toLocaleString()}</span>
                       </td>
                       <td className="px-6 py-4 text-center">
                         <span className="font-medium text-green-600">{sold.toLocaleString()}</span>
