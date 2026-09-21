@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/locations") // Base path cho API
+@RequestMapping("/api/locations")
 @RequiredArgsConstructor
 @Tag(name = "Location", description = "Endpoints for fetching location data (provinces, districts, wards)")
 public class LocationController {
@@ -28,7 +28,6 @@ public class LocationController {
     @Operation(summary = "Get all provinces", description = "Lấy danh sách tất cả tỉnh/thành phố của Việt Nam")
     public ResponseEntity<ApiResponse<List<Province>>> getAllProvinces() {
         List<Province> provinces = locationService.getAllProvinces();
-        // Giả sử bạn có một lớp ApiResponse tiêu chuẩn để bọc dữ liệu
         return ResponseEntity.ok(ApiResponse.success("Fetched all provinces successfully", provinces));
     }
 

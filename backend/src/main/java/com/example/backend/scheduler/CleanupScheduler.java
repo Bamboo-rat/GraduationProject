@@ -51,7 +51,6 @@ public class CleanupScheduler {
             for (Customer customer : oldPendingCustomers) {
                 log.info("Deleting old pending customer: {} (email: {}, created: {})",
                         customer.getUsername(), customer.getEmail(), customer.getCreatedAt());
-
                 // Delete from Keycloak (best effort)
                 try {
                     keycloakService.deleteUser(customer.getKeycloakId());
